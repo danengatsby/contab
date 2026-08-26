@@ -1,0 +1,244 @@
+{
+ "parte": "Part II · Opening the financial year · phase 1",
+ "nr": "7",
+ "titlu": "The opening trial balance",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The previous chapter established the company's tax regimes. One question remains before the first document: what figures do we start from?"
+  },
+  {
+   "tip": "p",
+   "text": "For a newly established company the answer is nearly empty — but not quite. For one that has operated for years and is only now entering an accounting program, the answer is an entire trial balance, and everything calculated from here on depends on its accuracy."
+  },
+  {
+   "tip": "h",
+   "text": "What carries forward and what doesn't"
+  },
+  {
+   "tip": "p",
+   "text": "Chapter 3 divided accounts into two kinds, and now the difference becomes practical. Accounts in classes 1–5 have memory: their balance at December 31 becomes the opening balance on January 1. The money in the bank account doesn't disappear because the year changed, nor do receivables, payables, or the goods in the warehouse."
+  },
+  {
+   "tip": "p",
+   "text": "Revenue and expense accounts, classes 6 and 7, never carry forward. They measure a period, and the period has ended; the new year starts from zero. Anyone who \"carries over\" revenue or expense balances makes a mistake that shows immediately: the new year's result starts inflated."
+  },
+  {
+   "tip": "cheie",
+   "text": "The opening trial balance contains only balance sheet accounts. If you see a class 6 or 7 account in it, something is wrong."
+  },
+  {
+   "tip": "h",
+   "text": "The same company, one year later"
+  },
+  {
+   "tip": "p",
+   "text": "Let's return to the company from the earlier chapters. It ended the month with 15,000 lei in the bank, 60,000 receivable from customers, 5,000 payable to the supplier, the initial 30,000 contributed, and a profit of 40,000. We assume the year ended there and that the profit was retained in the company, not distributed."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The opening trial balance for the following year",
+   "cap": [
+    "Account",
+    "Debit",
+    "Credit"
+   ],
+   "randuri": [
+    [
+     "5121 Bank accounts in lei",
+     "15.000",
+     ""
+    ],
+    [
+     "4111 Customers",
+     "60.000",
+     ""
+    ],
+    [
+     "401 Suppliers",
+     "",
+     "5.000"
+    ],
+    [
+     "1012 Subscribed and paid-in capital",
+     "",
+     "30.000"
+    ],
+    [
+     "1171 Retained earnings",
+     "",
+     "40.000"
+    ],
+    [
+     "Total",
+     "75.000",
+     "75.000"
+    ]
+   ],
+   "numerice": [
+    2,
+    3
+   ],
+   "total": true,
+   "nota": "The 40,000 gain no longer appears as \"the month's profit\": at year-end closing it moved into retained earnings, that is, into the wealth that remains the business owner's. The goods don't appear at all — they had all been sold."
+  },
+  {
+   "tip": "p",
+   "text": "Here, in a five-row table, is everything the first part of the book said. The two columns are equal because every transaction during the year was recorded on two sides. The revenue and expense accounts have disappeared, because they measured the period that has closed. And the gain hasn't evaporated: it has changed its name."
+  },
+  {
+   "tip": "h",
+   "text": "A new company doesn't quite start from zero"
+  },
+  {
+   "tip": "p",
+   "text": "A company established last month has no receivables, payables, or inventory, but it does have share capital. The amount contributed by the shareholders at incorporation is the first entry in its life, and the opening trial balance contains exactly those two lines: the money on one side, and the capital on the other."
+  },
+  {
+   "tip": "p",
+   "text": "It's the simplest possible case and, precisely for that reason, the best example to study: the company has something (money), and that something belongs to someone (the shareholders). Nothing appears from nothing — not even on the first day."
+  },
+  {
+   "tip": "h",
+   "text": "Three levels of takeover, not one"
+  },
+  {
+   "tip": "p",
+   "text": "When taking over a company with history, \"I entered the balances\" actually means three distinct operations, and skipping one of them produces bookkeeping that balances in total but is unusable in practice."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What must be taken over",
+   "cap": [
+    "Level",
+    "What is taken over",
+    "Without it you cannot"
+   ],
+   "randuri": [
+    [
+     "General ledger (synthetic)",
+     "the balance of each account from the closing trial balance",
+     "prepare the balance sheet"
+    ],
+    [
+     "Sub-ledger by partner (analytic)",
+     "how much each customer owes, how much you owe each supplier",
+     "know who to call or who to pay"
+    ],
+    [
+     "Quantity-value",
+     "inventory for each product: quantity and value",
+     "issue goods from inventory at the first sale"
+    ]
+   ],
+   "nota": "The first level is mandatory by law. The other two are mandatory by common sense: without them, the figures are correct and unusable."
+  },
+  {
+   "tip": "p",
+   "text": "The rule linking the levels is a single one, but it's the most frequently violated one in takeovers: the sum of the analytic balances must equal the synthetic balance. If the customer account shows 60,000, but the customers taken one by one add up to 58,400, the 1,600 difference isn't rounding — it's a forgotten customer or a duplicated amount."
+  },
+  {
+   "tip": "h",
+   "text": "Why an unbalanced trial balance never heals itself"
+  },
+  {
+   "tip": "p",
+   "text": "The equality between the debit total and the credit total isn't a formality to fill in at takeover, but the starting point of all future checks. Chapter 2 showed why: every transaction adds equal amounts to both columns, so the difference between them never changes."
+  },
+  {
+   "tip": "p",
+   "text": "The consequence is unpleasant and worth stating clearly. If you start with a 1,200 lei difference, you'll have the same 1,200 lei difference in every trial balance throughout the year, no matter how many correct transactions you record in the meantime. It doesn't dilute, doesn't get lost, doesn't get offset. The only fix is to go back to the takeover trial balance and find what's missing."
+  },
+  {
+   "tip": "p",
+   "text": "That's why a serious program refuses an unbalanced takeover from the start, instead of accepting it and complaining later — and it refuses it entirely, not partially, because a partial takeover is harder to fix than one that never happened. For the same reason, it also refuses a balance entered with a minus sign in the wrong column: an account doesn't have a \"negative debit\" balance, it has a credit balance."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Carrying forward balances isn't an operation left to the accountant's discretion: the opening balance sheet of a fiscal year must correspond to the closing balance sheet of the preceding fiscal year — the principle of consistency, from the accounting regulations. Retroactively modifying an opening balance to \"make a trial balance fit\" is, for this reason, excluded; corrections of errors from prior periods are recorded through retained earnings, not by rewriting the opening. When taking over a company from another program, four things are worth checking before accepting the trial balance: that the sum of analytic balances equals the synthetic balance for each third-party account; that the quantity-value inventory taken over matches the value of the class 3 accounts; that the VAT balance — 4423, 4424, 4428 — is consistent with the last VAT return filed; and that accumulated depreciation comes together with the acquisition value of the fixed assets, otherwise future depreciation will be calculated on a wrong basis and the remaining useful life will be inaccurate. The last point is the one most often missed, because in the synthetic trial balance fixed assets already appear at net value, and information about their age is lost if it isn't requested separately."
+  },
+  {
+   "tip": "h",
+   "text": "How it's done, in practice"
+  },
+  {
+   "tip": "p",
+   "text": "In the application, the takeover is done from a single place: either the file exported from the old program is imported, or the balances are entered account by account. The program checks the equality before writing anything and refuses the takeover if it doesn't balance, stating exactly by how much it differs."
+  },
+  {
+   "tip": "p",
+   "text": "Balances for each customer and supplier are detailed separately, and inventory has its own quantity-value takeover. There are three steps, not one, exactly as in the table above — and their order doesn't matter, as long as in the end all three match each other."
+  },
+  {
+   "tip": "p",
+   "text": "With this, phase one is complete: the company knows who it is, what regime it has, and where it starts from. The next chapter begins the day-to-day work, through the single door by which anything enters the accounting records — the document."
+  },
+  {
+   "tip": "h",
+   "text": "Where opening figures come from, by case"
+  },
+  {
+   "tip": "p",
+   "text": "\"Opening trial balance\" means different things depending on whether the company is new, established, or taken over from another accountant — and confusing the three is the source of most beginning-of-year errors."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Three situations, three sources",
+   "cap": [
+    "Situation",
+    "Where the balances come from",
+    "What is checked"
+   ],
+   "randuri": [
+    [
+     "Newly established company",
+     "from the articles of incorporation: subscribed and paid-in capital",
+     "the amount actually paid in, not the amount subscribed"
+    ],
+    [
+     "Operating company, new year",
+     "from the December trial balance, after closing",
+     "accounts 6 and 7 must be ZERO"
+    ],
+    [
+     "Takeover from another accountant",
+     "from the last trial balance handed over, with a handover report",
+     "agreement between analytic and synthetic figures for third parties"
+    ]
+   ],
+   "nota": "The second row is the most frequently mishandled: taking over a trial balance BEFORE the annual closing brings balances on revenue and expense accounts into the new year, where they have no business being."
+  },
+  {
+   "tip": "p",
+   "text": "When taking over from another accountant, there's a practical rule worth adopting without exception: balances are taken over, but they are also verified. A customer balance that can't be broken down by partner, or a cash balance that doesn't match the register, are inherited problems that become yours from the first day you record them."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 7.1 — the takeover that doesn't balance",
+   "enunt": [
+    "You take over the bookkeeping of a company. The handed-over trial balance shows: 5121 debit 18,000; 4111 debit 42,000; 401 credit 25,000; 1012 credit 30,000; 117 credit 5,000. The analytic breakdown of account 4111 adds up to 39,500.",
+    "(a) Does the trial balance balance? (b) What do you do with the difference on 4111?"
+   ],
+   "rezolvare": [
+    "(a) Total debit: 18,000 + 42,000 = 60,000. Total credit: 25,000 + 30,000 + 5,000 = 60,000. The synthetic trial balance balances perfectly.",
+    "(b) And yet there is an error: the analytic total gives 39,500 versus 42,000 synthetic, so 2,500 lei are missing, not allocated to any customer. The trial balance doesn't flag it, because the balance check is done on the synthetic level.",
+    "What NOT to do: force a 2,500 \"miscellaneous\" analytic entry to make it come out even. This hides the problem and makes it unsolvable a year from now.",
+    "What to do: request the breakdown from the party handing over the accounts, before signing the handover report. If it can't be obtained, the difference is recorded in the handover report as taken over unidentified — so it remains a known problem, not one silently inherited.",
+    "The general lesson, which returns in Chapter 33: a balanced trial balance is not a correct trial balance. Here the balance is perfect, and the records are wrong."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Only balance sheet accounts, classes 1–5, are carried forward. Revenue and expenses start from zero every year.",
+    "The completed year's gain doesn't disappear: it moves into retained earnings, that is, into the wealth that remains the company's.",
+    "A new company also has an opening trial balance: the money contributed and the share capital.",
+    "The takeover has three levels — synthetic, analytic by partner, quantity-value for inventory. The sum of the analytics must equal the synthetic balance.",
+    "A difference at opening never dilutes: it remains the same in every trial balance throughout the year.",
+    "The opening balance sheet must correspond to the closing balance sheet of the preceding year; prior errors are corrected through retained earnings, not by rewriting the opening."
+   ]
+  }
+ ]
+}

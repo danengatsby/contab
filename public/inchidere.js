@@ -1,7 +1,7 @@
 'use strict';
 
-// COCKPITUL DE INCHIDERE LUNARA: fluxul unic documente → bancă → TVA → declarații → aprobare →
-// blocare, cu responsabil, termen, dovada validării și motivul blocajului.
+// COCKPITUL DE INCHIDERE LUNARA: documente → bancă → amortizare → reevaluare → ajustări → TVA →
+// declarații → aprobare → blocare, cu responsabil, termen, dovada validării și motivul blocajului.
 //
 // Modulul NU decide nimic: starea pașilor, blocajele și regulile de ordine vin întregi de la
 // server (`GET /api/monthly-close`), ca ecranul și motorul să nu poată ajunge la păreri diferite.
@@ -54,8 +54,8 @@ function temeiHtml(temei) {
 
 /** Alocarea (responsabil + termen) se PLIAZĂ când nu e nimeni între cine să alegi.
  *
- *  Cockpitul cerea responsabil și termen pe fiecare dintre cei șase pași — douăsprezece controale
- *  care, pentru contabilul care lucrează singur (cazul dominant azi), nu decid nimic și împing
+ *  Cockpitul cere responsabil și termen pe fiecare pas — controale care, pentru contabilul care
+ *  lucrează singur (cazul dominant azi), nu decid nimic și împing
  *  acțiunea reală mai jos în pagină. Pentru un birou cu mai mulți oameni sunt exact ce trebuie.
  *
  *  Regula se DERIVĂ din date, ca starea pașilor: lista de responsabili posibili vine de la server
@@ -114,7 +114,7 @@ export function stepHtml(s, responsabili) {
 
 // Statusurile din registrul depunerilor sunt valori interne (fără diacritice) — le arătăm
 // în scriere românească, fără să atingem valorile stocate.
-const STATUS_LABEL = { nedepusa: 'nedepusă', generata: 'generată', transmisa: 'transmisă', depusa: 'depusă', eroare: 'eroare', scutita: 'scutită' };
+const STATUS_LABEL = { nedepusa: 'nedepusă', generata: 'generată', aprobata: 'aprobată', transmisa: 'transmisă', depusa: 'depusă', eroare: 'eroare', scutita: 'scutită' };
 export function statusLabel(s) { return STATUS_LABEL[s] || s || '—'; }
 
 /** Tabelul dovezilor de validare pentru declarațiile lunii. */
@@ -167,23 +167,39 @@ function renderCloseButton(st) {
   }
   const aprobata = !!st.aprobareValida;
   const blocante = st.blocante || [];
-  // Perioada poate fi deja blocată fără să fi trecut prin flux (marcarea unei declarații ca
-  // depusă blochează automat luna). Spunem asta, ca butonul „Blochează perioada" să nu pară inutil.
+  const drept = st.permissions || { approve: true, close: true, override: false };
+  // Perioada poate fi deja blocată administrativ fără să fi trecut prin flux. Spunem asta, ca
+  // butonul „Blochează perioada" să nu pară inutil.
   const dejaBlocata = st.inchisa
-    ? `<p class="muted">Perioada e deja blocată (${H(st.lockedUntil)}) — probabil de la marcarea unei declarații ca depusă. Închiderea de aici consemnează dosarul lunii.</p>`
+    ? `<p class="muted">Perioada e deja blocată administrativ (${H(st.lockedUntil)}). Închiderea de aici consemnează dosarul lunii.</p>`
     : '';
   box.innerHTML = dejaBlocata + `
-    ${aprobata
+    ${!drept.approve
+    ? '<p class="muted">Aprobarea lunii este rezervată rolului aprobator/proprietar.</p>'
+    : aprobata
     ? '<button id="clUnapprove" class="btn">Retrage aprobarea</button>'
     : `<button id="clApprove" class="btn primary">${st.aprobare && st.aprobare.invechita ? 'Reaprobă luna' : 'Aprobă luna'}</button>`}
-    <button id="clClose" class="btn primary"${blocante.length ? ' disabled' : ''}>Blochează perioada</button>
+    ${drept.close ? `<button id="clClose" class="btn primary"${blocante.length ? ' disabled' : ''}>Blochează perioada</button>` : ''}
     ${blocante.length
     ? `<p class="muted">Închiderea e blocată de: ${H(blocante.map((b) => b.nume).join(', '))}.</p>
-       <button id="clForce" class="linkbtn">Forțează închiderea (administrator)…</button>`
+       ${drept.override ? '<button id="clForce" class="linkbtn">Forțează închiderea (excepție auditată)…</button>' : ''}`
     : ''}`;
   $('#clApprove') && $('#clApprove').addEventListener('click', async () => {
-    try { await api('/api/monthly-close/approve', post({ period: st.period, nota: '' })); toast('Luna a fost aprobată.'); loadMonthlyClose(); }
-    catch (e) { toast(e.message, true); }
+    try {
+      await api('/api/monthly-close/approve', post({ period: st.period, nota: '' }));
+      toast('Luna a fost aprobată.'); loadMonthlyClose();
+    } catch (e) {
+      if (!(e.data && e.data.code === 'SELF_APPROVAL_REQUIRED') || !drept.override) { toast(e.message, true); return; }
+      const motiv = await promptAction('Ai contribuit la pregătirea acestei luni. Excepția este permisă numai administratorului și rămâne în dosar și audit.', {
+        title: 'Aprobare proprie — excepție', label: 'Motivul excepției', multiline: true,
+        required: true, minLength: 10, confirmLabel: 'Aprobă cu excepție', danger: true,
+      });
+      if (motiv == null) return;
+      try {
+        await api('/api/monthly-close/approve', post({ period: st.period, nota: '', override: true, motiv }));
+        toast('Luna a fost aprobată prin excepție auditată.'); loadMonthlyClose();
+      } catch (overrideError) { toast(overrideError.message, true); }
+    }
   });
   $('#clUnapprove') && $('#clUnapprove').addEventListener('click', async () => {
     try { await api('/api/monthly-close/unapprove', post({ period: st.period })); toast('Aprobare retrasă.'); loadMonthlyClose(); }

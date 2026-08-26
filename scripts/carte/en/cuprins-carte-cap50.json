@@ -1,0 +1,150 @@
+{
+ "parte": "Part XI · The trail · phase 14",
+ "nr": "50",
+ "titlu": "Who did what, and when",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Accounting records economic transactions. It does not, by itself, record human actions: who entered an invoice, who changed a price, who deleted a draft, who logged in at three in the morning."
+  },
+  {
+   "tip": "p",
+   "text": "For that there is a second log, running parallel to the accounting one, and its purpose is frequently misunderstood — including, or especially, by those who install it."
+  },
+  {
+   "tip": "h",
+   "text": "It's not surveillance"
+  },
+  {
+   "tip": "p",
+   "text": "Any team's first reaction to the idea of an operations log is that someone is watching them. The reaction is natural and, in the overwhelming majority of cases, wrong."
+  },
+  {
+   "tip": "p",
+   "text": "An audit log doesn't exist to catch anyone. It exists so that an inevitable question can be answered: why does this figure look like this. And the answer \"it was modified on March 14, by user X, who noted reason Y\" closes the discussion in thirty seconds."
+  },
+  {
+   "tip": "cheie",
+   "text": "An operations log protects, above all, the person who did things correctly. They're the only one who can prove it."
+  },
+  {
+   "tip": "p",
+   "text": "Without a log, in a three-person team, every error becomes a discussion about who might have done it. With a log, it becomes a finding, and most of the time the finding is that the work was done correctly and the problem lies elsewhere."
+  },
+  {
+   "tip": "h",
+   "text": "What gets recorded"
+  },
+  {
+   "tip": "p",
+   "text": "Not everything. A log that records every click becomes unreadable, and an unreadable log is equivalent to no log at all. What gets recorded are actions that change something or that concern access."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What deserves to be recorded",
+   "cap": [
+    "Category",
+    "Examples"
+   ],
+   "randuri": [
+    [
+     "Authentication",
+     "successful and failed logins, with network address"
+    ],
+    [
+     "Permissions",
+     "creating a user, changing a role, impersonation"
+    ],
+    [
+     "Data",
+     "imports, balance pull-ins, deletions, restorations"
+    ],
+    [
+     "Fiscal",
+     "submissions, downloads from the virtual space, requests to the authority"
+    ],
+    [
+     "Exceptions",
+     "forcing a closing, reopening a period"
+    ]
+   ],
+   "nota": "The network address is recorded at authentication, where it answers a real question. On the rest of the actions it's noise repeated thousands of times a day."
+  },
+  {
+   "tip": "p",
+   "text": "Note that the list does not include ordinary reads. Who looked at a report is not useful information and, accumulated, it drowns out exactly the events that matter."
+  },
+  {
+   "tip": "h",
+   "text": "Two properties without which it serves no purpose"
+  },
+  {
+   "tip": "p",
+   "text": "First: the log must be append-only. It is written to the tail and never rewritten. A log from which lines can be deleted proves nothing, because the absence of a line cannot be distinguished from the event never having occurred."
+  },
+  {
+   "tip": "p",
+   "text": "Second: it must survive the database. If the log lives in the same database it audits, it disappears exactly in the situation it existed for — a corruption, a botched restore, a deliberate deletion."
+  },
+  {
+   "tip": "p",
+   "text": "The practical solution is duplication: a live, capped record for quick reference, and a separate, append-only file included in the backups. The two complement each other, and the cap on the first is justified precisely by the existence of the second."
+  },
+  {
+   "tip": "h",
+   "text": "A log that falls silent"
+  },
+  {
+   "tip": "p",
+   "text": "It's worth closing with the least obvious observation in the chapter, because it applies to any control mechanism, not just this one."
+  },
+  {
+   "tip": "p",
+   "text": "Writing to the log is, by nature, secondary: if it fails, the main action must not be blocked. No one wants an invoice to fail to save because a log file is full. The consequence, however, is that a log that can no longer write looks exactly like one in which nothing happened."
+  },
+  {
+   "tip": "p",
+   "text": "That's why the ability to write must be actively checked, not discovered when you need proof. It's the same rule as with the backups in the previous chapter and with filing declarations in chapter 38: the absence of an error signal is not confirmation."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The requirement follows from the internal control obligations in the accounting regulations and, for computerized record-keeping systems, from the requirements regarding data integrity and traceability set out in the rules on financial-accounting documents and in tax audit procedures. Four observations. First: for taxpayers who submit the standard tax audit file (SAF-T), traceability is no longer just good internal practice but a substantive condition — the reported data must be reconcilable with the records, and undocumented retroactive changes produce inconsistencies that the authority's risk-analysis system identifies automatically. Second: the operations log must not be confused with the accounting journal; the former records actions on the system, the latter economic transactions, and neither can replace the other. Third: processing user identification data and network addresses falls under personal data protection regulations — the purpose, retention period, and access to the log must be established and communicated, and unlimited retention \"just in case\" has no legal basis. Fourth: for audited companies, the existence and operation of the log are themselves subject to verification; a system in which the administrator can delete the traces of their own actions is treated, from an internal control perspective, as if the log did not exist at all."
+  },
+  {
+   "tip": "h",
+   "text": "What's next"
+  },
+  {
+   "tip": "p",
+   "text": "With the archive and the log, everything that could be recorded has been recorded. Only one chapter remains, and it's about a boundary: what, of everything the book has described, no program can do."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 50.1 — the log that falls silent",
+   "enunt": [
+    "An administrator wants to find out who changed a selling price three months ago. The operations log contains nothing for that day, even though dozens of operations were carried out on that day.",
+    "What conclusions are possible, and how do you tell them apart?"
+   ],
+   "rezolvare": [
+    "Three hypotheses. First: the change didn't happen then — search on other days.",
+    "Second: the action isn't among those being recorded. A log that records everything becomes unreadable, so categories are selected; if the price change isn't among them, the silence is a design decision, not a loss.",
+    "Third, the one that matters: the log COULD NOT WRITE that day. Writing to the log is best-effort — if it fails, the main action doesn't stop — so a day on which the log couldn't write looks identical to a quiet day.",
+    "How to tell them apart: if other entries exist in the log for that day, the third hypothesis falls away. If there are NONE at all, and activity was normal, it's most likely a writing problem — permissions, a full disk, a locked file.",
+    "Hence the rule: the ability to write to the log is checked ACTIVELY, through a probe, not discovered when you need proof. It's the same rule as with backups: the absence of an error signal is not confirmation."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "The operations log records human actions, not economic transactions — these are two different logs.",
+    "Its purpose is not surveillance but answering \"why does this figure look like this\"; it protects, above all, the person who worked correctly.",
+    "Logins, permission changes, data modifications, and exceptions are recorded — ordinary reads are not.",
+    "It must be append-only and survive the database it audits.",
+    "Writing to the log is best-effort, so a log that can no longer write looks like a quiet one — its capacity must be checked actively.",
+    "A system in which the administrator can erase their own traces is treated as if it had no log at all."
+   ]
+  }
+ ]
+}

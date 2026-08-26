@@ -1,0 +1,153 @@
+{
+ "parte": "Part III · The document · phase 2",
+ "nr": "9",
+ "titlu": "Nothing goes in without a document",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "This is where day-to-day work begins, and this is also where the strictest rule in the whole book lies. It's not a best-practice recommendation, but the very condition for accounting to exist: any amount recorded must be backed by a document proving that the operation took place."
+  },
+  {
+   "tip": "p",
+   "text": "Put the other way round, the rule sounds unpleasant and is equally true: what has no document doesn't get recorded. Not even if you're certain it happened. Not even if you paid by card and see the amount in the statement. Not even if the supplier promises the invoice next week."
+  },
+  {
+   "tip": "h",
+   "text": "Why the rule is so rigid"
+  },
+  {
+   "tip": "p",
+   "text": "An accounting record is, fundamentally, a statement about the past: on this date, this thing happened, of this value. A statement about the past that cannot be verified has no power — not before a tax inspector, not before a bank, not in a dispute with a partner."
+  },
+  {
+   "tip": "p",
+   "text": "The document is what turns the statement into evidence. That's why the law does not require it as a formality but defines it: the operation is recorded at the moment it is carried out, in a written instrument that underlies the accounting entry."
+  },
+  {
+   "tip": "cheie",
+   "text": "Accounting does not record what happened. It records what can be proven to have happened."
+  },
+  {
+   "tip": "h",
+   "text": "What makes a piece of paper a supporting document"
+  },
+  {
+   "tip": "p",
+   "text": "Not every piece of paper with numbers on it will do. A supporting document must allow anyone reading it five years later to reconstruct the operation without having to ask anyone. Hence the elements it must contain."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What must be written on it",
+   "cap": [
+    "Element",
+    "What it's for"
+   ],
+   "randuri": [
+    [
+     "The name of the document",
+     "states what kind of operation it attests to: invoice, receipt, consumption slip"
+    ],
+    [
+     "The number and date",
+     "makes it unique and places it in time — hence the chronology"
+    ],
+    [
+     "The parties",
+     "who dealt with whom: name, registered office, tax identification number"
+    ],
+    [
+     "The content of the operation",
+     "what exactly was delivered, performed, paid"
+    ],
+    [
+     "Quantities and amounts",
+     "how much, at what price, with what tax"
+    ],
+    [
+     "Signatures, where required",
+     "who assumes responsibility for drawing it up and, where applicable, for receiving it"
+    ]
+   ],
+   "nota": "A missing element is not a matter of form: it is information that can no longer be reconstructed in any other way."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth noting what does not appear on the list: the accounting account. The document states what happened in the real world, not how it's recorded in the accounts. The translation is the job of the next chapter, and it belongs to the accountant — not to whoever issued the paper."
+  },
+  {
+   "tip": "h",
+   "text": "The bank statement is not a supporting document"
+  },
+  {
+   "tip": "p",
+   "text": "This is the most common confusion at small companies, and it's worth clarifying separately, because it looks like pedantry and isn't."
+  },
+  {
+   "tip": "p",
+   "text": "The bank statement proves that money moved. It does not prove why it moved. A payment of 5,000 lei to a supplier could be settlement of an invoice, an advance, repayment of a loan, or an error — the statement looks the same in all cases."
+  },
+  {
+   "tip": "p",
+   "text": "That's why the payment is recorded based on the statement, but the expense is recorded based on the invoice. These are two different operations, with two different documents, and confusing them is the classic cause of expenses recorded twice: once after the invoice, and again after it's paid."
+  },
+  {
+   "tip": "h",
+   "text": "When the document is missing"
+  },
+  {
+   "tip": "p",
+   "text": "It happens: a lost invoice, a faded receipt, a supplier who no longer responds. The rule doesn't get suspended, but there is a procedure — reconstitution of the document, with a statement and proof of the steps taken to obtain it."
+  },
+  {
+   "tip": "p",
+   "text": "What's not allowed is bypassing it: an entry made \"based on\" an email, a phone photo, or someone's memory. Not necessarily because it's untrue, but because in three years no one can say whether it was."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The requirement comes from the Accounting Law: any economic-financial operation is recorded at the moment it is carried out, in a document underlying the accounting entries, thereby acquiring the status of a supporting document; the rules on drawing up and using financial-accounting documents detail the mandatory elements, the numbering regime, and the procedure for reconstituting documents that are lost, stolen, or destroyed. Two practical consequences are worth remembering. First: responsibility for drawing up the document lies with whoever issues it, and responsibility for verifying it — including the reality of the operation — lies with whoever receives and approves it; the accountant checks the form and the classification, not the substance (see chapter 4). Second: documents that do not meet the conditions are not recorded, and the refusal is not optional. From a tax perspective, an insufficient document triggers non-deductibility of the expense and loss of the right to deduct VAT, which turns an administrative oversight into a direct cost — usually greater than the amount on the missing piece of paper."
+  },
+  {
+   "tip": "h",
+   "text": "What changes when documents are electronic"
+  },
+  {
+   "tip": "p",
+   "text": "The rule stays the same; only the medium changes. A file has the same value as a piece of paper if it meets the content requirements and can be kept and read throughout the legal retention period."
+  },
+  {
+   "tip": "p",
+   "text": "An accounting program helps here in a way paper cannot: it keeps the document attached to the entry, not just the figures from it. When, four years later, someone asks where the amount in a report comes from, the path back reaches the original file in two clicks, not in an attic archive."
+  },
+  {
+   "tip": "p",
+   "text": "The hard part remains, and no program does it: the document has to get into the application. The next chapter shows what happens to it once it does — how it becomes an accounting entry."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 9.1 — what can and cannot be recorded",
+   "enunt": [
+    "For each situation, say whether the operation can be recorded and on what basis:",
+    "(a) A fiscal receipt of 240 lei for fuel, without the company's tax ID on it. (b) A bank statement showing a payment of 3,000 lei to a supplier, with no invoice received. (c) A signed service contract, with no invoice issued yet. (d) A phone photo of an invoice whose original was lost."
+   ],
+   "rezolvare": [
+    "(a) A receipt without the buyer's tax identification number does not give the right to deduct VAT and does not justify a company expense. An invoice can be requested based on the receipt; until then, it is not recorded as a company purchase.",
+    "(b) The payment is recorded — the statement proves it. The expense is NOT: the statement shows that money moved, not why. The amount stands as an advance or a settled liability until the invoice arrives.",
+    "(c) The contract is not a supporting document for revenue: it proves a future obligation, not a performed service. Revenue is recognized when the service is performed, with the related invoice.",
+    "(d) The photo does not stand in for the original, but the reconstitution procedure exists: statement, proof of steps taken to obtain a duplicate, approval. The photo helps with reconstitution; it does not replace it.",
+    "The common pattern in all four: each has a document that IS MISSING and one that exists. The temptation is to use the one that exists. The rule is to bring in the one that is missing."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "To remember from this chapter",
+   "puncte": [
+    "No amount is recorded without a document attesting to the operation. The rule has no exceptions of convenience.",
+    "The document turns a statement about the past into evidence; that's why it has mandatory elements, not formal ones.",
+    "The bank statement proves that money moved, not why — the expense is recorded based on the invoice, not the payment.",
+    "When the document is missing, reconstitution exists, with a procedure; recording \"from memory\" does not exist.",
+    "An insufficient document is not an administrative issue: it triggers non-deductibility of the expense and loss of the VAT deduction."
+   ]
+  }
+ ]
+}

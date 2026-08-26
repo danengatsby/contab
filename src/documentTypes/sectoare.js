@@ -2,8 +2,7 @@
 
 // CONSTRUCTII + HORECA + INTRACOMUNITAR/VALUTA + TRANSPORT — vezi index.js pentru contractul tipurilor.
 
-const { L, F, TROZ } = require('./helpers');
-const fiscal = require('../fiscal');
+const { L, F, TROZ, rate } = require('./helpers');
 const { round2 } = require('../util');
 
 module.exports = [
@@ -43,12 +42,12 @@ module.exports = [
       { name: 'cost', label: 'Cost achizitie (fara TVA)', type: 'number', required: true },
       { name: 'tvaDed', label: 'TVA deductibila la achizitie', type: 'number', default: 0 },
       { name: 'adaos', label: 'Adaos comercial', type: 'number', default: 0 },
-      { name: 'cotaVanzare', label: 'Cota TVA la vanzare (%)', type: 'number', default: fiscal.FISCAL.tvaRedus }, F.proRataMixt],
+      { name: 'cotaVanzare', label: 'Cota TVA la vanzare (%)', type: 'number', default: 0, fiscalRate: 'tvaRedus' }, F.proRataMixt],
     build: (d) => {
       const lines = [L('371', '401', d.cost, 'Intrare marfă la cost')];
       if (d.tvaDed > 0) lines.push(L('4426', '401', d.tvaDed, 'TVA deductibilă'));
       if (d.adaos > 0) lines.push(L('371', '378', d.adaos, 'Adaos comercial'));
-      const tvaNeexig = round2(((d.cost + d.adaos) * Number(d.cotaVanzare || fiscal.FISCAL.tvaRedus)) / 100);
+      const tvaNeexig = round2(((d.cost + d.adaos) * (Number(d.cotaVanzare) || rate(d, 'tvaRedus'))) / 100);
       if (tvaNeexig > 0) lines.push(L('371', '4428', tvaNeexig, 'TVA neexigibilă (preț de vânzare)'));
       return lines;
     },
@@ -62,7 +61,7 @@ module.exports = [
     fields: [F.data, F.document,
       { name: 'numerar', label: 'Incasare numerar (cu TVA)', type: 'number', default: 0 },
       { name: 'card', label: 'Incasare card (cu TVA)', type: 'number', default: 0 },
-      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: fiscal.FISCAL.tvaRedus },
+      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: 0, fiscalRate: 'tvaRedus' },
       { name: 'cost', label: 'Cost marfa vanduta', type: 'number', default: 0 },
       { name: 'adaos', label: 'Adaos aferent vanzarii', type: 'number', default: 0 }],
     build: (d) => {
@@ -70,7 +69,7 @@ module.exports = [
       // iar descarcarea de gestiune scoate din 371 si TVA neexigibila aferenta (4428 = 371) —
       // 371 e tinut la pret de vanzare cu amanuntul (cost + adaos + TVA neexigibila).
       const lines = [];
-      const cota = Number(d.cota || fiscal.FISCAL.tvaRedus);
+      const cota = Number(d.cota) || rate(d, 'tvaRedus');
       const tvaDin = (brut) => round2((brut * cota) / (100 + cota));
       if (d.numerar > 0) {
         const tvaN = tvaDin(d.numerar);
@@ -135,8 +134,8 @@ module.exports = [
     grup: 'Cumparari',
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota, F.proRataMixt],
     build: (d) => {
-      const tvaTotal = round2((d.baza * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
-      const tvaDed = round2(tvaTotal * fiscal.FISCAL.deductibilitateTvaAutoLimitat / 100);
+      const tvaTotal = round2((d.baza * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
+      const tvaDed = round2(tvaTotal * rate(d, 'deductibilitateTvaAutoLimitat') / 100);
       const tvaNed = round2(tvaTotal - tvaDed);
       const lines = [L('6022', '401', d.baza, 'Cheltuieli combustibili')];
       if (tvaDed > 0) lines.push(L('4426', '401', tvaDed, 'TVA deductibilă 50%'));

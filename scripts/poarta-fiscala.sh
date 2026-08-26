@@ -61,6 +61,9 @@ src/fiscalConfig.js
 src/romanianCalendar.js
 src/beneficii.js
 src/fiscalProfile.js
+src/fiscalReview.js
+src/fiscalReviewCases.js
+src/fiscalReviewApprovals.json
 src/intrastat.js
 src/declarations.js
 src/d205.js
@@ -87,6 +90,7 @@ src/chartOfAccounts.js
 src/bilantNomenclator.js
 src/reconcile.js
 src/analytic.js
+src/openItems.js
 src/recurring.js
 src/matching.js
 src/validate.js
@@ -96,6 +100,7 @@ src/closingsService.js
 src/production.js
 src/stocksService.js
 src/entriesService.js
+src/permissions.js
 src/payrollService.js
 src/anafService.js
 src/aiExtractor.js

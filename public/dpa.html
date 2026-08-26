@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="contabo-legal-version" content="2026-08-26.1" />
   <title>Contabo — Acord de prelucrare a datelor (DPA)</title>
   <meta name="description" content="Acordul de prelucrare a datelor cu caracter personal (art. 28 GDPR) între clientul Contabo, în calitate de operator, și furnizorul aplicației, în calitate de persoană împuternicită: instrucțiuni, securitate, subîmputerniciți, retenție și ștergere." />
   <link rel="stylesheet" href="/legal.css">
@@ -12,15 +13,23 @@
   <div class="nav"><a href="/prezentare.html">Contabo<b>.</b></a></div>
   <div class="wrap">
     <h1>Acord de prelucrare a datelor</h1>
-    <p class="upd">Persoană împuternicită — art. 28 din Regulamentul (UE) 2016/679 (GDPR) · Ultima actualizare: 27 iulie 2026</p>
+    <p class="upd">Persoană împuternicită — art. 28 din Regulamentul (UE) 2016/679 (GDPR) · Versiunea 2026-08-26.1 · Ultima actualizare: 26 august 2026</p>
+
+    <div class="legal-warning" role="alert">
+      <strong>Folosește doar date fictive în etapa de test.</strong>
+      <p>Până la publicarea identificării juridice complete a furnizorului, acest document are rol
+      informativ și nu autorizează încărcarea datelor personale reale. Nu introduce CNP-uri,
+      salarii, documente sau alte informații despre persoane reale.</p>
+    </div>
 
     <div class="card">
       <p><b>De ce există acest document separat.</b> Politica de confidențialitate explică ce facem cu
       datele <i>tale</i>, ca operator. Dar în Contabo introduci și date despre <b>alți oameni</b> —
       angajații firmei (nume, <b>CNP</b>, salarii), persoane de contact ale partenerilor. Pentru acelea
       <b>tu ești operatorul</b>, iar noi doar executăm instrucțiunile tale. Art. 28 GDPR cere ca relația
-      asta să fie reglementată printr-un <b>contract</b>, nu printr-o politică informativă. Acesta e
-      contractul.</p>
+      asta să fie reglementată printr-un <b>contract</b>, nu printr-o politică informativă. Acordul va
+      putea guverna date reale numai după identificarea juridică a furnizorului și acceptarea expresă
+      a versiunii complete; până atunci se folosesc exclusiv date fictive.</p>
     </div>
 
     <h2>1. Părțile</h2>
@@ -37,16 +46,17 @@
         separat. Contact pentru protecția datelor: <b>contact@contabo.space</b>.</li>
     </ul>
     <div class="card">
-      <p><b>Ce înseamnă asta pentru tine, acum.</b> În etapa de probă gratuită obligațiile de mai jos
-      — instrucțiunile tale, confidențialitatea, măsurile de securitate, subîmputerniciții, ștergerea
-      și asistența la exercitarea drepturilor — <b>ni le asumăm integral</b>. Ce lipsește este
-      identificarea formală a părții, nu protecția datelor tale. Dacă vrei un acord semnat cu o
-      entitate identificată înainte de a introduce date reale despre angajați, scrie-ne și așteaptă
-      finalizarea înregistrării.</p>
+      <p><b>Ce înseamnă asta pentru tine, acum.</b> Controalele tehnice descrise mai jos sunt active,
+      însă furnizorul nu este încă identificat juridic și acest text nu trebuie tratat ca temei pentru
+      încărcarea datelor reale ale angajaților sau partenerilor. Folosește exclusiv date fictive și
+      așteaptă publicarea identității furnizorului și versiunea contractuală completă înainte de a
+      prelucra date reale în aplicație.</p>
     </div>
-    <p>Acordul se încheie prin acceptarea <a href="/termeni.html">Termenilor și condițiilor</a> și
-    produce efecte pe toată durata contului. Prevalează asupra Termenilor în orice contradicție
-    privind prelucrarea datelor cu caracter personal.</p>
+    <p>Versiunea contractuală a acordului va putea produce efecte pentru date reale numai după
+    identificarea juridică a furnizorului și acceptarea ei expresă, per firmă. Aplicația păstrează
+    data, actorul, versiunea și amprenta SHA-256 a fiecărui document acceptat; schimbarea documentelor
+    invalidează acceptarea pentru scrieri noi până la reacceptare. Până atunci, această pagină
+    descrie măsurile și condițiile avute în vedere pentru etapa ulterioară.</p>
 
     <h2>2. Obiectul, natura și scopul prelucrării</h2>
     <ul>
@@ -75,12 +85,14 @@
         <li><b>Colaboratorii cărora le dai acces</b> la firmele tale: nume de utilizator, e-mail.</li>
       </ul>
       <p><b>CNP-ul este un cod numeric personal</b> — dată de identificare cu regim strict în dreptul
-      român. Îl prelucrăm doar pentru că declarațiile de salarii îl impun, îl afișăm numai
-      utilizatorilor cu drept de acces la firma respectivă și nu îl transmitem niciunui
-      subîmputernicit (vezi Anexa 2).</p>
-      <p>Aplicația nu este destinată prelucrării de <b>categorii speciale</b> de date (art. 9 GDPR).
-      Certificatele medicale se înregistrează ca <i>număr de zile</i> și procent, nu ca diagnostic;
-      te rugăm să nu încarci documente cu date de sănătate care nu sunt necesare evidenței.</p>
+      român. Îl prelucrăm numai când evidența salarială/declarativă îl impune și îl afișăm doar
+      utilizatorilor autorizați. Un document trimis opțional către AI poate conține și CNP; de aceea
+      AI este implicit oprit per firmă, iar operatorul trebuie să evite documentele cu identificatori
+      inutili sau să îi elimine înainte de încărcare.</p>
+      <p>Datele privind concediile și certificatele medicale pot dezvălui informații despre sănătate
+      și sunt tratate ca <b>date din categorii speciale</b> (art. 9 GDPR), chiar dacă aplicația nu cere
+      diagnosticul. Introdu numai câmpurile necesare calculului și declarației; nu încărca anexe sau
+      diagnostice care nu sunt strict necesare.</p>
     </div>
 
     <h2>4. Instrucțiunile tale</h2>
@@ -133,8 +145,9 @@
         contractul pentru firma afectată, fără penalități, cu restituirea perioadei neconsumate.</li>
       <li>Impunem fiecărui subîmputernicit obligații de protecție echivalente și rămânem răspunzători
         față de tine pentru activitatea lor.</li>
-      <li><b>Extragerea automată cu inteligență artificială este opțională</b> și se poate dezactiva
-        din Setări. Dezactivată, niciun document nu pleacă la un furnizor de IA.</li>
+      <li><b>Extragerea automată cu inteligență artificială este opțională și implicit oprită per
+        firmă.</b> Proprietarul vede furnizorul/modelul, acceptă separat transmiterea și poate revoca
+        opt-in-ul. Dezactivată sau cu acord expirat, niciun document nu pleacă la un furnizor de IA.</li>
     </ul>
 
     <h2>8. Sprijin pentru drepturile persoanelor vizate</h2>

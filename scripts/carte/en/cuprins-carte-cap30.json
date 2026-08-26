@@ -1,0 +1,271 @@
+{
+ "parte": "Part VII · The registers and verification · phase 8",
+ "nr": "30",
+ "titlu": "Chronological: the general journal",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "All the entries made so far exist somewhere. This part is about exactly where — and about why the same transactions are written twice, in two different registers, without this being unnecessary duplication."
+  },
+  {
+   "tip": "p",
+   "text": "The first of these is the general journal: everything that happened, in the order it happened. It's the register the law requires first, and it's the simplest of all."
+  },
+  {
+   "tip": "h",
+   "text": "What it looks like"
+  },
+  {
+   "tip": "p",
+   "text": "One row for each line of each accounting entry, in chronological order, with the sequence number, date, document, explanation, debit account, credit account, and amount."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "June's general journal, the first transactions",
+   "cap": [
+    "No.",
+    "Date",
+    "Document",
+    "Debit",
+    "Credit",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "1",
+     "2026-06-10",
+     "AFD 1001",
+     "371",
+     "401",
+     "10.000"
+    ],
+    [
+     "",
+     "",
+     "",
+     "4426",
+     "401",
+     "2.100"
+    ],
+    [
+     "2",
+     "2026-06-15",
+     "EXP 2001",
+     "4111",
+     "707",
+     "14.000"
+    ],
+    [
+     "",
+     "",
+     "",
+     "4111",
+     "4427",
+     "2.940"
+    ],
+    [
+     "",
+     "",
+     "",
+     "607",
+     "371",
+     "8.000"
+    ],
+    [
+     "3",
+     "2026-06-15",
+     "CH 17",
+     "5311",
+     "4111",
+     "16.940"
+    ],
+    [
+     "4",
+     "2026-06-20",
+     "OP 44",
+     "401",
+     "5121",
+     "12.100"
+    ]
+   ],
+   "numerice": [
+    6
+   ],
+   "nota": "The sequence number is given per accounting ENTRY, not per row: transaction 2 has three lines, but a single number. The date and document are written once, on the first row."
+  },
+  {
+   "tip": "p",
+   "text": "The most useful observation about this table is what it doesn't contain: no balance, no total per account, no grouping. The general journal doesn't answer the question \"how much do I have in the bank.\" It answers the question \"what happened on June 15.\""
+  },
+  {
+   "tip": "h",
+   "text": "What the order is for"
+  },
+  {
+   "tip": "p",
+   "text": "Chronological order isn't a presentation convention — it's the whole point of the register. A continuously numbered journal, with no gaps, is proof that nothing was inserted afterward between two already-recorded transactions."
+  },
+  {
+   "tip": "p",
+   "text": "From this follow two rules that seem pedantic but aren't: numbering is continuous throughout the financial year, and a number once assigned is never reused. A gap in the numbering is a question someone will have to answer."
+  },
+  {
+   "tip": "cheie",
+   "text": "The general journal isn't a list of transactions. It's proof that the list is complete and that it hasn't been tampered with."
+  },
+  {
+   "tip": "p",
+   "text": "This is also why corrections are made through reversal (storno), as seen in chapter 29: a reversal entry receives the next free number and appears under its own date, not the date of the error. The journal thus preserves both the mistake and the correction, in the order they occurred."
+  },
+  {
+   "tip": "h",
+   "text": "The total that ties everything together"
+  },
+  {
+   "tip": "p",
+   "text": "The journal has a single summary figure: the total of the amounts recorded in the period. In the example above, for June, it is 76,659.17 lei."
+  },
+  {
+   "tip": "p",
+   "text": "This figure seems pointless — it represents neither revenue, nor expenses, nor cash moved. Its value lies elsewhere: it must equal the total turnover in the trial balance, both on the debit and on the credit side. It's the first of the correlations that tie the registers together, and chapter 32 brings them all together."
+  },
+  {
+   "tip": "h",
+   "text": "Auxiliary journals"
+  },
+  {
+   "tip": "p",
+   "text": "For a company with a few hundred transactions a month, a single journal is enough. For one with tens of thousands, it becomes unreadable — and that's when auxiliary journals are used: one for purchases, one for sales, one for bank, one for cash, one for miscellaneous transactions."
+  },
+  {
+   "tip": "p",
+   "text": "Each gathers transactions of the same kind, and their totals are carried into a centralizing journal, which remains the general journal proper. The structure changes nothing about the substance: the same transactions, the same order, just grouped so they can be read."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth knowing that the sales and purchases journals also have a second, tax-related use: the VAT return is compiled from them. That's why they appear even at small companies, where volume wouldn't otherwise require them. Chapter 35 returns to them."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The general journal is a mandatory register under Accounting Law no. 82/1991, alongside the inventory register and the general ledger, and its form and manner of completion follow the rules on financial-accounting documents. Four practical observations. First: mandatory registers may be kept in electronic form, provided they can be printed at any time at the request of the control authorities and that integrity and legibility are ensured throughout the retention period; electronic form doesn't remove the obligation to be able to present them, only the medium. Second: the retention period is the one set by the accounting law, and it has been amended through successive legislative interventions in recent years — it's one of those figures that must be checked as of the current date, not recited from memory. Third: for companies using auxiliary journals, the general journal takes over their totals, not the individual transactions; the correlation that must be verified monthly is between the total of each auxiliary journal and the turnover of the accounts it feeds. Fourth: the sales journal and the purchases journal are registers for VAT purposes, provided for by the implementing rules of the Fiscal Code, and should not be confused with accounting auxiliary journals — their scope, the timing of tax chargeability, and the treatment of exempt transactions differ, and mechanically overlapping them is a frequent source of mismatches between the accounting records and the VAT return."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "The general journal tells everything that happened, but says nothing about state. To find out how much you have in account 401 at the end of the month, you need the same transactions viewed from another angle: grouped by account. That's the general ledger, and it's the next chapter."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 30.1 — the numbering that won't close",
+   "enunt": [
+    "When checking the general journal for May, it's found that the sequence numbers jump from 148 to 151.",
+    "What could this be, and what do you do?"
+   ],
+   "rezolvare": [
+    "Three hypotheses, in order of likelihood. First: entries 149 and 150 were created and then deleted as drafts, and the number was consumed. If numbering is assigned at posting, not at creation, the gap shouldn't appear.",
+    "Second: the entries exist, but were dated in a different month, so they appear in another journal. Look in the neighboring month.",
+    "Third, the serious one: the entries were deleted after posting. This would mean the system allows deletion, which cancels the evidentiary value of the entire register.",
+    "What to do: search first in the neighboring months, then in the transaction log — who, what, when. The gap itself is not an accounting error; it's a QUESTION, and the register must be able to answer it.",
+    "Why it matters: the journal's evidentiary value lies precisely in the continuity of numbering. An unexplained gap turns a register into a mere list."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The sequence number: how and when it's assigned"
+  },
+  {
+   "tip": "p",
+   "text": "Numbering seems like an administrative detail until someone asks why a number is missing. Then it becomes the only question that matters, and the answer depends on a choice made long before: at what moment the number is consumed."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Two possible moments",
+   "cap": [
+    "The number is assigned…",
+    "What happens to a deleted draft",
+    "Verdict"
+   ],
+   "randuri": [
+    [
+     "at entry creation",
+     "the number remains consumed — a gap in the journal",
+     "the gap requires explanation every time"
+    ],
+    [
+     "at POSTING",
+     "no number consumed; the draft never existed",
+     "numbering remains continuous by construction"
+    ]
+   ],
+   "nota": "The second option is the correct one, and it follows from chapter 12: until posting, the entry is not on record — so it has no reason to have a number in the register of record."
+  },
+  {
+   "tip": "p",
+   "text": "The same logic determines the order: the number is assigned in the chronological order of the posted entries, not in the order they were typed. A document from June 3 entered on June 20 receives the number it's entitled to by date, not the last free one."
+  },
+  {
+   "tip": "h",
+   "text": "VAT journals: the same transactions, a different criterion"
+  },
+  {
+   "tip": "p",
+   "text": "The sales journal and the purchases journal are registers for VAT purposes, distinct from accounting auxiliary journals — and confusing the two produces, year after year, mismatches between the accounting records and the VAT return."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Why they aren't the same thing",
+   "cap": [
+    "",
+    "Accounting auxiliary journal",
+    "VAT journal"
+   ],
+   "randuri": [
+    [
+     "What it groups",
+     "transactions of the same kind",
+     "transactions within the scope of VAT"
+    ],
+    [
+     "The date criterion",
+     "date of the transaction",
+     "date of tax CHARGEABILITY"
+    ],
+    [
+     "What it includes",
+     "everything that was recorded",
+     "also transactions with no output VAT collected (exempt, reverse charge)"
+    ],
+    [
+     "What it's used for",
+     "reading the register",
+     "compiling the VAT return"
+    ]
+   ],
+   "nota": "The second row is the source of most differences: for advances and intra-Community acquisitions, chargeability does NOT coincide with the document date."
+  },
+  {
+   "tip": "p",
+   "text": "The correlation to check monthly is simple and catches almost everything: the VAT total in the sales journal must equal the credit turnover of account 4427, and the one in the purchases journal must equal the debit turnover of account 4426. In the book's example: 2,940 and 2,100 lei, in both places."
+  },
+  {
+   "tip": "cheie",
+   "text": "If the VAT journal and the trial balance don't agree, the return built on either of them will be wrong. The check is done before filing, not after."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key points from this chapter",
+   "puncte": [
+    "The general journal includes all transactions, in chronological order, with continuous numbering throughout the financial year.",
+    "The sequence number is given per accounting entry, not per each of its rows.",
+    "The point of the order is evidentiary: a journal with no gaps proves that nothing was inserted afterward.",
+    "It contains no balances and doesn't answer the question \"how much do I have,\" but \"what happened.\"",
+    "The month's total must equal the total turnover in the trial balance, on both columns.",
+    "Auxiliary journals group transactions by kind; the sales and purchases ones also have a fiscal role, in the VAT return."
+   ]
+  }
+ ]
+}

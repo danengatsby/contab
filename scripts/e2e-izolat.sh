@@ -68,6 +68,11 @@ UTILIZ=$(curl -s -X POST "$API/api/users" -H "Cookie: $C" -H "X-CSRF-Token: $TOK
 [ -n "$UTILIZ" ] && curl -s -X POST "$API/api/users/$UTILIZ" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" \
   -H 'Content-Type: application/json' -d '{"drepturi":{"faraSalarii":true}}' >/dev/null || true
 
+# 3b. cont demo local pentru scenariul UX general. Instanța este izolată, deci nu depindem de
+# contul demo live și testăm exact codul backend încărcat în procesul de mai sus.
+curl -s -X POST "$API/api/users" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" -H 'Content-Type: application/json' \
+  -d "{\"username\":\"demo\",\"password\":\"$PAROLA\",\"role\":\"user\",\"firme\":[1]}" >/dev/null
+
 # 4. token de resetare: se cere prin API, apoi se citeste din baza (browserul n-are cum — pleaca pe email)
 curl -s -X POST "$API/api/forgot-password" -H 'Content-Type: application/json' \
   -d '{"login":"admin@e2e.local"}' >/dev/null || true
@@ -83,15 +88,17 @@ try {
   }
   db.close();
 } catch (e) { process.stdout.write(""); }' "$TMP/db.sqlite")
-echo "── pregatire: admin ok | utilizator limitat id=${UTILIZ:-?} | token resetare: ${RESET:+prezent}${RESET:-ABSENT}"
+if [ -n "$RESET" ]; then RESET_STARE=prezent; else RESET_STARE=ABSENT; fi
+echo "── pregatire: admin ok | utilizator limitat id=${UTILIZ:-?} | token resetare: $RESET_STARE"
 
 echo "── scenarii in browser (Docker)"
 set +e
 docker run --rm --network host \
   -v "$RADACINA/scripts/e2e-izolat.mjs:/w/e2e.mjs:ro" \
+  -v "$RADACINA/scripts/e2e.mjs:/w/e2e-ux.mjs:ro" \
   -e BASE_URL="http://127.0.0.1:$PORT" -e E2E_PAROLA="$PAROLA" -e E2E_RESET="$RESET" \
   -w /w "$IMG" \
-  sh -c "npm i --no-save playwright@1.58.2 >/dev/null 2>&1 && node e2e.mjs"
+  sh -c "npm i --no-save playwright@1.58.2 >/dev/null 2>&1 && node e2e.mjs && node e2e-ux.mjs"
 COD=$?
 set -e
 exit $COD

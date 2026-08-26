@@ -39,6 +39,7 @@ const salarii = require('../src/pdf/salarii');
 const declaratii = require('../src/pdf/declaratii');
 const xmlMod = require('../src/xml');
 const stocuri = require('../src/pdf/stocuri');
+const situatii = require('../src/pdf/situatii');
 const helpers = require('../src/pdf/helpers');
 const ex = require('../src/extractor');
 
@@ -411,6 +412,31 @@ const FIRMA = { nume: 'S.C. PROBA CONTABO S.R.L.', cui: '12345678', adresa: 'Buc
       [{ a: 'x', b: 'y' }]);
     eq('dupa tabel, cursorul e din nou la marginea stanga', doc.x, stanga);
     doc.end();
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  section('Cash-flow direct pe 13 săptămâni: PDF citibil și legat de fotografie');
+  {
+    const forecast = {
+      startDate: '2026-08-24', endDate: '2026-11-22', scenario: 'prudent', cashNow: 10000,
+      openReceivables: 5000, openPayables: 2000, minClosing: -750, liquidityRisk: true,
+      basisHash: 'a'.repeat(64), assumptions: { scenarioLabel: 'Prudent', receivableFactorPct: 70,
+        receivableExtraDelayDays: 14, payablesProbabilityPct: 100, salaryPaymentDay: 10, taxPaymentDay: 25 },
+      unplanned: { missingDueDateReceivables: 900, missingDueDatePayables: 300 },
+      rows: Array.from({ length: 13 }, (_, i) => ({ week: i + 1, startDate: '2026-08-24', endDate: '2026-08-30',
+        opening: 10000 - i * 250, customerReceipts: i === 0 ? 4000 : 0, recurringIn: 100,
+        supplierPayments: 1000, payroll: i === 2 ? 2500 : 0, taxes: i === 3 ? 1200 : 0,
+        leasing: 300, recurringOut: 50, net: i === 0 ? 2750 : -1250, closing: i === 12 ? -750 : 9750 - i * 250 })),
+    };
+    const rendered = await randeaza(situatii.cashForecast13Pdf, FIRMA, forecast, {
+      snapshotId: 'cfs-17', createdAt: '2026-08-24T09:00:00.000Z', createdByName: 'maria', forecastHash: 'b'.repeat(64),
+    });
+    ok('titlul separă prognoza de situația anuală a fluxurilor', are(rendered.text, 'Previziune cash-flow direct - 13 saptamani'));
+    ok('toate cele 13 săptămâni ajung pe hârtie', are(rendered.text, 'S1') && are(rendered.text, 'S13'));
+    ok('riscul de lichiditate și minimul sunt explicite', are(rendered.text, 'Risc de lichiditate') && are(rendered.text, '-750,00'));
+    ok('identitatea fotografiei este tipărită', are(rendered.text, 'cfs-17') && are(rendered.text, 'maria'));
+    ok('hash-urile bazei și fotografiei sunt prezente integral', are(rendered.text, 'a'.repeat(64)) && are(rendered.text, 'b'.repeat(64)));
+    ok('numele fișierului spune orizontul', /cash-flow-13-saptamani\.pdf/.test(rendered.headers['Content-Disposition'] || ''));
   }
 
   // ───────────────────────────────────────────────────────────────────────────

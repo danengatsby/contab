@@ -1,0 +1,218 @@
+{
+ "parte": "Part V · What you have, what you produce, who works · phases 4–6",
+ "nr": "24",
+ "titlu": "Leasing",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Leasing is the arrangement through which a company uses an asset it has not purchased. In accounting terms, this is where it becomes clearest that a monthly payment is not, in itself, an expense — and treating it as one is among the most common mistakes in small-business accounting."
+  },
+  {
+   "tip": "p",
+   "text": "Everything depends on a single thing: what type of leasing it is. And the answer isn't found in the name of the contract, but in what happens at the end of it."
+  },
+  {
+   "tip": "h",
+   "text": "Financial or operating"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The two forms",
+   "cap": [
+    "The question",
+    "Financial",
+    "Operating"
+   ],
+   "randuri": [
+    [
+     "Who uses the asset?",
+     "you",
+     "you"
+    ],
+    [
+     "Who is the legal owner?",
+     "the leasing company",
+     "the leasing company"
+    ],
+    [
+     "Who bears the risks of use?",
+     "you",
+     "the owner"
+    ],
+    [
+     "Does the asset remain with you at the end?",
+     "usually yes",
+     "usually no"
+    ],
+    [
+     "Does it appear on your balance sheet?",
+     "YES",
+     "no"
+    ],
+    [
+     "Who depreciates it?",
+     "you",
+     "the owner"
+    ]
+   ],
+   "nota": "Accounting follows economic substance, not legal title: under financial leasing, the asset is economically yours, so it sits on your balance sheet."
+  },
+  {
+   "tip": "p",
+   "text": "The third row is the one that clarifies everything. Under financial leasing, you bear practically all the risks and benefits of use: you pay the installment regardless of whether the asset is still useful to you, you insure it, you maintain it, and at the end you buy it for a nominal value. Legally it isn't yours; economically, it is."
+  },
+  {
+   "tip": "p",
+   "text": "Under operating leasing, by contrast, you're in the position of a tenant. There, the installment really is an expense, recorded in account 612 Expenses with royalties, leases, and rents, and the asset doesn't appear anywhere on your balance sheet."
+  },
+  {
+   "tip": "h",
+   "text": "Entering into financial leasing"
+  },
+  {
+   "tip": "p",
+   "text": "When the contract is signed, two things are recorded at once, at the financed value: the asset, in its fixed-asset account, and the liability to the financier, in account 167."
+  },
+  {
+   "tip": "p",
+   "text": "This is an entry that seems surprising at first glance — both an asset and a liability appear on the balance sheet, even though nothing has been paid and you're not the owner. That's exactly the point: the balance sheet shows that you use an asset of that value and that you owe that amount. Both are true."
+  },
+  {
+   "tip": "p",
+   "text": "From this moment on, the asset is depreciated in your books, following the rules from the previous chapter. Depreciation is your monthly expense for using it — and it's the only expense related to the asset itself."
+  },
+  {
+   "tip": "h",
+   "text": "The installment: three components, three destinations"
+  },
+  {
+   "tip": "p",
+   "text": "This is the core of the chapter. The monthly installment looks like a single amount, but it contains three completely different things, and each goes to a different place."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "An installment from a contract of 100,000 lei over 48 months, with 9% annual interest",
+   "cap": [
+    "Component",
+    "Amount",
+    "Where it goes",
+    "What it is"
+   ],
+   "randuri": [
+    [
+     "Principal",
+     "1.738,50",
+     "167 — liability",
+     "repayment: extinguishes the debt, NOT an expense"
+    ],
+    [
+     "Interest",
+     "750,00",
+     "666 — expense",
+     "the cost of financing: it is an expense"
+    ],
+    [
+     "VAT",
+     "522,59",
+     "4426 — receivable",
+     "deducted in the VAT return"
+    ],
+    [
+     "Total payment",
+     "3.011,09",
+     "",
+     "what actually leaves the account"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "The first installment in a constant-annuity schedule. In subsequent months the principal increases and the interest decreases, but the installment stays the same."
+  },
+  {
+   "tip": "p",
+   "text": "Out of the 3,011.09 lei paid, the month's expense is 750 lei. The rest is debt repayment and recoverable tax. To this is added the depreciation of the asset, which is a separate expense and is not paid out."
+  },
+  {
+   "tip": "cheie",
+   "text": "Under financial leasing, the month's expense is the interest plus the depreciation — not the installment. The installment is, for the most part, repayment of a debt."
+  },
+  {
+   "tip": "h",
+   "text": "The mistake that gets made and its consequences"
+  },
+  {
+   "tip": "p",
+   "text": "The widespread reflex is to record the entire installment as an expense, most often in 612, as if it were rent. It seems harmless — the money really did go out, the amount is real — and it produces four effects at once, all of them wrong."
+  },
+  {
+   "tip": "p",
+   "text": "First, the year's expense is inflated by the principal portion, so profit is understated. Then, if the asset is nevertheless depreciated, the same value enters expenses twice: once through the installment, once through depreciation. Third, the balance sheet shows neither the asset nor the liability — two omissions that make the company look smaller than it is. And finally, the interest disappears from the category of financial expenses, which distorts any analysis of the cost of financing."
+  },
+  {
+   "tip": "p",
+   "text": "This is, once again, the pattern encountered in Chapter 11: not a calculation error, but a misclassification. The trial balance closes perfectly in all four cases."
+  },
+  {
+   "tip": "h",
+   "text": "The schedule is the source of the figures"
+  },
+  {
+   "tip": "p",
+   "text": "The split of the installment between principal and interest is not estimated and not divided into equal parts: it comes from the repayment schedule attached to the contract. With a constant-annuity schedule, the first installments are almost entirely interest, and the last ones almost entirely principal — even though the amount paid is identical."
+  },
+  {
+   "tip": "p",
+   "text": "In the example above, over the life of the contract, 100,000 lei of principal and 19,448 lei of interest are paid. A company that records the installment as \"half-half\" is wrong every month, in both directions, and only reaches an approximately correct total by chance at the end."
+  },
+  {
+   "tip": "p",
+   "text": "This is why the schedule is worth entering into the accounting software only once, when the contract is signed, with each installment then taken directly from it. It's an operation that takes two minutes and saves forty-eight monthly decisions made from memory."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Recognition follows economic substance, according to the criteria in the accounting regulations: the substantial transfer of the risks and benefits incidental to ownership, the existence of a purchase option at a sufficiently low value, the contract term covering the majority of the asset's economic life, and the present value of the minimum lease payments approximating fair value. Four useful clarifications. First: under financial leasing, the asset's initial recognized value is the one in the contract — the financed value, excluding VAT — and the interest is not capitalized but recognized progressively, as installments fall due. Second: for VAT purposes, leasing is a supply of services, and the tax applies to each installment, both on the principal and on the interest, which represents the consideration for the financing service — not an operation exempt like bank lending; for vehicles falling under the limitation in art. 298, only 50% is deductible. Third: the advance paid at signing reduces the financed value and does not constitute an expense, and the residual value paid at the end is a separate transaction that does not increase the initial value already recorded. Fourth: at year-end closing, the balance of account 167 is presented split between short-term and long-term, according to the due dates of installments in the following twelve months; presenting it entirely as a long-term liability distorts the liquidity indicators — an error with no effect on the result, but immediately visible to anyone reading the balance sheet carefully."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "This chapter closes Part Five. The company now has records of everything it owns, produces, and pays its people: inventory counted and valued, production with cost, stock reconciled against reality, wages calculated correctly, assets depreciated over their useful life."
+  },
+  {
+   "tip": "p",
+   "text": "Next comes the part where all of this turns back toward the state: value added tax, returns, and their deadlines. This is phase seven, and it's the one where mistakes cost the fastest."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 24.1 — the real expense of an installment",
+   "enunt": [
+    "Financial leasing contract: financed value 100,000 lei, 48 installments, interest 9% per year. First installment: principal 1,738.50, interest 750.00, VAT 522.59, total paid 3,011.09 lei. The asset is depreciated on a straight-line basis over 5 years.",
+    "What is the month's expense, and how does it differ from the amount paid?"
+   ],
+   "rezolvare": [
+    "The month's expense has two components: interest of 750.00 lei and depreciation of the asset, i.e. 100,000 ÷ 60 = 1,666.67 lei. Total expense: 2,416.67 lei.",
+    "The amount actually leaving the account: 3,011.09 lei. The difference, 594.42 lei, consists of the principal of 1,738.50 (debt repayment, not an expense) minus the depreciation of 1,666.67 (an expense that isn't paid) plus the VAT of 522.59 (recoverable receivable).",
+    "Verification: 3,011.09 − 1,738.50 − 522.59 = 750.00, which is exactly the interest. The rest of the expense — depreciation — doesn't appear in the payment at all.",
+    "The mistake to avoid, discussed in the chapter: recording the entire installment in 612 would give an expense of 3,011.09 instead of 2,416.67, would double the cost if the asset is nevertheless depreciated, and would leave both the asset and the liability off the balance sheet."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "The form of leasing is determined by economic substance — who bears the risks of use — not by the title of the contract.",
+    "Under financial leasing, the asset enters your balance sheet together with the liability in account 167, even though legally it isn't yours; you depreciate it.",
+    "The installment has three components with different destinations: the principal extinguishes the debt, the interest is an expense, the VAT is deducted.",
+    "The month's expense is the interest plus depreciation, not the installment. In the chapter's example: 750 lei out of 3,011.09 paid.",
+    "Recording the entire installment in 612 inflates the expense, can double the cost, hides the asset and liability from the balance sheet, and distorts the financing analysis.",
+    "The principal/interest split comes from the contract's schedule, not from an estimate — with constant annuities, the first installments are almost entirely interest.",
+    "Under operating leasing everything is simpler: the installment is rent, in 612, and the asset doesn't appear on your balance sheet."
+   ]
+  }
+ ]
+}

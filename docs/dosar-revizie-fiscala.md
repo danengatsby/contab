@@ -4,7 +4,7 @@ Documentul care se **trimite revizorului** (expert contabil CECCAR / consultant 
 în care se **consemnează** rezultatul. Completează [guvernanța fiscală](guvernanta-fiscala.md):
 acolo e cum se întreține setul de reguli, aici e cum se dovedește că e corect.
 
-> **Starea la 2026‑08‑20: nicio revizie externă efectuată încă.** Cazurile-test există și rulează,
+> **Starea la 2026‑08‑24: nicio revizie externă efectuată încă.** Cazurile-test există și rulează,
 > dar **niciunul** nu are semnătura unui specialist. Numărul curent și starea fiecăruia se citesc
 > din corpus (`node test/cazuri-aprobate.js`), nu de aici — o cifră scrisă în document ar drifta la
 > fiecare caz nou. Vezi §6.
@@ -55,8 +55,9 @@ schimbă simultan salariul minim, plafoanele și, de obicei, cel puțin o cotă.
 Suplimentar, **la fiecare modificare legislativă majoră** care atinge un caz aprobat (schimbarea
 îl invalidează automat — vezi §5).
 
-Restanța se semnalează singură: dacă ultima aprobare e dintr-un an anterior lui `fiscalConfig.AN`,
-rularea corpusului avertizează („revizia anuală e restantă").
+Restanța se semnalează singură. Cât timp acoperirea nu este completă și validă, aplicația lasă
+disponibile calculele, rapoartele și validarea internă, dar blochează cu `409` artefactele XML de
+depunere și operațiunile de închidere anuală.
 
 ## 4. Procedura
 
@@ -70,41 +71,109 @@ rularea corpusului avertizează („revizia anuală e restantă").
    [guvernanta-fiscala.md §5](guvernanta-fiscala.md).
 5. Commit tematic: `Revizie fiscală <an>: <cine>, <ce s-a schimbat>`.
 
-## 5. Cum se consemnează o aprobare
+## 5. Cum se consemnează o aprobare verificabilă
 
-Fiecare caz aprobat poartă cine l-a aprobat, când, și o **amprentă** a ceea ce s-a aprobat:
+Poarta se deschide numai la **25/25** cazuri aprobate. Fiecare aprobare poartă separat numele,
+calitatea profesională, data, temeiul confirmat, amprenta dosarului extern și **hash-ul** exact al
+rezultatului, codului și configurației active verificate. Valoarea `signature` nu este un text
+declarativ: este o semnătură Ed25519 verificată față de o cheie publică autorizată separat.
 
 ```bash
-node test/cazuri-aprobate.js --semnatura SAL-01     # -> 8501524eb1e6abf4
+npm run revizie-fiscala -- --hash SAL-01
+npm run revizie-fiscala -- --template SAL-01
+npm run revizie-fiscala -- --key-id cheie-publica-revizor.pem
 ```
 
-...iar în `test/cazuri-aprobate.js`, pe cazul respectiv:
+### 5.1 Înrolarea revizorului (separarea încrederii de aprobare)
 
-```js
-aprobare: {
-  de: 'Ing. X Y, expert contabil CECCAR nr. 12345',
-  la: '2027-01-20',
-  nota: 'Confirmat pe grila ANAF publicată la 2027-01-10.',
-  semnatura: '8501524eb1e6abf4',
-},
+Cheia publică a revizorului se înscrie de administrator în registrul separat
+`src/fiscalReviewTrust.json` (sau în fișierul indicat de
+`CONTAB_FISCAL_REVIEW_TRUST_FILE`). Identitatea și calitatea se verifică în afara aplicației, din
+documentele/registrele profesionale aplicabile, iar dovada și data verificării se consemnează:
+
+```json
+{
+  "schemaVersion": 1,
+  "reviewers": {
+    "<SHA-256 al cheii publice>": {
+      "reviewer": "Nume Prenume",
+      "credential": "expert contabil CECCAR nr. 12345",
+      "credentialVerifiedAt": "2026-08-24",
+      "credentialEvidence": "referința dovezii arhivate / registrului verificat",
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----\\n",
+      "validFrom": "2026-08-24"
+    }
+  }
+}
 ```
 
-Amprenta e SHA‑256 peste tripleta **(temei, intrare, cifre așteptate)**. Rostul ei: dacă cineva
-modifică ulterior un caz aprobat — altă intrare, altă cifră, alt temei — amprenta nu mai corespunde
-și **suita pică** cu „caz APROBAT dar modificat ulterior; re-supune-l la revizie". O aprobare nu
-poate fi moștenită tacit de alte cifre decât cele văzute de revizor.
+Cheia privată rămâne exclusiv la revizor. O cheie absentă, expirată, revocată, ne-Ed25519 sau
+nepotrivită identității/calității blochează toate aprobările sale.
+
+### 5.2 Înregistrarea și semnarea fiecărui caz
+
+După primirea dosarului profesional semnat, în `src/fiscalReviewApprovals.json` (schema 2) se
+pregătește înregistrarea. `evidenceDocumentSha256` este SHA-256 al PDF-ului/dosarului original
+arhivat, nu al unei copii regenerate:
+
+```json
+"SAL-01": {
+  "decision": "approved",
+  "fiscalYear": 2026,
+  "reviewer": "Nume Prenume",
+  "credential": "expert contabil CECCAR nr. 12345",
+  "reviewedAt": "2026-08-24",
+  "legalBasis": "Articolele și actele confirmate în dosarul semnat",
+  "evidenceDocumentSha256": "SHA-256 al dosarului extern semnat",
+  "keyId": "SHA-256 al cheii publice Ed25519 autorizate",
+  "signature": "semnătura Ed25519 în base64 peste mesajul canonic",
+  "hash": "hash-ul afișat de comanda de mai sus"
+}
+```
+
+Mesajul exact de semnat se emite read-only după completarea câmpurilor (fără `signature`):
+
+```bash
+npm run revizie-fiscala -- --payload SAL-01 aprobare-SAL-01.json > payload-SAL-01.txt
+openssl pkeyutl -sign -rawin -inkey cheie-privata-revizor.pem \
+  -in payload-SAL-01.txt | openssl base64 -A
+```
+
+Rezultatul base64 se copiază în `signature`. Aplicația nu primește cheia privată și nu poate
+fabrica aprobări.
+
+Hash-ul SHA‑256 acoperă definiția cazului, versiunea setului fiscal, **manifestul automat al
+întregului domeniu de cod și reguli** și configurația fiscală efectivă (`FISCAL`) după
+suprascrierile din Setări. Manifestul inventariază automat fișierele executabile/configurabile din
+`src/`, `public/`, `scripts/` și `test/`, dependențele Node și documentele de guvernanță. Adăugarea,
+ștergerea sau schimbarea unui fișier din acest domeniu invalidează toate aprobările; modificarea
+definiției unui caz îl invalidează cel puțin pe acela. Numai registrele de aprobări și chei sunt
+excluse pentru a evita o amprentă autoreferențială.
+
+`GET /api/fiscal-review` arată amprenta manifestului și a regulilor **active în procesul
+serverului**. Aceasta este sursa autoritativă când există cote suprascrise. Pentru rularea CLI cu
+aceleași suprascrieri se salvează răspunsul admin `GET /api/fiscal-config` și se furnizează prin
+`--runtime-rules fisier.json`.
+
+Semnătura Ed25519 dovedește tehnic integritatea aprobării și posesia cheii înrolate; nu este
+declarată automat semnătură electronică calificată. Dacă dosarul este semnat calificat/PAdES,
+originalul și raportul de validare a certificatului se arhivează. Art. 25 din [Regulamentul eIDAS](https://eur-lex.europa.eu/eli/reg/2014/910)
+acordă numai semnăturii electronice calificate efectul echivalent semnăturii olografe, iar art. 26
+stabilește cerințele unei semnături avansate. Domeniul profesional și calitatea expertului contabil
+sunt reglementate de [OG nr. 65/1994](https://legislatie.just.ro/Public/DetaliiDocument/190971).
 
 Stările și consecințele:
 
 | Stare | Ce înseamnă | Efect |
 |---|---|---|
 | calculat ≠ așteptat | regresie sau cifră greșită | **eroare**, `npm test` pică |
-| aprobat, amprentă schimbată | modificat după semnătură | **eroare**, `npm test` pică |
-| `aprobare: null` | nerevizuit încă | **avertisment** — nu blochează |
+| aprobat, hash schimbat | cod/regulă/configurație/rezultat modificat după semnătură | **eroare** în suită + blocaj operațional |
+| semnătură sau cheie invalidă | aprobarea nu poate fi atribuită revizorului autorizat | **eroare** în suită + blocaj operațional |
+| lipsă din registrul aprobărilor | nerevizuit încă | avertisment în suită + **blocaj la depuneri/închidere anuală** |
 
-Alegerea deliberată: cazurile nerevizuite **nu** blochează suita (altfel `prestart` ar opri
-producția pentru o chestiune de guvernanță), dar apar la fiecare rulare, nominal, cu mențiunea
-că cifrele sunt „doar consecvente cu implementarea, nu confirmate față de lege".
+Cazurile nerevizuite nu blochează pornirea sau munca de pregătire: contabilul trebuie să poată
+corecta date și rula validări. Blochează însă exact trecerea de încredere — descărcarea XML-ului
+destinat depunerii, marcarea transmis/depus și închiderea anuală. Status: `GET /api/fiscal-review`.
 
 ## 6. Cazurile supuse aprobării
 

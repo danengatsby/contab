@@ -1854,6 +1854,11 @@ function bilantNsVersion(year) {
  * poata genera un formular caruia ii lipseste un rand pe care ANAF il asteapta.
  */
 function bilantXml(d) {
+  if (d && Array.isArray(d.blocaje) && d.blocaje.length) {
+    const e = new Error('XML-ul bilanțului nu poate fi generat: ' + d.blocaje.join(' | '));
+    e.status = 409; e.code = 'BILANT_RECONCILIATION_FAILED'; e.blockers = d.blocaje.slice();
+    throw e;
+  }
   const F = d.antet.formular;
   const lei = (v) => String(Math.round(Number(v) || 0));
   const at = Object.entries(d.antet.attrs)

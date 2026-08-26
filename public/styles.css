@@ -96,7 +96,7 @@ td.grpsep,th.grpsep{border-left:2px solid #d3dcec}
    `:has()` face selectia PE ECRANUL CARE CONTINE FORMULARUL, deci comutarea se face singura la
    mutarea lui dintr-un tab in altul, fara ca docflow.js sa stie de layout. Unde `:has()` n-ar fi
    suportat, raman doua coloane — adica exact comportamentul de dinainte. */
-.grid2.pas12:not(:has(#entryForm:not(.hidden))){grid-template-columns:1fr}
+.grid2.pas12{grid-template-columns:1fr}
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;
@@ -148,6 +148,13 @@ input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-ra
 input:focus,select:focus{outline:2px solid #cfe3da;border-color:var(--accent)}
 .dyn{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
 .dyn .full{grid-column:1/-1}
+.simple-ui .dyn .field-advanced{display:none!important}
+.special-fields{grid-column:1/-1;margin:8px 0 2px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+.special-fields>summary{padding:10px 12px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer}
+.special-fields-grid{display:grid;grid-template-columns:1fr;gap:4px;padding:0 12px 10px}
+body:not(.simple-ui) .special-fields{display:contents}
+body:not(.simple-ui) .special-fields>summary{display:none}
+body:not(.simple-ui) .special-fields>.special-fields-grid{display:contents}
 .cm-cert-manager{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--soft)}
 .cm-cert-manager h3{margin:0 0 5px}.cm-cert-manager .actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
 .cm-cert-list{display:grid;gap:7px;margin-top:10px}.cm-cert-item{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card)}
@@ -179,6 +186,31 @@ input:focus,select:focus{outline:2px solid #cfe3da;border-color:var(--accent)}
 
 .tablewrap{overflow:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}
+.decl-archive{margin-top:8px;color:var(--ink)}
+.decl-archive>summary{cursor:pointer;font-weight:700;color:var(--accent);padding:4px 0}
+.decl-archive>table{margin-top:6px;min-width:680px;border:1px solid var(--line)}
+.decl-archive>table td{vertical-align:top;background:var(--card)}
+.decl-archive .pill{margin-left:0}
+.decl-archive .dossier-identity{white-space:normal;max-width:900px;margin:4px 0 8px}
+.decl-archive .dossier-identity code{font-size:11px;overflow-wrap:anywhere}
+.dossier-timeline-wrap{margin:8px 0 12px}
+.dossier-timeline-wrap>summary{cursor:pointer;font-weight:700;padding:6px 0}
+.timeline-intro{white-space:normal;margin:3px 0 10px}
+.dossier-timeline{list-style:none;margin:0;padding:0 0 0 22px;position:relative;white-space:normal}
+.dossier-timeline::before{content:"";position:absolute;left:7px;top:7px;bottom:7px;width:2px;background:var(--line-strong)}
+.timeline-item{position:relative;margin:0 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);min-width:320px}
+.timeline-item::before{content:"";position:absolute;left:-21px;top:16px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:3px solid var(--card);box-shadow:0 0 0 1px var(--line-strong)}
+.timeline-item.profile-change::before{background:#6b46c1}
+.timeline-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.timeline-head time{margin-left:auto;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.timeline-kind{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:800;color:var(--muted)}
+.timeline-body{margin-top:5px;line-height:1.45}
+.timeline-body p{margin:4px 0;white-space:normal}
+.timeline-transition{display:inline-block;margin:1px 6px 3px 0;padding:2px 6px;border-radius:5px;background:var(--soft2);font-weight:700}
+.timeline-proofs{font-size:11px;overflow-wrap:anywhere}
+.timeline-proofs code{font-size:10.5px}
+.profile-changes{margin:5px 0 5px 18px;padding:0}
+.profile-changes li{margin:2px 0}
 th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 /* Convenția repo-ului — „tabelele late derulează în propriul container, pagina rămâne fixă" — era
    aplicată DOAR sub 700px. Pe desktop nu o apăra nimic, iar celulele sunt `white-space:nowrap`
@@ -501,6 +533,12 @@ body.dark .xmlview .xval{color:#5cc492}
 /* Arhivă documente — spațiere linkuri */
 .arh-link{margin:4px 7px 0 0}
 #arhivaView .card h3{display:flex;align-items:center;gap:6px}
+.annual-archive-state{margin:10px 0 6px}
+.annual-archive-empty{margin:10px 0 0}
+.annual-archive-versions{margin-top:10px}
+.annual-archive-versions table{min-width:980px}
+.annual-archive-versions td{vertical-align:top}
+.annual-archive-hash{display:block;max-width:230px;white-space:normal;overflow-wrap:anywhere;font-size:11px;color:var(--muted)}
 
 /* Checklist de conformitate */
 .checklist{list-style:none;padding:0;margin:6px 0}
@@ -958,6 +996,9 @@ body.dark td.etva-diff{background:#4a1f1f;color:#ffd7d0}
 body.dark .closestep{background:#1b2027;border-color:#2b323b}
 body.dark .closestep.is-gata{background:#16241c;border-color:#2f5c43}
 body.dark .closebar{background:#2b323b}
+.annual-detail{margin:5px 0 0;font-size:12.5px;color:var(--muted)}
+.fiscal-history-card{margin:8px 0 14px;box-shadow:none}
+.fiscal-history-card .grow{flex:1;min-width:240px}
 /* Alegerea firmei + butonul, pe acelasi rand: selectul intins pe toata celula impingea butonul
    in afara cardului (tabelul are latime fixa, deci nu se vedea deloc). */
 .srv-actiune{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -973,6 +1014,11 @@ body.dark .closebar{background:#2b323b}
 #registerForm .reg-tip-hd input{margin:0;width:auto;flex:0 0 auto}
 #registerForm .reg-tip-op .muted{font-size:11.5px;line-height:1.3}
 #registerForm .reg-tip-op:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+#registerForm .reg-tva-choice{flex:1;min-width:210px;margin:7px 0 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;white-space:normal}
+#registerForm .reg-tva-choice legend{padding:0 4px;color:var(--muted);font-size:13px;font-weight:700}
+#registerForm .reg-tva-choice label:not(.hidden){display:inline-flex;align-items:center;gap:5px;margin:2px 16px 2px 0;color:var(--ink)}
+#registerForm .reg-tva-choice input{width:auto;margin:0}
+#registerForm .reg-tva-choice small{display:block;margin-top:4px;font-size:11.5px;line-height:1.35;overflow-wrap:anywhere}
 /* Campul spre care tocmai ai fost trimis: fara marcaj, saltul te lasa intr-un formular lung fara
    sa stii care rand era problema. Se stinge singur, ca sa nu ramana un accent permanent. */
 .camp-cerut{outline:2px solid var(--danger);outline-offset:1px;animation:campCerut 1s ease-in-out 2}
@@ -1015,7 +1061,7 @@ ul.ciclu-temei>li{margin:3px 0}
   place-items:stretch;background:var(--bg);overflow:hidden}
 /* Inscrierea cere mai multa latime: formularul are randuri de trei campuri (adresa/oras/judet). */
 #registerOverlay{grid-template-columns:minmax(430px,48%) minmax(0,1fr)}
-.auth-pane{display:grid;place-items:center;padding:clamp(18px,3.4vw,44px) clamp(16px,3vw,40px);
+.auth-pane{position:relative;display:grid;place-items:center;padding:clamp(54px,5vw,68px) clamp(16px,3vw,40px) clamp(18px,3.4vw,44px);
   overflow-y:auto;background:var(--bg)}
 #loginOverlay .login-box,#registerOverlay .login-box{width:min(430px,100%);max-width:100%;
   background:transparent;box-shadow:none;border-radius:0;padding:0}
@@ -1044,11 +1090,16 @@ body.dark #loginOverlay .auth-title,body.dark #registerOverlay .auth-title{color
 /* `.status` are `min-height:18px` (locul mesajului, rezervat ca butonul să nu sară la eroare) —
    dar aici stă între casetă și butonul principal, unde golul se vede ca o ruptură. */
 #loginErr:empty,#registerErr:empty{min-height:0;margin:0}
+.pricing-notice{grid-column:1/-1;margin-bottom:4px;text-align:left}
 #loginOverlay .btn.primary,#registerOverlay .btn.primary{padding:12px;font-size:15px;margin-top:18px}
 /* Separator cu text la mijloc: „ai deja cont / nu ai cont" e granița dintre cele două intenții. */
 .auth-sep{display:flex;align-items:center;gap:12px;margin:16px 0 2px;color:var(--muted);font-size:12.5px}
 .auth-sep::before,.auth-sep::after{content:"";flex:1;height:1px;background:var(--line)}
 .auth-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;margin-top:18px;font-size:13px}
+.language-picker{display:inline-flex;align-items:center;gap:7px;font-weight:700;white-space:nowrap}
+.language-picker select{margin:0}
+.auth-language{position:absolute;top:16px;right:clamp(16px,3vw,40px);z-index:2;width:max-content;margin:0;color:var(--muted);font-size:12px}
+.auth-language select{width:auto;min-width:58px;min-height:32px;padding:4px 22px 4px 8px}
 /* `font-weight` vine DUPĂ `font:inherit`: scurtătura `font` resetează greutatea la a părintelui,
    deci scrisă înainte ar fi fost ștearsă de ea. */
 .auth-links>a,.auth-links>button{background:none;border:0;padding:2px 0;font:inherit;font-size:13px;
@@ -1129,9 +1180,16 @@ body.dark #loginOverlay .auth-title,body.dark #registerOverlay .auth-title{color
 @media (max-width:900px){
   #loginOverlay,#registerOverlay{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;
     overflow-y:auto}
-  .auth-pane,.auth-hero{overflow:visible}
+  .auth-pane,.auth-hero{min-width:0;overflow:visible}
+  #loginOverlay .login-box,#registerOverlay .login-box{width:100%;min-width:0}
+  #registerOverlay .reg-compact div,#registerOverlay .reg-compact label{min-width:0}
+  #registerForm .reg-tva-choice{min-width:0}
   .auth-hero{padding:26px 18px 34px}
   .ah-feats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ah-mock{display:none}
 }
-@media (max-width:520px){.ah-feats{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){
+  .ah-feats{grid-template-columns:minmax(0,1fr)}
+  #registerForm [data-u="u53"]{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch}
+  #registerForm [data-u="u53"]>*{width:100%}
+}

@@ -24,7 +24,12 @@ const rep = require('./reporting');
 const decl = require('./declarations');
 const fiscalProfile = require('./fiscalProfile');
 const { reconcile } = require('./reconcile');
+const openItems = require('./openItems');
+const bankStatements = require('./bankStatements');
 const stocks = require('./stocks');
+const assets = require('./assets');
+const annualInventory = require('./annualInventory');
+const fxreval = require('./fxreval');
 const { period: periodOf, plural, fmtDate } = require('./util');
 // Temeiul legal al fiecarui pas — sursa UNICA (src/temeiLegal.js), aceeasi din care citesc si
 // inchiderea anului si ghidul. Cheile pasilor de mai jos coincid cu cele din faza „lunar";
@@ -38,6 +43,12 @@ const STEPS = [
     descriere: 'Toate documentele lunii sunt înregistrate și postate (fără ciorne, fără furnizori lipsă).' },
   { key: 'banca', nume: 'Extras bancar și punctaj', tab: 'reconciliere', eticheta: 'Verifică extrasul',
     descriere: 'Încasările și plățile lunii sunt înregistrate și punctate cu facturile.' },
+  { key: 'amortizare_lunara', nume: 'Amortizarea lunii', tab: 'mijloace', eticheta: 'Deschide mijloacele fixe',
+    descriere: 'Amortizarea activelor eligibile este calculată și postată pentru luna curentă.' },
+  { key: 'reevaluare_valutara', nume: 'Reevaluarea valutară', tab: 'inchideri', eticheta: 'Reevaluează soldurile în valută',
+    descriere: 'Soldurile monetare în valută sunt reevaluate la cursul de închidere al lunii.' },
+  { key: 'ajustari_inventar', nume: 'Inventariere și ajustări', tab: 'inchidere-an', eticheta: 'Deschide inventarierea',
+    descriere: 'În decembrie, inventarierea și valorile de inventar sunt consemnate înainte de blocarea lunii.' },
   { key: 'tva', nume: 'TVA regularizat', tab: 'tva', eticheta: 'Deschide decontul de TVA',
     descriere: 'Nota de regularizare TVA a lunii e postată și acoperă toate operațiunile.' },
   { key: 'declaratii', nume: 'Declarații validate și depuse', tab: 'livrabile', eticheta: 'Deschide declarațiile',
@@ -53,7 +64,10 @@ const STEP_KEYS = STEPS.map((s) => s.key);
 // Termenele implicite: ancora e termenul REAL de depunere al lunii (cel mai devreme dintre
 // declaratiile asteptate, altfel 25 ale lunii urmatoare), iar pasii dinainte primesc un decalaj
 // inapoi. Asa termenul nu e o cifra inventata, ci se muta singur cand se schimba termenele fiscale.
-const DEFAULT_OFFSET_DAYS = { documente: -15, banca: -10, tva: -5, declaratii: 0, aprobare: 0, blocare: 0 };
+const DEFAULT_OFFSET_DAYS = {
+  documente: -15, banca: -10, amortizare_lunara: -9, reevaluare_valutara: -8,
+  ajustari_inventar: -7, tva: -5, declaratii: 0, aprobare: 0, blocare: 0,
+};
 
 function shiftDays(iso, n) {
   const d = new Date(String(iso) + 'T00:00:00Z');
@@ -114,6 +128,7 @@ function periodFingerprint(v, period) {
     products: v.products || [], gestiuni: v.gestiuni || [],
     stockMovements: (v.stockMovements || []).filter((x) => panaLa(x)),
     inventories: (v.inventories || []).filter((x) => panaLa(x)),
+    inventarAnual: (v.inventarAnual || []).filter((x) => String(x.an || x.data || '').slice(0, 4) <= period.slice(0, 4)),
     assets: (v.assets || []).filter((x) => panaLa(x, 'dataPif')),
     partners: v.partners || {}, openingBalances: v.openingBalances || {},
     openingAnalytic: v.openingAnalytic || [],
@@ -212,12 +227,79 @@ function checkBanca(v, period) {
   }
   detalii.nepunctate = nepunctate;
   if (nepunctate) blocaje.push(nepunctate + ' încasare/plată din lună nepunctată cu o factură — verifică extrasul.');
+  const oiControl = openItems.ledgerReconciliation(v, period);
+  detalii.registruDocumenteDeschise = { ok: oiControl.ok, diferenta: oiControl.difference,
+    problemeAlocare: (oiControl.problems || []).length, problems: oiControl.problems || [] };
+  if (!oiControl.ok) blocaje.push('Registrul documentelor deschise nu reconciliază cu soldurile conturilor de terți'
+    + (oiControl.difference ? ' — diferență ' + oiControl.difference + ' lei' : '')
+    + ((oiControl.problems || []).length ? ' — ' + oiControl.problems.length + ' problemă(e) de alocare document–plată' : '') + '.');
+  const bankControl = bankStatements.periodControl(v, period);
+  detalii.extraseBancare = { obligatoriu: bankControl.required, extrase: bankControl.statementCount,
+    diferenta: bankControl.difference, articoleNelegate: bankControl.unlinkedEntries.length,
+    diferenteContinuitate: bankControl.continuity.length };
+  if (bankControl.required && bankControl.missingStatement) blocaje.push('Există mișcări pe 5121/5124, dar nu este importat niciun extras bancar pentru lună.');
+  if (bankControl.required && bankControl.statements.some((s) => s.metadataMissing.length)) blocaje.push('Există extras bancar fără IBAN, monedă, sold inițial sau sold final.');
+  if (bankControl.required && bankControl.statements.some((s) => !s.arithmeticOk)) blocaje.push('Sold inițial + mișcări nu este egal cu soldul final pentru toate extrasele lunii.');
+  if (bankControl.required && bankControl.statements.some((s) => (s.integrityProblems || []).length)) blocaje.push('Există tranzacții bancare cu dată în afara extrasului, monedă diferită sau interval invalid.');
+  if (bankControl.required && bankControl.statements.some((s) => s.unresolved || s.orphaned)) blocaje.push('Există tranzacții bancare propuse/punctate sau fără articol contabil dovedit.');
+  if (bankControl.required && bankControl.unlinkedEntries.length) blocaje.push(bankControl.unlinkedEntries.length + ' articol(e) pe 5121/5124 nu sunt legate de o tranzacție din extras.');
+  if (bankControl.required && bankControl.continuity.length) blocaje.push('Soldul final al unui extras nu coincide cu soldul inițial al următorului extras pentru același IBAN și aceeași monedă.');
   // Sold de casa negativ: imposibil fizic, deci o eroare de inregistrare (lipseste o incasare).
   const negative = acc.cashControl(v, '5311', period).negative || [];
   detalii.casaNegativa = negative.length;
   if (negative.length) blocaje.push('Soldul casei devine NEGATIV în ' + negative.length + ' moment(e) ale lunii — lipsește o încasare sau o sumă e greșită.');
   if (!miscari.length) detalii.faraMiscari = true; // semnalat ca info in UI, nu ca blocaj
   return { blocaje, detalii };
+}
+
+/** Amortizarea: daca planul lunii are sume, trebuie sa existe exact nota singleton a perioadei. */
+function checkAmortizare(v, period) {
+  const plan = assets.monthlyDepreciation(v.assets || [], period);
+  if (!plan.lines.length) {
+    return { nuSeAplica: true, motiv: 'Nu există active amortizabile în această lună.', blocaje: [],
+      detalii: { active: 0, total: 0 } };
+  }
+  const note = acc.postedEntries(v).filter((e) => !e.stornat && e.tip === 'amortizare_lunara'
+    && (e.period || periodOf(e.data)) === period);
+  const blocaje = [];
+  if (!note.length) blocaje.push('Amortizarea lunii nu este postată — înregistrează nota din registrul mijloacelor fixe.');
+  if (note.length > 1) blocaje.push('Există ' + note.length + ' note de amortizare pentru aceeași lună — stornează dublura înainte de închidere.');
+  return { blocaje, detalii: { active: plan.lines.length, total: plan.total, notePostate: note.length } };
+}
+
+/** Reevaluarea: este obligatorie numai cand exista solduri monetare in valuta la sfarsitul lunii. */
+function checkReevaluare(v, period, rec, sourceHash) {
+  const candidati = fxreval.candidates(v, period);
+  if (!candidati.length) {
+    return { nuSeAplica: true, motiv: 'Nu există solduri monetare în valută la sfârșitul lunii.',
+      blocaje: [], detalii: { conturi: 0 } };
+  }
+  const note = acc.postedEntries(v).filter((e) => !e.stornat && e.tip === 'reevaluare_valutara'
+    && (e.period || periodOf(e.data)) === period);
+  const dovada = rec && rec.operationalEvidence && rec.operationalEvidence.reevaluare_valutara;
+  const dovadaActuala = !!(dovada && dovada.sourceHash === sourceHash);
+  const blocaje = [];
+  if (!note.length && !dovadaActuala) blocaje.push('Există ' + plural(candidati.length, 'sold monetar în valută', 'solduri monetare în valută')
+    + ' — reevaluează-le la cursul de închidere înainte de blocare.');
+  if (note.length > 1) blocaje.push('Există ' + note.length + ' note de reevaluare pentru aceeași lună — stornează dublura.');
+  return { blocaje, detalii: { conturi: candidati.length, notePostate: note.length,
+    diferentaZeroConfirmata: dovadaActuala, dovada: dovadaActuala ? dovada : null,
+    candidati: candidati.map((x) => ({ cont: x.cont, moneda: x.moneda })) } };
+}
+
+/** Inventarierea generala este anuala: intra explicit in fluxul lunii decembrie, nu in toate lunile. */
+function checkAjustariInventar(v, period) {
+  if (!String(period).endsWith('-12')) {
+    return { nuSeAplica: true, motiv: 'Inventarierea generală este control anual și se verifică în decembrie.',
+      blocaje: [], detalii: {} };
+  }
+  const year = period.slice(0, 4);
+  const inventare = (v.inventories || []).filter((x) => String(x.data || '').slice(0, 4) === year);
+  const valori = (v.inventarAnual || []).filter((x) => String(x.an || x.data || '').slice(0, 4) === year);
+  const matrix = annualInventory.evaluate(v, year);
+  const blocaje = matrix.blockers.map((x) => x.label + ': ' + x.blockers.join(' '));
+  return { blocaje, detalii: { inventareFizice: inventare.length, valoriInventar: valori.length,
+    domeniiComplete: matrix.progress.complete, domeniiNecesare: matrix.progress.total } };
 }
 
 /** 3. TVA: nota de regularizare a lunii, si sa nu fi ramas TVA neregularizat dupa ea. */
@@ -239,15 +321,18 @@ function checkTva(v, period, profile) {
     return { blocaje, detalii };
   }
   blocaje.push(nota
-    ? 'Au apărut operațiuni cu TVA după regularizare (mai sunt ' + Math.abs(rest.diff) + ' lei nerepartizați) — reia închiderea de TVA a lunii.'
-    : 'Nota de regularizare TVA a lunii nu e postată — apasă „Închide TVA-ul lunii".');
+    ? 'Au apărut operațiuni cu TVA după regularizare (mai sunt ' + Math.abs(rest.diff) + ' lei nerepartizați) — reia regularizarea TVA a lunii.'
+    : 'Nota de regularizare TVA a lunii nu e postată — apasă „Regularizează TVA-ul lunii".');
   return { blocaje, detalii };
 }
 
 /** 4. Declaratii: fiecare asteptata trebuie depusa/scutita SI cu dovada de validare fara erori. */
 function checkDeclaratii(d, v, period, rec, today, sourceHash) {
   const blocaje = []; const detalii = {};
-  const rows = decl.registerForFirma(d, v, period, today);
+  // Declaratiile de definitivare ANUALA nu tin blocata luna decembrie: ele se genereaza si se
+  // depun dupa deschiderea fluxului anual/perioadei tehnice 13. Cockpitul anual le urmareste.
+  const anuale = new Set(['d101', 'd107', 'd205', 'bilant']);
+  const rows = decl.registerForFirma(d, v, period, today).filter((r) => !anuale.has(r.tip));
   const validari = (rec && rec.validari) || {};
   const lista = rows.map((r) => {
     const dovada = validari[r.tip] || null;
@@ -294,7 +379,7 @@ function status(d, v, period, opts) {
   const firmaId = v.firmaId;
   const rec = findRecord(d, firmaId, period);
   const sourceHash = periodFingerprint(v, period);
-  const profile = fiscalProfile.build(v.company || {}, { angajati: v.angajati });
+  const profile = fiscalProfile.profileAt(v, period, { angajati: v.angajati });
   const expected = decl.expectedForFirma(v, period);
   const ancora = anchorDue(expected, period);
   const userName = (id) => {
@@ -305,6 +390,9 @@ function status(d, v, period, opts) {
   const semnale = {
     documente: checkDocumente(v, period, today),
     banca: checkBanca(v, period),
+    amortizare_lunara: checkAmortizare(v, period),
+    reevaluare_valutara: checkReevaluare(v, period, rec, sourceHash),
+    ajustari_inventar: checkAjustariInventar(v, period),
     tva: checkTva(v, period, profile),
     declaratii: checkDeclaratii(d, v, period, rec, today, sourceHash),
   };
@@ -373,9 +461,8 @@ function status(d, v, period, opts) {
     sePoateInchide: blocante.length === 0,
     blocante: blocante.map((s) => ({ key: s.key, nume: s.nume, blocaje: s.blocaje })),
     inchisa: blocata,
-    // Blocata NU inseamna neaparat „inchisa prin flux": marcarea unei declaratii ca DEPUSA
-    // blocheaza deja perioada automat (ruta /api/declarations/set, comportament mai vechi).
-    // `finalizata` = luna a trecut si prin dosarul de inchidere (aprobare + consemnare).
+    // `inchisa` poate proveni si din blocarea administrativa explicita; `finalizata` inseamna ca
+    // luna a trecut prin dosarul cockpitului (aprobare + ultima actiune de blocare).
     finalizata: !!(blocata && rec && rec.closedAt),
     inchidere: (rec && rec.closedAt) ? { at: rec.closedAt, by: rec.closedBy, username: rec.closedByName || userName(rec.closedBy) || '' } : null,
     lockedUntil: lockedUntil || null,

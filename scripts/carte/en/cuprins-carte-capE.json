@@ -1,0 +1,219 @@
+{
+ "parte": "Appendices · to use, not to read",
+ "nr": "E",
+ "titlu": "Consistency checks",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The list below is ordered by how many errors each check catches, not by the order in which they appear during the month. Anyone with ten minutes before a filing does the first three; anyone with an hour does all of them."
+  },
+  {
+   "tip": "p",
+   "text": "They all have the same structure: they place two figures side by side and require them to be equal. None of them involves a new calculation — if you have to calculate something to perform the check, the check is wrongly formulated."
+  },
+  {
+   "tip": "cheie",
+   "text": "A match confirms that two records say the same thing. It does not confirm that the thing is true — that's what the inventory, the bank statement, and the document are for. See chapter 33."
+  },
+  {
+   "tip": "h",
+   "text": "Before any return"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The five that catch the most",
+   "cap": [
+    "Compared item",
+    "With",
+    "What it catches if they differ"
+   ],
+   "randuri": [
+    [
+     "the total of the general journal",
+     "the total turnover from the trial balance",
+     "a transaction entered in one journal but not the other"
+    ],
+    [
+     "the turnover of account 4427",
+     "the total of the sales journal",
+     "a delivery that did not make it into the return"
+    ],
+    [
+     "the turnover of account 4426",
+     "the total of the purchases journal",
+     "a purchase deducted without being in the journal, or vice versa"
+    ],
+    [
+     "the balance of account 4424",
+     "the carry-forward line in the return",
+     "an incorrect carry-over of the previous month's balance"
+    ],
+    [
+     "accounts 421, 43x, 444",
+     "the totals in D112",
+     "a missing employee or a contribution calculated twice"
+    ]
+   ],
+   "nota": "The first four concern VAT, since that's where the most and the most costly differences occur."
+  },
+  {
+   "tip": "h",
+   "text": "At month-end closing"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Monthly checks",
+   "cap": [
+    "Checked item",
+    "What it means if it doesn't reconcile"
+   ],
+   "randuri": [
+    [
+     "the trial balance closes on all four equalities",
+     "incorrect opening balances or a direct entry into the database"
+    ],
+    [
+     "the balance of account 5311 is positive",
+     "a missing receipt or a payment dated incorrectly — always an error"
+    ],
+    [
+     "the balance of account 581 is zero",
+     "one end of an internal transfer not recorded"
+    ],
+    [
+     "the sum of the sub-ledger balances = the general ledger balance",
+     "a partner entered twice under different names"
+    ],
+    [
+     "the aging schedule gives the same total as the customer balance",
+     "a transfer between accounts counted as a new transaction"
+    ],
+    [
+     "there is no debit balance in 401 and credit balance in 4111",
+     "usually an advance not recorded as such"
+    ]
+   ],
+   "nota": "Lines 2, 3, and 6 are read directly from the trial balance, with no additional report needed."
+  },
+  {
+   "tip": "h",
+   "text": "At year-end closing"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Fiscal-year checks",
+   "cap": [
+    "Compared item",
+    "With",
+    "Observation"
+   ],
+   "randuri": [
+    [
+     "total assets",
+     "total liabilities and equity",
+     "to the leu; otherwise an account fell into two lines or into none"
+    ],
+    [
+     "the result in the balance sheet",
+     "the result in the income statement",
+     "otherwise the documents were prepared on different trial balances"
+    ],
+    [
+     "the ending cash figure in the cash flow statement",
+     "the balance of the cash and cash equivalents accounts",
+     "catches a cash account omitted from the flow statement"
+    ],
+    [
+     "the change in cash",
+     "the sum of the three activities",
+     "catches transactions misclassified or counted twice"
+    ],
+    [
+     "the total of the statement of changes in equity",
+     "the equity in the balance sheet",
+     "catches an equity movement not disclosed"
+    ],
+    [
+     "the opening column of the fiscal year",
+     "the previous year's financial statements",
+     "a difference requires either a correction disclosed in the notes, or an incorrect carry-over"
+    ],
+    [
+     "the totals of the fiscal register",
+     "the lines in D101",
+     "the first check an audit performs"
+    ]
+   ],
+   "nota": "The first four are the ones from chapter 48 and are blocking in the official validator. The last three are not, but they catch errors just as serious."
+  },
+  {
+   "tip": "h",
+   "text": "Checks that are not matches"
+  },
+  {
+   "tip": "p",
+   "text": "A few controls do not compare two figures, but rather a figure against reality. These are the ones that catch errors no match can ever reach — and that's why they cannot be left off the list."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Comparisons against something outside the records",
+   "cap": [
+    "The check",
+    "What it catches",
+    "Chapter"
+   ],
+   "randuri": [
+    [
+     "bank reconciliation",
+     "missing transactions, incorrect cash amounts",
+     "16"
+    ],
+    [
+     "physical inventory count",
+     "incorrect stock, incorrect accounts, actual shortages",
+     "20"
+    ],
+    [
+     "reading the document alongside the entry",
+     "wrong amount, wrong account, wrong period",
+     "9"
+    ],
+    [
+     "checking the supplier's VAT code",
+     "invoices from suppliers with a cancelled code",
+     "35"
+    ],
+    [
+     "aging analysis of balances",
+     "doubtful receivables not adjusted",
+     "27 and 34"
+    ]
+   ],
+   "nota": "Only the third one catches all the error classes from chapter 33 — and it is the only one that cannot be automated."
+  },
+  {
+   "tip": "h",
+   "text": "The recommended order"
+  },
+  {
+   "tip": "recap",
+   "titlu": "Ten minutes, in this order",
+   "puncte": [
+    "1. The trial balance closes on all four equalities.",
+    "2. Journal = trial balance turnover, for the same period.",
+    "3. VAT accounts = VAT journals, and the carry-forward = the previous month's balance.",
+    "4. Payroll accounts = D112 totals.",
+    "5. Impossible balances: negative cash, non-zero 581, reversed balance on third parties.",
+    "6. Only now is it generated and filed."
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "The order matters for a practical reason: each step that fails makes the next one pointless. A trial balance that doesn't close makes any comparison with returns meaningless, and a return built on journals that don't match the trial balance will be wrong no matter how carefully it's filled in."
+  },
+  {
+   "tip": "p",
+   "text": "And at the end there remains the check that appears on no list, because it can't be written as a comparison: if the figure you're about to file had to be defended two years from now, do you have what you need on hand to defend it?"
+  }
+ ]
+}

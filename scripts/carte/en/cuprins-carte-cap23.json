@@ -1,0 +1,315 @@
+{
+ "parte": "Part V · What you have, what you produce, who works · phases 4–6",
+ "nr": "23",
+ "titlu": "Fixed Assets and Depreciation",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "A pack of paper bought today is consumed this month. A piece of equipment bought today is consumed over five years. Accounting must distinguish between them, otherwise the result for the month in which you bought the equipment would show a loss that doesn't actually exist."
+  },
+  {
+   "tip": "p",
+   "text": "The mechanism that makes this distinction is called depreciation, and it is the best example in the whole book of the principle stated in chapter 1: an expense is recognized when the asset is consumed, not when the money leaves."
+  },
+  {
+   "tip": "h",
+   "text": "What Is a Fixed Asset"
+  },
+  {
+   "tip": "p",
+   "text": "An asset becomes a fixed asset when it meets two conditions at the same time: it is intended to be used for more than one year, and its entry value exceeds a threshold set by government decision — currently 2,500 lei."
+  },
+  {
+   "tip": "p",
+   "text": "The conditions are cumulative, and this produces a few surprising results. A phone worth 2,000 lei used for three years is not a fixed asset: it is below the threshold, so it goes directly to expense. A stock of goods worth 200,000 lei is not a fixed asset: it is not intended for use, but for sale."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Where Fixed Assets Sit in the Chart of Accounts",
+   "cap": [
+    "Account",
+    "What It Includes"
+   ],
+   "randuri": [
+    [
+     "205, 208",
+     "intangible: licenses, patents, software"
+    ],
+    [
+     "211",
+     "land — the only one that does NOT depreciate"
+    ],
+    [
+     "212",
+     "buildings"
+    ],
+    [
+     "2131",
+     "technological equipment: machinery, equipment"
+    ],
+    [
+     "2133",
+     "means of transport"
+    ],
+    [
+     "214",
+     "furniture, office equipment"
+    ],
+    [
+     "231",
+     "assets under construction — not yet ready for use"
+    ]
+   ],
+   "nota": "Land is an exception because it does not wear out. Improvements made on it are depreciated; the land itself is not."
+  },
+  {
+   "tip": "h",
+   "text": "Depreciation: Spreading the Cost Over the Useful Life"
+  },
+  {
+   "tip": "p",
+   "text": "Depreciation spreads the value of an asset over the months it will be used. A piece of equipment worth 60,000 lei with a useful life of five years means sixty months of 1,000 lei each — and those 1,000 lei become the expense for each month."
+  },
+  {
+   "tip": "p",
+   "text": "The entry is the same every month: debit 6811 Operating Expenses regarding Depreciation and credit the corresponding depreciation account from group 28. No cash account appears — and it's important to understand why."
+  },
+  {
+   "tip": "cheie",
+   "text": "Depreciation is an expense that is not paid. The money left only once, at purchase; depreciation merely recognizes, gradually, that the asset is being consumed."
+  },
+  {
+   "tip": "p",
+   "text": "The practical consequence is that a company with high depreciation can have low profit and cash in the bank — and vice versa. This is the most common case where the business owner asks where the money is if profit is low, and the answer is: in the equipment bought last year."
+  },
+  {
+   "tip": "h",
+   "text": "When It Starts"
+  },
+  {
+   "tip": "p",
+   "text": "Depreciation begins in the month following the asset's commissioning, not the month of purchase and not from the date of purchase. Equipment received on March 20th is first depreciated in April, with the full month's amount."
+  },
+  {
+   "tip": "p",
+   "text": "Commissioning is a distinct moment from purchase, and the distinction has its own account: 231 Assets Under Construction. Equipment bought in March and installed in June sits in 231 until June and is not depreciated at all in the meantime — because it has not been used."
+  },
+  {
+   "tip": "h",
+   "text": "The Useful Life Is Not Chosen by Preference"
+  },
+  {
+   "tip": "p",
+   "text": "The normal useful life comes from an official catalog, approved by government decision, which covers practically all categories of assets. The catalog does not give a single figure, but a range — for example, eight to twelve years — and the choice within the range belongs to the company."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth understanding what's at stake in that choice. A shorter useful life means higher depreciation, hence higher expense, hence lower profit and lower tax — but also an asset that disappears from the balance sheet more quickly. It's a decision with an effect spanning years, made only once, at commissioning, and one that no one ever revisits."
+  },
+  {
+   "tip": "p",
+   "text": "That's why a useful life typed in from memory is one of the most costly silent mistakes in accounting: it produces no visible error, it unbalances nothing, and it affects the result every month, for years on end."
+  },
+  {
+   "tip": "h",
+   "text": "Three Methods, Same Total"
+  },
+  {
+   "tip": "p",
+   "text": "The law allows three calculation methods. All three depreciate exactly the same value — they differ only in pace."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Equipment worth 60,000 lei, 5-year useful life",
+   "cap": [
+    "Method",
+    "First Month",
+    "What It Does"
+   ],
+   "randuri": [
+    [
+     "straight-line",
+     "1,000 lei",
+     "the same amount in each of the 60 months"
+    ],
+    [
+     "declining-balance",
+     "1,500 lei",
+     "increased rate at the start, then switch to straight-line"
+    ],
+    [
+     "accelerated",
+     "2,500 lei",
+     "50% in the first year, the rest over the remaining useful life"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "nota": "After five years, all three have depreciated 60,000 lei. They differ only in which year the expense appears."
+  },
+  {
+   "tip": "p",
+   "text": "Choosing the method is, therefore, a decision about where you want the profit to fall, not about how much you depreciate. The straight-line method is the default and most commonly used; the other two are chosen deliberately, usually for tax reasons."
+  },
+  {
+   "tip": "h",
+   "text": "The Two Depreciations That Don't Match"
+  },
+  {
+   "tip": "p",
+   "text": "Here we encounter one of the few situations where accounting keeps two parallel calculations for the same asset. Book depreciation reflects actual consumption and enters the accounting result. Tax depreciation is calculated according to the rules of the Tax Code and enters the profit tax calculation."
+  },
+  {
+   "tip": "p",
+   "text": "Usually they match. When they don't — because the company chose one method for accounting and another for tax purposes, or because the law caps the deduction — the difference is adjusted in the profit tax calculation, without affecting the accounting entries."
+  },
+  {
+   "tip": "p",
+   "text": "The most common case is the car: for passenger vehicles with no more than nine seats, tax-deductible depreciation is capped at 1,500 lei per month. A car worth 200,000 lei is depreciated in full for accounting purposes, but for tax purposes only up to this cap — the rest remains a non-deductible expense, every month, for the entire useful life."
+  },
+  {
+   "tip": "h",
+   "text": "The End: Disposal or Sale"
+  },
+  {
+   "tip": "p",
+   "text": "An asset leaves the company's assets in two ways, and the two are not recorded the same way. Scrapping means taking out of use an asset that is no longer of use to anyone. Disposal means selling it — with a price, an invoice, and VAT."
+  },
+  {
+   "tip": "p",
+   "text": "In both cases, the operation has two halves, and the second is the forgotten one: removing the asset from the records. Accumulated depreciation is canceled and the remaining undepreciated value is expensed. Without this part, the asset remains on the balance sheet even though it no longer exists, and the result of the disposal comes out wrong."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "The depreciation regime is governed by art. 28 of the Tax Code, and the normal useful lives come from the catalog approved by Government Decision (HG) 2139/2004, as subsequently amended. Four practical observations. First: the catalog sets ranges, and the chosen useful life remains the same throughout the asset's life, except for the expressly provided exceptions — modernizations that increase the entry value can extend the useful life, but this is revised, not restarted. Second: declining-balance depreciation is applied with coefficients of 1.5, 2.0, or 2.5 depending on the normal useful life — up to 5 years, between 5 and 10, and over 10, respectively — and requires switching to the straight-line regime in the year when straight-line depreciation of the remaining value becomes greater than the declining-balance amount; omitting this switch leaves an undepreciated remainder at the end of the useful life. Third: the divergence between book and tax depreciation must be tracked cumulatively, for each asset, not just for the current year — upon disposal, it is the remaining tax value, not the book value, that is compared with the sale price to determine the tax result. Fourth: for M1 vehicles, the cap applies monthly and is not carried forward — a month without depreciation does not increase the following month's cap, and annual cumulation using a cap of twelve times 1,500 produces a deduction larger than the legal one."
+  },
+  {
+   "tip": "h",
+   "text": "What Comes Next"
+  },
+  {
+   "tip": "p",
+   "text": "An asset can be in a company's use without having been purchased. The most widespread form is leasing — and the monthly leasing installment is, in accounting terms, the best example of a payment that is not an expense. It is the last chapter of this part."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 23.1 — Depreciating a Car",
+   "enunt": [
+    "The company buys a car for 180,000 lei (excluding VAT), useful life 5 years, straight-line method, commissioned on March 10th.",
+    "(a) From which month does depreciation start, and for what amount? (b) How much is tax-deductible? (c) What happens in the first year?"
+   ],
+   "rezolvare": [
+    "(a) From April — the month following commissioning. Monthly book depreciation: 180,000 ÷ 60 = 3,000 lei.",
+    "(b) For passenger vehicles with no more than nine seats, deductible depreciation is capped at 1,500 lei per month. So of the 3,000 lei, half is non-deductible — every month, for the entire useful life.",
+    "(c) The first year has nine months of depreciation (April–December): 27,000 lei in accounting terms, of which 13,500 deductible and 13,500 non-deductible.",
+    "Watch out for a common mistake: the cap is MONTHLY and is not carried forward. Anyone who calculates \"12 × 1,500 = 18,000 deductible per year\" obtains a deduction larger than the legal one in a year with only nine months of depreciation.",
+    "In addition, separate limitations apply on top of this cap — the VAT limitation (50%) and the maintenance expense limitation (50%) — these are three distinct limitations, with different bases, and confusing them is the source of most tax audit adjustments."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The Car: Three Limitations That Get Confused"
+  },
+  {
+   "tip": "p",
+   "text": "The passenger vehicle is the asset with the most complicated tax regime in a small company's entire accounting, and the reason is that the law limits it three times, in three different places, with three different bases. Anyone who confuses them makes mistakes in both directions."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Three Limitations, on a Car Worth 200,000 lei",
+   "cap": [
+    "Limitation",
+    "What It Hits",
+    "How Much",
+    "When"
+   ],
+   "randuri": [
+    [
+     "VAT on Purchase",
+     "the tax on the invoice",
+     "50% of 42,000 = 21,000 non-recoverable",
+     "once only"
+    ],
+    [
+     "Tax Depreciation",
+     "the monthly expense",
+     "deductible up to 1,500 lei/month",
+     "every month, for the whole useful life"
+    ],
+    [
+     "Operating Expenses",
+     "fuel, repairs, insurance",
+     "50% non-deductible",
+     "every year"
+    ]
+   ],
+   "nota": "The bases are different: the first applies to the tax, the second to depreciation, the third to current expenses. They are not added together and do not substitute for one another."
+  },
+  {
+   "tip": "p",
+   "text": "The first limitation has an effect that many miss: the undeducted VAT is not lost, it enters the COST of the asset. The car's entry value is not 200,000, but 221,000 lei — and depreciation is calculated on this value."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What Comes Out, Per Year",
+   "cap": [
+    "Item",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Entry value (200,000 + 21,000 undeducted VAT)",
+     "221.000,00"
+    ],
+    [
+     "Monthly book depreciation (60 months)",
+     "3.683,33"
+    ],
+    [
+     "of which tax-deductible",
+     "1.500,00"
+    ],
+    [
+     "non-deductible, every month",
+     "2.183,33"
+    ],
+    [
+     "Annual book depreciation",
+     "44.200,00"
+    ],
+    [
+     "of which deductible per year",
+     "18.000,00"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Over 26,000 lei of non-deductible expense every year, from depreciation alone — to which is added half of the maintenance costs."
+  },
+  {
+   "tip": "cheie",
+   "text": "The 1,500 lei cap is MONTHLY and is not carried forward. A year with eleven months of depreciation has eleven caps, not twelve — and the calculation \"12 × 1,500\" gives a deduction larger than the legal one."
+  },
+  {
+   "tip": "p",
+   "text": "All three limitations are lifted if the vehicle is used EXCLUSIVELY for business purposes, and the burden of proof lies with the company: a trip log, or other records showing the routes traveled. Without it, the limitation applies — not as a penalty, but because the law presumes mixed use. It's one of the few situations where a daily record is worth, in money, more than any optimization."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key Takeaways from This Chapter",
+   "puncte": [
+    "An asset is a fixed asset if it is used for more than one year AND exceeds the value threshold — the conditions are cumulative.",
+    "Depreciation spreads the cost over the useful life: it is an expense that is not paid, because the money left only once.",
+    "It starts in the month following commissioning, not purchase; until then the asset sits in 231 and is not depreciated.",
+    "The useful life comes from the official catalog, which gives a range, not a single figure. A useful life typed from memory silently distorts the result for years.",
+    "The three methods depreciate the same value; only the pace differs, hence the year in which the expense appears.",
+    "Book and tax depreciation can differ — for cars, the 1,500 lei/month cap almost always separates them.",
+    "At scrapping and at sale, the forgotten half is removing the asset from the records: without it, the asset remains on the balance sheet even though it no longer exists."
+   ]
+  }
+ ]
+}

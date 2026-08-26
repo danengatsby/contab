@@ -1,0 +1,270 @@
+{
+ "parte": "Part VI · What doesn't come from a document · phase 7",
+ "nr": "26",
+ "titlu": "Foreign Currency Revaluation",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "A receivable of 10,000 euros is not a fixed amount. It's a fixed amount in euros and a variable amount in lei — and Romanian accounting keeps records in lei."
+  },
+  {
+   "tip": "p",
+   "text": "The difference between the two is called exchange rate difference, and it is income or an expense just as real as any other. The company did nothing, sold nothing, paid nothing — and yet it gained or lost money."
+  },
+  {
+   "tip": "h",
+   "text": "How the Mechanism Works"
+  },
+  {
+   "tip": "p",
+   "text": "An invoice issued in March, for 10,000 euros at an exchange rate of 4.97 lei, enters the accounts as a receivable of 49,700 lei. If by December 31 the client still hasn't paid, and the closing rate is 5.08, the same receivable is worth 50,800 lei."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Same Receivable, Two Moments",
+   "cap": [
+    "Moment",
+    "Rate",
+    "Value in lei"
+   ],
+   "randuri": [
+    [
+     "at invoice issuance, March",
+     "4,97",
+     "49.700"
+    ],
+    [
+     "at year-end closing, December",
+     "5,08",
+     "50.800"
+    ],
+    [
+     "difference",
+     "",
+     "+1.100"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "The receivable remained 10,000 euros. Only its value in lei changed."
+  },
+  {
+   "tip": "p",
+   "text": "The 1,100 lei is financial income, recorded by debiting the receivable account and crediting account 765 Income from Foreign Exchange Differences. The receivable on the balance sheet thus reaches its correct value at the closing date, and the gain appears in the result."
+  },
+  {
+   "tip": "h",
+   "text": "The Sign Rule, and Why It Gets Wrong"
+  },
+  {
+   "tip": "p",
+   "text": "Here lies the trap of this chapter, and it has cost real companies and real software. The same rising exchange rate produces opposite effects on receivables and on liabilities."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Who Gains When the Euro Rises",
+   "cap": [
+    "Item",
+    "The rate rises",
+    "The rate falls"
+   ],
+   "randuri": [
+    [
+     "Foreign currency receivable (you are owed)",
+     "gain — 765",
+     "loss — 665"
+    ],
+    [
+     "Foreign currency liability (you owe)",
+     "loss — 665",
+     "gain — 765"
+    ],
+    [
+     "Foreign currency cash (you hold in an account)",
+     "gain — 765",
+     "loss — 665"
+    ]
+   ],
+   "nota": "The rule, in words: an ASSET that increases is a gain; a LIABILITY that increases is a loss."
+  },
+  {
+   "tip": "p",
+   "text": "The logic is simple once stated: if you are owed 10,000 euros and the euro becomes more expensive, you will receive more lei — you have gained. If you owe 10,000 euros and the euro becomes more expensive, you will pay more lei — you have lost."
+  },
+  {
+   "tip": "p",
+   "text": "The mistake doesn't come from misunderstanding the rule, but from applying it mechanically, with a single formula, to all accounts at once. A program that calculates the difference as \"new value minus old value\" and records it as income whenever it's positive will record losses on liabilities as gains — with the sign reversed, every year, silently."
+  },
+  {
+   "tip": "cheie",
+   "text": "The sign of the difference is not read from the figure, but from the nature of the item. The same positive difference is a gain on a receivable and a loss on a liability."
+  },
+  {
+   "tip": "h",
+   "text": "What Gets Revalued and What Doesn't"
+  },
+  {
+   "tip": "p",
+   "text": "The second source of errors is scope. Not everything purchased in foreign currency gets revalued — on the contrary, most of it doesn't."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Scope of Revaluation",
+   "cap": [
+    "IS revalued",
+    "Is NOT revalued"
+   ],
+   "randuri": [
+    [
+     "foreign currency cash (5124, 5314)",
+     "inventory purchased through imports"
+    ],
+    [
+     "foreign currency receivables (4111, 461)",
+     "fixed assets purchased through imports"
+    ],
+    [
+     "foreign currency liabilities (401, 404, 167)",
+     "advances received and paid (419, 409)"
+    ],
+    [
+     "loans and long-term receivables",
+     "income and expenses already realized"
+    ]
+   ],
+   "nota": "The criterion is called monetary nature: the right to receive or the obligation to give a fixed amount of money is what gets revalued."
+  },
+  {
+   "tip": "p",
+   "text": "The distinction deserves to be understood, because it is more than a convention. Goods purchased for 1,000 euros remain the same goods regardless of the exchange rate; their cost is what was paid at that time, and the gain will show up at sale. A receivable of 1,000 euros, on the contrary, is exactly the right to receive 1,000 euros — so its value in lei changes along with the exchange rate."
+  },
+  {
+   "tip": "p",
+   "text": "Advances are the surprising case. An advance paid to a foreign supplier looks like a receivable, but it's not the right to receive money, it's the right to receive goods — so it stays at the exchange rate from the day of payment. A program that revalues them produces differences that don't exist."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "The rule is at point 319 of the accounting regulations approved by OMFP 1802/2014: cash, receivables, and liabilities in foreign currency are valued at the exchange rate communicated by the BNR for the last banking day of the period, with differences recognized as financial income or expenses. Point 320 establishes the treatment of non-monetary items, which remain at the exchange rate on the date of the transaction. Four useful clarifications. First: revaluation is done at every period-end closing for which financial statements are prepared, not just on December 31 — for companies reporting quarterly, omitting interim closings shifts the result between quarters. Second: differences recognized at revaluation are unrealized, but they are nevertheless taxable, respectively deductible, in calculating corporate income tax, with the exceptions expressly provided — so they are not eliminated in determining the fiscal result, unlike the treatment in other jurisdictions. Third: upon actual settlement of the receivable or liability, the difference is calculated relative to the last revalued value, not to the initial exchange rate; recalculating from the invoice rate would double the difference already recognized. Fourth: for companies paying microenterprise income tax, income from exchange rate differences has its own regime — it is included in the tax base calculation only through the net favorable difference, cumulated, at the end of the quarter, not line by line."
+  },
+  {
+   "tip": "h",
+   "text": "Practice"
+  },
+  {
+   "tip": "p",
+   "text": "Revaluation is an operation that shouldn't consume thinking time. Foreign currency balances are known, the closing rate is public, the sign rule is fixed. A well-made program proposes the list of accounts to be revalued, with the foreign currency balance and the rate, and the accountant confirms."
+  },
+  {
+   "tip": "p",
+   "text": "What cannot be automated is checking the scope: if an account entered the list because it was touched at some point by a foreign currency transaction, but its balance has long been in lei, revaluing it produces an invented difference. A minute spent reading the list before confirming is worth more than any check done afterward."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 26.1 — The Sign, on Four Balances",
+   "enunt": [
+    "On December 31 the company has: a receivable of 10,000 EUR (recorded at 4.97), a liability of 6,000 EUR (at 5.02), cash of 2,000 EUR (at 4.99), and an advance paid to a foreign supplier of 3,000 EUR (at 4.95). Closing rate: 5.08.",
+    "Calculate the differences and state for each whether it is income or an expense."
+   ],
+   "rezolvare": [
+    "The receivable: 10,000 × (5.08 − 4.97) = +1,100 lei. Asset that increases = GAIN, financial income.",
+    "The liability: 6,000 × (5.08 − 5.02) = 360 lei. Liability that increases = LOSS, financial expense.",
+    "The cash: 2,000 × (5.08 − 4.99) = +180 lei. Monetary asset that increases = gain.",
+    "The advance: NOTHING. Advances paid are NON-MONETARY items — they do not represent the right to receive money, but to receive goods. They remain at the exchange rate from the day of payment.",
+    "Net result: 1,100 + 180 − 360 = +920 lei financial income. Anyone who had revalued the advance too would have invented another 390 lei of income that doesn't exist, and anyone who had applied the same formula to all accounts would have recorded the 360 lei as income — getting the result wrong by 720 lei, that is, double."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What Happens at Settlement"
+  },
+  {
+   "tip": "p",
+   "text": "The revaluation at closing is not the final act. When the receivable is collected or the liability is paid, a second difference appears — and this is where the mistake is made that doubles everything recorded before."
+  },
+  {
+   "tip": "p",
+   "text": "The difference at settlement is calculated relative to the LAST revalued value, not to the rate on the day of the invoice. That rate has already been superseded once, at closing, and the difference from then is already in the result."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "A Receivable of 10,000 EUR, Followed to the End",
+   "cap": [
+    "Moment",
+    "Rate",
+    "Value in lei",
+    "Difference"
+   ],
+   "randuri": [
+    [
+     "The invoice, March 15",
+     "4,97",
+     "49.700,00",
+     "—"
+    ],
+    [
+     "Revaluation, December 31",
+     "5,08",
+     "50.800,00",
+     "+1,100.00 income"
+    ],
+    [
+     "Collection, February 20",
+     "5,12",
+     "51.200,00",
+     "+400.00 income"
+    ],
+    [
+     "",
+     "",
+     "Total recognized",
+     "+1.500,00"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4
+   ],
+   "total": true,
+   "nota": "The total difference, 51,200 − 49,700 = 1,500 lei, is split across two fiscal years: 1,100 in the year of the invoice, 400 in the year of collection."
+  },
+  {
+   "tip": "p",
+   "text": "The typical mistake is calculating the difference at collection relative to the invoice rate: 51,200 − 49,700 would give 1,500 lei recognized a second time, in the second year, on top of the 1,100 already recorded in the first. The result of the second year would be inflated by 1,100 lei, while the first would remain correct — so nothing would offset and nothing would signal an error."
+  },
+  {
+   "tip": "cheie",
+   "text": "After a revaluation, the initial exchange rate is no longer a reference point. The book value of the receivable is the revalued one, and any subsequent difference is measured from there."
+  },
+  {
+   "tip": "h",
+   "text": "How Often Revaluation Occurs"
+  },
+  {
+   "tip": "p",
+   "text": "The rule states \"at every period-end closing for which financial statements are prepared,\" and the wording is broader than it seems: not just on December 31."
+  },
+  {
+   "tip": "p",
+   "text": "A company reporting quarterly revalues quarterly. One that prepares interim statements for a bank or for a shareholder revalues then too. Omitting interim closings doesn't change the annual total, but it shifts the result between periods — and if those periods were reported to someone, the shift has consequences."
+  },
+  {
+   "tip": "p",
+   "text": "And for companies paying microenterprise income tax, there is a specific rule, easy to miss: favorable exchange rate differences enter the taxable base not line by line, but through the NET favorable difference, cumulated, at the end of the quarter. Calculating per transaction overestimates the base."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key Takeaways from This Chapter",
+   "puncte": [
+    "A foreign currency receivable has a fixed value in foreign currency and a variable one in lei; the difference is real income or expense.",
+    "The sign is read from the nature of the item, not from the figure: an asset that increases is a gain, a liability that increases is a loss.",
+    "Applying a single formula to all accounts reverses the sign on liabilities, every year, without unbalancing anything.",
+    "Only monetary items are revalued: cash, receivables, liabilities. Inventory, fixed assets, and advances remain at the initial exchange rate.",
+    "An advance is not the right to receive money, but to receive goods — that is why it is not revalued.",
+    "At settlement, the difference is calculated relative to the last revaluation, not to the invoice rate."
+   ]
+  }
+ ]
+}

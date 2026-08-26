@@ -44,11 +44,23 @@ Dacă `fiscalConfig.js` ține **cotele** (aceleași pentru toți), profilul fisc
 **regimul fiecărei firme** și e **sursa unică** din care se derivă declarațiile așteptate,
 alertele (termene) și controalele — nu boolean-uri (`tvaPlatitor`) citite ad-hoc prin cod.
 
-`fiscalProfile.build(company, { angajați })` normalizează firma într-un profil structurat:
+`fiscalProfile.profileAt(view, data/perioada, { angajați })` citește tabelul separat
+`fiscal_profile_history` și normalizează firma într-un profil structurat:
 plătitor TVA + **perioadă L/T**, **TVA la încasare**, **regim** (`micro`/`profit`/`pfa`),
 **are angajați**, **cadență D406** (L/T/A), **obligație Intrastat**, **excepții** (scutiri
 per declarație). Toate câmpurile au implicite compatibile cu firmele existente: un profil
 construit dintr-o firmă veche dă exact comportamentul de dinainte.
+
+Fiecare rând temporal are `firmaId`, `validFrom`, `validTo` (capăt exclusiv), `recordedAt`
+(momentul UTC în care versiunea a fost consemnată), fotografia completă `values` și autorul.
+Timpul efectiv și timpul înregistrării nu se suprapun semantic: o decizie poate fi introdusă azi
+cu efect de luna viitoare sau poate consemna retroactiv un document primit târziu. La introducerea
+unei revizii viitoare se închide doar intervalul
+precedent; valorile lui nu sunt rescrise. Istoricul înglobat în obiectul firmei din versiunile vechi
+este migrat idempotent în tabel; `createdAt` devine sursa legacy pentru `recordedAt`, iar când nici
+acela nu există se consemnează onest momentul migrării. La generarea XML-ului, profilul perioadei
+este fotografiat și hash-uit; snapshotul include `recordedAt` și un `provenanceHash`, este copiat în
+depunere și rămâne legat de hash-ul artefactului.
 
 `fiscalProfile.expected(profile, period, hasIntracom, hasIntracomServices, hasD301, hasD307, hasD311, hasD107)` derivă lista
 de declarații din profil;
@@ -68,7 +80,8 @@ Trei trepte, în ordinea încrederii:
 |---|---|---|
 | **calcul intern** | XML bine-format + câmpuri obligatorii + CUI/perioadă valide | automat, la generare (`src/validate.js`) |
 | **validat oficial** | trece validatorul ANAF (DUKIntegrator) fără erori | `scripts/valideaza-duk.sh D300/D301/D307/D311/D394/D112/D390/D100/D107/D205/D406 fișier.xml` |
-| **necesită verificare contabilă** | corectitudinea de FOND (încadrări, deduceri, spețe) | întotdeauna — vezi §4 |
+| **revizie externă a motorului** | cazurile fiscale și codul aferent au semnătură + hash valabile | `npm run revizie-fiscala`; 25/25 înainte de artefactul de depunere |
+| **necesită verificare contabilă** | corectitudinea de FOND a firmei (încadrări, deduceri, spețe) | întotdeauna — vezi §4 |
 
 Toate ieșirile fiscale din bateria de referință, inclusiv D107, D301, D307 și D311 în variantele lor distincte,
 trec treapta „validat oficial" pe datele de exemplu.
@@ -93,22 +106,39 @@ Perimetrul, procedura, inventarul simplificărilor cunoscute și cazurile supuse
 ## 5. Cazurile-test aprobate (`test/cazuri-aprobate.js`)
 
 Restul suitei dovedește că aplicația calculează **consecvent**; corpusul acesta dovedește că un
-**om calificat a confirmat cifrele față de lege**. 17 cazuri (cote, salarii, deducere personală,
-concedii, PFA), fiecare cu intrare, cifre așteptate și temei legal.
+**om calificat a confirmat cifrele față de lege**. Corpusul are 25 de cazuri (cote, salarii,
+deducere personală, concedii, PFA și deductibilități), fiecare cu intrare, cifre așteptate și temei.
 
-Când un specialist confirmă un caz, se completează `aprobare` cu cine/când și cu **amprenta**
-tripletei (temei, intrare, cifre) — `node test/cazuri-aprobate.js --semnatura <ID>`. Dacă un caz
-aprobat e modificat ulterior, amprenta nu mai corespunde și suita **pică**: o aprobare nu se
-moștenește tacit de alte cifre. Cazurile nerevizuite doar avertizează (nu blochează `prestart`),
-dar apar nominal la fiecare rulare.
+Când un specialist confirmă un caz, în `src/fiscalReviewApprovals.json` (schema 2) se consemnează
+numele, calitatea, data, temeiul, SHA-256 al dosarului extern, cheia și semnătura Ed25519, plus
+hash-ul dat de `npm run revizie-fiscala -- --hash <ID>`. Cheia publică și verificarea datată a
+calității profesionale stau separat în `src/fiscalReviewTrust.json`; cheia privată nu intră în
+aplicație. Un simplu text în `signature` nu este acceptat.
+
+Hash-ul include manifestul automat al codului/regulilor și fotografia configurației fiscale active,
+inclusiv suprascrierile din Setări. Orice adăugare, ștergere sau modificare în domeniul sursă ori
+orice schimbare a unei cote active invalidează automat aprobările. Poarta cere exact corpusul
+complet, minimum 25 de cazuri și 25/25 aprobări valide. Cazurile nerevizuite nu blochează pornirea
+și calculele, dar blochează artefactele XML de depunere, stările transmis/depus și operațiunile de
+închidere anuală.
+
+Această revizie a motorului nu este aprobarea unei declarații concrete. Pentru fiecare dosar,
+aprobatorul confirmă separat SHA-256-ul complet al fișierului verificat. Dovada documentului
+include actorul, momentul, dimensiunea, hash-ul reviziei fiscale și un `approvalHash`; numai acel
+artefact poate trece din `generata` în `aprobata` și apoi în `transmisa`. O regenerare păstrează
+aprobarea veche în istoric, dar o invalidează ca proiecție curentă.
 
 Regula de aur a corpusului: **un caz-test nu se aliniază niciodată la ce produce codul.** Dacă
 revizorul contestă o cifră, se corectează codul.
 
 ```bash
 node test/cazuri-aprobate.js                 # rulează corpusul + raportul de acoperire
-node test/cazuri-aprobate.js --semnatura ID  # amprenta de lipit în `aprobare`
+node test/cazuri-aprobate.js --semnatura ID  # compatibil: hash-ul runtime curent
 node test/cazuri-aprobate.js --md            # tabelul pentru dosar
+npm run revizie-fiscala                      # status runtime; exit 2 cât timp nu e complet
+npm run revizie-fiscala -- --template ID     # scheletul înregistrării externe
+npm run revizie-fiscala -- --payload ID aprobare.json  # octeții canonici semnați extern
+npm run revizie-fiscala -- --key-id public.pem         # amprenta cheii de înrolat
 ```
 
 ## 6. Jurnalul reviziilor de specialitate

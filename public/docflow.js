@@ -2,7 +2,7 @@
 
 // Fluxul documentelor: upload + scanare (punte/camera), wizardul de tipuri, facturile recurente, SPV inbox + import e-Factura si formularul UNIC de inregistrare (mutat intre Documente/Emite).
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, fmt, accName, toast, api, META, setMeta, applyFiscalDefaults, confirmAction } from './core.js';
+import { $$, $, H, fmt, accName, toast, api, META, USER, setMeta, applyFiscalDefaults, confirmAction, promptAction } from './core.js';
 import { workMonth, fillPeriods } from './periods.js';
 import { loadEntries } from './entries.js';
 import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved, formFlowDiscard } from './formflow.js';
@@ -159,8 +159,17 @@ function renderWizard() {
     if (x.kids) { opwCat = x; renderWizard(); } else pickWizardType(x.tip);
   }));
 }
-function openWizard() { opwCat = null; renderWizard(); $('#opWizard').classList.remove('hidden'); }
-function closeWizard() { $('#opWizard').classList.add('hidden'); }
+let opwReturnFocus = null;
+function openWizard() {
+  opwReturnFocus = document.activeElement;
+  opwCat = null; renderWizard(); $('#opWizard').classList.remove('hidden');
+  setTimeout(() => { const first = $('#opwGrid .opw-card'); if (first) first.focus(); }, 0);
+}
+function closeWizard() {
+  $('#opWizard').classList.add('hidden');
+  if (opwReturnFocus && typeof opwReturnFocus.focus === 'function' && opwReturnFocus.isConnected) opwReturnFocus.focus();
+  opwReturnFocus = null;
+}
 const IESIRE_TIPS = /^(factura_vanzare|factura_storno_vanzare|bon_fiscal_z|factura_simplificata|aviz_livrare|facturare_aviz|livrare_intracomunitara)/;
 function pickWizardType(tip) {
   closeWizard();
@@ -383,22 +392,38 @@ function renderFields(values) {
   const tip = META.types.find((t) => t.id === $('#tipSelect').value);
   const box = $('#dynFields'); box.innerHTML = '';
   tip.fields.forEach((f) => {
-    const v = values[f.name] != null ? values[f.name] : (f.default != null ? f.default : '');
+    const autoNames = new Set(Array.isArray(values._fiscalAutoFields) ? values._fiscalAutoFields : []);
+    const supplied = values[f.name] != null && values[f.name] !== '';
+    const fiscalAuto = !!f.fiscalRate && (!supplied || autoNames.has(f.name));
+    const v = fiscalAuto ? ((META.fiscal || {})[f.fiscalRate] || 0)
+      : (supplied ? values[f.name] : (f.default != null ? f.default : ''));
     const id = 'fld_' + f.name;
     let input;
     const req = f.required ? ' required' : '';
     if (f.type === 'select') input = `<select id="${id}"${req}>${f.options.map((o) => `<option value="${o.value}" ${o.value === String(v) ? 'selected' : ''}>${o.label}</option>`).join('')}</select>`;
     else if (f.type === 'account') input = `<select id="${id}">${accountOptions(v)}</select>`;
     else if (f.type === 'date') input = `<input id="${id}" type="date" value="${v || ''}"${req} />`;
-    else if (f.type === 'number') input = `<input id="${id}" type="number" step="${H(f.step || '0.01')}" value="${v === '' ? '' : v}"${req} />`;
+    else if (f.type === 'number') input = `<input id="${id}" type="number" step="${H(f.step || '0.01')}" value="${v === '' ? '' : v}"${req}${f.fiscalRate ? ` data-fiscal-rate="${H(f.fiscalRate)}" data-fiscal-auto="${fiscalAuto ? '1' : '0'}"` : ''} />`;
     else if (f.type === 'items') input = `<div class="items-editor" id="${id}"><div class="items-rows"></div><button type="button" class="btn ghost small additem">＋ adaugă linie</button></div>`;
     else if (f.type === 'stoc') input = `<div class="stoc-editor" id="${id}"><div class="stoc-rows"></div><button type="button" class="btn ghost small addstoc">＋ produs din stoc</button><div class="muted" data-u="u25">Costul mărfii vândute (607=371) se calculează automat prin metoda firmei (<b>CMP/FIFO</b>), la postare.</div></div>`;
     else if (f.type === 'checkbox') input = `<input id="${id}" type="checkbox" ${v && v !== 'false' ? 'checked' : ''} data-u="u26" />`;
     else if (f.type === 'leasing') input = `<div class="leasing-picker" id="${id}"><select class="lp-contract"><option value="">— alege contractul —</option></select><input class="lp-period" type="month" /><button type="button" class="btn ghost small lp-load">preia rata</button><span class="lp-msg muted"></span></div>`;
     else input = `<input id="${id}" type="text" value="${(v || '').toString().replace(/"/g, '&quot;')}"${req} />`;
     const wide = (f.name === 'explicatie' || f.type === 'account' || f.type === 'select' || f.type === 'items' || f.type === 'stoc' || f.type === 'checkbox' || f.type === 'leasing') ? ' full' : '';
-    box.insertAdjacentHTML('beforeend', `<label class="${wide ? 'full' : ''}">${f.label}${input}</label>`);
+    const cls = (wide ? 'full' : '') + (f.type === 'account' || f.advanced ? ' field-advanced' : '') + (f.special ? ' field-special' : '');
+    box.insertAdjacentHTML('beforeend', `<label class="${cls.trim()}">${H(f.label)}${input}</label>`);
   });
+  // Întrebările fiscale rare rămân accesibile în modul simplu, dar nu concurează cu data,
+  // partenerul și sumele. Conturile contabile sunt doar implementarea tehnică și se ascund;
+  // valorile lor implicite rămân în DOM și ajung neschimbate la server.
+  const speciale = [...box.querySelectorAll('.field-special')];
+  if (speciale.length) {
+    const det = document.createElement('details'); det.className = 'special-fields full';
+    const sum = document.createElement('summary'); sum.textContent = 'Situații speciale (mașină, deducere parțială TVA)';
+    const grid = document.createElement('div'); grid.className = 'special-fields-grid';
+    speciale.forEach((el) => grid.appendChild(el));
+    det.append(sum, grid); det.open = !document.body.classList.contains('simple-ui'); box.appendChild(det);
+  }
   // initializeaza editoarele de linii
   box.querySelectorAll('.items-editor').forEach((ed) => {
     const name = ed.id.replace('fld_', '');
@@ -416,19 +441,49 @@ function renderFields(values) {
     const name = ed.id.replace('fld_', '');
     initLeasingPicker(ed, values[name]);
   });
-  box.querySelectorAll('input,select').forEach((el) => el.addEventListener('input', updatePreview));
+  box.querySelectorAll('input,select').forEach((el) => el.addEventListener('input', () => {
+    if (el.dataset.fiscalRate && !el.dataset.fiscalUpdating) el.dataset.fiscalAuto = '0';
+    updatePreview();
+  }));
+  const dataInput = $('#fld_data');
+  if (dataInput) dataInput.addEventListener('change', refreshFiscalFields);
+  refreshFiscalFields();
   updatePreview();
 }
+let fiscalFieldsRequest = 0;
+async function refreshFiscalFields() {
+  const data = ($('#fld_data') || {}).value;
+  if (!data) return;
+  const mine = ++fiscalFieldsRequest; let resolved;
+  try { resolved = await api('/api/fiscal-rules-at?date=' + encodeURIComponent(data), { quiet: true }); }
+  catch (_) { return; }
+  if (mine !== fiscalFieldsRequest) return;
+  let changed = false;
+  document.querySelectorAll('#dynFields [data-fiscal-rate][data-fiscal-auto="1"]').forEach((el) => {
+    const value = resolved.rates && resolved.rates[el.dataset.fiscalRate];
+    if (value == null || String(value) === el.value) return;
+    el.dataset.fiscalUpdating = '1'; el.value = value; delete el.dataset.fiscalUpdating; changed = true;
+  });
+  if (changed) updatePreview();
+}
+document.addEventListener('contab:ui-mode', (e) => {
+  const simplu = e.detail && e.detail.mode === 'simplu';
+  $$('#dynFields .special-fields').forEach((d) => { d.open = !simplu; });
+});
 function addItemRow(ed, it) {
   const row = document.createElement('div');
   row.className = 'item-row';
+  const cotaAuto = it._cotaAuto !== false && it.cota == null;
   row.innerHTML = `<input class="it-nume" placeholder="Denumire" value="${H(it.nume)}">
     <input class="it-cant" type="number" step="0.001" placeholder="Cant." value="${it.cantitate != null ? it.cantitate : ''}">
     <input class="it-um" placeholder="UM" value="${it.um || 'buc'}">
     <input class="it-pret" type="number" step="0.01" placeholder="Preț" value="${it.pret != null ? it.pret : ''}">
-    <input class="it-cota" type="number" placeholder="Cotă%" value="${it.cota != null ? it.cota : 21}">
+    <input class="it-cota" type="number" placeholder="Cotă%" value="${it.cota != null ? it.cota : ((META.fiscal || {}).tvaStandard || 0)}" data-fiscal-rate="tvaStandard" data-fiscal-auto="${cotaAuto ? '1' : '0'}">
     <button type="button" class="btn ghost small delitem">✕</button>`;
   ed.querySelector('.items-rows').appendChild(row);
+  row.querySelector('.it-cota').addEventListener('input', (e) => {
+    if (!e.target.dataset.fiscalUpdating) e.target.dataset.fiscalAuto = '0';
+  });
 }
 function readItems(ed) {
   return [...ed.querySelectorAll('.item-row')].map((r) => ({
@@ -437,6 +492,7 @@ function readItems(ed) {
     um: r.querySelector('.it-um').value,
     pret: r.querySelector('.it-pret').value,
     cota: r.querySelector('.it-cota').value,
+    _cotaAuto: r.querySelector('.it-cota').dataset.fiscalAuto === '1',
   })).filter((it) => it.nume && parseFloat(it.cantitate) > 0);
 }
 let STOCCACHE = null;
@@ -556,6 +612,8 @@ function collectFields() {
     if (f.type === 'checkbox') { const el = $('#fld_' + f.name); if (el) out[f.name] = el.checked; return; }
     const el = $('#fld_' + f.name); if (el) out[f.name] = el.value;
   });
+  out._fiscalAutoFields = [...document.querySelectorAll('#dynFields [id^="fld_"][data-fiscal-rate][data-fiscal-auto="1"]')]
+    .map((el) => el.id.replace(/^fld_/, ''));
   return out;
 }
 // ── Previzualizarea articolului contabil ──
@@ -604,16 +662,31 @@ function updatePreview() {
 }
 async function submitEntry(ciorna) {
   try {
-    const res = await api('/api/entries', {
+    const payload = {
+      tip: $('#tipSelect').value, fields: collectFields(),
+      fileId: CURRENT && CURRENT.documentId, spvMsgId: CURRENT && CURRENT.spvMsgId, ciorna: !!ciorna,
+      // De ce a fost nevoie de om — optional, dar e singurul lucru pe care diferenta de campuri
+      // nu-l poate spune. Ajunge in raportul pe furnizori/formate.
+      motivRevizuire: ($('#motivRevizuire') && $('#motivRevizuire').value) || '',
+    };
+    const save = () => api('/api/entries', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tip: $('#tipSelect').value, fields: collectFields(),
-        fileId: CURRENT && CURRENT.documentId, spvMsgId: CURRENT && CURRENT.spvMsgId, ciorna: !!ciorna,
-        // De ce a fost nevoie de om — optional, dar e singurul lucru pe care diferenta de campuri
-        // nu-l poate spune. Ajunge in raportul pe furnizori/formate.
-        motivRevizuire: ($('#motivRevizuire') && $('#motivRevizuire').value) || '',
-      }),
+      body: JSON.stringify(payload),
     });
+    let res;
+    try { res = await save(); } catch (err) {
+      const conflict = err.data || {};
+      if (conflict.code !== 'DUPLICATE_ENTRY' || USER.role !== 'admin') throw err;
+      const reason = await promptAction(
+        'Documentul coincide cu articolul ' + conflict.duplicateId + '. Derogarea nu modifică articolul existent și va rămâne permanent în audit.',
+        { label: 'Motivul derogării', placeholder: 'Ex.: același număr în două serii interne distincte…',
+          minLength: 10, required: true, multiline: true, danger: true,
+          confirmLabel: 'Aprobă derogarea și salvează' }
+      );
+      if (reason == null) return;
+      payload.duplicateOverride = { duplicateId: conflict.duplicateId, reason };
+      res = await save();
+    }
     // Avertismentele descărcării de gestiune (stoc insuficient) veneau de la server, dar nu le
     // afișa nimeni: o vânzare peste stoc se salva cu cost incomplet și fără niciun semn. Se arată
     // ca alertă, nu ca mesaj obișnuit — schimbă marja și fișa de magazie.

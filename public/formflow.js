@@ -1,6 +1,6 @@
 'use strict';
 
-import { confirmAction } from './core.js';
+import { confirmAction, uiLocale } from './core.js';
 
 /*
  * Flux reutilizabil pentru formularele lungi.
@@ -129,7 +129,7 @@ function make(tag, className, text) {
 
 function draftTime(savedAt) {
   if (!Number.isFinite(Number(savedAt))) return '';
-  return new Date(Number(savedAt)).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+  return new Date(Number(savedAt)).toLocaleTimeString(uiLocale(), { hour: '2-digit', minute: '2-digit' });
 }
 
 function groupsFromMarkers(form, config) {

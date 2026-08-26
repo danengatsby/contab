@@ -483,6 +483,7 @@ section('Declarații: eticheta spune UNDE ești față de termen, nu doar „Ned
   // Starea SALVATĂ bate derivarea: „Depusă" rămâne „Depusă".
   eq('starea salvată rămâne vizibilă', s('depusa', 'gata').t, 'Depusă');
   eq('...și „Scutită" la fel', s('scutita', 'gata').t, 'Scutită');
+  eq('aprobarea documentului are stare distinctă de transmitere', s('aprobata', 'termen').t, 'Aprobată');
   // „Generată" (XML descărcat, nedepus la ANAF) își păstrează eticheta, dar restanța se adaugă.
   eq('„Generată" rămâne generată', s('generata', 'restanta').t, 'Generată');
   ok('...cu marcajul de restanță alături', s('generata', 'restanta').restanta === true);
@@ -684,19 +685,19 @@ section('Pagina nu derulează pe orizontală: convenția tabelelor ține la oric
   ok('bula de ajutor din ultima coloană nu mai iese din ecran', /\.grid2>\*:last-child h3 \.cinfo \.cpop/.test(css));
 
   // A doua cauză, la lățimi de tabletă: bara de unelte a unui ecran (titlu + selectoare + butoane)
-  // nu se rupea decât sub 700px. Cu bara laterală de 250px, o tabletă de 900px lasă ~650px pentru
-  // conținut — iar o bară care nu se rupe depășește garantat la o lățime suficient de mică.
+  // nu se rupea decât sub 700px. Indiferent de carcasa din jur, o bară care nu se rupe depășește
+  // garantat la o lățime suficient de mică.
   ok('bara de unelte se rupe pe rând nou la orice lățime', /\.toolbar\{display:flex;flex-wrap:wrap/.test(faraMedia));
 
   // A treia: bulele de ajutor stau și în mijlocul formularelor, unde nicio regulă STRUCTURALĂ nu le
   // poate prinde (ancorarea de mai sus acoperă doar ultima coloană a unei grile). Coloana de
   // conținut le taie, ca o decorațiune absolută să nu poată împinge pagina.
-  // `clip`, NU `hidden`: `hidden` ar face din `main` un container de derulare și ar strica bara
-  // laterală `sticky`. Layout-ul autentificat are acum un singur proprietar, erp.css.
+  // `clip`, NU `hidden`: `hidden` ar face din `main` un container de derulare și ar schimba
+  // comportamentul elementelor sticky. Layout-ul autentificat are un singur proprietar, erp.css.
   const erpCss = fs.readFileSync(path.join(ROOT, 'public', 'erp.css'), 'utf8');
   ok('coloana de conținut taie decorațiunile care ar împinge pagina',
     /body\.erp \.shell > main\s*\{[^}]*overflow-x:\s*clip/.test(erpCss));
-  ok('...cu `clip`, nu `hidden` (altfel bara laterală sticky s-ar rupe)',
+  ok('...cu `clip`, nu `hidden` (altfel elementele sticky s-ar rupe)',
     !/body\.erp \.shell > main\s*\{[^}]*overflow-x:\s*hidden/.test(erpCss));
 }
 
@@ -747,33 +748,41 @@ section('Scanerul local: oprit înseamnă ascuns, nu gri');
     /\bdisabled\b/.test('<button id="scannerBtn" class="btn" disabled>') && !/\bdisabled\b/.test('<button id="scannerBtn" class="btn">'));
 }
 
-section('Uneltele globale: toate sus, pe fiecare pagină');
+section('Uneltele globale: în navigatorul unic, fără panou separat');
 {
-  // Utilitarele globale au stat jos în bara laterală, în spatele unui al doilea click pe „Unelte".
-  // Acum același nod este mutat în antetul contextual comun tuturor taburilor: toate acțiunile
-  // sunt vizibile direct, iar pe telefon rândul se derulează în el însuși, nu lățește pagina.
+  // Cele mai folosite cinci utilitare stau direct după Acasă; restul rămân în grupul Unelte.
+  // Același arbore devine sertar pe mobil; bara contextuală rămâne strict pentru pagină,
+  // firmă și perioadă.
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const cap = html.indexOf('<header class="topbar">');
   const meniu = html.indexOf('<nav class="tabs"', cap);
   ok('poarta chiar găsește bara de sus', cap >= 0 && meniu > cap);
-  const unelte = (html.match(/<nav class="side-tools"[\s\S]*?<\/nav>/) || [''])[0];
-  ok('containerul semantic al uneltelor există', unelte !== '');
+  const navigator = html.slice(meniu, html.indexOf('</nav>', meniu));
+  const dupaAcasa = (navigator.match(/data-tab="dashboard"[^>]*>[\s\S]*?<\/button>([\s\S]*?)<button data-tab="notificari"/) || ['', ''])[1];
+  const iduriDirecte = [...dupaAcasa.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
+  eq('după Acasă urmează exact Ghid, Caută, Temă, Expert și Dicționar', iduriDirecte.join(','),
+    'toolGhid,paletaBtn,themeBtn,uiModeBtn,glossaryBtn');
+  ok('cele patru comenzi fără pagină sunt acțiuni directe ale navigatorului',
+    (dupaAcasa.match(/class="nav-action"/g) || []).length === 4);
+  const unelte = (navigator.match(/<div class="navgroup" id="navgrupUnelte">[\s\S]*?<div class="navmenu" id="sideTools">([\s\S]*?)<\/div>\s*<\/div>/) || ['', ''])[1];
+  ok('Unelte este un grup al navigatorului principal', unelte !== '' && /\ud83e\uddf0 Unelte/.test(navigator));
   const iduriUnelte = [...unelte.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
-  eq('Ghid, Mesaje și cele șase utilitare sunt în aceeași bandă', iduriUnelte.join(','),
-    'toolGhid,toolMesaje,paletaBtn,glossaryBtn,uiModeBtn,themeBtn,densityBtn,tourBtn');
-  ok('Cartea este în aceeași bandă și rămâne legătură în filă nouă',
+  eq('Cartea, Mesaje, Densitate și Tur rămân în dropdownul Unelte', iduriUnelte.join(','),
+    'toolMesaje,densityBtn,tourBtn');
+  ok('Cartea este în același dropdown și rămâne legătură în filă nouă',
     /id="toolCartea"[^>]*target="_blank"[^>]*rel="noopener"/.test(unelte));
-  const meniuLateral = html.slice(meniu, html.indexOf('</nav>', meniu));
-  ok('Ghid, Cartea și Mesaje nu mai apar în meniul lateral',
-    !/data-tab="(?:ghid|mesaje)"|href="\/carte\/"/.test(meniuLateral));
-  ok('vechiul buton care ascundea uneltele a dispărut', !html.includes('id="toolsBtn"'));
+  ok('Ghid este direct, iar Cartea și Mesaje rămân în submeniul navigatorului',
+    /data-tab="ghid"/.test(dupaAcasa) && /data-tab="mesaje"/.test(unelte) && /href="\/carte\/"/.test(unelte));
+  ok('Portofoliu a dispărut numai din navigator',
+    !/data-tab="portofoliu"/.test(navigator) && html.includes('id="tab-portofoliu"'));
+  ok('vechiul panou și butoanele lui intermediare au dispărut',
+    !/<nav class="side-tools"/.test(html) && !/id="(?:toolsBtn|moreToolsBtn)"/.test(html));
 
-  const bara = html.slice(cap, meniu).replace(/<nav class="side-tools"[\s\S]*?<\/nav>/, ' ');
-  ok('poarta chiar a scos uneltele din perimetru', !bara.includes('id="glossaryBtn"'));
-  const PERMISE = new Set(['prevMonth', 'nextMonth', 'navToggleBtn', 'logoutBtn']);
+  const bara = html.slice(cap, meniu);
+  const PERMISE = new Set(['prevMonth', 'nextMonth', 'navToggleBtn', 'logoutBtn', 'imperStop']);
   const inBara = [...bara.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
   const intruse = inBara.filter((id) => !PERMISE.has(id));
-  ok('bara mobilă păstrează doar navigarea și ieșirea'
+  ok('primul rând al antetului păstrează doar navigarea, ieșirea și revenirea din impersonare'
     + (intruse.length ? ' — NEAȘTEPTATE: ' + intruse.join(', ') : ''), intruse.length === 0);
   ok('poarta chiar vede butoane (nu o listă goală)', inBara.length >= 3);
 
@@ -790,38 +799,52 @@ section('Uneltele globale: toate sus, pe fiecare pagină');
   ok('ieșirea rămâne accesibilă direct în bara mobilă',
     /@media \(max-width: 700px\)[\s\S]*body\.erp \.topbar #logoutBtn\s*\{\s*order:\s*3;\s*width:\s*auto/.test(erpCssMobil));
 
-  // Uneltele sunt mutate, nu clonate; listener-ele și starea Simplu/Expert rămân aceleași.
+  // Bara contextuală nu mai preia uneltele; ele rămân în navigator, o singură dată.
   const erp = fs.readFileSync(path.join(PUB, 'erp.js'), 'utf8');
-  ok('antetul contextual preia nodul real al uneltelor',
-    /var unelte = \$\('#sideTools'\);[\s\S]{0,80}bar\.appendChild\(unelte\)/.test(erp));
+  ok('antetul contextual nu mută și nu clonează grupul Unelte',
+    !/appendChild\(unelte\)|#appContext #sideTools|cloneNode/.test(erp));
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  ok('toate uneltele sunt vizibile direct în antet',
-    /body\.erp \.app-context \.side-tools\s*\{[\s\S]{0,100}display:\s*flex/.test(erpCssMobil));
-  ok('banda se derulează în ea însăși când nu încape',
-    /body\.erp \.app-context \.side-tools\s*\{[^}]*overflow-x:\s*auto/.test(erpCssMobil));
-  ok('regulile uneltelor aparțin shell-ului, nu CSS-ului vechi',
-    !/side-tools|toolsBtn|tools-open|mod-expert/.test(css));
+  ok('dropdownul stilizează atât butoanele, cât și legătura Cărții',
+    /#tabs \.navmenu button:not\(\.hidden\),\s*\nbody\.erp #tabs \.navmenu a\.navlink:not\(\.hidden\)/.test(erpCssMobil));
+  ok('acțiunile directe au același stil desktop și mobil ca destinațiile',
+    /#tabs > button\.nav-action:not\(\.hidden\)/.test(erpCssMobil)
+      && /\.topbar\.nav-open #tabs > button\.nav-action:not\(\.hidden\)/.test(erpCssMobil));
+  ok('pe mobil alegerea unei acțiuni directe închide sertarul',
+    /button\[data-tab\], button\.nav-action, a\.navlink/.test(erp));
+  ok('panoul Unelte nu mai are reguli CSS desktop sau mobil',
+    !/side-tools|tools-open|more-tools-btn/.test(erpCssMobil + css));
   const js = fs.readFileSync(path.join(PUB, 'simplemode.js'), 'utf8');
-  ok('nu a rămas logică de panou ascuns', !/tools-open|inchideUnelte|#toolsBtn/.test(js + erp));
+  ok('modul simplu și shell-ul nu dublează logica meniului mobil', !/tools-open|inchideUnelte|#toolsBtn/.test(js + erp));
   const app = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
-  ok('navigarea logică include destinațiile mutate în Unelte',
-    /NAV_TAB_SELECTOR = '#tabs button\[data-tab\], #sideTools button\[data-tab\]'/.test(app)
-    && /#sideTools'[\s\S]{0,180}navigateFromTabButton/.test(app));
-  ok('titlul și schimbarea perioadei urmăresc și taburile din Unelte',
-    /#tabs button\[data-tab\]\.active, #sideTools button\[data-tab\]\.active/.test(erp)
-    && /#tabs button\[data-tab\]\.active, #sideTools button\[data-tab\]\.active/.test(
-      fs.readFileSync(path.join(PUB, 'periods.js'), 'utf8')));
+  ok('navigarea logică are un singur selector pentru toate destinațiile',
+    /NAV_TAB_SELECTOR = '#tabs button\[data-tab\]'/.test(app));
+  ok('titlul, perioada și căutarea citesc exclusiv navigatorul unic',
+    !/#tabs button\[data-tab\][^'"\n]*, #sideTools/.test(erp + app
+      + fs.readFileSync(path.join(PUB, 'periods.js'), 'utf8')
+      + fs.readFileSync(path.join(PUB, 'paleta.js'), 'utf8')));
 }
 
 section('Carcasa aplicației: o singură navigație și context unic');
 {
-  // #tabs și #sideTools împart aceeași navigare logică, fără destinații duplicate. Bara contextuală
-  // mută controalele reale pentru firmă/perioadă/unelte; nu le clonează și nu generează altele.
+  // #sideTools este un submeniu din #tabs, fără destinații duplicate. Bara contextuală
+  // mută doar controalele reale pentru firmă/perioadă; nu le clonează și nu generează altele.
   const erp = fs.readFileSync(path.join(PUB, 'erp.js'), 'utf8');
   ok('nu se mai construiește un meniu superior duplicat', !/construiesteMeniu|id\s*=\s*['"]erpMenu/.test(erp));
   ok('nu se mai construiește un ribbon duplicat', !/construiesteUnelte|id\s*=\s*['"]erpTools/.test(erp));
   const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
   const app = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
+  const erpCssTop = fs.readFileSync(path.join(PUB, 'erp.css'), 'utf8');
+  ok('desktopul folosește toată lățimea: shell bloc, fără variabilă de sidebar',
+    /body\.erp \.shell\s*\{[^}]*display:\s*block/.test(erpCssTop) && !/--app-sidebar/.test(erpCssTop));
+  ok('arborele unic este banda de meniu de sus și se poate așeza pe mai multe rânduri',
+    /body\.erp \.topbar #tabs\s*\{[^}]*flex-wrap:\s*wrap/.test(erpCssTop)
+      && /body\.erp \.topbar\s*\{[^}]*width:\s*100%/.test(erpCssTop));
+  ok('submeniurile desktop sunt dropdownuri, nu acordeon lateral',
+    /body\.erp #tabs \.navmenu\s*\{[^}]*position:\s*absolute\s*!important/.test(erpCssTop)
+      && /top:\s*calc\(100% \+ 6px\)/.test(erpCssTop));
+  ok('telefonul readuce același meniu în sertar vertical',
+    /\.topbar\.nav-open #tabs\s*\{[^}]*flex-direction:\s*column/.test(erpCssTop)
+      && /\.topbar\.nav-open #tabs \.navmenu\s*\{[^}]*position:\s*static\s*!important/.test(erpCssTop));
   const eticheteMeniu = [...html.matchAll(/<button[^>]*data-tab="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)]
     .map((m) => ({ tab: m[1], text: m[2].replace(/<[^>]+>/g, ' ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim() }));
   const faraNume = eticheteMeniu.filter((x) => !/\p{L}/u.test(x.text));
@@ -917,6 +940,33 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
   const stepCount = (id) => 1 + (formBlock(id).match(/\bsect-form\b/g) || []).length;
 
   eq('firma are patru pași logici', stepCount('companyForm'), 4);
+  const blocFirma = formBlock('companyForm');
+  const inceputAvansat = blocFirma.indexOf('Configurare avansată pentru contabil');
+  const bazaFirma = blocFirma.slice(0, inceputAvansat);
+  const avansatFirma = blocFirma.slice(inceputAvansat, blocFirma.indexOf('Situații financiare anuale', inceputAvansat));
+  ok('primul pas al firmei este traseul scurt CUI → confirmare → două întrebări',
+    inceputAvansat > 0
+      && ['data-quick-step="1"', 'data-quick-step="2"', 'data-quick-step="3"', 'id="companyQuickSave"']
+        .every((text) => bazaFirma.includes(text))
+      && bazaFirma.indexOf('name="cui"') < bazaFirma.indexOf('name="nume"')
+      && /<select name="tvaPlatitor">[\s\S]*value="false"[\s\S]*value="true"/.test(bazaFirma));
+  ok('regimurile TVA rare stau numai în configurarea avansată pentru contabil',
+    ['tvaLaIncasare', 'tvaArt317', 'tvaCodAnulat', 'dataAnulareTva', 'proRataTva', 'd406Cadenta']
+      .every((name) => avansatFirma.includes('name="' + name + '"'))
+      && !bazaFirma.includes('name="tvaLaIncasare"')
+      && !bazaFirma.includes('name="tvaCodAnulat"'));
+  ok('salvarea de bază validează identitatea și revine la Acasă, fără a forța pasul avansat',
+    /function campuriFirmaBazaLipsa\(/.test(appSrc)
+      && /e\.submitter\.id === 'companyQuickSave'/.test(appSrc)
+      && /if \(quick\)[\s\S]{0,260}goTab\('dashboard'\)/.test(appSrc)
+      && /#companyForm > \.form-step\[data-step-index="0"\][^{]*\.form-step-actions\s*\{\s*display:\s*none/.test(dsCss));
+  ok('progresul configurării firmei măsoară traseul de bază, nu datele contabile opționale',
+    /progressFields:\s*\(form\)\s*=>\s*\['nume',[\s\S]{0,360}\['regimImpozit'\][\s\S]{0,80}\.map/.test(appSrc)
+      && !/progressFields:\s*\(form\)\s*=>[\s\S]{0,500}'categorieRaportare'/.test(appSrc));
+  ok('alegerea TVA din formularul firmei este explicită și ajunge ca boolean la API',
+    /function firmaPlatitoareTva\([\s\S]{0,180}value\) === 'true'/.test(appSrc)
+      && /tvaPlatitor:\s*firmaPlatitoareTva\(f\)/.test(appSrc)
+      && !/f\.tvaPlatitor\.checked/.test(appSrc));
   eq('angajatul are cinci pași logici, fără pas gol pentru buton', stepCount('angajatForm'), 5);
   eq('documentul separă datele de verificare/salvare', stepCount('entryForm'), 2);
   eq('mijlocul fix are identificare, amortizare și punere în funcțiune', stepCount('assetForm'), 3);
@@ -1024,6 +1074,31 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
   const blocReg = startReg < 0 ? '' : html.slice(startReg, html.indexOf('</form>', startReg));
   ok('...iar formularul de înscriere nu poartă marcatori de pas',
     startReg > 0 && !blocReg.includes('sect-form'));
+  ok('înscrierea cere explicit TVA Da/Nu, fără răspuns implicit',
+    (blocReg.match(/name="tvaPlatitor"/g) || []).length === 2
+      && !/name="tvaPlatitor"[^>]*checked/.test(blocReg));
+  ok('emailul de recuperare este obligatoriu și listarea contabilului este opt-in',
+    /name="email"[^>]*required/.test(blocReg)
+      && !/name="disponibilContabil"[^>]*checked/.test(blocReg));
+  const avertTest = 'Folosește doar date fictive în etapa de test.';
+  ok('avertismentul despre date fictive apare înainte de login, înainte de înscriere și în aplicație',
+    (html.match(new RegExp(avertTest.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length >= 3
+      && /data-test-stage-warning="login"/.test(html)
+      && /data-test-stage-warning="register"/.test(blocReg)
+      && /data-test-stage-warning="app"/.test(html));
+  ok('zonele care cer documente și date salariale repetă avertismentul la locul introducerii',
+    /data-test-stage-warning="upload"[\s\S]{0,420}id="drop"/.test(html)
+      && /data-test-stage-warning="employee"[\s\S]{0,520}id="angajatForm"/.test(html));
+  const prezentareSrc = fs.readFileSync(path.join(PUB, 'prezentare.html'), 'utf8');
+  const prezentareJsSrc = fs.readFileSync(path.join(PUB, 'prezentare.js'), 'utf8');
+  ok('pagina publică avertizează înainte de CTA și demo-ul nu mai promite date reale',
+    prezentareSrc.indexOf(avertTest) > 0
+      && prezentareSrc.indexOf(avertTest) < prezentareSrc.indexOf('class="hero"')
+      && /Vezi demo cu date fictive/.test(prezentareSrc)
+      && /Vezi demo cu date fictive/.test(prezentareJsSrc)
+      && !/Vezi demo cu date reale/.test(prezentareSrc + prezentareJsSrc));
+  ok('județul este ales după nume, nu introdus ca un cod RO-*',
+    /<select name="judet">/.test(blocReg) && /value="RO-B">București/.test(blocReg));
   ok('șablonul recurent păstrează ciorna la rerandare și o elimină după salvare',
     /formFlowFlush\(form\)[\s\S]{0,380}formFlowLoaded\(form, 'nou'\)/.test(fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8'))
       && /formFlowSaved\(f\); f\.reset\(\)/.test(fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8')));
@@ -1219,16 +1294,17 @@ section('Bulele de ajutor ⓘ chiar au unde să se prindă (fiecare titlu explic
     /<details class="card" id="emailTplBox">\s*<summary[^>]*>📧 Șabloane email/.test(html));
 }
 
-section('Ecranele „1 · alege / 2 · verifică": coloana a doua nu se rezervă degeaba');
+section('Ecranele „1 · alege / 2 · verifică": formularul are lățime de lucru');
 {
   // Formularul e UNIC în aplicație și se MUTĂ între gazde (docflow.js). Până la alegerea unui tip,
   // coloana a doua nu conține nimic — își rezerva jumătate de ecran ca să anunțe că e goală.
   // Măsurat pe 1440×900: pasul 2 ocupa 605px lățime; acum, până la alegere, ecranul e pe o
-  // coloană, iar pasul 2 e o bandă de 93px. La deschiderea formularului revin cele două coloane.
+  // coloană, iar pasul 2 e o bandă de 93px. După alegere, formularul rămâne tot pe lățime completă:
+  // selectoarele de partener și situațiile speciale nu mai sunt strivite în coloana din dreapta.
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  ok('regula comută pe o coloană cât timp formularul nu e în ecran',
-    /\.grid2\.pas12:not\(:has\(#entryForm:not\(\.hidden\)\)\)\{grid-template-columns:1fr\}/.test(css));
+  ok('fluxul alege/verifică rămâne pe o coloană și cu formularul deschis',
+    /\.grid2\.pas12\{grid-template-columns:1fr\}/.test(css));
   // Regula se sprijină pe UN singur `#entryForm` mutat între gazde. Dacă ar apărea al doilea,
   // selecția `:has()` ar fi adevărată în ambele ecrane deodată.
   eq('există exact un formular de înregistrare în pagină', (html.match(/id="entryForm"/g) || []).length, 1);
@@ -1420,6 +1496,31 @@ const fallbackHtml = livrabile.declBadge('__inexistenta__', false);
 for (const st of serverDecl) {
   ok('starea „' + st + '" are eticheta proprie in frontend', st === 'nedepusa' || livrabile.declBadge(st, false) !== fallbackHtml);
 }
+const timelineHtml = livrabile.renderDossierTimeline([
+  { id: 'profile:1', kind: 'fiscal-profile', eventType: 'profile.changed',
+    occurredAt: '2026-07-02T10:30:00.000Z', effectiveAt: '2026-07-01', validTo: null,
+    revisionId: 'fpr-2', note: 'trecere la profit', appliesToPeriod: true, usedByDossier: true,
+    uses: [{ kind: 'submission', ordinal: 2 }],
+    changes: [{ field: 'regimImpozit', before: 'micro', after: 'profit' }] },
+  { id: 'state:9', kind: 'filing', eventType: 'submission.amended', occurredAt: '2026-07-03T11:00:00.000Z',
+    sequence: 9, from: 'depusa', to: 'depusa', actor: { username: 'ana' }, ordinal: 2,
+    rectificativa: true, reason: 'factură primită târziu', submissionHash: 'a'.repeat(64),
+    eventHash: 'b'.repeat(64), receiptReferences: ['R-2'], receiptHashes: ['c'.repeat(64)] },
+]);
+ok('cronologia UI arată schimbarea de profil și separă data efectivă',
+  timelineHtml.includes('Schimbare de profil fiscal') && timelineHtml.includes('Efectiv:')
+    && timelineHtml.includes('02.07.2026 · 10:30 UTC') && timelineHtml.includes('01.07.2026'));
+ok('cronologia UI arată rectificativa cu ordinal, motiv și recipisă',
+  timelineHtml.includes('Rectificativă arhivată') && timelineHtml.includes('#2 · rectificativă')
+    && timelineHtml.includes('factură primită târziu') && timelineHtml.includes('R-2'));
+ok('cronologia UI afișează dovezile scurt, păstrând hash-ul complet în title',
+  timelineHtml.includes('aaaaaaaaaaaa…') && timelineHtml.includes('title="' + 'a'.repeat(64) + '"'));
+const timelineProfilePos = timelineHtml.indexOf('Schimbare de profil fiscal');
+const timelineRectPos = timelineHtml.indexOf('Rectificativă arhivată');
+ok('interfața păstrează ordinea serverului, de la vechi la nou', timelineProfilePos >= 0 && timelineProfilePos < timelineRectPos);
+const livrabileSrc = fs.readFileSync(path.join(PUB, 'livrabile.js'), 'utf8');
+ok('dosarul și cronologia nu sunt ascunse în modul simplificat',
+  /<th>Dosar \/ cronologie<\/th>/.test(livrabileSrc) && !/<th class="adv">Dosar \/ cronologie<\/th>/.test(livrabileSrc));
 // Sensul articolului de provizion se inverseaza dupa semn — o inversare arata articolul invers.
 eq('provizion de constituit (mai e nevoie)', livrabile.provizionDirectie(500), '6814 = 491');
 eq('provizion de reluat (existentul e prea mare)', livrabile.provizionDirectie(-500), '491 = 7814, reluare');
@@ -1714,6 +1815,7 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   };
   const hProof = inchidere.proofsHtml(stDecl, [{ tip: 'd300' }, { tip: 'd394' }]);
   eq('starea se afișează în scriere românească, nu valoarea internă', inchidere.statusLabel('nedepusa'), 'nedepusă');
+  eq('cockpitul recunoaște starea nouă de document aprobat', inchidere.statusLabel('aprobata'), 'aprobată');
   eq('statusul necunoscut nu se pierde', inchidere.statusLabel('altceva'), 'altceva');
   eq('statusul lipsă dă liniuță', inchidere.statusLabel(undefined), '—');
   ok('tabelul folosește eticheta, nu valoarea brută', hProof.includes('nedepusă') && !hProof.includes('>nedepusa<'));
@@ -1725,6 +1827,25 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   ok('numele declarației e escapat', hProof.includes('D394 — &lt;b&gt;info&lt;/b&gt;'));
   ok('numele validatorului e escapat', hProof.includes('ma&lt;ria'));
   eq('fără declarații așteptate: mesaj, nu tabel gol', inchidere.proofsHtml({ steps: [] }, []).includes('<table>'), false);
+}
+
+section('Dosar anual persistent: istoric versionat și integritate vizibilă (entries.js)');
+{
+  const history = entries.annualArchiveVersionsHtml({ closed: true, versions: [
+    { version: 1, createdAt: '2027-05-01T10:15:00.000Z', createdByName: 'maria', reason: 'Sigilarea inițială',
+      bytes: 1536, zipSha256: 'a'.repeat(64), verified: true },
+    { version: 2, createdAt: '2027-05-02T11:30:00.000Z', createdByName: '<admin>', reason: 'Rectificare <b>aprobată</b>',
+      bytes: 2097152, zipSha256: 'b'.repeat(64), verified: false, verificationError: 'semnătură <invalidă>' },
+  ] }, '2026');
+  ok('toate versiunile persistente apar în istoric', history.includes('v1') && history.includes('v2'));
+  ok('versiunea nouă este afișată prima', history.indexOf('v2') < history.indexOf('v1'));
+  ok('fiecare versiune verificată are descărcare explicită', history.includes('/api/dosar-anual?year=2026&amp;version=1'));
+  ok('versiunea coruptă nu poate fi descărcată', history.includes('Descărcare blocată') && !history.includes('version=2'));
+  ok('amprenta SHA-256 completă rămâne vizibilă', history.includes('a'.repeat(64)) && history.includes('b'.repeat(64)));
+  ok('autorul, motivul și eroarea de integritate sunt escapate', history.includes('&lt;admin&gt;')
+    && history.includes('Rectificare &lt;b&gt;aprobată&lt;/b&gt;') && history.includes('semnătură &lt;invalidă&gt;'));
+  const emptyOpen = entries.annualArchiveVersionsHtml({ closed: false, versions: [] }, '2026');
+  ok('anul deschis explică de ce nu poate fi sigilat', emptyOpen.includes('este încă deschis') && emptyOpen.includes('Nicio versiune sigilată'));
 }
 
 section('Calitatea citirii automate: verdictul și raportul (docflow.js / entries.js)');
@@ -2240,6 +2361,9 @@ section('Înscriere: din afara aplicației se alege DOAR proba gratuită');
     ok(id + ': textul spune UNDE se alege, nu doar că nu se poate', /după probă/i.test(d.text));
     ok(id + ': explicația completă e în titlu (tooltip)', /aplicaţie|aplicație/i.test(d.titlu || ''));
   }
+  const suspendat = cta({ id: 'start', nume: 'Start' }, true, true);
+  ok('plăți suspendate: cardul spune direct că planul este indisponibil',
+    suspendat.activ === false && /indisponibil/i.test(suspendat.text));
 
   // Fără înscriere publică activă, niciun plan nu primește buton — nici proba.
   const inchis = cta({ id: 'trial', trial: true }, false);
@@ -2249,11 +2373,17 @@ section('Înscriere: din afara aplicației se alege DOAR proba gratuită');
   // regula — o are dublată. Poarta verifică să nu divergă: acolo planurile plătite trebuie sa aibă
   // `disabled`, iar proba un link activ.
   const prez = fs.readFileSync(path.join(PUB, 'prezentare.js'), 'utf8');
+  const appPricing = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
   ok('prezentare.js: planurile plătite au buton dezactivat',
-    /p\.trial[\s\S]{0,400}?<button class="btn" disabled/.test(prez));
+    /p\.trial[\s\S]{0,650}?<button class="btn" disabled/.test(prez));
+  ok('prezentare.js: suspendarea plăților este explicată în panoul de prețuri',
+    /data\.platiSuspendate[\s\S]{0,260}Plățile sunt oprite momentan/.test(prez));
   ok('prezentare.js: proba rămâne link activ către înscriere',
     /p\.trial[\s\S]{0,120}?<a class="btn solid" href="\/\?register=1"/.test(prez));
   ok('prezentare.js: nu mai există „Alege <plan> →" pe planurile plătite', !/Alege '\s*\+\s*H\(p\.nume\)/.test(prez));
+  ok('toate cele trei grile afișează moneda și unitatea ca lei/lună/firmă, fără spații ambigue',
+    [prez, fs.readFileSync(path.join(PUB, 'authui.js'), 'utf8'), appPricing]
+      .every((src) => /H\(p\.moneda \+ '\/' \+ p\.perioada\)/.test(src)));
 
   // Mecanismul de „alege plan platit la inscriere, plateste dupa" a fost SCOS, nu ascuns: lasat in
   // cod ar fi fost o cale moarta care pare vie (vezi lectia din src/saft.js).

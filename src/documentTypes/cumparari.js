@@ -2,8 +2,7 @@
 
 // CUMPARARI — vezi index.js pentru contractul tipurilor.
 
-const { L, F } = require('./helpers');
-const fiscal = require('../fiscal');
+const { L, F, rate } = require('./helpers');
 const d301 = require('../d301');
 const { round2 } = require('../util');
 
@@ -17,7 +16,7 @@ const { round2 } = require('../util');
 function marjaTva(d) {
   const pretV = round2(Number(d.pretVanzare) || 0);
   const cost = round2(Number(d.pretCumparare) || 0);
-  const cota = Number(d.cota) || fiscal.FISCAL.tvaStandard;
+  const cota = Number(d.cota) || rate(d, 'tvaStandard');
   const marja = round2(pretV - cost);
   const tva = marja > 0 ? round2((marja * cota) / (100 + cota)) : 0;
   return { pretV, cost, cota, marja, tva, baza: round2(marja - tva), venit: round2(pretV - tva) };
@@ -121,7 +120,7 @@ module.exports = [
       // calendarul ar cere Intrastat, dar centralizatorul n-ar putea identifica marfa.
       F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare, F.proRataMixt],
     build: (d) => {
-      const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
+      const tva = round2((Number(d.baza) * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
       return [
         L(d.contStoc || '371', '408', d.baza, 'Autofactură (art. 320) — factura furnizorului nu a sosit'),
         L('4426', '4427', tva, 'Taxare inversă — TVA exigibilă fără factură (art. 320)'),
@@ -194,7 +193,7 @@ module.exports = [
       { name: 'contStoc', label: 'Cont stoc/cheltuiala', type: 'account', default: '371' },
       F.codNC, F.masaNeta, F.naturaTranz, F.conditieLivrare, F.proRataMixt],
     build: (d) => {
-      const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
+      const tva = round2((Number(d.baza) * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
       return [
         L(d.contStoc || '371', '401', d.baza, 'Achiziție intracomunitară (bază)'),
         L('4426', '4427', tva, 'Taxare inversă - TVA deductibilă și colectată'),
@@ -220,7 +219,7 @@ module.exports = [
         options: d301.VALUTE.map((value) => ({ value, label: value })) },
       { name: 'sumaValuta', label: 'Valoarea în valuta documentului', type: 'number', required: true },
       { name: 'curs', label: 'Curs valutar la data exigibilității', type: 'number', step: '0.0001', required: true },
-      { name: 'cota', label: 'Cota TVA datorată în România (%)', type: 'number', default: fiscal.FISCAL.tvaStandard, required: true },
+      { name: 'cota', label: 'Cota TVA datorată în România (%)', type: 'number', default: 0, fiscalRate: 'tvaStandard', required: true },
       { name: 'contCost', label: 'Cont de cost/stoc/imobilizare (TVA nedeductibilă intră aici)', type: 'account', default: '628' },
       // Pentru sectiunile 1-3, bunurile intra si in Intrastat daca firma are aceasta obligatie.
       // Sectiunile 4/5 (alte operatiuni/servicii) lasa campurile necompletate.
@@ -279,7 +278,7 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'pretVanzare', label: 'Pret de vanzare (total incasat de la client)', type: 'number', required: true },
       { name: 'pretCumparare', label: 'Pret de cumparare al bunului', type: 'number', required: true },
-      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: fiscal.FISCAL.tvaStandard },
+      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: 0, fiscalRate: 'tvaStandard' },
       { name: 'contStoc', label: 'Cont stoc descarcat', type: 'account', default: '371' }],
     build: (d) => {
       const m = marjaTva(d);
@@ -370,7 +369,7 @@ module.exports = [
     // partea nedeductibila pe contul de cost, cu contrapartida 4427 (taxa colectata ramane intreaga
     // — vezi `tvaPartialInCost` din server.js). Pana atunci, bifa ar fi dezechilibrat articolul.
     build: (d) => {
-      const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
+      const tva = round2((Number(d.baza) * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
       return [
         L(d.contChelt || '628', '401', d.baza, 'Servicii primite din UE (locul prestării la beneficiar)'),
         L('4426', '4427', tva, 'Taxare inversă — art. 307 alin. (2)'),
@@ -384,7 +383,7 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota, F.codCategorie331,
       { name: 'contStoc', label: 'Cont stoc/cheltuiala/imobilizare', type: 'account', default: '371' }, F.proRataMixt],
     build: (d) => {
-      const tva = round2((Number(d.baza) * Number(d.cota || fiscal.FISCAL.tvaStandard)) / 100);
+      const tva = round2((Number(d.baza) * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
       return [
         L(d.contStoc || '371', '401', d.baza, 'Achiziție cu taxare inversă internă (bază)'),
         L('4426', '4427', tva, 'Taxare inversă internă - TVA deductibilă și colectată'),

@@ -1,0 +1,272 @@
+{
+ "parte": "Part VI · What doesn't come from a document · phase 7",
+ "nr": "28",
+ "titlu": "Time allocation",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "An insurance policy of 12,000 lei paid on October 1st, for twelve months, is not October's expense. Nor is it this year's expense. Of it, three months — 3,000 lei — belong to this year, and the rest belongs to next year."
+  },
+  {
+   "tip": "p",
+   "text": "The mechanism through which this split is made is called time allocation, and it is the most direct application of the principle with which this book began: the expense belongs to the period in which the service is consumed, not the one in which the invoice is paid."
+  },
+  {
+   "tip": "h",
+   "text": "The two accounts"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Where what is not yet the period's belongs",
+   "cap": [
+    "Account",
+    "Nature",
+    "Example"
+   ],
+   "randuri": [
+    [
+     "471 Prepaid expenses",
+     "asset — a right to benefit",
+     "insurance, subscription, rent paid in advance"
+    ],
+    [
+     "472 Deferred revenue",
+     "liability — an obligation to perform",
+     "subscription collected, rent received in advance"
+    ]
+   ],
+   "nota": "Both are transit accounts: the amounts sit there temporarily and gradually move into expenses, respectively into revenue."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth noting that 471 is an asset, even though it looks like an expense. The company has paid, but in exchange it has a right: insurance coverage for the coming months. That right has value, so it sits on the balance sheet as an asset until it is consumed."
+  },
+  {
+   "tip": "h",
+   "text": "How it is recorded"
+  },
+  {
+   "tip": "p",
+   "text": "There are two movements, at different moments. When the invoice is received, the entire amount goes into 471 — not into the expense account. Then, each month, the portion belonging to that month is moved from 471 into the appropriate expense account."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The 12,000 lei insurance, paid on October 1st",
+   "cap": [
+    "Moment",
+    "Entry",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "October 1st — the invoice",
+     "471 = 401",
+     "12.000"
+    ],
+    [
+     "October 31st",
+     "613 = 471",
+     "1.000"
+    ],
+    [
+     "November 31st",
+     "613 = 471",
+     "1.000"
+    ],
+    [
+     "December 31st",
+     "613 = 471",
+     "1.000"
+    ],
+    [
+     "remaining in 471 at December 31st",
+     "",
+     "9.000"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "The 9,000 lei remain on the balance sheet at December 31st as an asset and are consumed in the first nine months of the following year."
+  },
+  {
+   "tip": "p",
+   "text": "Without this split, the current year's result would be lower by 9,000 lei, and next year's higher by the same amount. Taken together across two fiscal years, nothing changes — but neither one, taken separately, would be accurate."
+  },
+  {
+   "tip": "h",
+   "text": "The trap: the monthly transfer doesn't happen by itself"
+  },
+  {
+   "tip": "p",
+   "text": "This is the most frequent flaw in this area, and it's important to state it explicitly, because it's counterintuitive: the entry into 471 is easy to remember — it comes with the invoice. The monthly transfer comes with nothing."
+  },
+  {
+   "tip": "p",
+   "text": "No document arrives in November saying \"move 1,000 lei from 471 to 613\". If no one does it, the amount stays in 471, and the account swells year after year with insurance, subscriptions, and rent that were consumed long ago."
+  },
+  {
+   "tip": "cheie",
+   "text": "The balance of account 471 is a list of promises. If it isn't shortened every month, it becomes a list of forgotten expenses."
+  },
+  {
+   "tip": "p",
+   "text": "The check is simple and worth doing annually: every amount remaining in 471 must correspond to an identifiable future period. If you can't say which month it covers, it's no longer a prepaid expense — it's an expense you forgot to recognize."
+  },
+  {
+   "tip": "h",
+   "text": "Don't confuse it with advances"
+  },
+  {
+   "tip": "p",
+   "text": "This is a frequent confusion, since both concern money that moves before the performance takes place. The distinction lies in what exactly has already been established."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Two different things",
+   "cap": [
+    "Situation",
+    "Account",
+    "Why"
+   ],
+   "randuri": [
+    [
+     "We paid an advance for goods not yet ordered",
+     "409",
+     "nothing has been performed yet; it's a receivable for goods"
+    ],
+    [
+     "We paid an insurance policy for 12 months",
+     "471",
+     "the service is already running; it is consumed month by month"
+    ],
+    [
+     "We received an advance for future work",
+     "419",
+     "nothing has been performed yet; it's a liability for goods"
+    ],
+    [
+     "We received an annual subscription",
+     "472",
+     "the performance is ongoing; the revenue is recognized gradually"
+    ]
+   ],
+   "nota": "The rule: the advance waits for a delivery; the prepaid expense or deferred revenue is consumed as time passes."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Time allocation applies the accrual principle from the accounting regulations: revenues and expenses are recognized in the period in which they are generated, regardless of when they are collected or paid. Three practical observations. First: the materiality threshold matters — not every 200 lei subscription justifies spreading it over twelve months, and the company's policy on the threshold above which allocation is performed must be written in the accounting policies manual, not decided case by case; without it, the treatment becomes inconsistent from one year to another, which violates the principle of consistency of methods. Second: for tax purposes, the prepaid expense is not deductible at the moment of payment, but as it is recognized in the result — so a balance in 471 wrongly treated as fully deductible produces a difference that is discovered only at audit, with accessories accrued over all the years elapsed. Third: account 471 is not the place for expenses whose period is unknown; amounts paid for services with no determinable timeframe, or those that do not meet the conditions for recognition as an asset, are posted directly to expense. The closing check is mechanical and mandatory: for each balance in 471 and 472 there must be a schedule with the period covered and the remaining amount, and its total must equal the accounting balance."
+  },
+  {
+   "tip": "h",
+   "text": "The symmetrical case"
+  },
+  {
+   "tip": "p",
+   "text": "Account 472 works identically, in mirror image. A company that collects an annual subscription of 12,000 lei in January hasn't earned 12,000 lei in January: it has received money and taken on the obligation to perform for a year."
+  },
+  {
+   "tip": "p",
+   "text": "The amount goes into 472, and each month 1,000 lei is transferred to revenue. Forgetting the transfer has the opposite effect here — understated revenue and a fictitious liability on the balance sheet — but with the same cause: no document arrives requesting it."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 28.1 — how much remains in 471",
+   "enunt": [
+    "On September 1st the company pays an insurance policy of 18,000 lei for 12 months. At December 31st the financial statements are prepared.",
+    "(a) What is the year's expense? (b) How much remains in 471? (c) What happens if no one makes the monthly transfer?"
+   ],
+   "rezolvare": [
+    "(a) The insurance covers 12 months, so 1,500 lei per month. The current year gets four months, September–December: 6,000 lei.",
+    "(b) 12,000 lei remain in account 471, covering January–August of the following year. It is an ASSET on the balance sheet at December 31st: the right to be insured for eight months.",
+    "(c) If the monthly transfer isn't made, all 18,000 lei remain in 471. The year's result is overstated by 6,000 lei, the balance sheet asset by the same amount, and for tax purposes the expense is not deductible in the year it wasn't recognized.",
+    "The annual check, which takes two minutes: for every balance remaining in 471 there must be an identifiable future period. If you can't say which months the amount covers, it's no longer a prepaid expense — it's an expense you forgot to recognize."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "How finely it's worth splitting"
+  },
+  {
+   "tip": "p",
+   "text": "The rule says every expense is allocated across the periods it covers. Applied literally, it would require splitting a 200 lei subscription over twelve months — that is, eleven entries of 16.67 lei each, for an amount that changes nothing."
+  },
+  {
+   "tip": "p",
+   "text": "This is what the materiality threshold exists for: an amount below which the effort exceeds the information gained. The threshold is not set numerically by law — it is established by the company and written into the accounting policies manual."
+  },
+  {
+   "tip": "cheie",
+   "text": "The threshold must be WRITTEN, not kept in mind. A threshold decided case by case isn't a threshold: it's an inconsistency, and it violates the principle of consistency of methods."
+  },
+  {
+   "tip": "p",
+   "text": "A practical criterion, often used: allocate what exceeds the threshold AND crosses from one fiscal year into another. An expense that is fully consumed within the same year affects the same result however it's allocated — so splitting it by month is useful only if the company reads monthly results."
+  },
+  {
+   "tip": "h",
+   "text": "Three mistakes made with account 471"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What is NOT a prepaid expense",
+   "cap": [
+    "Situation",
+    "Why not",
+    "Where it goes"
+   ],
+   "randuri": [
+    [
+     "Advance paid for goods",
+     "nothing has been performed; it's a right to a good",
+     "409 Suppliers-debtors"
+    ],
+    [
+     "Service paid, unknown period",
+     "cannot be allocated to anything",
+     "directly to expense"
+    ],
+    [
+     "Prepaid repair, already performed",
+     "the service has been fully consumed",
+     "directly to expense"
+    ],
+    [
+     "Stock of supplies bought in advance",
+     "it's a GOOD, not a service",
+     "inventory account (302/303)"
+    ]
+   ],
+   "nota": "The common test: only what is consumed as TIME PASSES belongs in 471. What is consumed upon use is inventory; what awaits a delivery is an advance."
+  },
+  {
+   "tip": "p",
+   "text": "The fourth row is the most frequent. A stack of paper bought for a year is not a prepaid expense: it's inventory, and it is consumed as it is used, not as time passes. The difference seems subtle and becomes visible at stocktaking, where inventory is counted and prepaid expenses are not."
+  },
+  {
+   "tip": "h",
+   "text": "The closing check, in two minutes"
+  },
+  {
+   "tip": "p",
+   "text": "For the balances in 471 and 472, a schedule is kept: for each amount, what period it covers and how much remains. The schedule's total must exactly match the accounting balance."
+  },
+  {
+   "tip": "p",
+   "text": "The check has a useful side effect: it forces you to name the period. An amount for which you cannot write \"covers months X–Y\" has no business being in 471, and the discovery happens here, not two years later, when no one remembers where it came from."
+  },
+  {
+   "tip": "recap",
+   "titlu": "What to remember from this chapter",
+   "puncte": [
+    "A payment covering several periods is split between them: 471 for expenses, 472 for revenue.",
+    "471 is an ASSET — the right to benefit from a service already paid for — not an accounting-deferred expense.",
+    "The entire amount goes into 471 with the invoice; each month's portion is then moved into the expense account.",
+    "The monthly transfer is not triggered by any document: if no one performs it, the account swells with forgotten expenses.",
+    "The annual check: each balance in 471 must correspond to an identifiable future period.",
+    "The advance (409/419) waits for a delivery; the prepaid expense and deferred revenue (471/472) are consumed with the passing of time."
+   ]
+  }
+ ]
+}

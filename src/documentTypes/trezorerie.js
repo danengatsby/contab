@@ -47,8 +47,9 @@ module.exports = [
     id: 'comision_bancar',
     nume: 'Comision bancar (extras)',
     grup: 'Trezorerie',
-    fields: [F.data, F.document, F.suma, F.analiticBanca],
-    build: (d) => [L('627', '5121', d.suma, 'Cheltuieli cu serviciile bancare')],
+    fields: [F.data, F.document, F.suma,
+      { name: 'cont', label: 'Cont bancar', type: 'select', options: [...TROZ, { value: '5124', label: '5124 Banca în valută' }], default: '5121' }, F.analiticBanca],
+    build: (d) => [L('627', d.cont || '5121', d.suma, 'Cheltuieli cu serviciile bancare')],
   },
 
 ];

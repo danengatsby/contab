@@ -53,12 +53,13 @@ function rulajCont(view, year, cont) {
  */
 function construieste(view, year, src) {
   src = src || {};
+  const ruleSet = fiscal.rulesAt(String(year) + '-12'); const rates = ruleSet.rates;
   const firma = (view && view.company) || {};
   const losses = firma.pierdereFiscala || {};
   const manualPierdere = src.pierdereReportata != null && src.pierdereReportata !== '';
   const pr = manualPierdere ? Number(src.pierdereReportata) : (Number(losses[Number(year) - 1]) || 0);
   return {
-    cota: fiscal.FISCAL.impozitProfit,
+    cota: rates.impozitProfit,
     // Suprascrierea manuala ramane posibila, dar NU e implicita: transmisa goala, motorul de
     // plafoane calculeaza singur nedeductibilele din conturi (art. 25/40^2).
     cheltNedeductibile: (src.cheltNedeductibile != null && src.cheltNedeductibile !== '')
@@ -68,7 +69,9 @@ function construieste(view, year, src) {
     // Vintage-urile (art. 31) bat scalarul: doar ele pot expira. Cand contabilul tasteaza o suma,
     // ea n-are an, deci nu poate fi imbatranita — atunci lista se ignora deliberat.
     ...(manualPierdere ? {} : { pierderi: firma.pierderiFiscale || [] }),
-    plafoane: fiscal.FISCAL,
+    plafoane: rates,
+    ruleSetId: ruleSet.id,
+    fiscalRulesHash: ruleSet.hash,
     cheltAuto: rep.cheltuieliAuto(view, year),
     cheltLipsaNeimputabila: rep.cheltuieliLipsaNeimputabila(view, year),
     // Baza ajustarilor de creante care indeplinesc conditiile art. 26 alin. (1) lit. c). Trece

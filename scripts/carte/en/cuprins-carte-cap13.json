@@ -1,0 +1,159 @@
+{
+ "parte": "Part III · The document · phase 2",
+ "nr": "13",
+ "titlu": "The checks at the door",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "A document can be entered by a person who has it in front of them, or read automatically from a file — a scanned invoice, a PDF received by email. In the second case, a new question arises: how much can you trust what the machine read?"
+  },
+  {
+   "tip": "p",
+   "text": "The serious answer is not \"a lot\" or \"a little,\" but a list of checks performed before the document is allowed to pass. This chapter shows what is checked, why each check exists and — the most important part — how their results are combined."
+  },
+  {
+   "tip": "h",
+   "text": "The nine checks"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What gets verified before entry",
+   "cap": [
+    "Check",
+    "The question it answers"
+   ],
+   "randuri": [
+    [
+     "Extraction source",
+     "where does the information come from: a structured file or a photo?"
+    ],
+    [
+     "Reported confidence",
+     "how certain does the automatic reading declare itself to be on the key fields?"
+    ],
+    [
+     "Arithmetic",
+     "do the base plus VAT add up to the total shown on the document?"
+    ],
+    [
+     "VAT rate",
+     "does the rate used exist in the legislation in force on the document's date?"
+    ],
+    [
+     "Date",
+     "is it usable — and does it fall within a period that is still open?"
+    ],
+    [
+     "Document number",
+     "does it exist and was it read correctly?"
+    ],
+    [
+     "The partner",
+     "is it known, with verified data?"
+    ],
+    [
+     "Document type",
+     "could it be determined what kind of operation this is?"
+    ],
+    [
+     "The duplicate",
+     "is this document perhaps already recorded?"
+    ]
+   ],
+   "nota": "All nine are blocking: failure of any one of them stops automatic posting."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth noting that only two of them concern the quality of the reading. The other seven check things that an attentive person would also check: that the figures balance, that the date is correct, that you don't already have the same invoice. Automation doesn't invent new checks — it performs the familiar ones every single time, without getting tired."
+  },
+  {
+   "tip": "h",
+   "text": "Why all of them, not their average"
+  },
+  {
+   "tip": "p",
+   "text": "Here lies the chapter's most important design decision, and it is one that any accountant should demand from the software they work with."
+  },
+  {
+   "tip": "p",
+   "text": "The natural temptation is to calculate a score: eight out of nine checks passed means 89%, i.e. \"almost certainly good.\" The temptation is wrong. If the only failed check is the duplicate check, the document isn't \"89% good\" — it's an invoice recorded a second time, and the other eight successes change nothing."
+  },
+  {
+   "tip": "p",
+   "text": "That is why the decision to post automatically is a conjunction, not an average: it only posts itself if all checks pass. The score exists, but it serves reporting purposes — it shows how well automatic reading is performing overall — and it decides nothing about a specific document."
+  },
+  {
+   "tip": "cheie",
+   "text": "A high score hides exactly the check that matters. Blocking checks are not averaged, they are conjoined."
+  },
+  {
+   "tip": "h",
+   "text": "The confidence threshold"
+  },
+  {
+   "tip": "p",
+   "text": "The check concerning the reliability of the reading has a numeric threshold: below it, the document does not pass on its own, no matter how good the rest looks. The threshold is deliberately set high, higher than the one at which the system merely alerts a person, because letting a document in without any human review requires more certainty than merely flagging it."
+  },
+  {
+   "tip": "p",
+   "text": "A detail that seems technical and is a real trap: the threshold is not a property of the world, but of the model that reads. A new model may systematically report lower confidence at the same accuracy — in which case a threshold left unchanged blocks perfectly good documents. Thresholds like this must be recalibrated whenever the underlying engine changes, not simply inherited."
+  },
+  {
+   "tip": "h",
+   "text": "What happens when a check fails"
+  },
+  {
+   "tip": "p",
+   "text": "Nothing dramatic: the document stays with the person, with the reason written down. It is not rejected, it is not deleted — it is simply stopped before it produces any effects, exactly like a document brought in by someone without approval rights."
+  },
+  {
+   "tip": "p",
+   "text": "And when the person intervenes and corrects what the machine read incorrectly, the difference between the two is recorded on its own. Not because someone is being monitored, but because the information is useful: the places where the person corrects often are exactly the places where automatic reading needs improvement. An intervention that had to be requested from the interface would be forgotten; one that records itself would not."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Automatic posting is, in essence, a delegation of classification to a system, and delegation must remain reversible and documented. That is why it is disabled by default, activated per company knowingly, and it never concerns the economic reality of the operation — the checks verify form, coherence and uniqueness, not whether the delivery actually took place; the distinction from Chapter 4 remains intact. Two checks deserve special attention. The date check is not limited to a valid format: a date falling within a closed period must block the document, not reclassify it into the current month — otherwise silent discrepancies appear between the VAT ledger and the filed return. The duplicate check must aggressively normalize the document number before comparison, because in practice the same invoice comes written as \"F 900\", \"F-900\" and \"F900\"; an undetected duplicate doubles both the expense and the deducted VAT, and the subsequent correction requires a storno in a period when the return has already been filed."
+  },
+  {
+   "tip": "h",
+   "text": "What no check can verify"
+  },
+  {
+   "tip": "p",
+   "text": "The list above is complete for what can be verified from the document. It does not contain, and cannot contain, the one thing that truly matters: whether the operation actually took place."
+  },
+  {
+   "tip": "p",
+   "text": "A perfectly drawn-up invoice, with the arithmetic balancing, the correct rate, a known partner and no duplicate, may correspond to no delivery at all. All nine checks let it through, and they are right to do so: nothing that can be read on paper says otherwise."
+  },
+  {
+   "tip": "p",
+   "text": "That is why automatic checks shift the threshold, they do not eliminate it. They allow the person not to waste their attention on arithmetic and duplicates, so it can be kept for the question only they can answer. This concludes the part on received documents; the next chapter moves on to those you issue yourself."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 13.1 — checks aren't added, they're multiplied",
+   "enunt": [
+    "A document read automatically passes eight out of nine checks. The one that failed is the duplicate check: the same invoice appears to have already been recorded two weeks ago.",
+    "The displayed score is 89%. Does it post automatically?"
+   ],
+   "rezolvare": [
+    "No. A score of 89% suggests \"almost good,\" but the decision is not an average, it is a CONJUNCTION: all blocking checks must pass.",
+    "Here, the failed check is precisely the one that matters: if the invoice is indeed a duplicate, posting it produces a double expense, VAT deducted twice, and a nonexistent liability to the supplier. The other eight passed checks compensate for nothing — they confirm that the document is internally coherent, not that it hasn't already been recorded.",
+    "The general rule: an average score hides exactly the check that failed. That is why the report must show WHICH check failed, not just what percentage passed."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Nine checks stand between an automatically read document and the accounting records; only two concern the quality of the reading, the rest verify what an attentive person would also verify.",
+    "The automatic posting decision is a conjunction, not an average: a score of 89% hides exactly the check that failed.",
+    "The confidence threshold is a property of the model doing the reading, not of the world — it must be recalibrated when the engine changes.",
+    "A failed check stops the document with the person, with the reason written down; nothing is lost.",
+    "No check can verify whether the operation actually took place. Automation frees the person's attention, it does not replace it."
+   ]
+  }
+ ]
+}

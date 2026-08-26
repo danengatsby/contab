@@ -1,0 +1,269 @@
+{
+ "parte": "Part V · What you have, what you produce, who works · phases 4–6",
+ "nr": "18",
+ "titlu": "Inventory: quantity and value",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Until now, accounting has tracked paperwork and money. Inventory is the first thing it tracks in two ways at once: how many units are in the warehouse and how much they're worth. The two records run in parallel and must match — and when they don't, the truth lies in the physical count, not in the computer."
+  },
+  {
+   "tip": "p",
+   "text": "The difference from everything before is that goods can move without a document. A crate can break, a box can go missing, someone can take something \"for now.\" That's why inventory is the only part of accounting that has, by law, a mandatory periodic confrontation with physical reality."
+  },
+  {
+   "tip": "h",
+   "text": "The inflow is simple. The outflow is not."
+  },
+  {
+   "tip": "p",
+   "text": "When you buy goods, their value is written on the invoice: that's what it cost. No ambiguity. But when you sell, a question arises that the sales invoice doesn't answer: the unit that left, how much had it cost you?"
+  },
+  {
+   "tip": "p",
+   "text": "If you bought the same product three times, at different prices — 10 lei, 12 lei, 11 lei — and you now sell one unit, which of the three left? Physically, you may no longer be able to say. In accounting terms, you must choose a convention, and the choice changes both the recorded cost and the value of the remaining stock."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The same three inflows, two methods",
+   "cap": [
+    "Method",
+    "How it determines the cost of the outflow",
+    "What remains in stock"
+   ],
+   "randuri": [
+    [
+     "Weighted average cost",
+     "the average of the values in stock at the moment of outflow",
+     "everything remaining, valued at the same average"
+    ],
+    [
+     "FIFO",
+     "the cost of the oldest batch received, until it's exhausted",
+     "the newer batches, at their costs"
+    ]
+   ],
+   "nota": "Both are permitted. What is not permitted is changing the method from one month to another, depending on which result is convenient."
+  },
+  {
+   "tip": "p",
+   "text": "At stable prices, the difference is negligible. At rising prices, FIFO gives a lower cost for outflows — hence a higher profit and a stock valued closer to the current-day price. Weighted average cost smooths both. There is no \"more correct\" method: there is one chosen and applied consistently."
+  },
+  {
+   "tip": "cheie",
+   "text": "The method is chosen once and applied year after year. Consistency is what makes the figures comparable — not the method itself."
+  },
+  {
+   "tip": "h",
+   "text": "Sub-inventories (gestiuni): where exactly the goods are located"
+  },
+  {
+   "tip": "p",
+   "text": "A company with a warehouse and a store doesn't have one stock, but two. The same goods may exist in both locations, and the transfer between them is neither a sale nor a purchase — it's an internal move, which affects neither revenues nor expenses."
+  },
+  {
+   "tip": "p",
+   "text": "The division into sub-inventories (gestiuni) also has a consequence for accountability: each sub-inventory has a custodian (gestionar), and at inventory count discrepancies are established per sub-inventory, not per company. A surplus in the warehouse does not offset a shortage in the store, even if the company's total nets out to zero."
+  },
+  {
+   "tip": "h",
+   "text": "The two entries of a sale"
+  },
+  {
+   "tip": "p",
+   "text": "Chapter 14 already showed the complete entry for a sale, and here it's worth looking at from the inventory side. The sale generates the revenue, but the goods leave separately, at their cost — not at the sale price."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Goods bought for 600, sold for 1,000",
+   "cap": [
+    "Operation",
+    "Debit",
+    "Credit",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Receipt into the warehouse",
+     "371 Goods",
+     "401 Suppliers",
+     "600"
+    ],
+    [
+     "Revenue from the sale",
+     "4111 Customers",
+     "707 Revenue",
+     "1.000"
+    ],
+    [
+     "Outflow from the warehouse",
+     "607 Expenses regarding goods",
+     "371 Goods",
+     "600"
+    ]
+   ],
+   "numerice": [
+    4
+   ],
+   "nota": "Account 371 receives 600 and gives 600: after the sale, its balance for this product is zero. The gain of 400 is not recorded anywhere directly — it results from the difference between 707 and 607."
+  },
+  {
+   "tip": "p",
+   "text": "Omitting the third line is the classic mistake, and it's dangerous precisely because it's invisible: the trial balance remains balanced, but the stock appears inflated by 600 lei that no longer physically exist, and profit appears higher by exactly the same amount."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The valuation method for outflows is established through the entity's accounting policies and applied consistently; changing it is a change in accounting policy, with the corresponding treatment and disclosure, not a discretionary choice per financial period. Watch out for transfers between sub-inventories (gestiuni) under FIFO: if the internal move is valued at average cost, the method silently degenerates into weighted average cost at the first transfer, because the batches lose their identity — that's why the batch queue must be transferred as such, not recalculated. For retail trade that keeps records at sale price, account 378 and the associated non-exigible VAT must be cleared proportionally at each outflow, otherwise the balance of 371 remains at sale price, and the balance-sheet inventory is overvalued by the markup. Finally, impairment adjustments for inventory (group 39) are recorded when net realizable value falls below cost — degraded, obsolete, slow-moving goods — and must not be confused with inventory-count shortages: the former correct a value, the latter record a physical shortage."
+  },
+  {
+   "tip": "h",
+   "text": "What follows"
+  },
+  {
+   "tip": "p",
+   "text": "Goods bought and sold are the simple case. When the company doesn't buy goods but produces them, an additional question arises: what does what you made actually cost? That's the next chapter."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 18.1 — Weighted average cost or FIFO, on the same inflows",
+   "enunt": [
+    "Inflows: 100 units × 10 lei, then 100 units × 14 lei. 120 units are sold.",
+    "Calculate the cost of goods sold and the value of the remaining stock, under both methods."
+   ],
+   "rezolvare": [
+    "Weighted average cost: total value 100×10 + 100×14 = 2,400 lei for 200 units, hence 12 lei/unit. Outflow: 120 × 12 = 1,440 lei. Remaining stock: 80 × 12 = 960 lei.",
+    "FIFO: first the 100 units at 10 lei leave (1,000), then 20 units at 14 lei (280) — total 1,280 lei. Remaining stock: 80 × 14 = 1,120 lei.",
+    "The difference in the month's result: 1,440 − 1,280 = 160 lei. FIFO gives a lower cost, hence a profit higher by 160 lei, and a stock worth more by the same amount.",
+    "The observation that matters: over the ENTIRE lifetime of the stock, the two methods give exactly the same cumulative result. Only the allocation between periods differs. That's why the choice of method is not an optimization, but a policy — and that's why it's disclosed in the notes and not changed from one year to another."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Two records for the same thing"
+  },
+  {
+   "tip": "p",
+   "text": "Inventory is the only asset element tracked simultaneously in two places, with different units of measure: the stock card counts units, accounting counts lei. They describe the same goods and must say the same thing — but they don't automatically check each other, because they don't speak the same language."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Who knows what",
+   "cap": [
+    "Record",
+    "Unit",
+    "Who keeps it",
+    "What it captures"
+   ],
+   "randuri": [
+    [
+     "Stock card (fișa de magazie)",
+     "units, kilograms, liters",
+     "the custodian (gestionar)",
+     "physical shortage, receiving error"
+    ],
+    [
+     "Accounting",
+     "lei",
+     "the accountant",
+     "valuation error, wrong account"
+    ],
+    [
+     "Inventory count",
+     "both, reconciled",
+     "the commission",
+     "everything the other two missed"
+    ]
+   ],
+   "nota": "A software program keeps them together, but it cannot confront them with reality. That remains the job of the inventory count — chapter 20."
+  },
+  {
+   "tip": "p",
+   "text": "From this comes a practical rule: any operation that moves the stock must move both records at once. That's why correcting an entry with an impact on stock is not done through the usual accounting reversal — it would leave the accounting correct and the stock card wrong, and the two would silently diverge until the inventory count."
+  },
+  {
+   "tip": "h",
+   "text": "Sub-inventory (gestiune): where the goods are located"
+  },
+  {
+   "tip": "p",
+   "text": "A company with a single warehouse can ignore the concept. One with two — warehouse and store, or central warehouse and points of sale — cannot, because the same goods may exist in both, and the total quantity doesn't say where they are."
+  },
+  {
+   "tip": "p",
+   "text": "The sub-inventory (gestiune) also serves a purpose that isn't about record-keeping but accountability: each has a custodian (gestionar), and shortages found at the inventory count are charged to someone specific. Without separate sub-inventories, a shortage in one warehouse gets lost in the company's total."
+  },
+  {
+   "tip": "h",
+   "text": "Goods valued at sale price"
+  },
+  {
+   "tip": "p",
+   "text": "In retail trade a complication arises that's worth understanding, because it produces three accounts where you'd expect one. A store cannot keep records at cost: on the shelf is the price including VAT, and the cash register sells at that price."
+  },
+  {
+   "tip": "p",
+   "text": "The solution is to value the stock right at the sale price, while the difference from cost is kept separately, in two adjusting accounts: the trade markup in 378 and the non-exigible VAT in 4428."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Goods worth 1,000 lei, with a 400 markup and a reduced rate of 11%",
+   "cap": [
+    "What is recorded",
+    "Debit",
+    "Credit",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Acquisition cost",
+     "371",
+     "401",
+     "1.000,00"
+    ],
+    [
+     "Trade markup",
+     "371",
+     "378",
+     "400,00"
+    ],
+    [
+     "Non-exigible VAT at shelf price",
+     "371",
+     "4428",
+     "154,00"
+    ],
+    [
+     "Stock, at sale price",
+     "371",
+     "",
+     "1.554,00"
+    ]
+   ],
+   "numerice": [
+    4
+   ],
+   "total": true,
+   "nota": "The 1,554 lei is exactly the price on the shelf. The REAL value of the stock remains 1,000 — the rest are the two adjusting accounts, which are deducted in the balance sheet."
+  },
+  {
+   "tip": "cheie",
+   "text": "At sale price, account 371 no longer shows how much the goods are worth, but how much is charged for them. The balance-sheet value is obtained by subtracting 378 and 4428 — just as fixed assets are read by subtracting depreciation."
+  },
+  {
+   "tip": "p",
+   "text": "The consequence that surprises at the first balance sheet: account 371 can show 1,554 lei for goods that cost 1,000, without anything being wrong. Whoever reads the gross balance and draws conclusions about the stock is wrong by the markup plus the tax."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Inventory is kept in two ways at once — in quantity and in value — and when there's a mismatch, the truth lies in the physical count.",
+    "The inflow has a known cost from the invoice; the outflow requires a convention: weighted average cost or FIFO.",
+    "No method is more correct than the other; it's consistency that makes the figures comparable.",
+    "Transfer between sub-inventories (gestiuni) is neither a sale nor a purchase — and surpluses in one sub-inventory do not offset shortages in another.",
+    "A sale requires TWO entries: the revenue and the release of the goods from the sub-inventory. Without the second, the stock and the profit appear inflated by the same amount."
+   ]
+  }
+ ]
+}

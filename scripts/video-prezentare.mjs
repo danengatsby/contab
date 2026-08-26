@@ -213,9 +213,9 @@ async function intraCa(user) {
   // si le ridica peste ecran — asa au iesit doua scene intregi acoperite, fara ca filmarea sa
   // raporteze ceva, fiindca actiunile lor chiar reusisera dedesubt.
   //
-  // Turul TREBUIE dezarmat impreuna cu bun-venitul, nu separat: `maybeTour` porneste turul DOAR
-  // daca bun-venitul e deja ascuns (`app.js`). Dezarmandu-l doar pe primul, l-am pornit pe al
-  // doilea — acelasi defect, alt card, si a trebuit filmat de doua ori ca sa se vada.
+  // Cheia turului rămâne setată pentru compatibilitate cu versiuni publicate anterior. Versiunea
+  // curentă nu-l mai pornește automat, dar filmarea trebuie să rămână stabilă și pe un server care
+  // rulează temporar codul anterior în timpul unui deploy.
   await pg.evaluate((u) => {
     try {
       localStorage.setItem('contab_welcomed_' + u, '1');

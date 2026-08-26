@@ -1,7 +1,6 @@
 'use strict';
 
 const { round2 } = require('../util');
-const fiscal = require('../fiscal');
 
 /**
  * Tipuri de documente primare si "traducerea" lor in articole contabile.
@@ -47,13 +46,25 @@ function L(debit, credit, suma, explicatie) {
   return { debit: String(debit), credit: String(credit), suma: round2(suma), explicatie };
 }
 
+/** Parametru din FiscalRuleSet-ul injectat de composeEntry pentru data documentului. */
+function rate(d, key) {
+  const value = Number((d && d._fiscalRates || {})[key]);
+  if (!Number.isFinite(value)) {
+    const e = new Error('Parametrul fiscal „' + key + '” nu poate fi dedus: data documentului nu are un FiscalRuleSet publicat. Completeaza valoarea explicit sau publica regulile perioadei.');
+    e.status = 422; throw e;
+  }
+  return value;
+}
+
 const F = {
   data: { name: 'data', label: 'Data document', type: 'date', required: true },
   partener: { name: 'partener', label: 'Partener (client/furnizor)', type: 'text' },
   document: { name: 'document', label: 'Serie/numar document', type: 'text' },
+  scadenta: { name: 'scadenta', label: 'Scadenta documentului', type: 'date' },
+  termenContractual: { name: 'termenContractual', label: 'Termen contractual (zile)', type: 'number', min: 0, max: 36500 },
   baza: { name: 'baza', label: 'Valoarea fara TVA', type: 'number', required: true },
   tva: { name: 'tva', label: 'TVA (lei)', type: 'number', default: 0 },
-  cota: { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: fiscal.FISCAL.tvaStandard },
+  cota: { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: 0, fiscalRate: 'tvaStandard' },
   suma: { name: 'suma', label: 'Suma (lei)', type: 'number', required: true },
   explicatie: { name: 'explicatie', label: 'Explicatie', type: 'text' },
   cuiPartener: { name: 'cuiPartener', label: 'CUI client (pentru e-Factura)', type: 'text' },
@@ -62,8 +73,8 @@ const F = {
   analiticAngajat: { name: 'analitic', label: 'Analitic angajat (ex. Ion Popescu)', type: 'text' },
   items: { name: 'items', label: 'Linii factura (optional, pentru e-Factura)', type: 'items' },
   stoc: { name: 'stoc', label: 'Descarcare din stoc (produs + gestiune + cantitate) — cost CMP/FIFO, automat', type: 'stoc' },
-  auto50: { name: 'auto50', label: 'Deductibilitate auto 50% (vehicul fara uz exclusiv): 50% din TVA devine nedeductibil si intra in cost', type: 'checkbox' },
-  proRataMixt: { name: 'proRataMixt', label: 'Achizitie cu destinatie mixta (pro-rata, art. 300): TVA deductibila doar in procentul pro-rata setat pe firma, restul intra in cost', type: 'checkbox' },
+  auto50: { name: 'auto50', label: 'Cheltuiala este pentru o mașină folosită și personal (aplicația deduce 50% din TVA)', type: 'checkbox', special: true },
+  proRataMixt: { name: 'proRataMixt', label: 'Achiziția este folosită și pentru activități fără drept de deducere TVA', type: 'checkbox', special: true },
   // Codul de bun art. 331 (nomenclatorul oficial D394, sectiunea op11). Fara el, D394 e respins
   // („R233.5: trebuie completata cel putin o sectiune op11"). Se cere codul, nu o denumire aleasa
   // dintr-o lista: nomenclatorul nu e expus de validator si o lista ghicita ar da o declaratie
@@ -88,4 +99,4 @@ const TVAL = [
   { value: '5314', label: '5314 Casa in valuta' },
 ];
 
-module.exports = { L, F, TROZ, TVAL };
+module.exports = { L, F, TROZ, TVAL, rate };

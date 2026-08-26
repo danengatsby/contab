@@ -11,6 +11,7 @@ if (process.env.CONTAB_CAPTURI_IZOLAT !== '1' || !process.env.CONTAB_DB_FILE || 
 
 const db = require('../src/db');
 const declaratii = require('../src/declarations');
+const crypto = require('crypto');
 
 const PERIOD = process.env.CAPTURI_PERIOD || new Date().toISOString().slice(0, 7);
 const TODAY = PERIOD + '-16'; // în interiorul lunii: nicio obligație a lunii nu este restantă
@@ -27,6 +28,56 @@ function cuiDin(index) {
   let control = (suma * 10) % 11;
   if (control === 10) control = 0;
   return String(Number(corp + control));
+}
+
+const auth = (action) => ({ authorized: true, action, actorId: 'fixture-capturi',
+  username: 'fixture-capturi', role: 'admin', source: 'marketing-isolated-fixture' });
+
+function continutExact(label, filename, mime) {
+  const bytes = Buffer.from(label, 'utf8');
+  return {
+    sha256: crypto.createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length,
+    filename, mime, contentBase64: bytes.toString('base64'),
+  };
+}
+
+/** Construieste traseul real generata → aprobata → transmisa → depusa. Fixture-ul vechi sarea
+ * direct la `depusa`, ceea ce a devenit corect interzis de registrul append-only. */
+function marcheazaDepusa(d, firmaId, tip, period, recipisa) {
+  const profileHash = crypto.createHash('sha256').update('profil|' + firmaId + '|' + period).digest('hex');
+  const artifact = Object.assign(continutExact('<declaratie fixture="marketing"/>', tip + '-' + period + '.xml', 'application/xml'), {
+    profileSnapshot: { hash: profileHash, provenanceHash: profileHash, values: { fixture: true } },
+  });
+  declaratii.record(d, firmaId, tip, period, {
+    status: 'generata', artifact, profileSnapshot: artifact.profileSnapshot,
+    authorization: auth('declaration.prepare'), updatedBy: 'fixture-capturi',
+  }, db.nextId);
+  const aprobare = declaratii.approveDocument(d, firmaId, tip, period, {
+    artifactHash: artifact.sha256, authorization: auth('declaration.approve'),
+    fiscalReviewEvidence: { ready: true, hash: crypto.createHash('sha256').update('revizie-fixture').digest('hex') },
+    note: 'Dovada sintetica pentru captura izolata',
+  }).approval;
+  declaratii.record(d, firmaId, tip, period, {
+    status: 'transmisa', documentApproval: aprobare,
+    authorization: auth('declaration.submit'), updatedBy: 'fixture-capturi',
+  }, db.nextId);
+  const receipt = continutExact('recipisa fixture ' + recipisa, recipisa + '.txt', 'text/plain');
+  return declaratii.record(d, firmaId, tip, period, {
+    status: 'depusa', recipisa, receiptEvidence: receipt, documentApproval: aprobare,
+    authorization: auth('declaration.submit'), updatedBy: 'fixture-capturi',
+  }, db.nextId);
+}
+
+function marcheazaGenerata(d, firmaId, tip, period) {
+  const profileHash = crypto.createHash('sha256').update('profil|' + firmaId + '|' + period).digest('hex');
+  const artifact = Object.assign(continutExact('<declaratie fixture="marketing-in-lucru"/>',
+    tip + '-' + period + '.xml', 'application/xml'), {
+    profileSnapshot: { hash: profileHash, provenanceHash: profileHash, values: { fixture: true } },
+  });
+  return declaratii.record(d, firmaId, tip, period, {
+    status: 'generata', artifact, profileSnapshot: artifact.profileSnapshot,
+    authorization: auth('declaration.prepare'), updatedBy: 'fixture-capturi',
+  }, db.nextId);
 }
 
 Promise.resolve(db.load()).then(async () => {
@@ -58,11 +109,8 @@ Promise.resolve(db.load()).then(async () => {
   d.firme.forEach((firma) => {
     perioadeInchise.forEach((period) => {
       declaratii.registerForFirma(d, db.scoped(firma.id), period, TODAY).forEach((rand, randIndex) => {
-        declaratii.record(d, firma.id, rand.tip, period, {
-          status: 'depusa',
-          recipisa: 'CAP-IST-' + firma.id + '-' + period.replace('-', '') + '-' + String(randIndex + 1).padStart(2, '0'),
-          updatedBy: 'fixture-capturi',
-        }, db.nextId);
+        marcheazaDepusa(d, firma.id, rand.tip, period,
+          'CAP-IST-' + firma.id + '-' + period.replace('-', '') + '-' + String(randIndex + 1).padStart(2, '0'));
       });
     });
   });
@@ -73,12 +121,10 @@ Promise.resolve(db.load()).then(async () => {
     const randuri = declaratii.registerForFirma(d, db.scoped(firma.id), PERIOD, TODAY);
     randuri.forEach((rand, randIndex) => {
       const gata = firmaIndex < d.firme.length - 1;
-      declaratii.record(d, firma.id, rand.tip, PERIOD, {
-        status: gata ? 'depusa' : (randIndex % 2 ? 'nedepusa' : 'generata'),
-        recipisa: gata ? 'CAP-' + firma.id + '-' + String(randIndex + 1).padStart(2, '0') : '',
-        note: gata ? '' : 'În verificare',
-        updatedBy: 'fixture-capturi',
-      }, db.nextId);
+      if (gata) {
+        marcheazaDepusa(d, firma.id, rand.tip, PERIOD,
+          'CAP-' + firma.id + '-' + String(randIndex + 1).padStart(2, '0'));
+      } else if (randIndex % 2 === 0) marcheazaGenerata(d, firma.id, rand.tip, PERIOD);
     });
   });
 

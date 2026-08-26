@@ -1,0 +1,233 @@
+{
+ "parte": "Part IX · Closing · phases 10–11",
+ "nr": "41",
+ "titlu": "Locking the period",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "A closed month is a reported month. Its trial balance underpinned filed returns, and those returns produced payments, receipts and, potentially, an inspection. From that point on, the month no longer belongs to the company: it's a public statement."
+  },
+  {
+   "tip": "p",
+   "text": "Period locking is the mechanism that makes the statement stable. After it, nothing can be recorded, modified, or deleted in that month."
+  },
+  {
+   "tip": "h",
+   "text": "Why discipline isn't enough"
+  },
+  {
+   "tip": "p",
+   "text": "The natural objection of any experienced accountant is that nobody intentionally touches a closed month. That's true, and irrelevant: the problem isn't intent, it's accident."
+  },
+  {
+   "tip": "p",
+   "text": "An invoice with a wrongly typed date — 2026-05-30 instead of 2026-06-30 — slips into last month without anyone noticing. A correction made \"to make it balance\" in an old month seems harmless. An import of documents with old dates rewrites an entire period."
+  },
+  {
+   "tip": "p",
+   "text": "None of these is bad faith. All of them produce the same result: May's trial balance is no longer the one on which May's VAT return was filed, and the difference is discovered at the earliest during an inspection."
+  },
+  {
+   "tip": "cheie",
+   "text": "A locked period doesn't protect bookkeeping from bad people. It protects it from ordinary mistakes, which would otherwise be discovered as late as possible."
+  },
+  {
+   "tip": "h",
+   "text": "What happens to a necessary correction"
+  },
+  {
+   "tip": "p",
+   "text": "Locking doesn't forbid corrections — that would be absurd. It moves them in time: an error in a closed month is corrected through a reversal entry dated in an open month — exactly the procedure from chapter 29."
+  },
+  {
+   "tip": "p",
+   "text": "The result is that the closed month remains as it was reported, and the correction appears where it can be seen and explained. Anyone reading both months sees both the error and the fix — which is more than they would have seen if the figure had simply been changed."
+  },
+  {
+   "tip": "p",
+   "text": "It's the same logic as reversal entries, applied at the scale of the period: nothing is erased, it's written alongside."
+  },
+  {
+   "tip": "h",
+   "text": "Forcing"
+  },
+  {
+   "tip": "p",
+   "text": "There are situations where closing must be done over an unfinished step: a return that couldn't be filed due to technical reasons, a statement that hasn't arrived, a deadline that can no longer be postponed."
+  },
+  {
+   "tip": "p",
+   "text": "A system that completely forbids forcing will be bypassed — through direct database writes, parallel files, \"I'll handle it another way.\" A system that allows it without a trace is as good as having no control at all. The solution is a third path: it's allowed, but at a cost."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What forcing requires",
+   "cap": [
+    "Requirement",
+    "Why"
+   ],
+   "randuri": [
+    [
+     "administrator rights",
+     "the decision exceeds the level of execution"
+    ],
+    [
+     "written reason",
+     "six months later, nobody remembers"
+    ],
+    [
+     "permanent record",
+     "it stays in the month's file, it isn't deleted"
+    ]
+   ],
+   "nota": "The three together make forcing possible, but never comfortable — exactly the balance needed."
+  },
+  {
+   "tip": "p",
+   "text": "The written reason is the requirement that matters most, and not for control purposes. It's for whoever reads it a year later — often the same person who wrote it — who will need to understand why that month looks the way it does."
+  },
+  {
+   "tip": "h",
+   "text": "When to lock"
+  },
+  {
+   "tip": "p",
+   "text": "Good practice is to lock immediately after the month's returns are filed, not at year-end. The reason is that the window between filing and locking is exactly the interval in which accidental changes can slip in."
+  },
+  {
+   "tip": "p",
+   "text": "A company that locks monthly has, at any moment, only one open month. One that locks annually has twelve — and a date error lands somewhere among them without hitting anything."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The prohibition on modifying entries related to reported periods derives from the accounting law's requirements regarding the intangibility of records and the correction of errors through new entries, as well as from the IT system audit requirements, which demand that data cannot be altered retroactively without a trace. Four observations. First: locking must also cover indirect operations — imports, automatic generations, depreciation or inventory recalculations — not just manual entry; a guard applied only to the entry form leaves open exactly the channels through which mass modifications occur. Second: for corrections related to prior periods, the distinction from chapter 29 applies between insignificant errors, corrected against current results, and significant errors, corrected against retained earnings; period locking doesn't change the accounting treatment, only the place where the correction is recorded. Third: reconstructing a trial balance for a closed period must yield the same result as the original listing — this verification, performed by sampling once a year, is the only control that actually proves locking works. Fourth: the reasons for forcings and the list of reopened periods, if the procedure allows it, are part of the documentation made available to the auditor or inspection; an undocumented reopening is, from a control perspective, equivalent to the complete absence of internal control over the period."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "With locking, the month becomes final. The same logic applies, at a different scale and with its own operations, to the entire fiscal year — and there something happens that has never happened in any month: revenue and expense accounts disappear."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 41.1 — the wrongly typed date",
+   "enunt": [
+    "On July 8, an operator enters an invoice and types the date 2026-06-30 instead of 2026-07-30. June is closed and reported.",
+    "(a) What does a system with locked periods do? (b) What would have happened without locking? (c) What if the invoice really was from June?"
+   ],
+   "rezolvare": [
+    "(a) It refuses the entry and explains why: the period is closed. The operator corrects the date on the spot, in two seconds.",
+    "(b) The invoice would have entered June. June's trial balance would no longer be the one on which the VAT return was filed, and the difference would be discovered at the earliest during an inspection — or never.",
+    "(c) Then it's not a typing error, it's a late document. It's recorded in July, and if it affects June's VAT or result, it should be assessed whether an amended return is needed. What is NOT done: reopening June just to \"make it look nice.\"",
+    "What the exercise shows: locking doesn't protect against bad faith — it protects against a wrongly pressed key, i.e., the case that actually happens. And if reopening is nevertheless necessary, it requires administrator rights, a written reason, and a permanent record: possible, but never comfortable."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What \"locked\" means, technically"
+  },
+  {
+   "tip": "p",
+   "text": "Locking isn't a label placed on a month, it's a guard that stands between any write operation and the database. The difference shows in what exactly it stops."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What the guard must catch",
+   "cap": [
+    "Write path",
+    "Caught?",
+    "Why it matters"
+   ],
+   "randuri": [
+    [
+     "manual entry of a line item",
+     "yes",
+     "the obvious case"
+    ],
+    [
+     "posting an older draft",
+     "yes",
+     "a draft can be composed anytime, entry into the record cannot"
+    ],
+    [
+     "importing a file with old dates",
+     "yes",
+     "this is where mass modifications occur"
+    ],
+    [
+     "automatic generation (depreciation, recurring items)",
+     "yes",
+     "otherwise a job rewrites a reported month"
+    ],
+    [
+     "deleting a posted line item",
+     "yes",
+     "forbidden anyway, but with a different message"
+    ]
+   ],
+   "nota": "A guard placed only on the entry form leaves open exactly the channels through which many things change at once."
+  },
+  {
+   "tip": "p",
+   "text": "Verifying that the guard covers all paths isn't done by reading the code, but by trying: a locked month must refuse each of the five, with messages explaining why. It's the kind of property that's proven by testing, not by intent."
+  },
+  {
+   "tip": "h",
+   "text": "Correction of errors from prior periods"
+  },
+  {
+   "tip": "p",
+   "text": "Locking moves the correction in time, but doesn't decide where it's recorded. That depends on a separate accounting criterion: how large the error is relative to the financial statements."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Where the correction is recorded",
+   "cap": [
+    "The error",
+    "Is corrected against",
+    "The effect"
+   ],
+   "randuri": [
+    [
+     "insignificant, from the current period",
+     "revenue and expense accounts",
+     "enters the current result"
+    ],
+    [
+     "insignificant, from prior periods",
+     "revenue and expense accounts",
+     "also enters the current result"
+    ],
+    [
+     "SIGNIFICANT, from prior periods",
+     "retained earnings (1174)",
+     "does NOT affect the current result"
+    ]
+   ],
+   "nota": "The third row exists so that the current year isn't distorted by last year's error — and the materiality threshold is set by the company and put in writing, as in chapter 28."
+  },
+  {
+   "tip": "p",
+   "text": "The tax consequence deserves separate mention: a correction that goes through retained earnings doesn't change the current year's accounting result, but may change the taxable base of the corrected year — thus triggering an amended return for that year. The two records are corrected via different paths, and forgetting the tax one leaves a discrepancy that gets discovered during an audit."
+  },
+  {
+   "tip": "cheie",
+   "text": "Period locking establishes WHEN the correction is recorded. The materiality of the error establishes WHERE. These are two separate questions, and both require an answer."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "A closed month is a public statement: it underpinned filed returns.",
+    "Locking doesn't protect against bad faith, but against accidents — the wrongly typed date, the import with old dates, the correction \"to make it balance.\"",
+    "Corrections aren't forbidden, they're moved: reversal in an open month, as in chapter 29.",
+    "Forcing must be possible, but never comfortable: administrator rights, written reason, permanent record.",
+    "The written reason is for whoever reads it a year later, not for control purposes.",
+    "Lock monthly, immediately after filing: a single open month instead of twelve."
+   ]
+  }
+ ]
+}

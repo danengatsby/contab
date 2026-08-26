@@ -2,9 +2,9 @@
    Interfața aplicației — o singură navigare logică și un singur context.
 
    Acest fișier NU creează rute, copii ale meniului sau copii ale selectoarelor.
-   Arborele contabil `#tabs` și destinațiile globale din `#sideTools` sunt nodurile reale,
-   iar firma, perioada și uneltele sunt MUTATE (nu duplicate) într-o bară contextuală
-   comună desktop/mobil. Logica din app.js rămâne sursa unică de activare a paginilor.
+   Navigatorul `#tabs` conține inclusiv grupul de unelte, iar firma și perioada sunt MUTATE
+   (nu duplicate) într-o bară contextuală comună desktop/mobil. Logica din app.js rămâne
+   sursa unică de activare a paginilor.
    ═══════════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -17,6 +17,7 @@
   }
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function trad(txt) { return window.contabI18n ? window.contabI18n.t(txt) : txt; }
 
   /* Un set unic de pictograme outline. SVG-urile moștenesc culoarea textului și
      nu depind de randarea diferită a emoji-urilor între Windows, Android și iOS. */
@@ -41,6 +42,7 @@
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.7 2c-1 .6-1.5 1.1-1.5 2.5M12 17h.01"/>',
     theme: '<path d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5a8.5 8.5 0 1 0 12 12z"/>',
     density: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    more: '<circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>',
     compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
     mode: '<path d="M4 5h16M7 9h10M9 13h6M11 17h2M8 21h8"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
@@ -176,7 +178,7 @@
     var selector = [
       'button', 'a', 'summary', 'label.attach-btn', '.emit-guided .gt',
       '#tabs > button[data-tab]', '#tabs .navlabel', '#tabs .navmenu button[data-tab]', '#tabs a.navlink',
-      '.side-tools button', '.toolbar > h2', '.card > h2', '.card h3',
+      '#sideTools button', '#sideTools a', '.toolbar > h2', '.card > h2', '.card h3',
       '.qa .ic', '.kpi-ic', '.welcome-steps .ws-ic', '.explain .ei',
       '.alert .al-ic', '.notice-icon', '.offline-banner'
     ].join(',');
@@ -238,10 +240,6 @@
     controls.appendChild(conexiune);
     bar.appendChild(controls);
 
-    // Un singur set de controale globale, mutat în antetul comun tuturor paginilor. Mutarea
-    // păstrează listener-ele deja legate și evită două versiuni care ar putea avea stări diferite.
-    var unelte = $('#sideTools');
-    if (unelte) bar.appendChild(unelte);
     main.insertBefore(bar, main.firstChild);
   }
 
@@ -280,9 +278,9 @@
   }
 
   function sincronizeaza() {
-    var activ = document.querySelector('#tabs button[data-tab].active, #sideTools button[data-tab].active');
+    var activ = document.querySelector('#tabs button[data-tab].active');
     var titlu = $('#appContextTitle');
-    var textTitlu = eticheta(activ) || 'Acasă';
+    var textTitlu = eticheta(activ) || trad('Acasă');
     if (titlu && titlu.textContent !== textTitlu) titlu.textContent = textTitlu;
 
     var kicker = $('.app-context-kicker');
@@ -290,7 +288,7 @@
       // Clasificarea ecranului (pas al lunii / inregistrare / consultare) se decide intr-un
       // singur loc — `marcheazaHartaLunii` din app.js, derivata din pasii inchiderii. Aici
       // doar se afiseaza ce s-a decis acolo; „Spatiu de lucru" ramane pentru restul.
-      var textKicker = (activ && activ.dataset.kicker) || 'Spațiu de lucru';
+      var textKicker = trad((activ && activ.dataset.kicker) || 'Spațiu de lucru');
       if (kicker.textContent !== textKicker) kicker.textContent = textKicker;
     }
 
@@ -309,12 +307,12 @@
     var online = $('#appOnline');
     if (online) {
       online.classList.toggle('offline', !navigator.onLine);
-      var stare = navigator.onLine ? 'Conectat' : 'Fără conexiune';
+      var stare = trad(navigator.onLine ? 'Conectat' : 'Fără conexiune');
       if (online.textContent !== stare) online.textContent = stare;
     }
   }
 
-  /* Pe telefon refolosim arborele lateral real într-un sertar. Permisiunile,
+  /* Pe telefon refolosim meniul superior real într-un sertar. Permisiunile,
      modul simplu, starea activă și ordinea ciclului rămân astfel identice cu
      desktopul; nu există o listă mobilă paralelă care să poată deriva. */
   function monteazaNavigatiaMobila() {
@@ -344,7 +342,7 @@
     });
     fundal.addEventListener('click', function () { inchide(true); });
     meniu.addEventListener('click', function (ev) {
-      if (ev.target.closest('button[data-tab], a.navlink')) inchide(false);
+      if (ev.target.closest('button[data-tab], button.nav-action, a.navlink')) inchide(false);
     });
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape' && bara.classList.contains('nav-open')) inchide(true);

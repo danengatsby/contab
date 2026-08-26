@@ -16,6 +16,7 @@
 
 const acc = require('./accounting');
 const { round2 } = require('./util');
+const globalChain = require('./globalChain');
 
 /** Vedere scoped pe o firma, construita din graful BRUT din db.json — replica minima a db.scoped
  *  pentru contabilitate (entries + openingBalances). Aceeasi regula de apartenenta ca db.scoped:
@@ -50,6 +51,10 @@ function checkBalanced(view) {
  *  contabila pe fiecare firma. @returns { ok, nrFirme, totalEntries, firme:[...], motiv } */
 function drillGraph(d) {
   if (!d || !Array.isArray(d.firme)) return { ok: false, motiv: 'db.json nu contine lista de firme' };
+  const integrity = globalChain.verifyGraph(d);
+  const archiveErrors = integrity.issues.filter((x) => x.component === 'annual-archive')
+    .map((x) => x.key + ': ' + x.message);
+  const cashSnapshotErrors = integrity.issues.filter((x) => x.component === 'cash-flow').map((x) => x.key);
   const firme = [];
   let totalEntries = 0; let allBalanced = true;
   for (const f of d.firme) {
@@ -60,17 +65,27 @@ function drillGraph(d) {
   }
   const rele = firme.filter((x) => !x.balanced).map((x) => (x.nume || x.id) + (x.error ? ' (' + x.error + ')' : ''));
   return {
-    ok: allBalanced,
+    ok: allBalanced && integrity.ok,
     nrFirme: firme.length,
     totalEntries,
     firme,
-    motiv: allBalanced ? null : 'balanta de verificare nu se inchide la: ' + rele.join(', '),
+    annualArchives: (d.annualArchives || []).length, archiveErrors,
+    cashForecastSnapshots: (d.cashForecastSnapshots || []).length, cashSnapshotErrors,
+    integrityRoot: integrity.rootHash, integrity,
+    motiv: archiveErrors.length ? 'dosare anuale corupte: ' + archiveErrors.join('; ')
+      : cashSnapshotErrors.length ? 'fotografii cash-flow corupte: ' + cashSnapshotErrors.join(', ')
+      : integrity.issues.length ? 'lanț global invalid: ' + integrity.issues[0].component + ' '
+        + integrity.issues[0].key + ' — ' + integrity.issues[0].message
+      : (allBalanced ? null : 'balanta de verificare nu se inchide la: ' + rele.join(', ')),
   };
 }
 
 /** Drill pe o arhiva completa full-*.zip: extrage db.json, apoi drillGraph. */
 function drillArchive(zipPath) {
   const AdmZip = require('adm-zip');
+  const archiveIntegrity = require('./backup').verifyArchive(zipPath);
+  if (!archiveIntegrity.ok) return { ok: false, motiv: archiveIntegrity.motiv,
+    integrity: archiveIntegrity.integrity || null };
   let d;
   try {
     const zip = new AdmZip(zipPath);
@@ -78,7 +93,10 @@ function drillArchive(zipPath) {
     if (!je) return { ok: false, motiv: 'db.json lipseste din arhiva' };
     d = JSON.parse(zip.readAsText(je));
   } catch (e) { return { ok: false, motiv: 'arhiva ilizibila: ' + e.message }; }
-  return drillGraph(d);
+  const report = drillGraph(d);
+  report.integrity = archiveIntegrity.integrity;
+  report.integrityRoot = archiveIntegrity.integrityRoot;
+  return report;
 }
 
 module.exports = { drillArchive, drillGraph, scopedView, checkBalanced };

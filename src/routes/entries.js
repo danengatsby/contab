@@ -15,7 +15,15 @@ const { period: periodOf } = require('../util');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, canAccess, requireAdmin, logAudit, buildEntry, composeEntry, upsertPartner } = ctx;
-  const deps = (req) => ({ buildEntry, upsertPartner, actor: req.user });
+  const deps = (req) => ({
+    buildEntry, upsertPartner, actor: req.user,
+    // `db.pushEntry` cere explicit aceasta dovada pentru orice override. Callback-ul scrie in
+    // jurnalul durabil fail-closed; absenta/esecul lui opreste postarea, nu doar auditul.
+    auditDuplicateOverride: (info) => logAudit('entry.duplicate.override', JSON.stringify({
+      entryId: info.entryId, duplicateId: info.duplicateId,
+      duplicateDocument: info.duplicateDocument, keys: info.keys, reason: info.reason,
+    }), { req, firmaId: info.firmaId }),
+  });
 
   // Previzualizarea articolului din formular, INAINTE de salvare. Trece prin exact aceeasi
   // compunere ca salvarea (composeEntry), deci arata si regulile pe care o replica in frontend
@@ -40,7 +48,12 @@ module.exports = function register(app, ctx) {
   const run = (res, fn) => {
     try { res.json(fn()); } catch (e) {
       if (!e.status) throw e;
-      res.status(e.status).json({ error: e.message });
+      res.status(e.status).json({
+        error: e.message,
+        ...(e.code ? { code: e.code } : {}),
+        ...(e.duplicateId ? { duplicateId: e.duplicateId } : {}),
+        ...(Array.isArray(e.duplicateKeys) ? { duplicateKeys: e.duplicateKeys } : {}),
+      });
     }
   };
 
@@ -78,7 +91,7 @@ module.exports = function register(app, ctx) {
   // STORNO generic: corectie reversibila a oricarui articol (reversare debit<->credit, legata),
   // intr-o perioada deschisa. Alternativa DOCUMENTATA la stergere pentru date deja postate.
   app.post('/api/entries/:id/storno', (req, res) => run(res, () => {
-    const r = svc.stornoEntry(req.params.id, activeId(req), (fid) => canAccess(req, fid), (req.body || {}).data);
+    const r = svc.stornoEntry(req.params.id, activeId(req), (fid) => canAccess(req, fid), (req.body || {}).data, req.user);
     logAudit('entry.storno', 'articol ' + r.original.id + ' (' + r.original.tipNume + ' ' + (r.original.document || '') + ') -> nota storno ' + r.storno.id, { req, firmaId: r.storno.firmaId });
     return { ok: true, storno: r.storno, original: { id: r.original.id, stornat: true, stornoBy: r.storno.id } };
   }));
@@ -123,9 +136,12 @@ module.exports = function register(app, ctx) {
 
   // Blocare/deblocare perioada (admin): seteaza luna pana la care e read-only (sau goleste pentru deblocare).
   app.post('/api/period-lock', requireAdmin, (req, res) => run(res, () => {
-    const r = svc.setPeriodLock(activeId(req), (req.body || {}).lockedUntil);
-    logAudit('perioada.lock', r.lockedUntil ? 'blocat pana la ' + r.lockedUntil : 'deblocat complet', { req });
-    return { ok: true, lockedUntil: r.lockedUntil };
+    const b = req.body || {};
+    const r = svc.setPeriodLock(activeId(req), b.lockedUntil, b.motiv);
+    logAudit(r.override ? 'perioada.override' : 'perioada.lock',
+      (r.lockedUntil ? 'blocat pana la ' + r.lockedUntil : 'deblocat complet')
+      + (r.override ? ' — motiv: ' + r.motiv : ''), { req });
+    return { ok: true, lockedUntil: r.lockedUntil, override: r.override };
   }));
 
   // TVA la incasare: din suma bruta incasata/platita, calculeaza TVA exigibila si posteaza nota

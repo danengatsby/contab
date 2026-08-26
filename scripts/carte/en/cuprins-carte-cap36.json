@@ -1,0 +1,285 @@
+{
+ "parte": "Part VIII · The state · phases 9 and 13",
+ "nr": "36",
+ "titlu": "Special regimes",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The previous chapter described the general rule: the tax is owed at delivery, by the supplier, on the full value. There are, however, situations in which each of these three elements changes — the moment, the person liable, or the taxable base."
+  },
+  {
+   "tip": "p",
+   "text": "These are not exotic exceptions. An ordinary company usually encounters two or three of them, and the wrong application of any one produces either tax paid for nothing, or a liability discovered during an audit."
+  },
+  {
+   "tip": "h",
+   "text": "The map"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What changes compared to the general rule",
+   "cap": [
+    "Regime",
+    "What changes",
+    "Typical situation"
+   ],
+   "randuri": [
+    [
+     "VAT on collection (cash accounting)",
+     "THE MOMENT of chargeability",
+     "small companies, under the threshold, that opt in"
+    ],
+    [
+     "Reverse charge",
+     "THE PERSON liable for payment",
+     "intra-Community acquisitions, cereals, construction"
+    ],
+    [
+     "The margin scheme",
+     "THE taxable BASE",
+     "second-hand goods, works of art, tourism"
+    ],
+    [
+     "Pro-rata",
+     "HOW MUCH is deducted",
+     "companies with exempt operations without deduction rights"
+    ],
+    [
+     "Triangular operations",
+     "THE PLACE of the operation",
+     "three companies, three countries, a single movement of goods"
+    ]
+   ],
+   "nota": "Each row answers a different question from the four that define an operation: when, who, how much, and where."
+  },
+  {
+   "tip": "h",
+   "text": "VAT on collection: the tax follows the money"
+  },
+  {
+   "tip": "p",
+   "text": "Under the normal regime, VAT becomes chargeable when the invoice is issued. The company owes it to the state even if it has not collected it — and an uncollected invoice becomes, as seen in chapter 27, a loss greater than the uncollected amount."
+  },
+  {
+   "tip": "p",
+   "text": "The VAT on collection regime shifts the moment: the tax becomes chargeable when the customer pays. For a company with customers who are late payers, the cash-flow advantage is considerable."
+  },
+  {
+   "tip": "p",
+   "text": "The price is symmetrical and is often forgotten: the company can no longer deduct the VAT from suppliers either, until it pays them. The regime therefore applies on both sides, and a company that pays promptly and collects slowly gains, while one that does the opposite loses."
+  },
+  {
+   "tip": "p",
+   "text": "Accountant, this is where account 4428 Non-chargeable VAT finds its purpose: the tax sits there, on sales as on purchases, until the moment of payment, when it moves into 4427, respectively into 4426."
+  },
+  {
+   "tip": "h",
+   "text": "Reverse charge: the obligation shifts to the buyer"
+  },
+  {
+   "tip": "p",
+   "text": "This is the mechanism that surprises most on first encounter: the supplier issues the invoice without VAT, and the buyer records the tax itself, at once as a liability and as a deduction right."
+  },
+  {
+   "tip": "p",
+   "text": "The result is that, in most cases, the effect on cash flow is zero: the same amount appears in 4427 and in 4426, and the VAT return picks it up in both columns. This is also why the operation seems, at first glance, pointless."
+  },
+  {
+   "tip": "p",
+   "text": "The point is different: the reverse charge eliminates the possibility that the supplier collects the VAT and disappears without remitting it. It applies to intra-Community acquisitions, to imports of services, and, within the country, to categories exposed to fraud — cereals, timber, waste, certain construction works."
+  },
+  {
+   "tip": "p",
+   "text": "The practical trap is that the omission is not visible: if the company does not record the self-charge at all, the VAT return is smaller on both columns and appears correct. It is only discovered by cross-checking against the partner's declarations, at the tax administration level."
+  },
+  {
+   "tip": "cheie",
+   "text": "Under reverse charge, disregarding the obligation does not produce a payment difference. It produces a false declaration — which is more serious."
+  },
+  {
+   "tip": "h",
+   "text": "The margin scheme: tax only on the markup"
+  },
+  {
+   "tip": "p",
+   "text": "A dealer who buys a used car from a private individual receives no VAT invoice, so has nothing to deduct. If they were to charge tax on the entire selling price, they would pay tax on a value they did not add themselves."
+  },
+  {
+   "tip": "p",
+   "text": "This is what the special margin scheme is for: the tax is calculated only on the difference between the selling price and the purchase price. It applies to second-hand goods, works of art, antiques and, with its own rules, in tourism."
+  },
+  {
+   "tip": "p",
+   "text": "Two consequences are worth remembering. First: the invoice issued does not show VAT — the buyer has nothing to deduct, and the mention of the special regime is mandatory. Second: the company must keep a separate register of goods under this regime, because the margin is calculated for each item individually, not on the total."
+  },
+  {
+   "tip": "h",
+   "text": "Pro-rata: partial deduction"
+  },
+  {
+   "tip": "p",
+   "text": "A company that has both taxable operations and exempt operations without deduction rights — a medical clinic with a pharmacy, a school with consulting activity — cannot fully deduct the VAT on shared expenses."
+  },
+  {
+   "tip": "p",
+   "text": "Pro-rata is the proportion in which it deducts them: the share of operations with deduction rights in the total operations. During the year a provisional pro-rata is used, and at year-end the final one is calculated and the difference is adjusted."
+  },
+  {
+   "tip": "p",
+   "text": "A detail that changes the figure: the final pro-rata is rounded UP, to the nearest unit. A proportion of 70.2% becomes 71%, not 70%. Rounding down, done out of arithmetic reflex, takes away part of the company's deduction every year."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The regimes are regulated separately: VAT on collection at art. 282 para. (3)-(8) of the Fiscal Code, reverse charge at art. 307, 331 and, for intra-Community acquisitions, art. 308, the special margin scheme at art. 312, and pro-rata at art. 300. Four substantive observations. First: under VAT on collection, chargeability occurs on the date of collection, but no later than the ninetieth day from the date the invoice was issued, only for operations for which the law expressly provides this limit — the general rule of temporal capping applicable to all invoices was eliminated back in 2014, and applying it out of habit collects the tax earlier than it is due. Second: under the margin scheme, the base is determined per item, and a negative margin does not offset a positive one; per-item records, with the purchase price and the selling price, are a condition for applying the regime, not a convenience. Third: under pro-rata, acquisitions intended exclusively for operations with deduction rights are fully deductible, and those intended exclusively for operations without such rights are not deductible at all — pro-rata applies only to acquisitions with mixed use, and its undifferentiated application to all inputs is an error in both directions. Fourth: for capital goods, the adjustment of the deduction is made over a period of five years, respectively twenty years for immovable property, and a change of use within this interval triggers the adjustment obligation under art. 305 — an obligation that survives a change in the company's regime and which a capital goods register makes visible in time."
+  },
+  {
+   "tip": "h",
+   "text": "Triangular operations"
+  },
+  {
+   "tip": "p",
+   "text": "The last regime on the list is the rarest and most confusing: three companies from three states of the Union, goods moving directly from the first to the third, while the one in the middle — which buys and resells — is not allowed to register in either of the other two countries."
+  },
+  {
+   "tip": "p",
+   "text": "The simplification measure resolves exactly this: the acquisition made by the company in the middle becomes non-taxable in its country, and the payment obligation shifts to the final buyer. The price is a strict declarative formality — the operation must be reported with a distinct code in the recapitulative statement, and the invoice must bear the corresponding mention."
+  },
+  {
+   "tip": "p",
+   "text": "It is worth knowing that it applies and that it is simple once understood, because the alternative — VAT registration in a second state — costs ten times more than the operation itself."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 36.1 — which regime applies",
+   "enunt": [
+    "For each operation, say which regime applies and who owes the tax:",
+    "(a) You buy cereals from a Romanian producer, VAT payer. (b) You buy equipment from a company in Germany. (c) You sell a used car, bought from a private individual. (d) You provide consulting services to a company in France."
+   ],
+   "rezolvare": [
+    "(a) Domestic reverse charge. The supplier issues without VAT; you record the tax simultaneously as a liability and as a deduction right. Net cash-flow effect: zero.",
+    "(b) Intra-Community acquisition, also reverse charge. In addition, the operation mandatorily moves you to MONTHLY filing of the VAT return, starting from the very month it occurred, and brings D390.",
+    "(c) Special margin scheme: the tax is calculated only on the difference between the selling price and the purchase price. The invoice does NOT show VAT, and the mention of the regime is mandatory.",
+    "(d) Intra-Community supply of services: the place is at the beneficiary, so the operation is not taxable in Romania. It is reported in D390 with the services code.",
+    "What (a), (b) and (d) have in common: the obligation shifts to the other party, and the omission does NOT produce a payment difference — it produces a false declaration, which is discovered by cross-checking against the partner's declarations."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Pro-rata, over a whole year"
+  },
+  {
+   "tip": "p",
+   "text": "Pro-rata is the regime most often applied incorrectly, because it has three distinct moments and because its rounding is not done like any other. Here is a full year, for a company with taxable and exempt operations."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The year, step by step",
+   "cap": [
+    "Moment",
+    "What is done",
+    "The figure"
+   ],
+   "randuri": [
+    [
+     "January 1",
+     "the provisional pro-rata is applied, the one from the previous year",
+     "80%"
+    ],
+    [
+     "during the year",
+     "80% of the VAT on MIXED acquisitions is deducted",
+     "6.720,00"
+    ],
+    [
+     "December 31",
+     "the actual proportion is calculated: 341,000 out of 400,000",
+     "85,25%"
+    ],
+    [
+     "",
+     "it is rounded UP, to the nearest unit",
+     "86%"
+    ],
+    [
+     "",
+     "the deduction is recalculated to 86%",
+     "7.224,00"
+    ],
+    [
+     "adjustment",
+     "the difference is deducted additionally",
+     "504,00"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "The figures are calculated with the formula from the application. Acquisitions with MIXED use had 8,400 lei of VAT — the rest of the acquisitions are fully deductible or not deductible at all, depending on their use."
+  },
+  {
+   "tip": "p",
+   "text": "The rounding deserves emphasis, because it is the only one in accounting that always goes in the company's favor and because it is easy to get wrong out of reflex. At 85.25%, arithmetic rounding would give 85%, i.e. 7,140 lei deducted — 84 lei less than is due. The amount is small over one year; the rule, applied wrongly and systematically, is not."
+  },
+  {
+   "tip": "cheie",
+   "text": "The final pro-rata is rounded UP, to the nearest unit. Not to the nearest whole number — up, always. It is written into the law, and it is the only rounding that is not negotiable."
+  },
+  {
+   "tip": "h",
+   "text": "What is included in the calculation and what is not"
+  },
+  {
+   "tip": "p",
+   "text": "The denominator of the pro-rata is not \"all revenues.\" There are operations that do not enter the calculation at all, and including them distorts the proportion — usually to the company's disadvantage."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The scope of the calculation",
+   "cap": [
+    "Included",
+    "Not included"
+   ],
+   "randuri": [
+    [
+     "taxable supplies and services",
+     "disposals of fixed assets"
+    ],
+    [
+     "operations exempt WITH deduction rights",
+     "incidental financial operations"
+    ],
+    [
+     "operations exempt WITHOUT deduction rights",
+     "subsidies that are not the price of an operation"
+    ],
+    [
+     "",
+     "reversals of provisions and adjustments"
+    ],
+    [
+     "",
+     "changes in inventory and own production of fixed assets"
+    ]
+   ],
+   "nota": "The column on the right has one criterion in common: these are not operations within the scope of the tax. A report that cannot say WHAT it excluded and why cannot be defended before an inspector."
+  },
+  {
+   "tip": "p",
+   "text": "And one last rule, often forgotten from year to year: pro-rata applies only to acquisitions with MIXED use. What is purchased exclusively for operations with deduction rights is fully deductible, and what is purchased exclusively for operations without such rights is not deductible at all. Applying pro-rata to all inputs is an error in both directions at once."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Each special regime changes something different: the moment, the person liable, the base, how much is deducted, or the place of the operation.",
+    "VAT on collection shifts chargeability to the moment of payment — on both sides: the deduction is not made either until the supplier has been paid.",
+    "Under reverse charge the cash-flow effect is zero, but the omission produces a false declaration, not a payment difference.",
+    "The margin scheme taxes only the markup and requires per-item records; the invoice does not show VAT.",
+    "Pro-rata applies only to acquisitions with MIXED use, and the final one is rounded UP, to the nearest unit.",
+    "Triangular operations avoid registration in another state, but require reporting with a distinct code and a mention on the invoice."
+   ]
+  }
+ ]
+}

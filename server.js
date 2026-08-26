@@ -32,7 +32,10 @@ const leasingService = require('./src/leasingService');
 // sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata.
 const dbReady = Promise.resolve(db.load()).then(() => {
   coa.addAccounts(db.get().customAccounts); // inregistreaza conturile personalizate importate
-  fiscal.applyConfig(db.get().settings.fiscal); // aplica cotele fiscale configurate (peste valorile implicite)
+  fiscal.configureRuleSets(db.get().fiscalRuleSets); // verifica hash-urile si incarca versiunile append-only
+  if (db.get().settings.fiscal && Object.keys(db.get().settings.fiscal).length) {
+    log.warn('settings.fiscal vechi ignorat: cotele globale mutabile au fost inlocuite de FiscalRuleSet');
+  }
   // Vizitatorii site-ului traiesc intr-un Map in memorie (calea cererii nu scrie in baza); la
   // pornire se reincarca din colectia persistata, altfel fiecare restart ar reseta contoarele.
   require('./src/visitors').hydrate(db.get().visitors);
@@ -73,7 +76,11 @@ function logAudit(action, detail, opts) {
     ts: new Date().toISOString(),
     userId: o.userId != null ? o.userId : (o.req && o.req.user && o.req.user.id),
     username: o.username || (o.req && o.req.user && o.req.user.username) || '',
-    firmaId: o.firmaId != null ? o.firmaId : (o.req && o.req.user ? activeId(o.req) : null),
+    // `null` explicit înseamnă eveniment de SISTEM. Verificarea veche cu `!= null` îl trata ca
+    // și cum opțiunea ar lipsi și muta impersonarea sub firma activă, făcând-o invizibilă în
+    // jurnalul administrativ /api/audit/system.
+    firmaId: Object.prototype.hasOwnProperty.call(o, 'firmaId')
+      ? o.firmaId : (o.req && o.req.user ? activeId(o.req) : null),
     action, detail: detail || '',
     ...(ip ? { ip } : {}),
     ...(viaAdmin ? { viaAdmin } : {}),
@@ -153,6 +160,9 @@ const S = (req) => {
 // resetare parola), curatate periodic de jobul rate-limit-hygiene (mai jos).
 const { registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts } = require('./src/authRoutes')(app, { logAudit, wrap, requireAdmin, activeId, S });
 
+// Starea publica a cadrului juridic + declararea modului de date si opt-in AI per firma.
+require('./src/routes/legal')(app, { activeId, logAudit });
+
 // ───────────────────────────── FIRME ─────────────────────────────
 function canAccess(req, id) { return allowedFirme(req.user).includes(Number(id)); }
 
@@ -209,7 +219,8 @@ function upsertPartner(firmaId, entry) {
 function marjaDinCampuri(f) {
   const pretV = round2(Number(f.pretVanzare) || 0);
   const cost = round2(Number(f.pretCumparare) || 0);
-  const cota = Number(f.cota) || fiscal.FISCAL.tvaStandard;
+  const cota = Number(f.cota) || Number((f._fiscalRates || {}).tvaStandard);
+  if (!(cota > 0)) throw new Error('Cota TVA lipseste, iar data nu are un FiscalRuleSet publicat.');
   const marja = round2(pretV - cost);
   const tva = marja > 0 ? round2((marja * cota) / (100 + cota)) : 0;
   return { marja, cota, tva, baza: round2(marja - tva), pretVanzare: pretV, pretCumparare: cost };
@@ -237,6 +248,20 @@ function composeEntry(tipId, fields, fileId, firmaId) {
       f[fld.name] = String(fld.step || '').includes('0001') ? Math.round(n * 10000) / 10000 : round2(n);
     }
   }
+  // Data decide regulile INAINTE de construirea monografiei. Pentru operatiunile acoperite se
+  // injecteaza fotografia imutabila; cele din ani neacoperiti pot fi introduse numai cu valori
+  // explicite si primesc un marcaj `uncovered`, niciodata fotografia ultimului an cunoscut.
+  const data = f.data || new Date().toISOString().slice(0, 10);
+  if (!validIsoDate(data)) throw new Error('Data documentului nu este o data calendaristica valida (YYYY-MM-DD).');
+  const fiscalRef = fiscal.ruleReferenceAt(data, { allowUncovered: true });
+  const fiscalRuleSet = fiscalRef.fiscalRulesCovered === false ? null : fiscal.rulesAt(data);
+  Object.defineProperty(f, '_fiscalRates', { value: fiscalRuleSet ? fiscalRuleSet.rates : Object.freeze({}), enumerable: false });
+  Object.defineProperty(f, '_fiscalRuleSet', { value: fiscalRuleSet, enumerable: false });
+  const autoFiscal = new Set(Array.isArray(f._fiscalAutoFields) ? f._fiscalAutoFields.map(String) : []);
+  for (const fld of type.fields) if (fld.fiscalRate && autoFiscal.has(fld.name)) {
+    if (!fiscalRuleSet) throw new Error('Câmpul „' + fld.label + '” nu poate fi completat automat: data nu are FiscalRuleSet publicat.');
+    f[fld.name] = fiscalRuleSet.rates[fld.fiscalRate];
+  }
   // Selectorul de rata nu este doar un ajutor de completare: daca a fost folosit, articolul
   // pastreaza contractul, luna si fotografia ratei din grafic. Introducerea manuala ramane
   // permisa pentru documente istorice sau regularizari fara contract migrat.
@@ -252,7 +277,7 @@ function composeEntry(tipId, fields, fileId, firmaId) {
       cantitate: round2(parseFloat(it.cantitate) || 0),
       um: String(it.um || 'buc').trim(),
       pret: round2(parseFloat(it.pret) || 0),
-      cota: Number(it.cota) || 0,
+      cota: it._cotaAuto && fiscalRuleSet ? fiscalRuleSet.rates.tvaStandard : (Number(it.cota) || 0),
     })).filter((it) => it.nume && it.cantitate > 0);
     if (items.length) {
       let baza = 0; let tva = 0;
@@ -345,19 +370,24 @@ function composeEntry(tipId, fields, fileId, firmaId) {
         + [...D394_COD_331].join(', ') + '.');
     }
   }
-  const data = f.data || new Date().toISOString().slice(0, 10);
-  if (!validIsoDate(data)) {
-    throw new Error('Data documentului nu este o dată calendaristică validă (YYYY-MM-DD).');
-  }
   // Blocarea perioadei: nu se inregistreaza in luni inchise (protejeaza fata de declaratiile depuse).
   if (firma.lockedUntil && periodOf(data) <= firma.lockedUntil) {
     throw new Error('Perioada ' + periodOf(data) + ' este inchisa (blocata pana la ' + firma.lockedUntil + '). Un administrator o poate debloca din Setari → Blocare perioada.');
+  }
+  const scadenta = String(f.scadenta || f.dueDate || '');
+  if (scadenta && !validIsoDate(scadenta)) throw new Error('Scadenta nu este o data calendaristica valida (YYYY-MM-DD).');
+  const termenContractual = f.termenContractual == null || f.termenContractual === '' ? null : Number(f.termenContractual);
+  if (termenContractual != null && (!Number.isInteger(termenContractual) || termenContractual < 0 || termenContractual > 36500)) {
+    throw new Error('Termenul contractual trebuie sa fie un numar intreg intre 0 si 36500 de zile.');
   }
   // nomenclatorul de parteneri se actualizeaza din ruta (upsertPartner), DUPA ce articolul e validat si adaugat
   return {
     firmaId,
     data,
     period: periodOf(data),
+    ruleSetId: fiscalRef.ruleSetId,
+    fiscalRulesHash: fiscalRef.fiscalRulesHash,
+    ...(fiscalRef.fiscalRulesCovered === false ? { fiscalRulesCovered: false } : {}),
     tip: tipId,
     tipNume: type.nume,
     partener: f.partener || '',
@@ -366,6 +396,11 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     refFactura: f.refFactura || '',
     analitic: f.analitic || '',
     explicatie: f.explicatie || '',
+    ...((scadenta || termenContractual != null) ? { openItem: {
+      ...(scadenta ? { dueDate: scadenta, dueSource: 'document' } : {}),
+      ...(termenContractual != null ? { contractualTermDays: termenContractual } : {}),
+      affiliated: null, guaranteed: null, dispute: null,
+    } } : {}),
     items,
     ...((f.codNC || (f.masaNeta && Number(f.masaNeta) > 0) || f.conditieLivrare) ? {
       intrastat: { codNC: String(f.codNC || '').trim(), masaNeta: round2(parseFloat(f.masaNeta) || 0), natura: String(f.naturaTranz || '11').trim(), conditie: String(f.conditieLivrare || '').trim() },
@@ -425,7 +460,7 @@ require('./src/routes/entries')(app, { S, activeId, canAccess, requireAdmin, log
 require('./src/routes/production')(app, { S, activeId, logAudit });
 
 // Inchideri fiscale (TVA, an, impozit pe profit, repartizare rezultat): src/routes/closings.js
-require('./src/routes/closings')(app, { S, activeId, logAudit });
+require('./src/routes/closings')(app, { S, activeId, logAudit, wrap });
 require('./src/routes/monthlyClose')(app, { activeId, logAudit });
 
 // ───────────────────────────── MIJLOACE FIXE ─────────────────────────────
@@ -449,11 +484,12 @@ require('./src/routes/csv')(app, { S });
 // Registre, jurnale si rapoarte financiare (JSON+PDF): src/routes/reports.js (mai jos)
 // Tablouri de bord + analize (dashboard, cash-forecast, aging, analitic, reconciliere, compensare): src/routes/dashboard.js
 require('./src/routes/dashboard')(app, { S, activeId, logAudit });
+require('./src/routes/openItems')(app, { S, activeId, logAudit });
 // Evaluari si ajustari (buget, reevaluare valutara, provizion creante, scoatere din evidenta): src/routes/adjustments.js
 require('./src/routes/adjustments')(app, { S, activeId, logAudit });
 
 // Import extras bancar (CSV/MT940) + lista e-Factura eligibila: src/routes/bank.js
-require('./src/routes/bank')(app, { upload, S, activeId, buildEntry, upsertPartner, logAudit });
+require('./src/routes/bank')(app, { upload, S, activeId, buildEntry, composeEntry, upsertPartner, logAudit });
 
 // ───────────────────────────── ANAF SPV ─────────────────────────────
 // ── Import e-Factura primita (UBL) ──
@@ -468,7 +504,7 @@ require('./src/routes/declarationsXml')(app, { S, activeId, canAccess, wrap, log
 
 // ───────────────── REGISTRUL DEPUNERILOR + PORTOFOLIU + NOTIFICARI ─────────────────
 // Registrul depunerilor, portofoliul si notificarile: src/routes/declarations.js
-require('./src/routes/declarations')(app, { db, S, activeId, allowedFirme, logAudit });
+require('./src/routes/declarations')(app, { db, S, activeId, allowedFirme, logAudit, upload });
 
 // Digestul cu termene + trimiterea de emailuri: src/notify.js
 app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
@@ -479,7 +515,7 @@ app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
 // Validare pre-depunere + api/saft: src/routes/declarationsXml.js
 
 // Situatii financiare + recapitulatii declaratii + registre (PDF/JSON): src/routes/reports.js
-require('./src/routes/reports')(app, { S, wrap, activeId });
+require('./src/routes/reports')(app, { S, wrap, activeId, logAudit });
 // Fisierul de plati (pain.001) — dupa `S`, ca orice ruta care lucreaza pe vederea scoped.
 require('./src/routes/plati')(app, { S, activeId, logAudit });
 // Preluarea unei firme din alt program (balanta -> solduri de preluare).

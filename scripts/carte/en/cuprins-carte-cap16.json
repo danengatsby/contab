@@ -1,0 +1,269 @@
+{
+ "parte": "Part IV · The money · phase 3",
+ "nr": "16",
+ "titlu": "Reconciliation, line by line",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Bank reconciliation is the confrontation between what your books say and what the bank statement says. It's an operation many treat as a monthly formality, when in fact it's the only check in the entire accounting process backed by external evidence."
+  },
+  {
+   "tip": "p",
+   "text": "An experienced accountant does it first, not last. The reason is practical: if the bank and the books match, an entire class of errors is already ruled out, and the remaining checks start on solid ground."
+  },
+  {
+   "tip": "h",
+   "text": "Why the two never match right away"
+  },
+  {
+   "tip": "p",
+   "text": "The beginner's first surprise is that balances differ even when everything is correct. This is not a problem: it's the natural gap between the moment a transaction occurs and the moment the bank records it."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Legitimate differences",
+   "cap": [
+    "The situation",
+    "Where it appears"
+   ],
+   "randuri": [
+    [
+     "A payment order given today, processed tomorrow",
+     "in the books yes, not yet in the statement"
+    ],
+    [
+     "A fee deducted by the bank, not yet known",
+     "in the statement yes, not yet in the books"
+    ],
+    [
+     "Interest calculated at month-end",
+     "in the statement yes, not yet in the books"
+    ],
+    [
+     "A receipt from an unidentified customer",
+     "in the statement yes, but against which invoice?"
+    ]
+   ],
+   "nota": "The first three resolve themselves in the following days. The fourth requires asking someone a question."
+  },
+  {
+   "tip": "p",
+   "text": "The distinction that matters is between timing differences and substantive differences. The former disappear on their own; the latter never disappear, no matter how long you wait, because behind them lies a transaction that's unrecorded or recorded incorrectly."
+  },
+  {
+   "tip": "h",
+   "text": "The method: match, then look at what remains"
+  },
+  {
+   "tip": "p",
+   "text": "Reconciliation isn't done by comparing balances, but by matching transactions against each other, one by one. Each line in the statement is looked up in the books and vice versa."
+  },
+  {
+   "tip": "p",
+   "text": "What matches no longer needs attention. The value of the method lies exactly in what remains unmatched — usually a short list, in which each line is either a timing difference or an error to be found."
+  },
+  {
+   "tip": "cheie",
+   "text": "You don't compare balances, you compare transactions. The balance tells you a difference exists; the lines tell you what it is."
+  },
+  {
+   "tip": "p",
+   "text": "Software can perform the matching automatically, by amount, date, and counterparty, and the result is that the person receives the short list directly. Their role, however, remains unchanged: to answer the question the machine cannot ask — why this line is missing."
+  },
+  {
+   "tip": "h",
+   "text": "What each remaining line means"
+  },
+  {
+   "tip": "p",
+   "text": "The unmatched list is read in two columns, and each side has its own meaning."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "How to read what remains",
+   "cap": [
+    "The line is…",
+    "It means that…",
+    "What you do"
+   ],
+   "randuri": [
+    [
+     "in the statement, not in the books",
+     "money moved without you knowing why",
+     "look for the document: fee, interest, direct payment"
+    ],
+    [
+     "in the books, not in the statement",
+     "you recorded a transaction that hasn't happened (yet)",
+     "check whether it's in transit or a wrong entry"
+    ],
+    [
+     "in both, but with different amounts",
+     "one of the figures was typed incorrectly",
+     "compare against the document, not against the other figure"
+    ]
+   ],
+   "nota": "The first case is the most valuable: this is usually where fees left unrecorded for years turn up."
+  },
+  {
+   "tip": "p",
+   "text": "The third line deserves emphasis. When two figures differ, the temptation is to pick the one from the statement, because \"the bank is right.\" Most of the time it is, but not always — and the reflex of aligning the books to the statement without looking at the document replaces one error with another, this time invisible."
+  },
+  {
+   "tip": "h",
+   "text": "What reconciliation catches and what it doesn't"
+  },
+  {
+   "tip": "p",
+   "text": "Reconciliation guarantees that all cash movements are recorded and that their amounts are correct. That's a lot, and it's limited."
+  },
+  {
+   "tip": "p",
+   "text": "It says nothing about the reason for the payment. An amount transferred correctly, matching the statement perfectly, can still be recorded against the wrong supplier or as an expense that doesn't belong to the company. Reconciliation confirms that the money left, not that it left for a legitimate reason."
+  },
+  {
+   "tip": "p",
+   "text": "This is, again, the distinction from Chapter 4: form can be checked automatically, substance cannot. Reconciliation is the best check of form in accounting — and precisely for that reason it shouldn't be asked to deliver more than it can."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Proper reconciliation is done on transactions and on the balance at the same time: line-by-line matching identifies the differences, and reconstructing the balance proves they are complete — the book balance, plus transactions in the books not yet appearing in the statement, minus those in the statement not yet recorded, must equal exactly the statement balance. If the equality doesn't come out once all lines have been classified, there is still an unidentified line. For companies with many receipts, automatic matching by amount alone is insufficient: two invoices of the same value produce false matches, and a partial payment matches nothing — so the criterion must include the counterparty and the document reference, and ambiguous matches must be left to a person, not resolved by picking the first option found. Timing differences are documented in the reconciliation statement; they are not recorded, but they must close in the following period, and an item still in transit after two months is, practically speaking, always an error. Finally, reconciliation is also the control that catches payments made directly by the owner from the company account without a document — the category of transactions no other check discovers."
+  },
+  {
+   "tip": "h",
+   "text": "How often"
+  },
+  {
+   "tip": "p",
+   "text": "The classic answer is \"monthly, at closing.\" The better answer is \"whenever the statement arrives,\" because the effort grows nonlinearly with delay: a mismatch from three days ago is cleared up with one phone call, one from four months ago requires searching through hundreds of similar transactions."
+  },
+  {
+   "tip": "p",
+   "text": "With cash reconciled, only one topic remains in this part: the thresholds the law places on cash — and why exceeding them is one of the few accounting mistakes penalized directly. That's the next chapter."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 16.1 — the reconciliation that closes",
+   "enunt": [
+    "Book balance on the 31st: 42,300 lei. Statement balance: 39,850 lei. Unmatched at checkpoint: a payment order of 3,100 lei issued on the 30th, not yet processed; a bank fee of 45 lei from the 29th, unrecorded; a receipt of 605 lei from the 31st, not identified against any customer.",
+    "Reconstruct the balance and say which line requires action."
+   ],
+   "rezolvare": [
+    "We start from the book balance: 42,300. We subtract the order given but not yet processed (in the books yes, in the statement not yet): 42,300 − 3,100 = 39,200. We add the unrecorded fee, which already reduced the balance in the statement but not yet in the books: 39,200 − 45 = 39,155. We add the unidentified receipt, present in the statement and unrecorded: 39,155 + 605 = 39,760.",
+    "It doesn't balance: 39,760 versus 39,850, a difference of 90 lei. So there is still an unclassified line — the reconciliation is not complete, and the correct conclusion is \"keep looking,\" not \"it roughly matches.\"",
+    "Of the three lines, only one requires immediate ACTION: the unidentified receipt. The first two resolve themselves — the order gets processed, the fee gets recorded. The third is a question to be asked of someone: who paid, and against which invoice.",
+    "The rule illustrated: reconstructing the balance is not a decorative step after checking. It PROVES that the list of differences is complete — and here it shows that it wasn't."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What a machine can match, and where it guesses"
+  },
+  {
+   "tip": "p",
+   "text": "Automatic matching of payments to invoices looks like an arithmetic problem, and in reality it's a problem of ambiguity. It's worth seeing exactly which cases it resolves and where it chooses — because that's where a person must step in."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Five receipts, the same three open invoices",
+   "cap": [
+    "The receipt",
+    "The situation",
+    "What the matching does"
+   ],
+   "randuri": [
+    [
+     "2.500",
+     "a single invoice for exactly that amount",
+     "exact match, no doubt"
+    ],
+    [
+     "600",
+     "less than any invoice",
+     "partial match, against the oldest one"
+    ],
+    [
+     "1.000",
+     "TWO invoices of exactly 1,000",
+     "picks the oldest one — a choice, not a fact"
+    ],
+    [
+     "3.500",
+     "the sum of two invoices",
+     "matches nothing"
+    ],
+    [
+     "9.999",
+     "nothing corresponds",
+     "matches nothing"
+    ]
+   ],
+   "nota": "The third line is the only one where the machine decides without knowing. Lines four and five are honest: they don't match, so they go to a person."
+  },
+  {
+   "tip": "p",
+   "text": "The choice on the third line follows the convention from Chapter 34 — the oldest one is settled first — and is prudent, because it errs by showing the balance as older than it is, not newer. But it remains a choice: if the customer actually paid the second invoice, the aging schedule will show incorrectly until someone looks into it."
+  },
+  {
+   "tip": "p",
+   "text": "The fourth line deserves defending, because it looks like a shortcoming: a program COULD try every combination of invoices that add up to 3,500. With ten open invoices there are over a thousand combinations, and with thirty — a billion. More importantly, a combination found is not proof: two invoices that add up to the amount paid doesn't mean they were the ones paid."
+  },
+  {
+   "tip": "cheie",
+   "text": "A good automatic matching system is not the one that matches the most, but the one that leaves the person exactly the cases where it would have guessed. The rest is a short list, not a long report."
+  },
+  {
+   "tip": "h",
+   "text": "What to do with what remains"
+  },
+  {
+   "tip": "p",
+   "text": "The unmatched list is not closed \"by difference.\" Each line has a treatment, and the wrong choice moves the problem without solving it."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Treatment of remaining lines",
+   "cap": [
+    "The line",
+    "What it usually is",
+    "What to do"
+   ],
+   "randuri": [
+    [
+     "receipt without an identified invoice",
+     "advance, or payment against a future invoice",
+     "recorded in account 419, not forced onto an invoice"
+    ],
+    [
+     "payment without a received invoice",
+     "expense without a document",
+     "held in 409 or 408, until it arrives"
+    ],
+    [
+     "small difference between the amount and the invoice",
+     "bank fee deducted by the payer",
+     "the fee is recorded, the invoice is not rounded"
+    ],
+    [
+     "receipt from an unknown counterparty",
+     "wrong payment, or a new tax ID",
+     "it gets clarified; it is not assigned to \"the most likely\""
+    ]
+   ],
+   "nota": "The third line is the one most often handled incorrectly: the difference gets \"lost\" in revenue, while the invoice remains partially uncollected in the aging schedule, indefinitely."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Reconciliation is the only check in accounting backed by evidence from outside the company.",
+    "Balances differ even when everything is correct: processing gaps are normal. Timing differences are separated from substantive ones.",
+    "You don't compare balances, you compare transactions. The value lies in the short list of unmatched items.",
+    "A line in the statement with no counterpart in the books is the most valuable: this is where forgotten fees are found.",
+    "When amounts differ, the document is checked — the books are not aligned to the statement out of reflex.",
+    "Reconciliation confirms that money moved, not that it had a reason to move."
+   ]
+  }
+ ]
+}

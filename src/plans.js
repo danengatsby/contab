@@ -4,11 +4,16 @@
 // stocat pe user: { plan, status, trialStartedAt, trialEndsAt, since, requestedPlan, requestedAt }.
 
 const TRIAL_DAYS = 30;
+// O singură formulă comercială pentru ambele planuri plătite. Unitatea include firma, ca API-ul
+// să nu poată fi randat accidental drept un abonament care acoperă toate firmele contului.
+const PRET_LUNAR_PER_FIRMA = 99;
+const UNITATE_PRET = 'lună/firmă';
 // Cate perioade de proba poate primi o FIRMA, in total. Prima vine automat la inscriere; a doua
 // se cere explicit, de pe ecranul de preturi, dupa ce prima a expirat. Dupa a doua, cardul de
 // proba ramane vizibil dar inactiv — utilizatorul vede ca optiunea exista si ca s-a consumat,
 // in loc sa dispara fara explicatie.
 const TRIAL_MAX = 2;
+const legal = require('./legalCompliance');
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ABONAMENTELE PLATITE — SUSPENDATE cat timp furnizorul nu are identitate juridica.
@@ -19,27 +24,30 @@ const TRIAL_MAX = 2;
 //  nu acopera pe nimeni. Datele fictive au fost scoase; ca sa nu ramana o poarta de plata fara
 //  parte contractanta, incasarea se opreste ODATA CU ele, in acelasi commit.
 //
-//  Suspendarea sta in COD, nu intr-o variabila de mediu, si e deliberat asa: un `.env` uitat
-//  sau o instalare noua ar reactiva incasarea tacut, exact riscul de evitat. Se ridica manual,
-//  intr-un commit care completeaza si blocul de identitate din public/termeni.html + public/dpa.html
-//  — cele doua sunt aceeasi decizie, nu doua.
+//  Suspendarea este DERIVATA de poarta fail-closed din legalCompliance: un singur flag din `.env`
+//  nu ajunge. Sunt cerute identitatea completa, publicarea ei efectiva in Termeni/DPA, versiunile
+//  juridice curente si dovezile operationale GDPR. O instalare noua ramane inchisa implicit.
 //
 //  Ce NU opreste: proba gratuita, portalul Stripe (un client existent trebuie sa poata mereu
 //  anula), webhook-ul (un abonament deja platit trebuie onorat) si activarea manuala de catre
 //  admin (acolo exista un om care raspunde de identitate).
-const PLATI_SUSPENDATE = true;
-const MOTIV_PLATI_SUSPENDATE = 'Abonamentele plătite sunt momentan indisponibile: '
-  + 'furnizorul este în curs de înființare, iar până la publicarea datelor lui de identificare '
-  + 'nu încasăm nicio sumă. Proba gratuită rămâne complet funcțională.';
+const LEGAL_READINESS = legal.assess();
+const PLATI_SUSPENDATE = !LEGAL_READINESS.ready;
+const MOTIV_PLATI_SUSPENDATE = PLATI_SUSPENDATE
+  ? 'Abonamentele plătite sunt momentan indisponibile: identitatea furnizorului și dosarul GDPR '
+    + 'nu sunt încă validate integral, iar până atunci nu încasăm nicio sumă. Proba cu date fictive rămâne disponibilă.'
+  : '';
 
-// Toate planurile includ aceleasi functii (se diferentiaza doar prin pret).
-const FEATURES = [
+// Motorul contabil este același în ambele planuri plătite. Pro schimbă vederea implicită și
+// traseul de lucru pentru contabili, nu blochează artificial funcții deja existente în Start;
+// de aceea și prețul este același. Lista spune diferența reală, nu dublează promisiuni identice
+// sub două prețuri diferite.
+const CORE_FEATURES = [
   'Facturi + e-Factura',
   'TVA + declarații de bază',
   'Toate declarațiile + SAF-T',
   'Stocuri + producție',
   'Situații financiare anuale complete (bilanț, P&L, fluxuri, capitaluri, note)',
-  'Suport prioritar',
 ];
 
 const PLANS = [
@@ -47,17 +55,17 @@ const PLANS = [
     id: 'trial', nume: 'Probă gratuită', pret: 0, moneda: 'lei', perioada: TRIAL_DAYS + ' zile', trial: true,
     tip: 'tester', descriere: 'Tester — testează tot, fără card bancar.',
     // proba are toate functiile, dar fara suport prioritar (doar planurile platite)
-    features: FEATURES.filter((f) => f !== 'Suport prioritar'),
+    features: CORE_FEATURES.slice(),
   },
   {
-    id: 'start', nume: 'Start', pret: 99, moneda: 'lei', perioada: 'lună',
-    tip: 'necontabil', descriere: 'Necontabil — antreprenori care își țin singuri evidența.',
-    features: FEATURES.slice(),
+    id: 'start', nume: 'Start', pret: PRET_LUNAR_PER_FIRMA, moneda: 'lei', perioada: UNITATE_PRET,
+    tip: 'necontabil', descriere: 'Antreprenori — modul Simplu implicit; aceleași funcții și același preț ca Pro.',
+    features: ['Mod simplu implicit, în limbaj de business', ...CORE_FEATURES],
   },
   {
-    id: 'pro', nume: 'Pro', pret: 199, moneda: 'lei', perioada: 'lună', recomandat: true,
-    tip: 'contabil', descriere: 'Contabil — profesioniști și portofolii de firme.',
-    features: FEATURES.slice(),
+    id: 'pro', nume: 'Pro', pret: PRET_LUNAR_PER_FIRMA, moneda: 'lei', perioada: UNITATE_PRET, recomandat: true,
+    tip: 'contabil', descriere: 'Contabili — modul Expert implicit; aceleași funcții și același preț ca Start.',
+    features: ['Tot ce include Start', 'Mod expert implicit', 'Portofoliu și colaborare patron–contabil'],
   },
 ];
 
@@ -214,4 +222,4 @@ function pendingToSubscription(rec, now) {
   return { plan: rec.plan, status: 'active', stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null, since: new Date(now || Date.now()).toISOString() };
 }
 
-module.exports = { PLANS, TRIAL_DAYS, TRIAL_MAX, PLATI_SUSPENDATE, MOTIV_PLATI_SUSPENDATE, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial, firmaTrialSub, firmaTrialCount, firmaPoateProba, firmaStatus, firmaLocked };
+module.exports = { PLANS, TRIAL_DAYS, TRIAL_MAX, PRET_LUNAR_PER_FIRMA, UNITATE_PRET, PLATI_SUSPENDATE, MOTIV_PLATI_SUSPENDATE, status, startTrial, selectPlan, activatePlan, daysLeft, findPending, pendingToSubscription, userKind, expiredLock, firmaTrial, firmaTrialSub, firmaTrialCount, firmaPoateProba, firmaStatus, firmaLocked };

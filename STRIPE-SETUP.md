@@ -7,9 +7,9 @@ Aplicația folosește **Stripe Checkout** (pagină de plată găzduită) + **Bil
 2. **Developers → API keys** → copiază **Secret key** (`sk_test_...`).
 
 ## 2. Produse & prețuri
-Pentru fiecare plan creează un **Product** cu un **Price recurent lunar** (RON):
-- **Product → Add product**: „Start", preț `99 RON` / lună (recurring) → copiază **Price ID** (`price_...`).
-- La fel pentru „Pro" (`199 RON`).
+Pentru fiecare plan creează un **Product** cu un **Price recurent lunar per firmă** (RON):
+- **Product → Add product**: „Start", preț `99 RON/lună/firmă` (recurring) → copiază **Price ID** (`price_...`).
+- La fel pentru „Pro" (`99 RON/lună/firmă`). Fiecare firmă primește un abonament separat.
 
 > Prețurile afișate în aplicație vin din `src/plans.js`; ține-le sincronizate cu cele din Stripe.
 

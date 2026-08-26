@@ -147,8 +147,10 @@ section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara creste
   // ruta autentificata n-ar putea ajuta exact acolo. Datele sunt publice prin natura lor
   // (registrul ANAF raspunde oricui, fara autentificare), iar abuzul e marginit prin plafon pe
   // IP (CONTAB_RATE_CUI), memo in anafRegistru si un raspuns redus la campurile de formular.
+  // `/api/legal-status` este public fiindca acceptarea de la inscriere trebuie sa poata numi
+  // versiunile curente INAINTE sa existe cont; raspunsul contine doar versiuni/stare, nu secrete.
   const ASTEPTAT = ['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password',
-    '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest',
+    '/api/register', '/api/legal-status', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest',
     '/api/client-error', '/api/registru-anaf'];
   const inPlus = publice.filter((p) => !ASTEPTAT.includes(p));
   const lipsa = ASTEPTAT.filter((p) => !publice.includes(p));
@@ -379,50 +381,7 @@ section('Poarta: ghidul se DERIVA din aplicatie, nu se scrie de mana');
     !/innerHTML\s*=\s*[`'"][^`'"]*\$\{/.test(ghid));
 }
 
-section('Poarta: pagina publica de prezentare nu-si contrazice produsul');
-{
-  const fsx = require('fs'); const pth = require('path');
-  const pag = fsx.readFileSync(pth.join(RADACINA, 'public', 'prezentare.html'), 'utf8');
-
-  // Pagina de vanzare afirma CIFRE despre produs. Netinute in frau, ele drifteaza in tacere si in
-  // directia proasta: la scrierea acestei porti spunea „~100 tipuri" (erau 107), „7 declaratii"
-  // (erau 10) si „582 de verificari" cand suita trecuse de 4.300 — adica isi SUBEVALUA produsul
-  // de sapte ori. Nimic nu confrunta pagina cu realitatea, spre deosebire de docs/.
-  const nrTipuri = Object.keys(require('../../src/documentTypes').TYPES).length;
-  const statTipuri = Number((pag.match(/<b>(\d+)<\/b> tipuri de operatiuni|<b>(\d+)<\/b> tipuri de opera\u021biuni/) || [])
-    .slice(1).find(Boolean));
-  eq('numarul de tipuri de operatiuni din pagina = cel real', statTipuri, nrTipuri);
-
-  // Declaratiile: catalogul registrului este acum complet, inclusiv D205. Nu mai adaugam D205
-  // separat: asta ar dubla-o exact dupa integrarea generatorului in calendar.
-  const nrDecl = Object.keys(require('../../src/declarations').TIPURI).length;
-  const statDecl = Number((pag.match(/<b>(\d+)<\/b> declara\u021bii/) || [])[1]);
-  eq('numarul de declaratii din pagina = cel real', statDecl, nrDecl);
-
-  // Fiecare declaratie NUMITA in pagina trebuie sa existe ca generator — altfel pagina vinde ceva
-  // ce nu se livreaza. Se verifica pe numele scurte, nu pe descrieri.
-  const numite = [...new Set([...pag.matchAll(/\bD(100|101|112|205|300|301|307|311|390|394|406)\b/g)].map((m) => m[1]))];
-  const xmlSrc = fsx.readFileSync(pth.join(RADACINA, 'src', 'xml.js'), 'utf8')
-    + fsx.readFileSync(pth.join(RADACINA, 'src', 'saft.js'), 'utf8');
-  const fara = numite.filter((d) => !new RegExp('d' + d + 'Xml|D406|saftXml', 'i').test(xmlSrc));
-  ok('fiecare declaratie numita in pagina are generator' + (fara.length ? ' — LIPSA: D' + fara.join(', D') : ''),
-    fara.length === 0);
-  ok('pagina chiar numeste declaratii (poarta nu scaneaza in gol)', numite.length >= 6);
-
-  // NUMERE CARE DRIFTEAZA GARANTAT: cate verificari are suita nu are ce cauta intr-o pagina de
-  // marketing — creste la fiecare test nou. Aceeasi regula ca la docs/ (vezi CLAUDE.md).
-  // Regexul tolereaza MARCAJ intre cifra si text: forma reala din pagina era
-  // `<b>582</b> de verificari automate`, iar o ancora care cerea cifra lipita de cuvant nu o
-  // prindea — verificat prin mutatie, poarta trecea senina peste exact driftul pe care il vaneaza.
-  ok('pagina NU fixeaza numarul de verificari al suitei (drifteaza garantat)',
-    !/\d[\s\S]{0,24}verific\u0103ri automate/.test(pag));
-
-  // Afirmatia cea mai puternica a produsului lipsea cu desavarsire din pagina de vanzare:
-  // DUKIntegrator aparea O SINGURA data, si doar ca obligatie a UTILIZATORULUI. Poarta cere ca
-  // pagina sa spuna si ce garanteaza PRODUSUL — altfel argumentul se pierde iar la o rescriere.
-  ok('pagina prezinta poarta fiscala ca promisiune a produsului, nu doar ca sarcina a ta',
-    /valideaz\u0103|valida/i.test(pag) && /versiune[\s\S]{0,200}DUKIntegrator|DUKIntegrator[\s\S]{0,200}versiune/i.test(pag));
-}
+// Afirmatiile comerciale ruleaza separat prin `npm run test:marketing`.
 
 section('Poarta: textele nu numesc formulare de bilant pe care nu le depunem');
 {
@@ -468,93 +427,7 @@ section('Poarta: textele nu numesc formulare de bilant pe care nu le depunem');
     gasite.length === 0);
 }
 
-section('Poarta: materialele publicate nu divergo de sursa lor');
-{
-  const fsx = require('fs'); const pth = require('path');
-  const MAT = pth.join(RADACINA, 'public', 'materiale');
-  const SRC = pth.join(RADACINA, 'marketing');
-
-  // `public/materiale/` sunt COPII servite public ale materialelor din `marketing/`. Doua copii
-  // ale aceluiasi fisier drifteaza garantat: la rescrierea textului comercial, cea publicata a
-  // ramas o versiune in urma pana am copiat-o manual. Poarta face copierea obligatorie, nu optionala.
-  const identic = (a, b) => fsx.existsSync(a) && fsx.existsSync(b) && fsx.readFileSync(a).equals(fsx.readFileSync(b));
-
-  // In DISTRIBUTIE (pachetul portabil) `marketing/` nu se livreaza: sunt 98 MB de capturi si text
-  // comercial intern, iar destinatarul n-are cu ce compara copiile publicate. Fara tratare, poarta
-  // crapa cu ENOENT la `readdirSync`, deci `npm test` pica, deci `prestart` pica, deci aplicatia
-  // NU PORNESTE pe masina clientului — s-a intamplat exact asa la prima proba a pachetului.
-  //
-  // Sarirea atarna de un semnal POZITIV scris de impachetator, nu de simpla absenta a directorului.
-  // Diferenta e toata poanta: pe depozit, un `marketing/` sters din greseala trebuie sa PICE poarta,
-  // nu s-o dezarmeze. Si nu se sare in tacere — se spune, si se dovedeste ca sarirea e justificata.
-  const distributie = fsx.existsSync(pth.join(RADACINA, '.distributie-portabila'));
-  if (distributie) {
-    console.log('  ○ SARIT: distributie portabila — sursele din marketing/ nu se livreaza.');
-    ok('sarirea e justificata: marketing/ chiar lipseste din distributie', !fsx.existsSync(SRC));
-  } else {
-    ok('folderul publicat exista', fsx.existsSync(MAT));
-    ok('sursele de marketing exista (fara ele poarta n-ar avea ce compara)', fsx.existsSync(SRC));
-    ok('descrierea publicata e identica cu sursa din marketing/',
-      identic(pth.join(SRC, 'descriere.txt'), pth.join(MAT, 'descriere.txt')));
-
-    // Fiecare captură PNG/JPG din marketing/capturi/ trebuie să aibă geamănul ei publicat, bit cu bit.
-    const dirCap = pth.join(SRC, 'capturi');
-    const capturi = fsx.existsSync(dirCap) ? fsx.readdirSync(dirCap).filter((f) => /\.(?:png|jpe?g)$/i.test(f)) : [];
-    ok('exista capturi de verificat (poarta nu scaneaza in gol)', capturi.length >= 3);
-    const divergente = capturi.filter((f) => !identic(pth.join(dirCap, f), pth.join(MAT, f)));
-    ok('fiecare captura publicata e identica cu originalul' + (divergente.length ? ' — DIFERITE: ' + divergente.join(', ') : ''),
-      divergente.length === 0);
-
-    // Egalitatea celor două copii nu dovedește că imaginile sunt NOI: ambele puteau rămâne
-    // identic de vechi după o schimbare de UI. Generatorul scrie de aceea un manifest cu
-    // amprenta exactă a surselor vizuale și versiunea shell-ului PWA.
-    const manifestSrc = pth.join(dirCap, 'capturi-manifest.json');
-    const manifestPub = pth.join(MAT, 'capturi-manifest.json');
-    ok('capturile au manifest anti-drift publicat în ambele directoare',
-      fsx.existsSync(manifestSrc) && identic(manifestSrc, manifestPub));
-    let manifest = null;
-    try { manifest = JSON.parse(fsx.readFileSync(manifestSrc, 'utf8')); } catch (_) { /* raportat mai jos */ }
-    ok('manifestul capturilor este JSON valid, schema 1', !!manifest && manifest.schema === 1);
-    const obligatorii = ['index.html', 'styles.css', 'u.css', 'erp.css', 'design-system.css', 'erp.js',
-      'dashboard.js', 'docflow.js', 'livrabile.js', 'rapoarte.js', 'sw.js'];
-    ok('amprenta acoperă shell-ul, design system-ul și ecranele fotografiate',
-      !!manifest && obligatorii.every((f) => (manifest.sources || []).includes(f)));
-    let amprenta = '';
-    if (manifest && Array.isArray(manifest.sources)) {
-      const hash = require('crypto').createHash('sha256');
-      let complet = true;
-      for (const rel of manifest.sources) {
-        const sursa = pth.join(RADACINA, 'public', rel);
-        if (typeof rel !== 'string' || rel.includes('..') || !fsx.existsSync(sursa)) { complet = false; break; }
-        hash.update(rel); hash.update('\0'); hash.update(fsx.readFileSync(sursa)); hash.update('\0');
-      }
-      if (complet) amprenta = hash.digest('hex');
-    }
-    ok('capturile provin din sursele UI curente, nu dintr-o versiune veche',
-      !!manifest && amprenta === manifest.sourceFingerprint);
-    const sw = fsx.readFileSync(pth.join(RADACINA, 'public', 'sw.js'), 'utf8');
-    const cacheCurent = (sw.match(/const CACHE = ['"]([^'"]+)/) || [])[1] || '';
-    ok('manifestul poartă aceeași versiune PWA ca aplicația', !!manifest && manifest.uiCache === cacheCurent);
-    ok('manifestul enumeră exact toate imaginile publicate', !!manifest
-      && JSON.stringify([...(manifest.captures || [])].sort()) === JSON.stringify([...capturi].sort()));
-    const pngCorecte = capturi.filter((f) => f.endsWith('.png')).every((f) => {
-      const b = fsx.readFileSync(pth.join(dirCap, f));
-      return b.length > 24 && b.readUInt32BE(16) === 2880 && b.readUInt32BE(20) === 1800;
-    });
-    ok('PNG-urile păstrează viewportul 1440×900 la 2×', pngCorecte);
-    ok('fixture-ul publicat rămâne realist: 7 firme, 70–90% conformitate, zero restanțe',
-      !!manifest && manifest.portfolio && manifest.portfolio.firms === 7
-        && manifest.portfolio.conformity >= 70 && manifest.portfolio.conformity <= 90
-        && manifest.portfolio.overdue === 0);
-  }
-
-  // Materialele NU au voie sa concureze paginile reale in cautari: sunt acelasi text, la alta
-  // adresa. Fara excludere, `/materiale/descriere.txt` poate ajunge deasupra paginii de prezentare.
-  const robots = pth.join(RADACINA, 'public', 'robots.txt');
-  ok('robots.txt exista', fsx.existsSync(robots));
-  ok('robots.txt exclude materialele din indexare',
-    fsx.existsSync(robots) && /Disallow:\s*\/materiale\//.test(fsx.readFileSync(robots, 'utf8')));
-}
+// Sincronizarea descrierii, capturilor si manifestului ruleaza in suita de marketing.
 
 section('Poarta: nicio ruta in afara prefixelor pazite (/api /pdf /xml /csv /efactura)');
 {
@@ -700,6 +573,32 @@ section('PWA: manifest + service worker (instalabilitate + siguranta cache)');
   const core = fsx.readFileSync(pth.join(pub, 'core.js'), 'utf8');
   ok('core.js: inregistreaza sw.js', /serviceWorker'?\s* in navigator/.test(core) && /register\('\/sw\.js'/.test(core));
   ok('core.js: doar in context sigur (https/localhost)', /https:|localhost|127\.0\.0\.1/.test(core.split('serviceWorker')[1] || ''));
+}
+
+section('Interfata bilingva RO/EN');
+{
+  const fsI = require('fs'); const pI = require('path');
+  const pub = pI.join(RADACINA, 'public');
+  const idx = fsI.readFileSync(pI.join(pub, 'index.html'), 'utf8');
+  const src = fsI.readFileSync(pI.join(pub, 'i18n.js'), 'utf8');
+  const sw = fsI.readFileSync(pI.join(pub, 'sw.js'), 'utf8');
+  ok('i18n.js este incarcat dupa modernizarea shell-ului si inaintea aplicatiei',
+    idx.indexOf('src="/erp.js"') < idx.indexOf('src="/i18n.js"')
+    && idx.indexOf('src="/i18n.js"') < idx.indexOf('src="/app.js"'));
+  eq('selector RO/EN pe login, inscriere si navigator', (idx.match(/class="language-switch"/g) || []).length, 3);
+  ok('selectoarele ofera explicit ambele limbi', /option value="ro">RO/.test(idx) && /option value="en">EN/.test(idx));
+  ok('alegerea limbii este persistenta si actualizeaza atributul lang',
+    src.includes('contab_language_v1') && /localStorage\.setItem\(STORAGE_KEY/.test(src)
+    && /document\.documentElement\.lang = current/.test(src));
+  ok('continutul randat dinamic este localizat prin MutationObserver',
+    /new MutationObserver/.test(src) && /characterData: true/.test(src) && /childList: true/.test(src));
+  ok('localizarea nu atinge valorile campurilor sau datele contabile',
+    /const ATTRS = \['title', 'placeholder', 'aria-label', 'alt'\]/.test(src)
+    && !/ATTRS[^;]*value/.test(src));
+  ok('formatarea numerelor si datelor foloseste locale-ul UI',
+    /export const uiLocale/.test(fsI.readFileSync(pI.join(pub, 'core.js'), 'utf8')));
+  ok('shell-ul offline include catalogul de limba si are versiune noua',
+    sw.includes("'/i18n.js'") && /contab-shell-v31/.test(sw));
 }
 
 section('Plafon general de API (uploadGuard.generalLimit)');
@@ -1116,6 +1015,9 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
   };
   const cuiT = idOf('termeni.html'); const cuiD = idOf('dpa.html');
   const termeniTxt = fsx.readFileSync(pth.join(root, 'public', 'termeni.html'), 'utf8');
+  const confTestTxt = fsx.readFileSync(pth.join(root, 'public', 'confidentialitate.html'), 'utf8');
+  const dpaTestTxt = fsx.readFileSync(pth.join(root, 'public', 'dpa.html'), 'utf8');
+  const indexTestTxt = fsx.readFileSync(pth.join(root, 'public', 'index.html'), 'utf8');
 
   // Datele de identificare FICTIVE nu au voie sa se intoarca, in nicio pagina. Au stat luni intregi
   // in productie („EXEMPLU SOFT S.R.L.", J40/1234/2020, RO12345678) fara ca nimic sa le semnaleze,
@@ -1140,6 +1042,11 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
     // `\s+`, nu spatiu: fraza e rupta pe doua randuri in HTML, iar o poarta care cere exact un
     // spatiu pica la prima reasezare a textului — adica din motivul gresit.
     ok('...si ca nu se incaseaza nimic', /nu se\s+[îi]ncaseaz[ăa]\s+nicio\s+sum[ăa]/i.test(termeniTxt));
+    const avertTest = /Folosește doar date fictive în etapa de test\./i;
+    ok('fără furnizor identificat -> Termenii, Confidențialitatea și DPA interzic datele reale',
+      avertTest.test(termeniTxt) && avertTest.test(confTestTxt) && avertTest.test(dpaTestTxt));
+    ok('...iar Termenii nu mai cer simultan date reale la înscriere',
+      !/Furnizezi date reale la înscriere/i.test(termeniTxt));
   } else {
     ok('incasare pornita -> CUI in ambele documente', !!cuiT && !!cuiD);
     ok('incasare pornita -> numar de ordine in Registrul Comertului', /J\d+\/\d+\/\d{4}/.test(termeniTxt));
@@ -1169,6 +1076,9 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
 
   ok('CUI identic in termeni si DPA' + (cuiT && cuiD && cuiT !== cuiD ? ' — ' + cuiT + ' vs ' + cuiD : ''),
     !cuiT || !cuiD || cuiT === cuiD);
+  ok('politica și formularul spun același lucru despre emailul de înscriere',
+    /adresă de email \(obligatorie la înscriere/i.test(confTestTxt)
+      && /name="email"[^>]*required/.test(indexTestTxt));
 
   // DPA-ul trebuie sa acopere subiectele fara de care nu e un acord art. 28, ci un text frumos.
   const dpa = fsx.readFileSync(pth.join(root, 'public', 'dpa.html'), 'utf8');
@@ -1208,10 +1118,45 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
     ok('...cu mentiunea ca pleaca DOAR adresa IP', /doar[^.<]{0,20}adres[ăa]\s+IP/i.test(conf) || /doar[^.<]{0,20}o adres[ăa] IP/i.test(dpa));
   }
 
-  // Un DPA pe care nimeni nu l-a acceptat nu e opozabil: ecranul de inscriere trebuie sa-l numeasca.
+  // Un DPA pe care nimeni nu l-a acceptat nu e opozabil: inscrierea cere o actiune explicita,
+  // iar serverul pastreaza versiunile si hash-urile, nu deduce acordul din simpla folosire.
   const idx = fsx.readFileSync(pth.join(root, 'public', 'index.html'), 'utf8');
-  const accept = (idx.match(/Prin crearea contului accep[țt]i[^<]*(?:<[^>]+>[^<]*)*?<\/p>/) || [''])[0];
-  ok('acceptarea la inscriere mentioneaza si DPA-ul', /dpa\.html/.test(accept));
+  const accept = (idx.match(/<label[^>]*legal-explicit-accept[\s\S]*?<\/label>/) || [''])[0];
+  ok('acceptarea explicita la inscriere mentioneaza si DPA-ul', /dpa\.html/.test(accept));
+  ok('acceptarea este checkbox obligatoriu, nu fraza dedusa', /name="acceptLegal"[^>]*required/.test(accept));
+  const authRoutesSrc = fsx.readFileSync(pth.join(root, 'src', 'authRoutes.js'), 'utf8');
+  ok('serverul refuza inscrierea fara acceptare explicita', /b\.acceptLegal\s*!==\s*true/.test(authRoutesSrc));
+
+  const legal = require('../../src/legalCompliance');
+  const currentVersions = Object.assign({}, legal.VERSIONS);
+  for (const [key, doc] of Object.entries(legal.DOCUMENTS)) {
+    const html = fsx.readFileSync(pth.join(root, 'public', doc.file), 'utf8');
+    eq('versiunea juridica din ' + doc.file + ' coincide cu poarta', legal._documentVersion(html), currentVersions[key]);
+  }
+  const inchis = legal.assess({ env: {}, documents: { terms: termeniTxt, privacy: confTestTxt, dpa: dpaTestTxt } });
+  ok('implicit poarta datelor reale este inchisa', !inchis.ready && inchis.mode === 'test-only');
+
+  const envComplet = { CONTAB_REAL_DATA_ENABLED: '1' };
+  Object.values(legal.PROVIDER_FIELDS).forEach((key) => { envComplet[key] = key === 'CONTAB_LEGAL_PRIVACY_EMAIL' ? 'privacy@example.test' : 'VAL-' + key; });
+  Object.values(legal.GOVERNANCE_EVIDENCE).forEach((key) => { envComplet[key] = 'v1'; });
+  const identitate = [envComplet.CONTAB_LEGAL_PROVIDER_NAME, envComplet.CONTAB_LEGAL_PROVIDER_REGISTRATION,
+    envComplet.CONTAB_LEGAL_PROVIDER_TAX_ID, envComplet.CONTAB_LEGAL_PROVIDER_ADDRESS].join(' ');
+  const meta = (v) => '<meta name="contabo-legal-version" content="' + v + '">';
+  const deschis = legal.assess({ env: envComplet, documents: {
+    terms: meta(currentVersions.terms) + identitate + envComplet.CONTAB_LEGAL_PRIVACY_EMAIL,
+    dpa: meta(currentVersions.dpa) + identitate + envComplet.CONTAB_LEGAL_PRIVACY_EMAIL,
+    privacy: meta(currentVersions.privacy) + envComplet.CONTAB_LEGAL_PRIVACY_EMAIL,
+  } });
+  ok('poarta se poate deschide numai cu identitate publicata + toate dovezile', deschis.ready && deschis.missing.length === 0);
+  const contradictoriu = legal.assess({ env: envComplet, documents: {
+    terms: meta(currentVersions.terms) + identitate + envComplet.CONTAB_LEGAL_PRIVACY_EMAIL + ' Folosește doar date fictive.',
+    dpa: meta(currentVersions.dpa) + identitate + envComplet.CONTAB_LEGAL_PRIVACY_EMAIL,
+    privacy: meta(currentVersions.privacy) + envComplet.CONTAB_LEGAL_PRIVACY_EMAIL,
+  } });
+  ok('poarta refuza documente ramase simultan in starea „doar date fictive”',
+    !contradictoriu.ready && contradictoriu.missing.includes('documentState.testOnly'));
+  ok('o firma neclasificata este fail-closed la scriere', legal.firmState({}).reason === 'DATA_MODE_UNCLASSIFIED');
+  ok('o firma declarata de test ramane operationala fara date reale', legal.firmState({ dataMode: 'test' }).operational === true);
 }
 
 section('2FA: login si Setari spun acelasi lucru (fara auto-blocare)');
@@ -1350,23 +1295,19 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
   ok('poarta nu se multumeste cu o mentiune in text',
     !corpSectiune('situatii').includes('id="saftXml"') && /SAF-T|D406/i.test(corpSectiune('livrabile')));
 
-  // TURUL trebuie sa acopere fiecare grup din meniu. Un grup nou fara pas in tur nu produce
-  // nicio eroare — turul pur si simplu nu-l pomeneste, iar omul caruia i se explica aplicatia
-  // afla despre el abia din intamplare. Exact ce se intamplase: „Salarii" si „Mijloace fixe"
-  // erau lipite intr-un pas despre Stocuri, iar „Setari" era descris ca un singur ecran dupa ce
-  // devenise noua. Submeniurile NU se verifica aici: turul le citeste din DOM la rulare, deci
-  // nu pot drifta prin constructie.
+  // Turul este deliberat scurt: un utilizator nou primeste traseul principal, iar Ghidul ramane
+  // documentatia completa. Pazim tinta fiecarui pas si plafonul de sase, ca turul sa nu revina
+  // tacut la inventarul tuturor grupurilor din meniu.
   const grupuriMeniu = [...html.matchAll(/class="navlabel"[^>]*>([^<]+)/g)]
     .map((m) => m[1].replace(/\s+/g, ' ').trim()).filter(Boolean);
   const app0 = fsx.readFileSync(pth.join(RADACINA, 'public', 'app.js'), 'utf8');
   const turBloc = (app0.match(/const TOUR = \[[\s\S]*?\n\];/) || [''])[0];
   ok('turul exista si are pasi', turBloc.length > 200);
   const grupuriTur = [...turBloc.matchAll(/group:\s*'([^']+)'/g)].map((m) => m[1]);
-  ok('turul chiar enumera grupuri', grupuriTur.length >= 5);
-  const nedescrise = grupuriMeniu.filter((g) => !grupuriTur.some((t) => g.indexOf(t) >= 0));
-  ok('fiecare grup din meniu are pas in tur'
-    + (nedescrise.length ? ' — FARA PAS: ' + nedescrise.join(', ') : ''), nedescrise.length === 0);
-  // ...si invers: un pas care tinteste un grup disparut ar evidentia in gol.
+  const pasiTur = (turBloc.match(/\{\s*(?:sel:|group:|ic:)/g) || []).length;
+  ok('turul are cel mult sase pasi', pasiTur > 0 && pasiTur <= 6);
+  ok('turul păstrează traseul principal Documente → Bani', grupuriTur.join(',') === 'Documente,Bani');
+  // Un pas care tinteste un grup disparut ar evidentia in gol.
   const tinteMoarte = grupuriTur.filter((t) => !grupuriMeniu.some((g) => g.indexOf(t) >= 0));
   ok('niciun pas de tur nu tinteste un grup inexistent'
     + (tinteMoarte.length ? ' — ' + tinteMoarte.join(', ') : ''), tinteMoarte.length === 0);
@@ -2015,4 +1956,76 @@ section('Cartea: declaratiile pe care aplicatia le genereaza sunt SI in text');
     ['Intrastat: pragul se calculeaza pe fiecare SENS', /pe fiecare sens/],
   ];
   for (const [ce, re] of scrieDespre) ok('cartea explica — ' + ce, re.test(text));
+}
+
+section('Cartea EN: traducere completa, aceeasi structura, livrabile separate');
+{
+  const fsB = require('fs'); const pB = require('path');
+  const roDir = pB.join(RADACINA, 'scripts');
+  const enDir = pB.join(roDir, 'carte', 'en');
+  const files = fsB.readdirSync(roDir)
+    .filter((f) => /^cuprins-carte(?:-cap(?:\d+|[A-E]))?\.json$/.test(f));
+  const erori = [];
+  let caractereEn = 0;
+
+  function aceeasiStructura(ro, en, cale, fisier) {
+    if (Array.isArray(ro)) {
+      if (!Array.isArray(en) || ro.length !== en.length) {
+        erori.push(`${fisier}:${cale} — lungime array`); return;
+      }
+      ro.forEach((x, i) => aceeasiStructura(x, en[i], `${cale}[${i}]`, fisier));
+      return;
+    }
+    if (ro && typeof ro === 'object') {
+      if (!en || typeof en !== 'object' || Array.isArray(en)) {
+        erori.push(`${fisier}:${cale} — obiect lipsa`); return;
+      }
+      const kr = Object.keys(ro); const ke = Object.keys(en);
+      if (kr.join('\n') !== ke.join('\n')) erori.push(`${fisier}:${cale} — campuri diferite`);
+      kr.forEach((k) => aceeasiStructura(ro[k], en[k], `${cale}.${k}`, fisier));
+      return;
+    }
+    if (typeof ro !== typeof en) erori.push(`${fisier}:${cale} — tip diferit`);
+    if (typeof en === 'string') {
+      caractereEn += en.length;
+      const ultim = cale.split('.').pop();
+      // Campurile care tin schema impreuna nu se traduc. O valoare `tip` schimbata ar face
+      // generatorul sa piarda blocul; un `nr` schimbat ar rupe ancora RO <-> EN.
+      if ((ultim === 'tip' || ultim === 'nr') && ro !== en) erori.push(`${fisier}:${cale} — invariant schimbat`);
+      // Traducerea poate schimba separatorul de mii si ordinea unei fraze, dar nu are voie sa
+      // inventeze sau sa piarda sume, cote, conturi, articole de lege ori numere de formular.
+      const numere = (s) => (String(s).match(/\d+(?:[.,]\d+)*/g) || [])
+        .map((x) => x.replace(/[.,]/g, '')).sort().join(',');
+      if (numere(ro) !== numere(en)) erori.push(`${fisier}:${cale} — numere schimbate`);
+    } else if (ro !== en) erori.push(`${fisier}:${cale} — valoare structurala schimbata`);
+  }
+
+  for (const fisier of files) {
+    const target = pB.join(enDir, fisier);
+    if (!fsB.existsSync(target)) { erori.push(`${fisier} — traducere lipsa`); continue; }
+    aceeasiStructura(
+      JSON.parse(fsB.readFileSync(pB.join(roDir, fisier), 'utf8')),
+      JSON.parse(fsB.readFileSync(target, 'utf8')), '$', fisier,
+    );
+  }
+  eq('toate cele 57 de surse RO au pereche EN', files.length, 57);
+  eq('schema, blocurile, tabelele si ancorele RO/EN sunt identice', erori.slice(0, 8).join('; '), '');
+  ok('traducerea EN contine cartea intreaga (>500k caractere)', caractereEn > 500000);
+
+  const manifest = JSON.parse(fsB.readFileSync(pB.join(enDir, 'translation-manifest.json'), 'utf8'));
+  eq('manifestul de traducere acopera toate sursele', Object.keys(manifest.files || {}).length, files.length);
+  // public/carte si public/descarcari sunt livrabile generate si ignorate de git; suita dintr-un
+  // checkout curat nu le poate cere pe disc. Verifica in schimb contractul generatorului, iar
+  // publicarea reala este masurata separat in E2E/deploy.
+  const generator = fsB.readFileSync(pB.join(roDir, 'cuprins-carte.js'), 'utf8');
+  ok('generatorul produce site-ul EN la adresa separata /carte/en/',
+    generator.includes("sitePath: path.join('public', 'carte', 'en')")
+    && generator.includes("siteUrl: 'https://contabo.space/carte/en/'"));
+  ok('generatorul localizeaza HTML/DOCX/PDF si numele descarcarilor EN',
+    generator.includes("lang: 'en', locale: 'en-GB'")
+    && generator.includes('Accounting-in-the-Order-It-Happens-B5-EN')
+    && generator.includes('Accounting-in-the-Order-It-Happens-EN.html'));
+  const siteJs = fsB.readFileSync(pB.join(roDir, 'carte', 'site.js'), 'utf8');
+  ok('selectorul pastreaza limba si capitolul intre RO si EN',
+    siteJs.includes("localStorage.setItem('carte-limba'") && siteJs.includes("location.hash || '#coperta'"));
 }

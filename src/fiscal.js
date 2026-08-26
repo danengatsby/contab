@@ -1,262 +1,141 @@
 'use strict';
 
 const { round2 } = require('./util');
-// Parametrii fiscali (cote, praguri, grile) traiesc intr-o sursa unica datata, cu referinta
-// legala pe fiecare valoare: src/fiscalConfig.js. Aici e DOAR logica de calcul.
 const cfg = require('./fiscalConfig');
-const ben = require('./beneficii'); // plafonul de 33% (art. 76 alin. (4^1)) — motor pur
+const ben = require('./beneficii');
+const registry = require('./fiscalRules');
 
-/** Parametri fiscali (an `cfg.AN`) — mutabili la runtime prin applyConfig (suprascrieri din Setari). */
-const FISCAL = Object.assign({}, cfg.RATES);
-
-// Valorile implicite (instantaneu, inainte de orice suprascriere) — pentru „reset la valori standard".
 const DEFAULTS = Object.freeze(Object.assign({}, cfg.RATES));
+// Fotografie numai pentru compatibilitate/UI. Este deliberat inghetata; motoarele folosesc rulesAt.
+const FISCAL = Object.freeze(Object.assign({}, registry.all()[registry.all().length - 1].rates));
 
-/**
- * Aplica cotele configurate de utilizator peste valorile implicite, mutand obiectul FISCAL in loc
- * (toate calculele care citesc `fiscal.FISCAL.*` la runtime preiau noile valori). Idempotent:
- * reseteaza la DEFAULTS, apoi aplica doar suprascrierile numerice valide.
- */
-function applyConfig(cfg) {
-  cfg = cfg || {};
-  for (const k of Object.keys(DEFAULTS)) {
-    const v = cfg[k];
-    FISCAL[k] = (v != null && v !== '' && Number.isFinite(Number(v))) ? Number(v) : DEFAULTS[k];
+function rulesAt(value) { return registry.at(value); }
+function rateContext(value, explicit) {
+  if (explicit && explicit.rates && explicit.id && explicit.hash) return explicit;
+  return rulesAt(value);
+}
+function applyConfig(overrides) {
+  if (overrides && Object.keys(overrides).length) {
+    const e = new Error('Cotele globale mutabile au fost eliminate. Publica un FiscalRuleSet versionat.');
+    e.status = 409; throw e;
   }
   return FISCAL;
 }
-
-/**
- * Vechimea cotelor: cotele implicite sunt fixate pentru un an fiscal (`FISCAL.an`) si trebuie
- * revizuite manual la modificari legislative. Semnaleaza cand anul calendaristic a depasit anul
- * de referinta al cotelor — riscul principal al valorilor hardcodate. Functie pura (an dat).
- * @returns {{ an:number, anCurent:number, stale:boolean }}
- */
+function configureRuleSets(rows) { return registry.configure(rows); }
 function fiscalStaleness(anCurent) {
   const cur = Number(anCurent) || 0;
-  const ref = Number(FISCAL.an) || 0;
-  return { an: ref, anCurent: cur, stale: !!(cur && ref && cur > ref) };
+  const years = registry.all().map((x) => Number(x.validTo && x.validTo.slice(0, 4))).filter(Boolean);
+  const coveredUntil = years.length ? Math.max(...years) : 0;
+  return { an: coveredUntil, anCurent: cur, stale: !!(cur && coveredUntil && cur > coveredUntil), coveredUntil };
 }
 
-// Procentele MAXIME ale deducerii personale de baza (la nivelul salariului minim), dupa numarul
-// de persoane in intretinere: 0, 1, 2, 3, 4+ (art. 77 Cod fiscal, Legea 34/2023) — vezi fiscalConfig.
 const DP_PCT_MAX = cfg.DEDUCERE.pctMax;
-const DP_PLAFON_PESTE_MINIM = cfg.DEDUCERE.plafonPesteMinim; // se acorda pana la salariul minim + acest plafon
+const DP_PLAFON_PESTE_MINIM = cfg.DEDUCERE.plafonPesteMinim;
 
-/**
- * Deducerea personala (art. 77 Cod fiscal): de baza (functie de venit + persoane in intretinere)
- * + suplimentara (tineri <=26 ani; copii in invatamant). Functie pura.
- *
- * Deducerea de baza la salariul minim foloseste procentele oficiale (20/25/30/35/45%). Peste
- * salariul minim, art. 77 alin. (4) foloseste 40 de transe de cate 50 lei: procentul scade cu
- * 0,5 puncte la fiecare transa, pana la salariul minim + 2.000 lei. Venitul brut se rotunjeste
- * mai intai la leu, iar deducerea la 10 lei in favoarea angajatului.
- * @returns {{ baza:number, suplimentara:number, total:number }}
- */
 function deducerePersonala(brut, persoane, opts) {
-  const o = opts || {};
-  const sm = round2(o.salariuMinim || salariuMinimLa(o.period)); // S1/S2 dupa luna (trecerea de la 1 iulie)
-  const b = round2(brut) || 0;
-  let baza = 0;
-  const brutRotunjit = Math.round(b);
+  const o = opts || {}; const rule = rateContext(o.period, o.rules); const r = rule.rates;
+  const sm = round2(Number(o.salariuMinim) || r.salariuMinim);
+  const b = round2(brut) || 0; let baza = 0; const brutRotunjit = Math.round(b);
   if (sm > 0 && brutRotunjit <= sm + DP_PLAFON_PESTE_MINIM) {
     const p = Math.max(0, Math.min(DP_PCT_MAX.length - 1, Math.round(Number(persoane) || 0)));
-    const peste = Math.max(0, brutRotunjit - sm);
-    const transa = peste > 0 ? Math.ceil(peste / 50) : 0;
-    const procent = Math.max(0, DP_PCT_MAX[p] - transa * 0.5);
-    baza = round2((sm * procent) / 100);
+    const peste = Math.max(0, brutRotunjit - sm); const transa = peste > 0 ? Math.ceil(peste / 50) : 0;
+    baza = round2((sm * Math.max(0, DP_PCT_MAX[p] - transa * 0.5)) / 100);
   }
   let supl = 0;
-  if (o.sub26 && b <= sm) supl = round2(supl + (sm * cfg.DEDUCERE.suplTineriPct) / 100); // % din SM, tineri <=26 ani
-  if (o.copii) supl = round2(supl + cfg.DEDUCERE.suplCopilLei * (Number(o.copii) || 0)); // lei/copil in invatamant
-  const rot = cfg.DEDUCERE.rotunjireLei;
-  const total = baza + supl > 0 ? Math.ceil(round2(baza + supl) / rot) * rot : 0; // rotunjire in favoarea angajatului
-  return { baza, suplimentara: supl, total };
+  if (o.sub26 && b <= sm) supl = round2(supl + (sm * cfg.DEDUCERE.suplTineriPct) / 100);
+  if (o.copii) supl = round2(supl + cfg.DEDUCERE.suplCopilLei * (Number(o.copii) || 0));
+  const total = baza + supl > 0
+    ? Math.ceil(round2(baza + supl) / cfg.DEDUCERE.rotunjireLei) * cfg.DEDUCERE.rotunjireLei : 0;
+  return { baza, suplimentara: supl, total, ruleSetId: rule.id, fiscalRulesHash: rule.hash };
 }
-
-/** Salariul minim aplicabil unei luni: S1 pana la 30 iunie, S2 de la 1 iulie (trecerea 4.050 -> 4.325). */
-function salariuMinimLa(period) {
-  const m = Number(String(period || new Date().toISOString().slice(0, 7)).slice(5, 7)) || 1;
-  return m >= 7 ? FISCAL.salariuMinimS2 : FISCAL.salariuMinimS1;
+function salariuMinimLa(period) { return rulesAt(period).rates.salariuMinim; }
+function neimpozabilLa(period) { return rulesAt(period).rates.neimpozabilMinim; }
+function neimpozabilMinim(brut, salariuBaza, period, explicitRules) {
+  const rule = rateContext(period, explicitRules); const r = rule.rates;
+  const sm = r.salariuMinim; const suma = r.neimpozabilMinim;
+  const b = round2(Number(brut) || 0); const baza = round2(Number(salariuBaza != null ? salariuBaza : brut) || 0);
+  const ref = { ruleSetId: rule.id, fiscalRulesHash: rule.hash };
+  if (!(sm > 0) || !(suma > 0)) return Object.assign({ suma: 0, eligibil: false,
+    motiv: 'Fara salariu minim sau suma neimpozabila publicate.' }, ref);
+  if (baza !== sm) return Object.assign({ suma: 0, eligibil: false,
+    motiv: 'Salariul de baza (' + baza + ' lei) nu e la nivelul salariului minim (' + sm + ' lei).' }, ref);
+  const plafon = round2(r.neimpozabilPlafonBrut);
+  if (b > plafon) return Object.assign({ suma: 0, eligibil: false,
+    motiv: 'Brutul lunii (' + b + ' lei) depaseste plafonul legal de ' + plafon + ' lei.' }, ref);
+  return Object.assign({ suma: Math.min(suma, b), eligibil: true, motiv: '' }, ref);
 }
-/** Suma neimpozabila din salariul minim aplicabila unei luni (300 lei S1 / 200 lei S2). */
-function neimpozabilLa(period) {
-  const m = Number(String(period || new Date().toISOString().slice(0, 7)).slice(5, 7)) || 1;
-  return m >= 7 ? FISCAL.neimpozabilS2 : FISCAL.neimpozabilS1;
-}
-
-/**
- * Suma neimpozabila din salariul minim, pentru o luna (art. 76 Cod fiscal): 300 lei S1 / 200 S2.
- *
- * `neimpozabilLa` de mai sus da doar CUANTUMUL lunii; aici stau CONDITIILE, fiindca facilitatea
- * nu se acorda tuturor. Se cer amandoua:
- *   1. salariul de baza brut lunar = salariul minim (nu „in jurul lui" — egal);
- *   2. brutul realizat in luna nu depaseste salariul minim + suma.
- * A doua conditie o taie la depasire, deci un spor care ridica brutul peste plafon anuleaza
- * facilitatea in intregime (nu o reduce proportional).
- *
- * Se DERIVA din salariu si luna, nu se bifeaza pe angajat: un cuantum stocat ar ramane adevarat
- * dupa ce salariul creste, si s-ar aplica tacit la un brut care nu mai da dreptul la el.
- *
- * @returns {{ suma:number, eligibil:boolean, motiv:string }} `motiv` explica refuzul, ca sa poata
- *   fi aratat in statul de plata — o facilitate lipsa fara explicatie pare o eroare de calcul.
- */
-function neimpozabilMinim(brut, salariuBaza, period) {
-  const sm = salariuMinimLa(period);
-  const suma = neimpozabilLa(period);
-  const b = round2(Number(brut) || 0);
-  const baza = round2(Number(salariuBaza != null ? salariuBaza : brut) || 0);
-  if (!(sm > 0) || !(suma > 0)) return { suma: 0, eligibil: false, motiv: 'Fara salariu minim sau suma neimpozabila configurate.' };
-  if (baza !== sm) return { suma: 0, eligibil: false, motiv: 'Salariul de baza (' + baza + ' lei) nu e la nivelul salariului minim (' + sm + ' lei).' };
-  const plafon = round2(sm + suma);
-  if (b > plafon) return { suma: 0, eligibil: false, motiv: 'Brutul lunii (' + b + ' lei) depaseste plafonul de ' + plafon + ' lei (salariul minim + ' + suma + ').' };
-  return { suma: Math.min(suma, b), eligibil: true, motiv: '' };
-}
-
-/**
- * Categoriile art. 76 alin. (4^1), cu limitele ACTUALIZATE din parametrii curenti.
- *
- * Cuantumurile care le alimenteaza (tichetul de masa, castigul salarial mediu, diurna legala) se
- * schimba prin alte acte decat Codul fiscal, deci se invechesc primele. Stau in `RATES`, unde
- * `applyConfig` le poate suprascrie din Setari, iar aici se REAPLICA peste tabelul de categorii
- * la fiecare apel. Citite direct din `cfg.BENEFICII`, ar fi ramas inghetate la valorile implicite
- * si suprascrierea utilizatorului n-ar fi avut niciun efect — un knob care pare ca merge.
- */
-function categoriiBeneficii() {
+function categoriiBeneficii(period, explicitRules) {
+  const r = rateContext(period, explicitRules).rates;
   return cfg.BENEFICII.map((cat) => {
-    const cheie = (cat.limita || {}).sursaRate;
-    if (!cheie) return cat;
-    const v = Number(FISCAL[cheie]);
-    if (!Number.isFinite(v) || v <= 0) return cat;
-    const multiplu = Number(cat.limita.multiplu) || 1;
-    return Object.assign({}, cat, { limita: Object.assign({}, cat.limita, { lei: round2(v * multiplu) }) });
+    const key = (cat.limita || {}).sursaRate; const value = Number(r[key]);
+    if (!key || !Number.isFinite(value) || value <= 0) return cat;
+    return Object.assign({}, cat, { limita: Object.assign({}, cat.limita,
+      { lei: round2(value * (Number(cat.limita.multiplu) || 1)) }) });
   });
 }
-
-/**
- * Avantajele din plafonul de 33% (art. 76 alin. (4^1)) — vezi `src/beneficii.js` pentru mecanica.
- * Aici se INJECTEAZA doar parametrii (categoriile datate + procentul suprascriabil din Setari),
- * ca motorul sa ramana pur si testabil, exact ca la deducerea personala.
- */
-function beneficii(intrare) {
-  const cursIntrare = Number((intrare || {}).cursEur);
-  return ben.calcul(intrare, {
-    categorii: categoriiBeneficii(),
-    pct: FISCAL.plafonBeneficiiPct,
-    cursEur: Number.isFinite(cursIntrare) && cursIntrare > 0
-      ? cursIntrare : FISCAL.cursEurBeneficii,
+function beneficii(input) {
+  const o = input || {}; const rule = rateContext(o.period, o.rules); const r = rule.rates;
+  const curs = Number(o.cursEur); const result = ben.calcul(o, {
+    categorii: categoriiBeneficii(o.period, rule), pct: r.plafonBeneficiiPct,
+    cursEur: Number.isFinite(curs) && curs > 0 ? curs : r.cursEurBeneficii,
   });
+  return Object.assign(result, { ruleSetId: rule.id, fiscalRulesHash: rule.hash });
 }
-
-/**
- * Calculul salariului dintr-un brut (cotele 2026).
- * @param {number} brut
- * @param {number} deducere - deducerea totala scazuta din baza de impozit (deducere personala + sume neimpozabile)
- * @param {{tichete?:number, sector?:string}} [opts]
- *   - tichete: valoarea tichetelor de masa (suporta CASS 10% + impozit 10%, din 2024; NU CAS)
- *   - sector: doar informativ. Facilitatile sectoriale (IT/constructii/agro — scutire impozit/CASS)
- *     au fost ELIMINATE de la 1 ianuarie 2025 (OUG 156/2024); toate sectoarele se impoziteaza standard.
- */
 function payroll(brut, deducere, opts) {
-  const o = opts || {};
-  const b = round2(brut) || 0;
-  const ded = round2(deducere) || 0;
-  const tichete = round2(o.tichete) || 0;
-  // Avantaje in natura IMPOZABILE (auto in folosinta personala, chirie platita de firma, prime
-  // in natura): intra in baza CAS + CASS + impozit + CAM, dar NU se platesc in bani — netul cash
-  // scade doar cu contributiile/impozitul aferente avantajului.
-  const avantaje = round2(o.avantaje) || 0;
-  // Partea din avantajele art. 76 alin. (4^1) care a depasit limita ei individuala sau plafonul
-  // de 33% (calculata de `beneficii()`). Se impoziteaza EXACT ca un avantaj in natura — impozit,
-  // CAS (art. 139(1)(v)), CASS (art. 157(1)(v)) si CAM — si nu se plateste in bani. E tinuta
-  // separat de `avantaje` doar ca statul de plata sa poata arata DE CE a aparut: un avantaj
-  // devenit impozabil dintr-un plafon depasit nu se poate explica dintr-un total comun.
-  const beneficiiImpozabile = round2(o.beneficiiImpozabile) || 0;
-  // Indemnizatii de concediu medical: toate intra in CAS si impozit. CASS se datoreaza numai
-  // pentru codurile 01, 07 si 10 (art. 155(1)(i) si art. 157(1)(v), forma OUG 34/2024), suma
-  // fiind transmisa explicit prin `cmCuCass`. CAM ramane numai pe partea angajatorului.
-  const cmA = round2(o.cmAngajator) || 0;
-  const cmF = round2(o.cmFnuass) || 0;
+  const o = opts || {}; const rule = rateContext(o.period, o.rules); const r = rule.rates;
+  const b = round2(brut) || 0; const ded = round2(deducere) || 0; const tichete = round2(o.tichete) || 0;
+  const avantaje = round2(o.avantaje) || 0; const beneficiiImpozabile = round2(o.beneficiiImpozabile) || 0;
+  const cmA = round2(o.cmAngajator) || 0; const cmF = round2(o.cmFnuass) || 0;
   const cmCuCass = Math.max(0, Math.min(round2(o.cmCuCass) || 0, round2(cmA + cmF)));
-  const sector = o.sector || 'normal';
-  // Suma neimpozabila din salariul minim (art. 76): NU e o simpla deducere. `deducere` (deducerea
-  // personala) scade doar baza de IMPOZIT; suma asta iese din TOATE bazele — impozit, CAS, CASS si
-  // CAM. Tratata ca deducere, ar fi lasat contributiile calculate pe intreg brutul, deci CAS/CASS
-  // si CAM supraevaluate — si asta merge direct in D112.
   const nm = Math.max(0, Math.min(round2(o.neimpozabilMinim) || 0, b));
   const bazaCasReala = round2(b + avantaje + beneficiiImpozabile + cmA + cmF - nm);
-  const cas = round2((bazaCasReala * FISCAL.cas) / 100);
-  // Tichetele suporta CASS (fara CAS); la CM intra numai codurile 01/07/10.
+  const cas = round2((bazaCasReala * r.cas) / 100);
   const bazaCassReala = round2(b + tichete + avantaje + beneficiiImpozabile + cmCuCass - nm);
-  const cass = round2((bazaCassReala * FISCAL.cass) / 100);
-  // Norma partiala (OUG 16/2022, art. 146 Cod fiscal): cand venitul brut e sub salariul minim,
-  // CAS si CASS se datoreaza la nivelul salariului minim (o.bazaMinima); DIFERENTA fata de
-  // contributiile retinute angajatului o SUPORTA ANGAJATORUL (nu se retine din net).
-  const bmin = round2(o.bazaMinima) || 0;
-  const casAngajator = bmin > bazaCasReala ? round2(((bmin - bazaCasReala) * FISCAL.cas) / 100) : 0;
-  const cassAngajator = bmin > bazaCassReala ? round2(((bmin - bazaCassReala) * FISCAL.cass) / 100) : 0;
-  const baza = Math.max(0, round2(b + tichete + avantaje + beneficiiImpozabile + cmA + cmF - nm - cas - cass - ded));
-  const impozit = round2((baza * FISCAL.impozitVenit) / 100);
-  const cam = round2(((b + avantaje + beneficiiImpozabile + cmA - nm) * FISCAL.cam) / 100);
-  // Netul creste, dar nu fiindca se adauga ceva: suma ramane in brut, doar nu mai e taxata.
-  const net = round2(b + cmA + cmF - cas - cass - impozit); // tichetele si avantajele se acorda ca valori, nu in numerar
-  // costTotal NU include avantajele si beneficiile: ele se inregistreaza pe conturile lor cand se
-  // acorda (6458, 626...), deci adunate si aici s-ar numara de doua ori. Tichetele fac exceptie
-  // istorica — sunt cumparate de angajator odata cu statul.
+  const cass = round2((bazaCassReala * r.cass) / 100); const bmin = round2(o.bazaMinima) || 0;
+  const casAngajator = bmin > bazaCasReala ? round2(((bmin - bazaCasReala) * r.cas) / 100) : 0;
+  const cassAngajator = bmin > bazaCassReala ? round2(((bmin - bazaCassReala) * r.cass) / 100) : 0;
+  const baza = Math.max(0, round2(b + tichete + avantaje + beneficiiImpozabile
+    + cmA + cmF - nm - cas - cass - ded));
+  const impozit = round2((baza * r.impozitVenit) / 100);
+  const cam = round2(((b + avantaje + beneficiiImpozabile + cmA - nm) * r.cam) / 100);
   return { brut: b, tichete, avantaje, beneficiiImpozabile, cmAngajator: cmA, cmFnuass: cmF,
     cmCuCass, neimpozabilMinim: nm, bazaCas: bazaCasReala, bazaCass: bazaCassReala,
-    cas, cass, casAngajator, cassAngajator, baza, impozit, cam, net,
+    cas, cass, casAngajator, cassAngajator, baza, impozit, cam,
+    net: round2(b + cmA + cmF - cas - cass - impozit),
     costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator),
-    sector, scutImpozit: false, scutCass: false, overPlafon: false };
+    sector: o.sector || 'normal', scutImpozit: false, scutCass: false, overPlafon: false,
+    ruleSetId: rule.id, fiscalRulesHash: rule.hash };
 }
-
-/**
- * Taxele PFA in sistem real (Declaratia Unica) — ESTIMARE:
- *  - CAS 25%: datorata de la 12 salarii minime venit net (baza minima 12 SM;
- *    de la 24 SM in sus baza minima 24 SM); sub 12 SM e optionala (aici 0).
- *  - CASS 10%: pe venitul net, intre 6 SM (baza minima cand exista venit si nu
- *    exista alte venituri asigurate) si plafonul de 60 SM.
- *  - Impozit 10%: pe venitul net minus CAS si CASS datorate.
- * Optiunile individuale (baza CAS mai mare, alte venituri) raman la contribuabil.
- */
-/**
- * Baza impozabila si impozitul pentru veniturile cu RETINERE LA SURSA (Titlul IV).
- *
- * Sursa UNICA a regulii, fiindca o citesc doua locuri care se contraziceau: tipul de document (care
- * posteaza retinerea) si D205 (care o declara). D205 trimitea la ANAF brutul drept baza impozabila,
- * desi impozitul retinut era calculat pe alta suma — declaratia arata un raport impozit/baza de 8%
- * acolo unde regula e 10%, iar la premii baza era supraevaluata cu 600 de lei.
- *
- * Baza NU e brutul si difera de la un venit la altul:
- *   chirii    art. 84  — brut minus cota forfetara de 20% (deci 8% efectiv din brut);
- *   premii    art. 110 alin. (4) — brut minus 600 lei NEIMPOZABILI, pentru FIECARE premiu;
- *             un premiu de 500 de lei nu se impoziteaza deloc, unul de 1.000 doar cu 40;
- *   dividende art. 97  — chiar brutul, fara nicio deducere.
- */
-function retinereLaSursa(fel, brut, cota) {
+function retinereLaSursa(fel, brut, cota, opts) {
+  const o = opts || {}; const rule = rateContext(o.period, o.rules); const r = rule.rates;
   const b = round2(Number(brut) || 0);
-  const c = Number.isFinite(Number(cota)) && Number(cota) > 0 ? Number(cota) : FISCAL.impozitVenit;
+  const defaultRate = fel === 'dividende' ? r.impozitDividende : r.impozitVenit;
+  const c = Number.isFinite(Number(cota)) && Number(cota) > 0 ? Number(cota) : defaultRate;
   let baza = b;
-  if (fel === 'chirii') baza = round2((b * (100 - Number(FISCAL.chiriiForfetarPct || 0))) / 100);
-  else if (fel === 'premii') baza = round2(Math.max(0, b - Number(FISCAL.premiiNeimpozabil || 0)));
+  if (fel === 'chirii') baza = round2((b * (100 - Number(r.chiriiForfetarPct || 0))) / 100);
+  else if (fel === 'premii') baza = round2(Math.max(0, b - Number(r.premiiNeimpozabil || 0)));
   const impozit = round2((baza * c) / 100);
-  return { brut: b, baza, cota: c, impozit, net: round2(b - impozit) };
+  return { brut: b, baza, cota: c, impozit, net: round2(b - impozit),
+    ruleSetId: rule.id, fiscalRulesHash: rule.hash };
 }
-
 function taxePfa(venitNet, opts) {
-  const o = opts || {};
-  // salariul minim: cel dat explicit, altfel cel aplicabil lunii (FISCAL nu are un camp `salariuMinim` unic — e S1/S2)
-  const sm = round2(Number(o.salariuMinim) || salariuMinimLa(o.period));
-  const vn = Math.max(0, round2(venitNet) || 0);
-  const p6 = round2(sm * cfg.PFA.plafonCassInf); const p12 = round2(sm * cfg.PFA.cas12); const p24 = round2(sm * cfg.PFA.cas24); const p60 = round2(sm * cfg.PFA.plafonCassSup);
-  const bazaCas = vn >= p24 ? p24 : vn >= p12 ? p12 : 0;
-  const cas = round2((bazaCas * FISCAL.cas) / 100);
-  let bazaCass = 0;
-  if (vn > 0) bazaCass = vn < p6 ? (o.areAlteVenituri ? vn : p6) : Math.min(vn, p60);
-  bazaCass = round2(bazaCass);
-  const cass = round2((bazaCass * FISCAL.cass) / 100);
-  const impozit = round2((Math.max(0, vn - cas - cass) * FISCAL.impozitVenit) / 100);
-  return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60, bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit) };
+  const o = opts || {}; const rule = rateContext(o.period, o.rules); const r = rule.rates;
+  const sm = round2(Number(o.salariuMinim) || r.salariuMinim); const vn = Math.max(0, round2(venitNet) || 0);
+  const p6 = round2(sm * cfg.PFA.plafonCassInf); const p12 = round2(sm * cfg.PFA.cas12);
+  const p24 = round2(sm * cfg.PFA.cas24); const p60 = round2(sm * cfg.PFA.plafonCassSup);
+  const bazaCas = vn >= p24 ? p24 : vn >= p12 ? p12 : 0; const cas = round2((bazaCas * r.cas) / 100);
+  let bazaCass = vn > 0 ? (vn < p6 ? (o.areAlteVenituri ? vn : p6) : Math.min(vn, p60)) : 0;
+  bazaCass = round2(bazaCass); const cass = round2((bazaCass * r.cass) / 100);
+  const impozit = round2((Math.max(0, vn - cas - cass) * r.impozitVenit) / 100);
+  return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60,
+    bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit),
+    ruleSetId: rule.id, fiscalRulesHash: rule.hash };
 }
 
-module.exports = { FISCAL, DEFAULTS, applyConfig, retinereLaSursa, categoriiBeneficii, fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa, neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };
+module.exports = { FISCAL, DEFAULTS, applyConfig, rulesAt, ruleSetAt: rulesAt,
+  ruleReferenceAt: registry.ref, allRuleSets: registry.all, configureRuleSets,
+  createRuleSet: registry.create, appendRuleSet: registry.append, ruleSetById: registry.byId,
+  registrySnapshot: registry.snapshot, registryHash: registry.registryHash,
+  verifyRuleReference: registry.verifyReference, retinereLaSursa, categoriiBeneficii,
+  fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa,
+  neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };

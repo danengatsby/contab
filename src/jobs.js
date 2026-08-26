@@ -16,6 +16,7 @@ const { sendDeadlineDigests, sendNotifMail } = require('./notify');
 const { pruneLoginAttempts } = require('./session');
 const auditLog = require('./auditLog');
 const { trackServerError } = require('./serverErrors');
+const openItems = require('./openItems');
 
 // Ruleaza un job periodic cu plasa de siguranta: o eroare in callback (ex. un db.save() care
 // arunca) e prinsa si logata — nu doboara procesul si nu impiedica rulele urmatoare.
@@ -237,6 +238,33 @@ function start(ctx) {
     try { const r = resetDemo(); if (r.ok) { metrics.jobResult('demo-reset', 'resetat din snapshot'); console.log('Demo resetat din snapshot.'); } db.save(); }
     catch (e) { metrics.jobError('demo-reset', e.message); console.error('Demo reset:', e.message); }
   }, 15 * 60 * 1000);
+
+  // Punctaj zilnic registru documente deschise <-> carte mare. Fotografia este control, nu o a
+  // doua sursa de sold: cifrele curente se recalculeaza mereu din jurnal; istoricul spune doar
+  // cand a rulat controlul si daca a existat vreo diferenta.
+  safeInterval('open-items-reconcile', () => {
+    const d = db.get(); const today = new Date().toISOString().slice(0, 10);
+    d.settings.openItems = d.settings.openItems || {};
+    if (d.settings.openItems.lastReconciledDate === today) return;
+    d.openItemReconciliations = d.openItemReconciliations || [];
+    let bad = 0;
+    for (const f of d.firme || []) {
+      const r = openItems.ledgerReconciliation(db.scoped(f.id), today);
+      d.openItemReconciliations.push({ id: db.nextId('oir'), firmaId: f.id, date: today,
+        checkedAt: new Date().toISOString(), ok: r.ok, difference: r.difference, rows: r.rows });
+      if (!r.ok) bad += 1;
+    }
+    // 400 de zile/firma sunt suficiente pentru controlul operational; auditul evenimentelor si
+    // backupurile raman separat. Retentia este determinista, pe firma.
+    const keep = new Set();
+    for (const f of d.firme || []) for (const x of d.openItemReconciliations.filter((r) => Number(r.firmaId) === Number(f.id))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 400)) keep.add(x.id);
+    d.openItemReconciliations = d.openItemReconciliations.filter((x) => keep.has(x.id));
+    d.settings.openItems.lastReconciledDate = today;
+    db.save();
+    metrics.jobResult('open-items-reconcile', (d.firme || []).length + ' firme; ' + bad + ' cu diferente');
+    if (bad) log.error('registrul documentelor deschise nu reconciliaza cu cartea mare', { date: today, firmeCuDiferente: bad });
+  }, 60 * 60 * 1000);
 
   // Igiena rate-limit: fara curatare, map-urile ar creste nelimitat (cate o intrare per IP esuat)
   safeInterval('rate-limit-hygiene', () => {

@@ -101,6 +101,9 @@ async function schema() {
     if (c.firma) await pool.query(`CREATE INDEX IF NOT EXISTS idx_${c.key.toLowerCase()}_firma ON ${c.key.toLowerCase()}("firmaId")`);
     if (c.hasId) await pool.query(`CREATE INDEX IF NOT EXISTS idx_${c.key.toLowerCase()}_id ON ${c.key.toLowerCase()}(id)`);
   }
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_declarations_dossier_unique
+    ON declarations("firmaId", lower(data ->> 'tip'), (data ->> 'period'))
+    WHERE data ->> 'tip' IS NOT NULL AND data ->> 'period' IS NOT NULL`);
   await pool.query(`CREATE TABLE IF NOT EXISTS partners (
     "firmaId" INTEGER NOT NULL, cui TEXT NOT NULL, data JSONB NOT NULL,
     PRIMARY KEY ("firmaId", cui)

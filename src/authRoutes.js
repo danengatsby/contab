@@ -12,6 +12,7 @@ const db = require('./db');
 const coa = require('./chartOfAccounts');
 const { typesForClient } = require('./documentTypes');
 const ai = require('./aiExtractor');
+const legal = require('./legalCompliance');
 const fiscal = require('./fiscal');
 const authlib = require('./auth');
 const accountSvc = require('./accountService');
@@ -31,6 +32,8 @@ const { currentUser, allowedFirme, publicUser, startSession, setTrustedDevice, d
 const { period: periodOf } = require('./util');
 const csrfLib = require('./csrf');
 const sessionLib = require('./session');
+const auditLog = require('./auditLog');
+const globalChain = require('./globalChain');
 
 module.exports = function registerAuthRoutes(app, ctx) {
   const { logAudit, wrap, requireAdmin, activeId, S } = ctx;
@@ -42,7 +45,11 @@ module.exports = function registerAuthRoutes(app, ctx) {
     // si il trimite inapoi in antetul X-CSRF-Token la fiecare cerere mutanta. Un site strain nu-l
     // poate citi (same-origin), deci nu poate compune cererea.
     out.csrf = csrfLib.tokenFor(req._sessId, sessionLib.csrfSecret());
-    if (req.impersonating && req.realUser) out.impersonating = { adminId: req.realUser.id, adminName: req.realUser.username };
+    if (req.impersonating && req.realUser) {
+      const c = req.impersonationContext || {};
+      out.impersonating = { adminId: req.realUser.id, adminName: req.realUser.username,
+        reason: c.reason || '', ticket: c.ticket || '', expiresAt: c.expiresAt || null };
+    }
     const d = db.get();
     out.unreadMessages = (u.role === 'admin' && !req.impersonating)
       ? messages.unreadForAdmin(d.messages || [])
@@ -71,8 +78,8 @@ module.exports = function registerAuthRoutes(app, ctx) {
   // fingerprinting gratuit al serverului.
   app.get('/api/health', (req, res) => {
     try {
-      const d = db.get();
-      res.json({ ok: true, ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()), firme: (d.firme || []).length });
+      db.get(); // sonda confirma si accesul la starea persistenta, fara a divulga cardinalitati
+      res.json({ ok: true, ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()) });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'db', ts: new Date().toISOString(), uptimeSec: Math.round(process.uptime()) });
     }
@@ -165,14 +172,22 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const nume = String(b.nume || '').trim();
     const username = authlib.normalizeUsername(b.username);
     const password = String(b.password || '');
+    const email = String(b.email || '').trim().toLowerCase();
     if (!contabilFaraFirma && !nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
     const userErr = authlib.validateUsername(username);
     if (userErr) return res.status(400).json({ error: userErr });
     const pwErr = authlib.validatePassword(password, { username });
     if (pwErr) return res.status(400).json({ error: pwErr });
+    if (!email) return res.status(400).json({ error: 'Completeaza emailul — este necesar pentru recuperarea contului.' });
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Adresa de email nu este valida.' });
     const breachErr = await authlib.breachCheck(password); // HIBP (fail-open), inainte de a crea firma+user
     if (breachErr) return res.status(400).json({ error: breachErr });
     if (authlib.usernameTaken(d.users, username)) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
+    if (d.users.some((u) => String(u.email || '').trim().toLowerCase() === email)) return res.status(400).json({ error: 'Exista deja un cont cu acest email.' });
+    // TVA este o decizie fiscala, nu o valoare implicita potrivita pentru orice firma. Formularul
+    // cere Da/Nu explicit (si poate propune raspunsul din ANAF dupa CUI); API-ul pastreaza aceeasi
+    // garantie, ca un client vechi sau un POST direct sa nu creeze tacut o firma platitoare.
+    if (!contabilFaraFirma && typeof b.tvaPlatitor !== 'boolean') return res.status(400).json({ error: 'Alege explicit daca firma este platitoare de TVA.' });
     // CUI-ul ramane OPTIONAL la inscriere (nu rupem intrarea in aplicatie), dar daca e dat trebuie
     // sa fie valid si liber: altfel inscrierea ar fi portita prin care se creeaza a doua evidenta
     // pentru o firma existenta, ocolind poarta din createFirma.
@@ -180,6 +195,11 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (cuiNou) {
       if (!identitate.validCUI(cuiNou)) return res.status(400).json({ error: 'CUI invalid — cifra de control nu se potriveste. Lasa campul gol daca nu il stii acum.' });
       if (firmeSvc.firmaDupaCui(cuiNou)) return res.status(409).json({ error: firmeSvc.CUI_DUPLICAT });
+    }
+    // Acceptarea este un ACT, nu o fraza dedusa din „ai folosit site-ul”. Serverul inregistreaza
+    // versiunile si amprentele exacte; un client vechi sau un POST direct nu poate sari peste ea.
+    if (b.acceptLegal !== true) {
+      return res.status(400).json({ error: 'Acceptă explicit Termenii, Politica de confidențialitate și DPA-ul pentru etapa de test.', code: 'LEGAL_ACCEPTANCE_REQUIRED' });
     }
     // firma noua GOALA — fara date contabile (entries/parteneri/solduri/stocuri etc.)
     // La contul de contabil nu se creeaza nicio firma: `firma` ramane null si tot ce urmeaza
@@ -189,8 +209,8 @@ module.exports = function registerAuthRoutes(app, ctx) {
       fid = db.nextFirmaId();
       firma = Object.assign(db.defaultFirma(fid), {
         nume, cui: cuiNou, regCom: String(b.regCom || '').trim(),
-        adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: b.judet || 'RO-B',
-        tvaPlatitor: b.tvaPlatitor != null ? !!b.tvaPlatitor : true,
+        adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: String(b.judet || '').trim(),
+        tvaPlatitor: b.tvaPlatitor,
         tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
       }, { id: fid });
       // Billing per-firma: prima firma primeste o proba de 30 de zile.
@@ -201,13 +221,17 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const { salt, hash } = await authlib.hashPasswordAsync(password);
     // felul contului, ales explicit la inscriere: decide ce i se ofera in aplicatie (patronul
     // isi inscrie firme proprii; contabilul primeste firmele altora, prin acord)
-    const user = { id: db.nextUserId(), username, email: String(b.email || '').trim(), salt, hash, role: 'user',
-      tipCont: contabilFaraFirma ? 'contabil' : 'patron', firme: fid ? [fid] : [], firmaActiva: fid };
-    if (firma) firma.ownerId = user.id; // proprietarul firmei: cel care a inscris-o (aproba cererile de acces)
-    // Cine se inscrie CA SI CONTABIL apare in lista pe care o vad patronii — a te face gasit e
-    // chiar motivul inscrierii. Bifa din formular ramane, ca sa fie o alegere vazuta, nu dedusa;
-    // se poate schimba oricand din Setari -> Contul meu.
-    if (contabilFaraFirma && b.disponibilContabil !== false) user.profil = { disponibilContabil: true };
+    const user = { id: db.nextUserId(), username, email, salt, hash, role: 'user',
+      tipCont: contabilFaraFirma ? 'contabil' : 'patron', firme: fid ? [fid] : [], firmaActiva: fid,
+      legalAcceptance: legal.acceptanceRecord('account-onboarding', null, { declaration: 'test-stage-documents' }) };
+    user.legalAcceptance.acceptedBy = user.id;
+    user.legalAcceptance.acceptedUsername = user.username;
+    if (firma) {
+      firma.ownerId = user.id; // proprietarul firmei: cel care a inscris-o (aproba cererile de acces)
+      firma.legalAcceptance = legal.acceptanceRecord('test-data', user, { declaration: 'fictitious-only' });
+    }
+    // Profilul public este opt-in: un contabil nou nu apare intr-un catalog pana nu cere asta.
+    if (contabilFaraFirma && b.disponibilContabil === true) user.profil = { disponibilContabil: true };
     d.users.push(user);
     // Daca a platit ca „guest" inainte de inscriere, leaga abonamentul dupa email (Stripe) — firma devine activa.
     const pIdx = plans.findPending(d.settings.pendingSubs, user.email);
@@ -281,10 +305,28 @@ module.exports = function registerAuthRoutes(app, ctx) {
     res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
     res.send(toCsv(['Data (UTC)', 'Utilizator', 'Actiune', 'Detaliu', 'Prin admin'], rows));
   }
-  app.get('/csv/audit', (req, res) => auditCsv(res, auditList(req, activeId(req)), 'audit-firma.csv'));
-  app.get('/csv/audit/system', requireAdmin, (req, res) => auditCsv(res, auditList(req, null), 'audit-sistem.csv'));
+  function verifiedGlobal(res, exposeIssues) {
+    let report;
+    try { report = globalChain.verifyGraph(db.get(), { auditResult: auditLog.verify(), requireAudit: true }); }
+    catch (_) {
+      res.status(409).json({ error: 'Lanțul global nu a putut fi verificat.', code: 'GLOBAL_CHAIN_UNAVAILABLE' }); return null;
+    }
+    if (!report.ok) {
+      res.status(409).json({ error: 'Operația a fost oprită: verificarea globală a lanțului a eșuat.',
+        code: 'GLOBAL_CHAIN_INVALID', issues: exposeIssues ? report.issues : undefined }); return null;
+    }
+    res.setHeader('X-Contab-Integrity-Root', report.rootHash);
+    return report;
+  }
+  app.get('/csv/audit', (req, res) => {
+    if (!verifiedGlobal(res, false)) return;
+    auditCsv(res, auditList(req, activeId(req)), 'audit-firma.csv');
+  });
+  app.get('/csv/audit/system', requireAdmin, (req, res) => {
+    if (!verifiedGlobal(res, true)) return;
+    auditCsv(res, auditList(req, null), 'audit-sistem.csv');
+  });
   // Jurnalul DURABIL (append-only, pe disc): listeaza fisierele lunare sau descarca unul.
-  const auditLog = require('../src/auditLog');
   const path = require('path'); const fs = require('fs');
   app.get('/api/audit/durable', requireAdmin, (req, res) => {
     const files = auditLog.listFiles();
@@ -293,13 +335,22 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (!/^audit-\d{4}-\d{2}\.ndjson$/.test(name)) return res.status(400).json({ error: 'Nume de fisier invalid.' });
     const p = path.join(auditLog.auditDir(), name);
     if (!fs.existsSync(p)) return res.status(404).json({ error: 'Fisier inexistent.' });
+    if (!verifiedGlobal(res, true)) return;
     res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="' + name + '"');
     res.send(fs.readFileSync(p));
   });
   app.get('/api/audit/durable/verify', requireAdmin, (req, res) => {
     const result = auditLog.verify();
-    res.status(result.ok ? 200 : 409).json(result);
+    const global = globalChain.verifyGraph(db.get(), { auditResult: result, requireAudit: true });
+    res.status(global.ok ? 200 : 409).json(Object.assign({}, result, {
+      ok: global.ok, globalRootHash: global.rootHash, complete: global.complete, global,
+    }));
+  });
+  app.get('/api/integrity/global', requireAdmin, (req, res) => {
+    const audit = auditLog.verify();
+    const report = globalChain.verifyGraph(db.get(), { auditResult: audit, requireAudit: true });
+    res.status(report.ok ? 200 : 409).json(report);
   });
 
   // Metrici de performanta pe ruta (in-memory, de la ultimul restart): candidatii la optimizare
@@ -457,22 +508,43 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (req.realUser && req.realUser.role === 'admin') return req.realUser;
     return req.user && req.user.role === 'admin' ? req.user : null;
   }
-  app.post('/api/impersonate', (req, res) => {
+  app.post('/api/impersonate', wrap(async (req, res) => {
     const admin = adminPrincipal(req);
     if (!admin) return res.status(403).json({ error: 'Doar administratorul poate intra pe conturi.' });
+    if (!admin.twofa) return res.status(428).json({ error: 'Activează 2FA înainte de impersonare.', twofaRequired: true });
+    const body = req.body || {};
+    const reason = String(body.reason || '').trim().slice(0, 500);
+    const ticket = String(body.ticket || '').trim().slice(0, 120);
+    if (reason.length < 10) return res.status(400).json({ error: 'Motivul impersonării trebuie să aibă cel puțin 10 caractere.' });
+    if (ticket.length < 3) return res.status(400).json({ error: 'Indică tichetul sau referința solicitării.' });
+    const passwordOk = await authlib.verifyUserPasswordAsync(admin, body.password);
+    const factor = accountSvc.verifySecondFactor(admin, body.code, { allowRecovery: false });
+    if (!passwordOk || !factor.ok) {
+      logAudit('impersonate.denied', 'reautentificare eșuată · tichet ' + ticket, {
+        req, userId: admin.id, username: admin.username, firmaId: null,
+      });
+      db.save();
+      return res.status(401).json({ error: 'Reautentificare eșuată. Verifică parola și codul TOTP.' });
+    }
     const d = db.get();
-    const target = d.users.find((x) => x.id === Number((req.body || {}).userId));
+    const target = d.users.find((x) => x.id === Number(body.userId));
     if (!target) return res.status(404).json({ error: 'Utilizator inexistent.' });
     if (target.id === admin.id) return res.status(400).json({ error: 'Esti deja autentificat ca tine.' });
     if (target.role === 'admin') return res.status(400).json({ error: 'Nu poti intra pe contul altui administrator.' });
     if (target.pending) return res.status(400).json({ error: 'Contul nu e finalizat (invitatie in asteptare).' });
     const sess = (admin.sessions || []).find((s) => s.id === req._sessId);
     if (!sess) return res.status(400).json({ error: 'Sesiune invalida.' });
-    sess.impersonating = target.id;
-    logAudit('impersonate.start', admin.username + ' a intrat pe contul ' + target.username, { userId: admin.id, username: admin.username, firmaId: null });
+    const requestedMinutes = Number(body.durationMinutes);
+    const durationMinutes = Number.isFinite(requestedMinutes) ? Math.max(1, Math.min(30, Math.floor(requestedMinutes))) : 15;
+    const startedAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
+    sess.impersonating = { userId: target.id, reason, ticket, startedAt, expiresAt };
+    logAudit('impersonate.start', admin.username + ' a intrat pe contul ' + target.username
+      + ' · tichet ' + ticket + ' · motiv: ' + reason + ' · expiră ' + expiresAt,
+    { req, userId: admin.id, username: admin.username, firmaId: null });
     db.save();
-    res.json({ ok: true, user: publicUser(target) });
-  });
+    res.json({ ok: true, user: publicUser(target), expiresAt });
+  }));
   app.post('/api/impersonate/stop', (req, res) => {
     if (!req.impersonating || !req.realUser) return res.status(400).json({ error: 'Nu esti in modul impersonare.' });
     const admin = req.realUser;
@@ -577,7 +649,20 @@ module.exports = function registerAuthRoutes(app, ctx) {
       classNames: coa.CLASS_NAMES,
       periods,
       counts: { documents: v.documents.length, entries: v.entries.length },
-      ai: { available: ai.aiAvailable(), enabled: d.settings.useAI !== false, model: ai.MODEL },
+      ai: {
+        available: ai.aiAvailable(),
+        platformEnabled: d.settings.useAI !== false,
+        enabled: d.settings.useAI !== false && legal.aiAllowed(v.company),
+        consent: !!(v.company.aiProcessing && v.company.aiProcessing.enabled),
+        model: ai.resolveProvider().model,
+        provider: ai.resolveProvider().provider,
+      },
+      legal: Object.assign({}, legal.publicStatus(), {
+        firm: Object.assign({}, legal.firmState(v.company), {
+          canManage: !!(v.company && (req.user.role === 'admin' || Number(v.company.ownerId) === Number(req.user.id))),
+          acceptedAt: v.company && v.company.legalAcceptance && v.company.legalAcceptance.acceptedAt || null,
+        }),
+      }),
       fiscal: fiscal.FISCAL,
       selfRegister: d.settings.selfRegister !== false,
       // Incasarea e oprita cat timp furnizorul nu are identitate juridica publicata (src/plans.js).

@@ -1,0 +1,316 @@
+{
+ "parte": "Part VI · What doesn't come from a document · phase 7",
+ "nr": "27",
+ "titlu": "Adjustments for Doubtful Receivables",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "An invoice issued and uncollected sits on the balance sheet as an asset, at its full value, no matter how much time has passed since its due date. So the balance sheet states that the company is owed that amount — and at some point, that statement stops being true."
+  },
+  {
+   "tip": "p",
+   "text": "This chapter is about that moment and about how it is recognized in accounting, without erasing anything. Because a doubtful receivable does not disappear: it remains owed. Only the likelihood of collecting it has diminished."
+  },
+  {
+   "tip": "h",
+   "text": "Three States, Not Two"
+  },
+  {
+   "tip": "p",
+   "text": "The usual reflex divides receivables into collected and uncollected. Accounting needs an intermediate state, because between \"the client is late\" and \"the money is lost,\" months or years usually pass."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Path of a Receivable",
+   "cap": [
+    "State",
+    "Account",
+    "What It Says"
+   ],
+   "randuri": [
+    [
+     "normal",
+     "4111 Customers",
+     "collection is expected at maturity"
+    ],
+    [
+     "doubtful",
+     "4118 Doubtful or disputed customers",
+     "collection has become uncertain"
+    ],
+    [
+     "lost",
+     "654 Losses from receivables",
+     "collection is no longer possible"
+    ]
+   ],
+   "nota": "The transition from one state to another is made based on a documented decision, not automatically after a certain number of days."
+  },
+  {
+   "tip": "p",
+   "text": "The first transition is a simple reclassification: 4118 is debited, 4111 is credited, for the full amount of the receivable, VAT included. No income statement account is touched — the receivable is the same, only moved into a drawer that says it's problematic."
+  },
+  {
+   "tip": "h",
+   "text": "The Adjustment: The Probable Loss, Not the Certain One"
+  },
+  {
+   "tip": "p",
+   "text": "Reclassification changes nothing in the result, but the balance sheet still shows a full receivable. The step that corrects this is called an impairment adjustment."
+  },
+  {
+   "tip": "p",
+   "text": "The adjustment does not erase the receivable. It places alongside it, on the balance sheet, a negative value stating how much of it will probably not be collected. The receivable remains 10,000 lei; the adjustment of 10,000 lei says that, realistically, its value is zero."
+  },
+  {
+   "tip": "p",
+   "text": "Account 6814 Expenses regarding adjustments for the impairment of current assets is debited, and 491 Adjustments for the impairment of receivables is credited. The expense appears in the result of the period in which the loss became probable — not in the period in which it will be definitively established."
+  },
+  {
+   "tip": "cheie",
+   "text": "The adjustment recognizes that the value of a receivable has decreased. It does not recognize that it has disappeared — that's a different step, and often it never comes."
+  },
+  {
+   "tip": "h",
+   "text": "What Happens If the Client Pays After All"
+  },
+  {
+   "tip": "p",
+   "text": "It happens more often than one might think, and accounting must be able to reverse it. This is where you see why the adjustment is a better construction than writing off the receivable."
+  },
+  {
+   "tip": "p",
+   "text": "The adjustment is reversed: 491 is debited, and 7814 Income from adjustments is credited. The expense recorded last year is offset by income this year, and the receivable is collected normally. Nothing was destroyed and nothing needs to be reconstituted."
+  },
+  {
+   "tip": "p",
+   "text": "If, on the contrary, the receivable proves definitively lost, it is written off through 654 Losses from receivables and various debtors, and the adjustment previously set up is reversed at the same time. And if, years later, a debtor considered lost pays, the amount is recorded as income in 754 Income from reactivated receivables."
+  },
+  {
+   "tip": "h",
+   "text": "The Numbers, in a Case"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "A Receivable of 12,100 Lei That Deteriorates",
+   "cap": [
+    "Moment",
+    "Journal Entry",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "The client exceeds 270 days past the due date",
+     "4118 = 4111",
+     "12.100"
+    ],
+    [
+     "An adjustment is set up for the entire receivable",
+     "6814 = 491",
+     "12.100"
+    ],
+    [
+     "Variant A: the client pays",
+     "491 = 7814",
+     "12.100"
+    ],
+    [
+     "Variant B: the receivable becomes irrecoverable",
+     "654 = 4118 and 491 = 7814",
+     "12.100"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "In Variant B, the expense in 654 and the income in 7814 offset each other: the loss had already been recognized when the adjustment was set up."
+  },
+  {
+   "tip": "p",
+   "text": "The last line of the entry is the one that clarifies the purpose of the entire mechanism. The loss is not recognized twice: once through the adjustment, when it became probable, and again through the write-off, when it became certain. The second time, only the label changes."
+  },
+  {
+   "tip": "h",
+   "text": "The Complete Monograph"
+  },
+  {
+   "tip": "p",
+   "text": "Placed one below the other, the four operations cover the entire path. They deserve to be read at the level of lines, not just accounts — the third one has two, and it's precisely the second one that gets forgotten."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Four Entries, in the Order They Appear",
+   "cap": [
+    "Moment",
+    "Debit",
+    "Credit",
+    "What It Does"
+   ],
+   "randuri": [
+    [
+     "The receivable becomes doubtful",
+     "4118",
+     "4111",
+     "reclassification; does not affect the result"
+    ],
+    [
+     "The loss becomes probable",
+     "6814",
+     "491",
+     "recognizes the expense"
+    ],
+    [
+     "The client pays / the risk disappears",
+     "491",
+     "7814",
+     "reverses the adjustment, as income"
+    ],
+    [
+     "The loss becomes certain",
+     "654",
+     "4118",
+     "writes off the receivable"
+    ],
+    [
+     "…and, in the same entry",
+     "491",
+     "7814",
+     "reverses the adjustment set up for it"
+    ],
+    [
+     "A lost debtor pays",
+     "4111",
+     "754",
+     "reactivates the receivable"
+    ]
+   ],
+   "nota": "The last two lines form a single journal entry. Without the second, the loss would enter the result twice: once when the adjustment was set up, again when the receivable was written off."
+  },
+  {
+   "tip": "p",
+   "text": "The net effect of the two lines at write-off is zero on the result — and this is the check that confirms the entry is complete. If the write-off changes the profit, either the adjustment had not been set up, or the second line is missing."
+  },
+  {
+   "tip": "cheie",
+   "text": "The expense is recognized only once, when the adjustment is set up. The write-off does not add a loss — it only changes its label from \"probable\" to \"certain.\""
+  },
+  {
+   "tip": "h",
+   "text": "The VAT Remains Collected"
+  },
+  {
+   "tip": "p",
+   "text": "This is the part that comes as an unpleasant surprise. The company issued the invoice, collected the VAT, and paid it to the state. The client never paid. The VAT, in principle, remains owed."
+  },
+  {
+   "tip": "p",
+   "text": "The law allows a reduction of the tax base for uncollected receivables, but only in expressly enumerated situations — essentially, in insolvency, bankruptcy, or debtor reorganization procedures — and only within a limited timeframe. It is not a correction made simply because a client fails to pay."
+  },
+  {
+   "tip": "p",
+   "text": "The practical consequence is worth stating bluntly to a business owner: for an uncollected invoice of 12,100 lei, the company loses not 10,000, but 12,100, because the 2,100 lei of VAT has already been paid to the state from the company's own money."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "From an accounting standpoint, adjustments for the impairment of receivables are set up in accordance with the prudence principle and are reviewed at each closing. Fiscally, the regime is governed by Article 26 paragraph (1) letter c) of the Fiscal Code: adjustments are deductible up to 30% of the receivable's value, if three conditions are cumulatively met — the receivable must be uncollected for a period exceeding 270 days past the due date, must not be guaranteed by another person, and must be owed by a person not affiliated with the taxpayer; other letters of the same article provide for full deductibility in specific situations, including those related to bankruptcy proceedings. From this, two consequences follow. First: the 70% difference is a non-deductible expense at the time of setup, but the subsequent reversal of the adjustment is non-taxable income in the same proportion — and the analytical record of the deductible and non-deductible portions must be kept from the time of setup, otherwise the correlation can no longer be reconstructed. Second: losses from receivables recorded in 654 are, as a rule, non-deductible under Article 25 paragraph (4) letter h), with the limitatively provided exceptions — bankruptcy proceedings closed by a final court decision, the death or dissolution of the debtor, a receivable covered by insurance, among others — so writing off a receivable without one of these being met produces no tax effect, no matter how economically certain the loss may be. For VAT, the reduction of the tax base is made under the conditions of Article 287, and the exercise of this right is subject to a deadline; checking it before it is lost is a practical obligation, not a formality."
+  },
+  {
+   "tip": "h",
+   "text": "Judgment, Not the Calendar"
+  },
+  {
+   "tip": "p",
+   "text": "The 270 days in the fiscal law are a deductibility threshold, not a definition of a doubtful receivable. In accounting terms, a receivable becomes doubtful when there are reasons to believe it will not be collected — and a client who enters insolvency thirty days past the due date is doubtful immediately, not nine months later."
+  },
+  {
+   "tip": "p",
+   "text": "That is why the decision remains that of the accountant and the administrator together, and it is put in writing. In an audit, the question is not whether the adjustment was correct, but what it was based on — and an answer given from memory, two years later, is no substitute for documentation."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 27.1 — How Much Is Actually Deductible",
+   "enunt": [
+    "A receivable of 12,100 lei (10,000 base + 2,100 VAT) has been uncollected for 300 days. The client is not affiliated, the receivable is not guaranteed. The company sets up an adjustment for the entire value.",
+    "(a) How much is fiscally deductible? (b) What happens if the client pays the following year?"
+   ],
+   "rezolvare": [
+    "(a) The conditions of Article 26 are met — over 270 days, unguaranteed, unaffiliated debtor — but the deduction is limited to 30% of the receivable's value: 30% × 12,100 = 3,630 lei deductible. The remaining 8,470 lei is a non-deductible expense in the year of setup.",
+    "(b) The adjustment is fully reversed, as income of 12,100 lei. But only what was deductible at setup is taxable: 3,630 lei. The remaining 8,470 is non-taxable income.",
+    "Hence the practical obligation: the analytical record of the deductible and non-deductible portions must be kept FROM THE TIME OF SETUP. Reconstructed two years later, the correlation can no longer be made, and upon reversal the company either pays tax on non-taxable income or fails to declare it and cannot justify it.",
+    "And the figure that stings, told to the business owner: of the 12,100 lei uncollected, 2,100 was VAT already paid to the state. The company loses not just the margin, but the margin plus the tax."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Why the Deductible Record Must Be Kept from the Start"
+  },
+  {
+   "tip": "p",
+   "text": "The adjustment has an asymmetric tax regime, and the asymmetry is paid for two years later, if nothing was recorded at setup."
+  },
+  {
+   "tip": "p",
+   "text": "At setup, only 30% is deductible. At reversal — when the client pays or the receivable is written off — the income is taxable in the SAME proportion: 30% taxable, 70% non-taxable. The two match only if it is known how much was deductible at setup."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "An Adjustment of 12,100 Lei, Tracked Over Two Years",
+   "cap": [
+    "Moment",
+    "Accounting",
+    "Fiscal"
+   ],
+   "randuri": [
+    [
+     "Year 1 — setup",
+     "expense 12,100",
+     "deductible 3,630, non-deductible 8,470"
+    ],
+    [
+     "Year 2 — the client pays",
+     "income 12,100",
+     "taxable 3,630, non-taxable 8,470"
+    ],
+    [
+     "Cumulative effect over two years",
+     "zero",
+     "zero"
+    ]
+   ],
+   "nota": "The last line is the check: if the cumulative fiscal effect is not zero, the proportion was lost somewhere — and it can no longer be reconstructed from data two years later."
+  },
+  {
+   "tip": "p",
+   "text": "Without the analytical record for the two portions, one of two things happens at reversal: either all the income is declared as taxable, and the company pays 16% on 8,470 lei that was not owed, or nothing is declared, and the difference is discovered during an audit. Both cost more than one extra column in a table."
+  },
+  {
+   "tip": "h",
+   "text": "The Adjustment Is NOT a Definitive Loss"
+  },
+  {
+   "tip": "p",
+   "text": "This is worth stating explicitly to a business owner, because the term \"impairment adjustment\" sounds like giving up: the receivable remains owed, and the right to pursue it does not expire. The adjustment is a statement about the PROBABILITY of collection, not about the right to collect."
+  },
+  {
+   "tip": "p",
+   "text": "The practical consequence: after the adjustment is set up, pursuit of the receivable continues — demand letters, court action, enforcement. And if these efforts succeed, the adjustment is reversed and the money comes in normally. A company that treats the adjustment as a loss stops pursuing exactly the receivables it recognized as at risk."
+  },
+  {
+   "tip": "cheie",
+   "text": "The adjustment changes the figure on the balance sheet, not the relationship with the client. The receivable remains, pursuit continues, and if the money comes in, everything recorded is reversed."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key Takeaways from This Chapter",
+   "puncte": [
+    "Between a normal receivable and a definitive loss there is an intermediate state: the doubtful receivable, in account 4118.",
+    "The adjustment does not erase the receivable, but places alongside it the probably unrecoverable value — so it can be fully reversed if the client pays.",
+    "The loss is recognized only once, when the adjustment is set up; writing off only changes the label.",
+    "The VAT collected remains owed: for an uncollected invoice of 12,100 lei, the company loses 12,100, not 10,000.",
+    "Fiscally, the deduction is limited to 30% and requires 270 days past the due date, an unguaranteed receivable, and an unaffiliated debtor.",
+    "In accounting terms, uncertainty is established through documented judgment, not by counting days."
+   ]
+  }
+ ]
+}

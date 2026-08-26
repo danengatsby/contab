@@ -15,6 +15,7 @@ const { statePlata, statPlataPerioada } = require('./payroll');
 const payrollHistory = require('./payrollHistory');
 const fiscal = require('./fiscal'); // nomenclatorul categoriilor din plafonul de 33%
 const identitate = require('./identitate');
+const permissions = require('./permissions');
 const { reqFirma } = require('./stocksService');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
@@ -293,6 +294,7 @@ function deleteAngajat(fid, id) {
  *  (ca in ruta istorica): o eroare de acolo urca la handlerul global. */
 function postStatPlata(fid, period, deps) {
   fid = reqFirma(fid);
+  if (deps && deps.actor) permissions.assert(deps.actor, fid, 'payroll.write', db.getFirma(fid));
   const v = db.scoped(fid);
   if (!v.angajati.length) fail(400, 'Niciun angajat definit.');
   if (!periodValid(period)) fail(400, 'Perioada este invalida. Foloseste formatul YYYY-MM.');
@@ -300,12 +302,7 @@ function postStatPlata(fid, period, deps) {
   // Jurnal append-only: statul lunii se posteaza O SINGURA DATA. Istoricul vechi inlocuia
   // fotografia, dar articolul se ADAUGA — a doua apasare dubla tacut 641=421 si toate retinerile.
   // Aceeasi garda ca la impozitul pe profit; corectia se face prin storno si o revizie noua.
-  const dejaPostat = db.get().entries.find((e) => e.firmaId === fid && e.tip === 'stat_plata'
-    && (e.period || '') === period && !e.stornat);
-  if (dejaPostat) {
-    fail(400, 'Statul de plata pe ' + period + ' este deja postat (articolul ' + dejaPostat.id
-      + '). Corecteaza prin storno, apoi posteaza din nou.');
-  }
+  db.assertEntryUnique({ id: '__preflight-stat-' + period, firmaId: fid, tip: 'stat_plata', period }, { context: 'stat de plata' });
   // CM/CO folosesc lunile anterioare, iar beneficiile au plafoane anuale cumulative. Daca s-ar
   // posta retroactiv o luna in timp ce exista state ulterioare active, fotografiile lor ar ramane
   // calculate pe istoricul vechi. Corectia sigura: storno in ordine inversa, repostare cronologica.
@@ -353,7 +350,16 @@ function postStatPlata(fid, period, deps) {
     cas: sp.totals.cas, cass: sp.totals.cass, impozit: sp.totals.impozit, cam: sp.totals.cam,
     analitic: sp.rows.length + ' angajati',
   }, null, fid);
+  if (entry.ruleSetId !== sp.ruleSetId || entry.fiscalRulesHash !== sp.fiscalRulesHash) {
+    fail(409, 'Regulile fiscale ale articolului nu coincid cu fotografia statului de plata.');
+  }
   entry.system = true; entry.document = 'Stat plata ' + period;
+  if (deps && deps.actor) {
+    const at = new Date().toISOString();
+    Object.assign(entry, { createdBy: deps.actor.id, createdByName: deps.actor.username || '', createdAt: at,
+      postedBy: deps.actor.id, postedAt: at,
+      statusHistory: [{ status: 'postat', by: deps.actor.id, username: deps.actor.username || '', at }] });
+  }
   if (sp.totals.avans > 0) entry.lines.push({ debit: '421', credit: '425', suma: sp.totals.avans, explicatie: 'Reținere avans acordat' });
   if (sp.totals.retineri > 0) entry.lines.push({ debit: '421', credit: '427', suma: sp.totals.retineri, explicatie: 'Rețineri din salarii (terți/popriri)' });
   // Concedii medicale: drepturile trec tot prin 421 (retinerile si plata raman pe un singur cont);
@@ -370,8 +376,9 @@ function postStatPlata(fid, period, deps) {
   // stornat. Numai revizia noua devine activa in calcule si documente.
   payrollHistory.supersedePeriod(d.payrollHistory, fid, period, entry);
   d.payrollHistory.push({
-    id: db.nextId('ph'), firmaId: fid, period, ts: new Date().toISOString(), formatVersion: 3,
+    id: db.nextId('ph'), firmaId: fid, period, ts: new Date().toISOString(), formatVersion: 4,
     entryId: entry.id,
+    ruleSetId: sp.ruleSetId, fiscalRulesHash: sp.fiscalRulesHash,
     // `beneficii` NU e decor in instantaneu: plafoanele anuale de la art. 76 alin. (4^1) lit. d)-g)
     // (turism, pensii, sanatate, sport) se consuma pe an, iar `beneficii.consumAnual()` citeste
     // exact de aici cat s-a acordat deja neimpozabil. Fara el, fiecare luna ar reporni de la
@@ -389,21 +396,23 @@ function postStatPlata(fid, period, deps) {
 /** Plata efectiva a salariilor: rest de plata -> 421 = 5121/5311 (implicit banca). */
 function paySalaries(fid, period, cont, deps) {
   fid = reqFirma(fid);
+  if (deps && deps.actor) permissions.assert(deps.actor, fid, 'treasury.approve', db.getFirma(fid));
   if (!periodValid(period)) fail(400, 'Perioada este invalida. Foloseste formatul YYYY-MM.');
   const v = db.scoped(fid);
   const sp = statPlataPerioada(v, period);
   if (!sp.postat) fail(400, 'Salariile nu pot fi platite inainte ca statul lunii sa fie postat.');
-  const dejaPlatite = v.entries.find((e) => e.tip === 'plata_salarii'
-    && String(e.period || '') === period && !e.stornat);
-  if (dejaPlatite) {
-    fail(400, 'Salariile pe ' + period + ' sunt deja platite (articolul ' + dejaPlatite.id
-      + '). Corecteaza prin storno, nu printr-o a doua plata integrala.');
-  }
+  db.assertEntryUnique({ id: '__preflight-plata-' + period, firmaId: fid, tip: 'plata_salarii', period }, { context: 'plata salarii' });
   if (sp.totals.restPlata <= 0) fail(400, 'Nimic de platit (rest de plata 0).');
   const c = ['5121', '5311'].includes(cont) ? cont : '5121';
   const entry = deps.buildEntry('plata_salarii', { data: ultimaZiDinLuna(period), suma: sp.totals.restPlata, cont: c }, null, fid);
   entry.system = true; entry.document = 'Plata salarii ' + period;
   entry.payrollEntryId = sp.entryId || null;
+  if (deps && deps.actor) {
+    const at = new Date().toISOString();
+    Object.assign(entry, { createdBy: deps.actor.id, createdByName: deps.actor.username || '', createdAt: at,
+      postedBy: deps.actor.id, postedAt: at,
+      statusHistory: [{ status: 'postat', by: deps.actor.id, username: deps.actor.username || '', at }] });
+  }
   db.pushEntry(entry, { context: 'plata salarii' });
   db.save();
   return { suma: sp.totals.restPlata, cont: c, entry };

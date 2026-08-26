@@ -9,7 +9,7 @@
 
 const db = require('../db');
 const sepa = require('../sepa');
-const analytic = require('../analytic');
+const openItems = require('../openItems');
 const { statPlataPerioada } = require('../payroll');
 const { round2 } = require('../util');
 
@@ -18,15 +18,16 @@ module.exports = function register(app, ctx) {
 
   /** Lotul propus pentru furnizori: soldurile deschise din scadentar + IBAN-ul din nomenclator. */
   function propuneriFurnizori(v, fid, asOf) {
-    const ag = analytic.aging(v, asOf);
+    const reg = openItems.registry(v, asOf);
     const parteneri = db.get().partners[fid] || {};
-    return (ag.furnizori || []).map((f) => {
-      const p = parteneri[String(f.cui || '').replace(/^ro/i, '')] || {};
+    return reg.openDocuments.filter((d) => d.sens === 'datorie').map((d) => {
+      const p = parteneri[String(d.cui || '').replace(/^ro/i, '')] || {};
       return {
-        tip: 'furnizor', beneficiar: f.partener, cui: f.cui || '',
-        iban: p.iban || '', bic: p.bic || '', suma: round2(f.total),
-        detalii: 'Plata furnizor ' + (f.partener || ''),
-        ref: 'F' + String(f.cui || '').slice(0, 10),
+        tip: 'furnizor', beneficiar: d.partener, cui: d.cui || '', documentId: d.id,
+        document: d.document, scadenta: d.dueDate, restant: d.status === 'restant',
+        iban: p.iban || '', bic: p.bic || '', suma: round2(d.residual),
+        detalii: 'Plata ' + (d.document || 'document') + ' / ' + (d.partener || ''),
+        ref: 'F' + String(d.id || '').replace(/[^A-Za-z0-9]/g, '').slice(-20),
         // Steag explicit: interfata trebuie sa arate DE CE un rand nu poate intra in lot,
         // nu doar sa-l ascunda.
         gata: !!p.iban && sepa.validIban(p.iban),

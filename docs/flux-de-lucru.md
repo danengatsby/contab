@@ -22,8 +22,47 @@ nu scris în ecrane — altfel aceleași trimiteri ar ajunge să spună lucruri 
 pas. Trimiterile sunt reper de orientare, nu consultanță: legea se modifică, iar răspunderea pentru
 aplicarea ei rămâne a contabilului (Legea 82/1991 art. 10-11).
 
-**Închideri**: regularizarea lunară a TVA (4427 ↔ 4426 → 4423/4424) și închiderea
-anuală a conturilor de venituri și cheltuieli în 121 „Profit și pierdere”.
+**Închideri**: regularizarea lunară a TVA (4427 ↔ 4426 → 4423/4424) postează nota, dar
+nu blochează luna. Perioada devine read-only numai la ultimul pas al cockpitului, după controale
+și aprobare. Închiderea anuală mută conturile de venituri și cheltuieli în 121 „Profit și pierdere”,
+iar repartizarea rezultatului se înregistrează cu dată din anul următor. Cockpitul anual urmărește
+zece etape în ordine și le marchează gata numai din dovezi verificabile: revizie fiscală externă,
+inventariere, evaluare, amortizare, balanță, impozit, închidere, situații financiare, depunere și
+repartizare. Fără 25/25 cazuri externe semnate criptografic pe manifestul codului/regulilor și pe
+configurația fiscală activă, XML-urile de depunere
+și operațiunile anuale sunt blocate; rapoartele și validarea rămân disponibile pentru corectare.
+
+**Arhivarea anuală:** după ultima dovadă din cockpit, acțiunea „Sigilează o versiune” creează și
+păstrează ZIP-ul exact; descărcările ulterioare nu mai recalculează nimic. Pachetul conține registre,
+situații financiare, declarațiile și recipisele originale, documentele justificative și extrasele
+bancare, statele de plată, stocurile, aprobările și auditul. Orice lipsă a binarului original oprește
+sigilarea cu un blocaj concret. Manifestul versionat are SHA-256 pe fiecare fișier, rădăcină de
+conținut, marcă temporală UTC și sigilare HMAC; o rectificare produce o versiune nouă, fără să o
+suprascrie pe cea veche. Politica din manifest urmează forma actuală a Legii 82/1991: art. 25 —
+5 ani pentru registre, documente justificative și state de salarii, calculați de la 1 iulie a anului
+următor; art. 35 alin. (3) — 10 ani pentru situațiile financiare. Deoarece ZIP-ul le conține
+împreună, pachetul complet se păstrează minimum 10 ani.
+
+**Profil fiscal datat:** TVA-ul, regimul de impozitare, cadențele și scutirile se păstrează ca
+fotografii cu dată de intrare în vigoare. O declarație sau o validare istorică folosește profilul
+valabil în perioada ei, nu configurația de azi. Corecțiile nu șterg reviziile anterioare.
+
+**Separarea atribuțiilor:** dreptul generic de operare nu autorizează automat salarii,
+trezorerie, depuneri, administrare fiscală, închideri sau export. Operatorul pregătește; numai un
+aprobator/proprietar poate confirma depunerea și închide luna/anul. Cine a creat articole, a
+punctat banca ori a completat/validat cockpitul nu își aprobă propria lună. O derogare este
+rezervată administratorului, cere motiv de minimum 10 caractere și păstrează în dosar lista
+contribuțiilor proprii, utilizatorul, data și evenimentul `control.override` din audit.
+
+**Control anti-duplicat central:** orice cale de postare trece prin aceeași poartă. Se refuză cu
+409 reluarea aceleiași surse sau a aceleiași identități comerciale: **direcție primită/emisă + CUI
+partener (nume normalizat numai ca fallback) + serie/număr normalizat + exercițiu fiscal**. Suma,
+tipul formularului și monografia nu schimbă identitatea facturii. ID-ul mesajului SPV și SHA-256 al
+fișierului sunt chei suplimentare, iar operațiunile singleton rămân unice pe lună/an. Răspunsul
+poartă codul `DUPLICATE_ENTRY`, articolul existent și cheile comune. După storno, documentul corectat
+poate fi postat din nou. Numai administratorul poate deroga: retrimite conflictul exact și un motiv
+de minimum 10 caractere; articolul nou păstrează aprobatorul, data, motivul și legătura, iar
+`entry.duplicate.override` se scrie fail-closed în auditul durabil înainte de postare.
 
 **Flux de stare (ciornă → validat → aprobat → postat)**: un articol poate fi salvat ca **ciornă**
 (`POST /api/entries {ciorna:true}`) — **vizibil în liste, dar exclus din contabilitate** (balanță,
@@ -358,10 +397,15 @@ plata/încasarea de aceeași sumă; afișează soldul deschis per partener și t
 **Import extras bancar (CSV / MT940 / CAMT.053):** cardul „Import extras bancar” (tab Documente)
 citește tranzacțiile (auto-detectare delimitator/coloane pentru CSV; tag-uri `:61:`/`:86:` pentru
 MT940; `<Ntry>` cu `Amt`/`CdtDbtInd`/`BookgDt` pentru CAMT.053 — ISO 20022 XML, formatul SEPA modern,
-parsat namespace-agnostic ca e-Factura UBL), **potrivește partenerul** după descriere (nume/CUI) și
-propune încasări/plăți
-(plus comisioane/dobânzi). Confirmi/editezi liniile și le imporți — alimentează automat
-reconcilierea. Module: `src/bank.js`.
+parsat namespace-agnostic ca e-Factura UBL). Importul păstrează documentul și hash-ul fișierului,
+câte un extras pentru fiecare IBAN/monedă, soldul inițial/final și identitatea fiecărei tranzacții.
+Reimportul aceluiași fișier este refuzat; aceeași tranzacție apărută în alt fișier este legată ca
+duplicat. Aplicația **potrivește partenerul** după descriere (nume/CUI) și propune încasări/plăți,
+comisioane sau dobânzi. Confirmarea trece linia din `propusa` în `punctata`, iar postarea o leagă
+definitiv de articolul contabil. Închiderea lunii cere metadate complete, ecuația
+`sold inițial + mișcări = sold final`, continuitate între extrasele succesive și zero articole
+5121/5124 fără tranzacție-sursă. Module: `src/bank.js`, `src/bankStatements.js`,
+`src/routes/bank.js`.
 
 **Import CreditNote din SPV:** la importul unei facturi primite, dacă documentul UBL este un
 `CreditNote`, este clasificat automat ca **storno de achiziție** (`factura_storno_cumparare`),
@@ -383,12 +427,22 @@ Endpoint `/api/dashboard`.
   report disponibil;
   Intrastat, în schimb, doar pe bunuri, fiindcă e statistică de mărfuri), cu
   **termen de depunere** ajustat la calendarul fiscal. Descărcarea XML-ului marchează automat
-  „**generată**” și păstrează amprenta SHA-256; după încărcarea în SPV se marchează „**transmisă**”,
-  iar „**depusă**” cere nr. recipisei/indexul ANAF. Se mai pot marca „**eroare**” sau „**scutită**”,
-  obligatoriu cu explicație. Stările nu se
+  „**generată**” și păstrează amprenta SHA-256. Aprobatorul confirmă apoi hash-ul complet prin
+  `POST /api/declarations/approve`; dovada păstrează documentul exact, dimensiunea, actorul,
+  momentul și propriul `approvalHash`. Numai aceeași versiune devine „**aprobată**” și poate fi
+  marcată „**transmisă**” după încărcarea în SPV. În acel moment, dosarul sigilează separat
+  `transmittedArtifactHash` din aprobare; depunerea nu folosește „ultima versiune disponibilă” din
+  dosar. „**Depusă**” cere nr. recipisei/indexul ANAF și fișierul exact. Serverul creează pentru
+  depunerea concretă o identitate `submissionId` și un `submissionHash` peste dosar, tip, perioadă,
+  ordinal, documentul aprobat/transmis și referința ANAF. Fiecare recipisă primește apoi propriul
+  `receiptBindingHash` peste binarul ei și această ancoră: mutarea recipisei la altă depunere este
+  detectată chiar dacă fișierul, SHA-256-ul și numărul par valide separat. Se mai pot marca
+  „**eroare**” sau „**scutită**”,
+  obligatoriu cu explicație. Regenerarea cu alți octeți invalidează aprobarea curentă, dar o
+  păstrează în istoricul append-only. Stările nu se
   retrogradează la re-descărcare. API: `GET /api/declarations?period=` · `POST /api/declarations/set`.
 - **Portofoliu** (tab dedicat, vizibil cu ≥2 firme): vedere agregată peste toate firmele
-  utilizatorului — declarații așteptate/generate/transmise/depuse/nedepuse/erori pe lună, **% conformitate**,
+  utilizatorului — declarații așteptate/generate/aprobate/transmise/depuse/nedepuse/erori pe lună, **% conformitate**,
   **top firme cu atenționări** (restanțe + erori), tabel per firmă și activitate recentă (din
   jurnalul de audit). `GET /api/portfolio?period=`.
 - **Notificări termene fiscale** (🔔 în bara de sus, cu badge): restanțele și termenele din

@@ -18,7 +18,8 @@ prețurile din `src/plans.js` și totalul afișat de `npm test`.
 **280 de caractere**
 > Contabilitate românească completă, într-un singur loc. Tragi factura — Contabo pune conturile,
 > ține registrele, calculează TVA-ul și îți pregătește D300, D394, D112, e-Factura și SAF-T.
-> Fiecare versiune trece prin validatorul oficial ANAF. 30 de zile gratuit, fără card.
+> Formatele fiscale suportate trec prin poarta de validare ANAF/XSD la fiecare versiune.
+> 30 de zile gratuit, fără card.
 
 **O frază**
 > Aduci documentele, Contabo face contabilitatea — de la poza facturii până la declarația
@@ -46,9 +47,9 @@ prețurile din `src/plans.js` și totalul afișat de `npm test`.
 
 | | |
 |---|---|
-| **107** | tipuri de operațiuni gata pregătite — alegi în limbaj simplu, aplicația pune conturile |
-| **10** | declarații și situații: D300, D394, D112, D390, D100, D101, D205, SAF-T (D406), Intrastat, bilanț |
-| **4.393** | verificări automate rulate la fiecare versiune, înainte să ajungă la tine |
+| **137** | tipuri de operațiuni gata pregătite — alegi în limbaj simplu, aplicația pune conturile |
+| **14** | declarații și situații în registru: D300, D301, D307, D311, D394, D390, D205, D112, D100, D101, D107, SAF-T (D406), Intrastat, bilanț |
+| **mii** | de controale automate rulate la fiecare versiune, fără o cifră care se învechește după fiecare test nou |
 
 ---
 
@@ -68,7 +69,8 @@ Contabo îți răspunde **în timp real**, nu peste trei săptămâni.
    Furnizorul, CUI-ul, baza, TVA-ul și totalul se completează singure. Tu verifici și salvezi.
 2. Emiți o factură unui client. Completezi liniile; primești **PDF-ul pentru client** și
    **e-Factura XML pentru SPV**, cu numărul în serie continuă.
-3. La final de lună apeși „Închide TVA". Decontul D300 e deja completat, defalcat pe cote.
+3. La final de lună apeși „Regularizează TVA". Decontul D300 este pregătit pentru verificare,
+   defalcat pe cote; luna se blochează separat, la finalul cockpitului.
 
 **Ce vezi, oricând**
 
@@ -117,7 +119,7 @@ se activează doar dacă o ceri explicit, și doar dacă trec toate controalele.
 
 ## 6. Ce primești, pe scurt
 
-**Documente și facturare** — 107 tipuri de operațiuni · facturi cu serie continuă · e-Factura UBL
+**Documente și facturare** — 137 tipuri de operațiuni · facturi cu serie continuă · e-Factura UBL
 pentru SPV, cu trimitere și recipisă · import e-Factura primită · avize, facturi simplificate,
 facturi de avans · e-Transport (cod UIT)
 
@@ -135,8 +137,9 @@ inventar cu proces-verbal · rețete/BOM și producție · descărcare automată
 **Salarizare** — state de plată cu cotele 2026 · deducere personală · concedii medicale și de
 odihnă · tichete și avantaje în natură · fluturași, adeverințe · D112
 
-**Bancă și casă** — import extras CSV/MT940 · potrivire automată a încasărilor cu partenerii ·
-control de sold și plafon de casierie · fișier de plăți SEPA (pain.001) · curs BNR automat
+**Bancă și casă** — import extras CSV/MT940/CAMT.053 · IBAN, monedă, solduri și hash păstrate ·
+protecție la reimport · punctaj document-cu-document · diferență zero înainte de închiderea lunii ·
+plafon de casierie · fișier de plăți SEPA (pain.001) · curs BNR automat
 
 **Imobilizări** — registru de mijloace fixe · amortizare liniară, degresivă, accelerată ·
 amortizare fiscală separată de cea contabilă · leasing financiar cu grafic de rate
@@ -148,17 +151,17 @@ amortizare fiscală separată de cea contabilă · leasing financiar cu grafic d
 
 ## 7. De ce poți avea încredere
 
-### Fiecare versiune trece prin validatorul oficial ANAF
+### Formatele fiscale suportate trec prin poarta oficială de validare
 
-Nu spunem „conform ANAF" și atât. **Înainte ca o versiune să ajungă la tine**, declarațiile
-generate de aplicație sunt trecute prin **DUKIntegrator — validatorul publicat de ANAF** — și prin
-schema oficială XSD pentru e-Transport. Dacă o singură declarație e respinsă, versiunea nu se
-publică.
+Nu spunem „conform ANAF" și atât. **Înainte ca o versiune să ajungă la tine**, fișierele de
+referință pentru formatele fiscale menținute sunt trecute prin **DUKIntegrator — validatorul
+publicat de ANAF** — sau prin schema oficială XSD aplicabilă. Dacă un fișier din perimetrul porții
+este respins, versiunea nu se publică.
 
 Mai mult: dacă validarea *nu poate rula* (serviciul ANAF e picat, schema lipsește), versiunea tot
 nu se publică. **„N-am putut verifica" nu înseamnă „e bine".**
 
-### 4.393 de verificări automate, la fiecare versiune
+### Mii de verificări automate, la fiecare versiune
 
 Balanțe care trebuie să se închidă, TVA pe fiecare cotă, salarii pe grila în vigoare, închideri de
 lună și de an, escapare corectă în XML-urile care pleacă la ANAF. Toate rulează automat, de fiecare
@@ -178,14 +181,14 @@ grila în vigoare. Se pot și ajusta manual, dacă legea se schimbă înaintea n
 
 | | **Probă** | **Start** | **Pro** |
 |---|---|---|---|
-| | 30 de zile, **fără card** | **99 lei** / lună | **199 lei** / lună |
+| | 30 de zile, **fără card** | **99 lei/lună/firmă** | **99 lei/lună/firmă** |
 | Pentru | testezi tot | antreprenori care își țin singuri evidența | contabili și portofolii de firme |
 | Funcții | toate | toate | toate |
-| Suport prioritar | — | ✓ | ✓ |
+| Mod implicit | simplu | simplu | expert |
 
 **Fără module plătite separat.** Stocurile, producția, salarizarea și declarațiile sunt incluse din
-prima zi. Planurile se diferențiază prin preț, nu prin funcții — ca să nu descoperi la final de an
-că lucrul de care ai nevoie e „în alt pachet".
+prima zi. Start și Pro au același preț și același motor contabil; Pro pornește în modul expert și
+este prezentat pentru fluxul de portofoliu — fără să inventăm o limitare artificială pentru Start.
 
 **După probă, datele rămân.** Alegi un plan și continui exact de unde ai rămas.
 
@@ -195,8 +198,8 @@ că lucrul de care ai nevoie e „în alt pachet".
 
 ## 9. Ce face aplicația — și ce rămâne la tine
 
-Preferăm să știi dinainte. Contabo te duce până aproape de capăt: contabilitate corectă și
-formatele cerute de ANAF. Ultimii pași rămân, ca la orice program, în grija ta:
+Preferăm să știi dinainte. Contabo este un **asistent contabil cu validare umană**: pregătește
+evidența și formatele cerute de ANAF, fără să garanteze singur corectitudinea fiscală. Ultimii pași rămân în grija ta:
 
 - **Validează declarațiile** cu DUKIntegrator înainte de depunere — până atunci sunt ciorne.
 - **Verifică sumele și încadrările cu un contabil autorizat.** Aplicația calculează; răspunderea
@@ -275,11 +278,12 @@ pentru contabilii care le țin.
 Tragi factura în aplicație — Contabo alege conturile, ține registrele, calculează TVA-ul și îți
 pregătește D300, D394, D112, e-Factura și SAF-T. Tu verifici și confirmi.
 
-107 tipuri de operațiuni gata pregătite. Stocuri, producție, salarizare și toate declarațiile
-sunt incluse în orice plan — fără module plătite separat.
+137 tipuri de operațiuni gata pregătite. Stocuri, producție, salarizare și cele 14 declarații și
+situații din perimetrul listat sunt incluse în orice plan — fără module plătite separat.
 
-Înainte ca o versiune să ajungă la tine, declarațiile generate de aplicație trec prin
-DUKIntegrator, validatorul publicat de ANAF. Dacă una singură e respinsă, versiunea nu se publică.
+Înainte ca o versiune să ajungă la tine, fișierele fiscale de referință din perimetrul suportat
+trec prin DUKIntegrator sau schema XSD aplicabilă. Poarta verifică forma tehnică și corelațiile
+validatorului, nu încadrarea fiscală ori substanța cifrelor firmei.
 
 30 de zile gratuit, fără card. contabo.space
 ```
@@ -295,9 +299,9 @@ Dacă răspunsul vine peste trei săptămâni, de la contabil, e prea târziu ca
 
 Contabo îți arată profitul, taxele și banii disponibili după fiecare document înregistrat. Tragi
 factura în aplicație — furnizorul, baza și TVA-ul se completează singure. La final de lună apeși
-„Închide TVA", iar decontul D300 e deja completat, defalcat pe cote.
+„Regularizează TVA", iar decontul D300 este pregătit pentru verificare, defalcat pe cote.
 
-107 tipuri de operațiuni. Toate declarațiile incluse. Fără module plătite separat.
+137 tipuri de operațiuni. Cele 14 declarații și situații listate sunt incluse. Fără module plătite separat.
 
 30 de zile gratuit, fără card 👉 contabo.space
 ```
@@ -340,11 +344,11 @@ contabo.space
 ```
 Majoritatea programelor de contabilitate scriu „conform ANAF".
 
-Noi trecem fiecare versiune prin DUKIntegrator — validatorul publicat chiar de ANAF — înainte să
-ajungă la tine. Dacă o singură declarație e respinsă, versiunea nu se publică.
+În fiecare versiune, fișierele fiscale de referință din perimetrul suportat trec prin
+DUKIntegrator sau schema XSD aplicabilă. Dacă un fișier este respins, versiunea nu se publică.
 
-Iar dacă validarea nu POATE rula — serviciul ANAF e picat, schema lipsește — versiunea tot nu se
-publică. „N-am putut verifica" nu înseamnă „e bine".
+Iar dacă validarea tehnică nu POATE rula — serviciul ANAF e picat, schema lipsește — versiunea tot
+nu se publică. Validarea formei nu confirmă însă tratamentul fiscal sau substanța cifrelor firmei.
 
 contabo.space
 ```
@@ -381,10 +385,10 @@ Plătești pentru expertiză, nu pentru tastare. contabo.space
 ```
 Fără „ups, asta e în alt pachet".
 
-Stocurile, producția, salarizarea și toate declarațiile sunt incluse din prima zi, în orice plan.
-Planurile se diferențiază prin preț, nu prin funcții.
+Stocurile, producția, salarizarea și cele 14 declarații și situații listate sunt incluse din prima zi, în orice plan.
+Start pornește în modul simplu; Pro pornește în modul expert. Motorul contabil este același.
 
-Start 99 lei/lună. Pro 199 lei/lună. Probă 30 de zile, fără card.
+Start și Pro: 99 lei/lună/firmă. Probă 30 de zile, fără card.
 
 contabo.space
 ```
@@ -468,7 +472,7 @@ Orientativ: text principal citit până la ~125 de caractere, titlu ~40, descrie
 
 | câmp | text |
 |---|---|
-| Text principal | Alte programe scriu „conform ANAF". Noi trecem fiecare versiune prin DUKIntegrator, validatorul publicat de ANAF. Dacă o declarație e respinsă, versiunea nu se publică. |
+| Text principal | Alte programe scriu „conform ANAF". La fiecare versiune, fișierele fiscale de referință suportate trec prin DUKIntegrator/XSD; dacă unul e respins, versiunea nu se publică. Verificarea privește forma tehnică, nu substanța fiscală. |
 | Titlu | Validat de validatorul ANAF |
 | Descriere | Vezi cum verificăm. |
 | Buton | Încearcă gratuit |
@@ -530,13 +534,13 @@ Cifrele se pot schimba la regenerare; nu le cita în postări fără să te uiț
 > zilnic pe e-mail.
 
 **Despre încredere**
-> Cele mai multe programe de contabilitate spun „conform ANAF". Noi trecem fiecare versiune prin
-> validatorul publicat de ANAF înainte să ajungă la tine. Dacă o declarație e respinsă, versiunea
-> nu se publică.
+> Cele mai multe programe de contabilitate spun „conform ANAF". La fiecare versiune, fișierele
+> fiscale de referință suportate trec prin DUKIntegrator/XSD. Dacă unul e respins, versiunea nu se
+> publică; poarta verifică forma tehnică, nu substanța fiscală a datelor firmei.
 
 **Despre preț**
-> Fără module plătite separat. Stocuri, producție, salarizare și toate declarațiile sunt incluse
-> din prima zi, în orice plan. Planurile diferă prin preț, nu prin funcții.
+> Fără module plătite separat. Stocuri, producție, salarizare și cele 14 declarații și situații listate sunt incluse
+> din prima zi, în orice plan. Start și Pro costă ambele 99 lei/lună/firmă; diferă doar modul implicit, Simplu sau Expert.
 
 **Despre citirea automată**
 > Fotografiezi factura, o tragi în aplicație, iar furnizorul, baza și TVA-ul se completează

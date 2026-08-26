@@ -1,0 +1,404 @@
+{
+ "parte": "Part III · The document · phase 2",
+ "nr": "14",
+ "titlu": "The Invoice You Issue",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Until now, documents came toward the firm. This chapter looks at the ones that leave it, and the difference isn't just one of direction: for received documents you are the one who checks, for issued ones you are the one responsible for the content."
+  },
+  {
+   "tip": "p",
+   "text": "The invoice you issue is, at the same time, proof of your right to collect payment, the basis on which the client will deduct the expense and the VAT, and a line in your own VAT return. Three roles in a single piece of paper — which is why it has more formal requirements than anything else in accounting."
+  },
+  {
+   "tip": "h",
+   "text": "Numbering: More Important Than It Seems"
+  },
+  {
+   "tip": "p",
+   "text": "An invoice must have a unique number, from a continuous series, assigned in chronological order. The rule seems administrative, and in fact it's the one that keeps sales from being hidden: if number 101 is missing between invoice 100 and 102, the question asks itself."
+  },
+  {
+   "tip": "p",
+   "text": "Two things follow from this, and many small firms break them. Numbers are not skipped — a wrong invoice is reversed, not thrown away. And invoices are not issued \"dated last month\" after others with the current date have already been issued, because then chronology and numbering come into contradiction."
+  },
+  {
+   "tip": "p",
+   "text": "Software assigns numbers on its own, from series configured once, precisely so these two rules don't depend on someone's attention on a busy day."
+  },
+  {
+   "tip": "h",
+   "text": "What Must Be Written on It"
+  },
+  {
+   "tip": "p",
+   "text": "The mandatory content of the invoice is set by the Fiscal Code, and the absence of an element is not a mere formal slip: it can leave the client without the right of deduction, which instantly turns your negligence into a commercial problem."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Elements That Cannot Be Missing",
+   "cap": [
+    "Element",
+    "Why It Matters"
+   ],
+   "randuri": [
+    [
+     "Series, number and date of issue",
+     "identifies the invoice and places it in the chronology"
+    ],
+    [
+     "Complete data of both parties",
+     "name, registered office, tax registration code"
+    ],
+    [
+     "Description of goods or services",
+     "generic — \"services rendered\" — is not a description"
+    ],
+    [
+     "Quantity and unit price",
+     "make the taxable base verifiable"
+    ],
+    [
+     "The base, rate and VAT amount, for each rate",
+     "the VAT return is built from these"
+    ],
+    [
+     "Date of delivery or performance, if different from issue date",
+     "determines the chargeability of the tax"
+    ],
+    [
+     "Special mentions, where applicable",
+     "\"reverse charge,\" \"VAT on collection,\" \"exempt under…\""
+    ]
+   ],
+   "nota": "The last two lines are the ones most often omitted — and the ones that cause the most rejections in an audit."
+  },
+  {
+   "tip": "h",
+   "text": "The Journal Entry It Produces"
+  },
+  {
+   "tip": "p",
+   "text": "An invoice for the sale of goods produces, like any sale, two distinct operations, which Chapter 2 already showed: earning the right to collect payment and the goods leaving the warehouse."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Sale of goods, 1,000 + 210 VAT, cost 600",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "What It Represents"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "",
+     "1.210",
+     "what the client owes, including tax"
+    ],
+    [
+     "",
+     "707 Revenue from the Sale of Goods",
+     "1.000",
+     "the revenue, without VAT"
+    ],
+    [
+     "",
+     "4427 Collected VAT",
+     "210",
+     "the tax owed to the state, not revenue of the firm"
+    ],
+    [
+     "607 Expenses Regarding Goods",
+     "",
+     "600",
+     "the cost of the goods that left"
+    ],
+    [
+     "",
+     "371 Goods",
+     "600",
+     "decrease in inventory"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "The gain from the operation — 400 lei — is not written anywhere: it results from the difference between the 1,000 revenue and the 600 cost."
+  },
+  {
+   "tip": "p",
+   "text": "Here it can be seen, perhaps more clearly than anywhere else, why collected VAT is not revenue. The 210 lei enter the firm together with the rest of the amount, but they don't belong to it: they are collected on behalf of the state and will go to it. A business owner who calculates their gain from the total invoiced amount systematically overestimates the business."
+  },
+  {
+   "tip": "h",
+   "text": "The Electronic Invoice"
+  },
+  {
+   "tip": "p",
+   "text": "From the same invoice comes the electronic file that goes into the ANAF system. It is not a second invoice and is not filled in separately: it is the same information, in a standardized, machine-readable format."
+  },
+  {
+   "tip": "p",
+   "text": "Not all issued documents must go there, and the distinction is not made by preference, but by the type of operation. An invoice to a company has a different regime than a receipt to an individual, and a document that is not an invoice has no place in the system."
+  },
+  {
+   "tip": "p",
+   "text": "A well-made program derives the obligation from the type of document chosen — Chapter 11 — and not from a handwritten list that would fall behind the legislation. And when a document should be sent but cannot be built correctly, it refuses to issue it empty, instead of sending an invoice with a zero base."
+  },
+  {
+   "tip": "h",
+   "text": "Which Invoice Is the Real One"
+  },
+  {
+   "tip": "p",
+   "text": "The question seems academic and has a very practical consequence. From the moment the invoice has passed through the RO e-Factura system, the original is no longer the paper you printed nor the PDF you sent by email: it is the electronic file, bearing the seal applied by the ministry. What you send the client is a courtesy copy, made so that a person can read it."
+  },
+  {
+   "tip": "p",
+   "text": "Two things follow from this, usually learned during an audit. First: if the PDF and the electronic file say something different, the version that counts is the one in the system. Second: an \"issued\" invoice that hasn't reached the system is not a half-sent invoice, it's an unfulfilled obligation, with its own deadline and its own penalty."
+  },
+  {
+   "tip": "cheie",
+   "text": "The original is the file sealed by ANAF. The paper and the PDF are copies for people — useful, but they are not the document."
+  },
+  {
+   "tip": "h",
+   "text": "Who Falls Under the Obligation and Who Doesn't"
+  },
+  {
+   "tip": "p",
+   "text": "The scope isn't checked off, it's read from the data. Three situations, with different regimes, and the distinction between them is made according to who the beneficiary is and where it is established."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Three Types of Beneficiary, Three Regimes",
+   "cap": [
+    "Beneficiary",
+    "What Is Written on the Electronic Invoice",
+    "Subject to the Obligation?"
+   ],
+   "randuri": [
+    [
+     "Company in Romania",
+     "its VAT code, plus its identifier",
+     "yes — the five-day term runs"
+    ],
+    [
+     "Individual",
+     "no VAT code; instead, the personal identification number (CNP) or thirteen zeros",
+     "yes, starting January 1, 2025"
+    ],
+    [
+     "Beneficiary from another country",
+     "its data, as on any invoice",
+     "no — the obligation concerns persons established in Romania"
+    ]
+   ],
+   "nota": "The thirteen zeros are not a convention of some particular program: this is what the system expects for an invoice to an individual. A merchant does not have the right to demand the CNP in order to be able to invoice, and the client's refusal does not exempt them from reporting."
+  },
+  {
+   "tip": "p",
+   "text": "A technical detail that is actually just common sense: a CNP has thirteen digits, while a Romanian tax code has at most ten. The two cannot be confused, so the program can deduce on its own which situation you're in, without asking you. And when the code is missing entirely and the client is from another country, the invoice remains valid even outside the obligation — it does not become overdue."
+  },
+  {
+   "tip": "h",
+   "text": "Five Days, and What \"Sent\" Means"
+  },
+  {
+   "tip": "p",
+   "text": "The deadline is five calendar days from the issue of the invoice. Calendar days, not business days — the rule has changed, and an invoice issued on Wednesday no longer has until the following Thursday. It's one of the few recent changes that shortens a deadline instead of lengthening it."
+  },
+  {
+   "tip": "p",
+   "text": "The second trap is that \"I sent it\" is not one state, but three. The file is uploaded and receives a registration number; the system processes it; only then does it return either confirmation or a list of errors. Between the second and third moment, the invoice is neither accepted nor rejected — and it is precisely there that programs which say \"sent\" right after upload usually stop."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What Can Happen to an Uploaded Invoice",
+   "cap": [
+    "Status",
+    "What It Means",
+    "What You Have to Do"
+   ],
+   "randuri": [
+    [
+     "in processing",
+     "the system has received the file and is checking it",
+     "nothing — but the obligation is not yet fulfilled"
+    ],
+    [
+     "accepted",
+     "the invoice has the seal; that is the proof",
+     "keep the signed file, not just the number"
+    ],
+    [
+     "rejected",
+     "the file has structural or data errors",
+     "you fix the cause and upload again; the deadline keeps running"
+    ]
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Rejection errors are almost always about missing data, not amounts: a wrong tax code, an unspecified county, a unit of measure the nomenclature doesn't recognize. That's why it's worth filling these in correctly once, in the partner's record, rather than fixing them on every invoice."
+  },
+  {
+   "tip": "cheie",
+   "text": "A rejected invoice is not a sent invoice. The upload number proves you tried, not that you succeeded — the proof is the sealed response."
+  },
+  {
+   "tip": "h",
+   "text": "What Cannot Be Done"
+  },
+  {
+   "tip": "p",
+   "text": "An invoice that has reached the system can no longer be modified and can no longer be withdrawn. Correction is done the way it was done on paper, before any electronic system: through a new document, which reverses or adjusts it, and which in turn goes into the system. The rule from this chapter still holds — a wrong invoice is not deleted, it is corrected with another invoice."
+  },
+  {
+   "tip": "p",
+   "text": "And the invoices you receive come the same way, in reverse: the supplier uploads them, and you retrieve them from your own space. The practical consequence is that, for purchases, \"I received the invoice by email\" has stopped being the primary source — the document awaits you there regardless, whether or not the supplier also sent it to you."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "The mandatory content of the invoice is that set out in Art. 319 of the Fiscal Code, and checking it is the first verification in any VAT audit — not for formal rigor, but because the beneficiary's right of deduction rests on it. Three areas produce most of the corrections. First: chargeability — the date of delivery or performance, when different from the issue date, determines the reporting period, and for advances chargeability arises upon collection; an invoice issued in the following month for a delivery from the previous month belongs, for VAT purposes, to the month of delivery. Second: the mandatory mentions for special regimes — reverse charge, VAT on collection, the margin scheme, exemptions with the right of deduction — the absence of which cannot be remedied through subsequent explanations, but only by remaking the document. Third: the description of the operation, where generic wording such as \"services per contract\" is in practice the most frequent reason for the rejection of deductibility at the beneficiary, because it does not allow verification of the actual performance. For reversals, the credit note must carry the reference of the corrected document; without it, the two invoices live separately in the partner's records."
+  },
+  {
+   "tip": "h",
+   "text": "What Comes Next"
+  },
+  {
+   "tip": "p",
+   "text": "With this, phase two is complete. Documents come in and go out, each with its own journal entry, verified before producing effects. The firm's accounting now has, from this point on, content."
+  },
+  {
+   "tip": "p",
+   "text": "The next thing that moves, usually as a result of these documents, is money. Phase three, and the next part: treasury — the only place in accounting that can be confronted with an outside reality."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 14.1 — The Rejected Invoice",
+   "enunt": [
+    "You issue an invoice to a client in another Union country, exempt as an intra-Community supply. The electronic invoicing system rejects it with a validation error.",
+    "What are the three checks to make, in order?"
+   ],
+   "rezolvare": [
+    "First, the client's VAT code: the exemption requires a valid code at the date of delivery, verified in the information exchange system. An inactive code makes the supply taxable in Romania, so the VAT-free invoice is wrong, not merely rejected.",
+    "Then, the mandatory mentions: an exempt supply must carry on the invoice the legal basis for the exemption. The absence of the mention is a formal error that blocks validation and, in an audit, can overturn the treatment.",
+    "Finally, internal consistency: the base, rate, and total must match to the leu, and the identification of the parties must be complete.",
+    "Order matters: the first two can change the SUBSTANCE of the operation, the third only the form. Whoever starts with the last one fixes a total and resends an invoice that remains wrong."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Series and Number: Two Things, Not One"
+  },
+  {
+   "tip": "p",
+   "text": "Numbering issued invoices seems like a formality until the first audit, when it becomes the first check performed. The reason is simple: from a continuous numbering it can be deduced whether an invoice is missing; from a discontinuous one, nothing can be deduced."
+  },
+  {
+   "tip": "p",
+   "text": "The firm sets its own series and number ranges, through an internal decision. What it cannot choose is continuity: within a series, numbers follow one another, and a number once assigned is not reused — not even if the invoice was canceled."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What to Do with a Wrong Invoice",
+   "cap": [
+    "Situation",
+    "What Is Done",
+    "What Is NOT Done"
+   ],
+   "randuri": [
+    [
+     "wrong, not yet sent",
+     "it is canceled, with the mention \"canceled\"",
+     "it is not deleted, the number is not reused"
+    ],
+    [
+     "wrong, already sent",
+     "correction invoice (credit note)",
+     "the client is not asked to tear it up"
+    ],
+    [
+     "correct, but with wrong identification data",
+     "correction invoice",
+     "the issued copy is not modified"
+    ]
+   ],
+   "nota": "In all three cases, the number used remains used. A gap in a series is harder to explain than a canceled invoice."
+  },
+  {
+   "tip": "h",
+   "text": "What Turns a Document into an Invoice"
+  },
+  {
+   "tip": "p",
+   "text": "The mandatory elements are not a checklist: each one answers a question that someone else will ask years later. They deserve to be read that way, because that's when it becomes clear why the absence of one causes the buyer to lose the right of deduction."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Elements and Their Questions",
+   "cap": [
+    "Element",
+    "What question it answers"
+   ],
+   "randuri": [
+    [
+     "the series and number",
+     "is it unique, and is anything missing from the series?"
+    ],
+    [
+     "the issue date",
+     "which period the transaction falls into"
+    ],
+    [
+     "the identification details of both parties",
+     "who with whom, verifiable at the trade registry"
+    ],
+    [
+     "the supplier's VAT code",
+     "is it entitled to collect the tax?"
+    ],
+    [
+     "the name and quantity",
+     "what was delivered, in what quantity"
+    ],
+    [
+     "the taxable base, rate and tax, for each rate",
+     "how much of the price is tax, and at what rate"
+    ],
+    [
+     "special mentions, where applicable",
+     "why VAT is missing: exemption, reverse charge, margin scheme"
+    ]
+   ],
+   "nota": "The last line is the one most often forgotten. An invoice without VAT and without an explanation for its absence is, for whoever receives it, an incomplete invoice."
+  },
+  {
+   "tip": "cheie",
+   "text": "An invoice isn't written for the client, but for whoever will read it four years from now knowing nothing about the transaction. If they can't reconstruct what happened, the document hasn't done its job."
+  },
+  {
+   "tip": "p",
+   "text": "In electronic form, the same elements become fields in a structured file, and the validator checks all of them before accepting the invoice. The side effect is useful: formal errors that used to be discovered during an audit are now discovered at issuance, within seconds."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "An issued invoice serves three roles at once: your right to collect payment, the basis for the client's deduction, and a line in your VAT return.",
+    "Unique, chronological numbering isn't a formality: it's what makes sales impossible to hide. An incorrect invoice is reversed (storno), not discarded.",
+    "The absence of a mandatory element can leave the client without the right of deduction — your problem becomes theirs, and vice versa.",
+    "A sale produces two operations: the revenue and the inventory write-off. The profit isn't recorded anywhere; it emerges from the difference.",
+    "Collected VAT enters the company but doesn't belong to it. Whoever calculates their profit from the total overestimates their business.",
+    "The e-Invoice obligation is derived from the type of transaction, not from a manually maintained list.",
+    "The original invoice is the file sealed by ANAF; the paper copy and the PDF are copies for human use.",
+    "The deadline is five calendar days, and \"uploaded\" doesn't mean \"accepted\"."
+   ]
+  }
+ ]
+}

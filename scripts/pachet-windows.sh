@@ -22,6 +22,10 @@ set -e
 cd "$(dirname "$0")/.."
 RADACINA=$(pwd)
 
+# Pachetul se construieste exclusiv dintr-un commit curat; altfel VERSIUNE.txt ar numi HEAD,
+# dar arhiva ar contine si modificari necomise care n-au trecut CI pe acel SHA.
+sh "$RADACINA/scripts/verifica-worktree.sh"
+
 NODE_VER=${CONTAB_PACHET_NODE:-$(node -p "process.versions.node")}
 IESIRE="$RADACINA/public/descarcari"
 LUCRU=$(mktemp -d)
@@ -60,6 +64,7 @@ rsync -a \
   --exclude='public/descarcari' \
   "$RADACINA/" "$D/app/"
 cp "$RADACINA/.env.example" "$D/app/.env.example" 2>/dev/null || true
+printf 'Distribuție Windows construită dintr-un commit Git curat.\n' > "$D/app/.distributie-windows"
 cp "$NODEEXE" "$D/node.exe"
 cp "$RADACINA/scripts/pachet-windows/Porneste Contabo.bat" "$D/"
 cp "$RADACINA/scripts/pachet-windows/CITESTE-MA.txt" "$D/"

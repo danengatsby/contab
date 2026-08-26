@@ -13,7 +13,15 @@
   așa a scris amortizarea lunară, ani la rând, pe conturi inexistente care plecau drept
   „(cont necunoscut)” în SAF-T, la ANAF. Astăzi **orice** articol intră prin `db.pushEntry`
   (`src/db.js`), care validează conturile, data calendaristică reală, concordanța `data`–`period`,
-  existența liniilor și sumele finite nenule. Eroarea are `status: 400` și poartă problema plus
+  existența liniilor și sumele finite nenule. În același punct, `src/duplicateGuard.js` refuză
+  central cu `409` reluarea aceleiași surse ori aceleiași identități comerciale
+  (direcție+CUI+serie/număr normalizat+exercițiu), fără ca suma, tipul sau monografia să poată
+  ocoli controlul. ID-ul SPV și SHA-256 al fișierului completează cheia; operațiunile unice pe
+  perioadă (amortizare, stat/plată salarii, impozit, închidere, repartizare) rămân singleton.
+  Stornarea neutralizează originalul și permite apoi o postare corectată. Derogarea cere în aceeași
+  poartă `control.override`, motiv, conflictul exact și callback de audit durabil fail-closed;
+  restaurarea validează și remapează separat doar derogările istorice deja persistate. Eroarea de structură are
+  `status: 400` și poartă problema plus
   contextul (`amortizare lunara`, `import extras bancar`…). Importul unei firme trece prin aceeași
   validare înainte de prima mutație, deci un jurnal corupt nu poate fi restaurat parțial. O poartă din `test/run/porti.js`
   refuză reapariția lui `entries.push(` oriunde în afara lui `src/db.js`, iar o a doua verifică
@@ -28,6 +36,64 @@
   `helpers.js` ține câmpurile comune și constructorul de linii contabile.
 - `src/extractor.js` — extragere text din PDF (pdf-parse + pdf2json) și euristici RO.
 - `src/fiscal.js` — parametri fiscali 2026 + calculul salariului din brut (CAS/CASS/impozit/CAM).
+- `src/fiscalProfile.js` — profilul fiscal normalizat și istoricul temporal din tabelul
+  `fiscal_profile_history`. Reviziile sunt fotografii complete cu `validFrom`/`validTo` și
+  `recordedAt` (momentul consemnării, separat de intervalul efectiv);
+  `profileAt` selectează fotografia valabilă la data/luna/anul operațiunii, iar declarațiile,
+  controalele, dosarul anual și gardurile de scriere consumă aceeași perspectivă istorică.
+  Fiecare XML înregistrat și fiecare depunere păstrează snapshotul profilului și hash-ul lui.
+- `src/declarations.js` — dosarul unic pe firmă/declarație/perioadă, aprobările documentelor și
+  jurnalul append-only. Fiecare depunere are `submissionId` determinist și `submissionHash` peste
+  identitatea fiscală, ordinal, artefact, aprobare și referința ANAF; fiecare recipisă are
+  `receiptBindingHash` peste propria amprentă și ancora depunerii. Verificarea separă astfel
+  „fișier autentic” de „fișier autentic, dar atașat altei depuneri”. `dossierTimeline` proiectează
+  pe server o singură cronologie din jurnalul dosarului și registrul temporal fiscal: ordinea de
+  audit folosește momentul consemnării, fără a confunda `recordedAt` cu `validFrom`/`validTo`.
+  Interfața primește proiecția structurată și nu reconstruiește sau sortează istoria în browser;
+  rectificativele și schimbările de profil rămân astfel evenimente explicite în același traseu.
+- `src/balanceCategory.js` — încadrarea contabilă anuală, complet independentă de regimul fiscal:
+  calculează cele două frontiere de mărime din active/cifră de afaceri/salariați, aplică regula
+  celor două exerciții și validează confirmarea versionată din `balance_category_history`.
+  Schimbarea oricărui indicator sau a deciziei precedente invalidează hash-ul și blochează bilanțul.
+- `src/permissions.js` — matricea unică de roluri și acțiuni pe firmă. Middleware-ul, serviciile
+  contabile și interfața de administrare folosesc același contract; restricțiile `readonly` și
+  `faraSalarii` sunt suprapuneri explicite, nu ramuri copiate prin rute. Catalogul
+  `requiredActions()` aplică aceleași drepturi pe rutele sensibile, inclusiv GET-urile XML/PDF/CSV;
+  serviciile de închidere, articole și salarizare dublează gardele critice.
+- `src/duplicateGuard.js` — controlul anti-duplicat unic, apelat obligatoriu din `db.pushEntry` și
+  folosit și ca preflight în serviciile cu operațiuni singleton. Cheile provin din SPV/hash,
+  identitatea comercială document–direcție–partener–exercițiu, tip/perioadă pentru singleton și o
+  semnătură exactă numai la note/plăți fără direcție comercială; sunt izolate pe firmă.
+- `src/bank.js` + `src/bankStatements.js` — importul CSV/MT940/CAMT.053 separat de postare.
+  Primul modul citește fișierul și propune clasificarea; al doilea este registrul central al
+  extraselor și tranzacțiilor, cu SHA-256, cheie bancară unică, stări auditate și verdictul
+  `sold inițial + mișcări = sold final`. Articolul contabil referă explicit extrasul și linia lui;
+  cockpitul lunar cere diferență zero, continuitate pe IBAN/monedă și niciun 5121/5124 orfan.
+- `src/fiscalReview.js` + `src/fiscalReviewCases.js` — poarta reviziei externe: 25 de contracte
+  fiscale au hash peste definiția cazului, versiunea fiscală și sursele de calcul aferente.
+  Aprobările cu revizor, calitate, dată, temei și semnătură stau separat în
+  `src/fiscalReviewApprovals.json`; lipsa ori schimbarea hash-ului blochează doar ieșirile de
+  depunere și operațiunile anuale, nu munca de corectare/validare.
+- `src/annualClose.js` — cockpitul anual: derivă zece stări succesive, începând cu revizia externă, din inventare, amortizări,
+  balanță, note fiscale/de închidere, registrul situațiilor și repartizarea rezultatului; expune
+  progresul, blocajele, dovezile și temeiul legal fără a persista bife de finalizare.
+- `src/dosarAnual.js` + `src/annualArchiveIntegrity.js` — dosarul anual este un artefact persistent,
+  nu un raport regenerat la descărcare. Sigilarea fotografiază registrele și situațiile, include
+  XML-urile și recipisele exact depuse, documentele justificative și extrasele originale, statele
+  de plată, stocurile și aprobările. Pentru fiecare depunere include și dovada JSON portabilă a
+  legăturii depunere–recipise; manifestul v2 enumeră dimensiunea și SHA-256 pentru fiecare
+  fișier, rădăcina de conținut, versiunea și marca temporală a aplicației și este semnat HMAC.
+  Sigilările concurente sunt serializate per firmă și an, iar fiecare rectificativă primește o
+  versiune distinctă fără să suprascrie istoria. ZIP-ul complet rămâne în colecția persistentă
+  `annualArchives`, inclusiv după restart; interfața enumeră toate versiunile și amprentele lor.
+  Descărcarea, backupul și drill-ul de restaurare verifică pachetul fără recalcularea contabilității.
+  HMAC este o sigilare tehnică, nu o semnătură electronică calificată; cheia se păstrează în afara bazei.
+- `src/globalChain.js` — verificatorul comun pentru toate dovezile persistente: profil fiscal
+  temporal (`validFrom`/`validTo`/`recordedAt`), dosare de depunere, aprobări, artefacte, depuneri și
+  recipise, dosare anuale, fotografii cash-flow și jurnalul durabil. Produce o rădăcină SHA-256
+  deterministă, probleme localizate și un verdict separat de completitudine. Aceeași verificare
+  fail-closed este folosită la descărcarea dovezilor, backup, restaurare și exportul de audit;
+  datele legacy care nu pretind un binar sunt marcate incomplete, nu reinterpretate ca dovezi.
 - `src/aiExtractor.js` — extragere cu Claude API (document PDF + ieșire structurată).
 - `src/reporting.js` — livrabile (oglinda borderoului de primire): recap D112/D300/D100, obligații ANAF, registru-inventar.
 - `src/xml.js` — generare XML: e-Factura UBL 2.1 (CIUS-RO) pentru facturi emise și declarațiile ANAF, inclusiv D100/D107/D300/D301/D307/D311/D394.
@@ -105,9 +171,9 @@
 - **Designul aplicației autentificate** separă shell-ul (`public/erp.css` + `public/erp.js`) de
   componentele reutilizabile (`public/design-system.css`) și folosește aceeași paletă caldă ca
   loginul, pe toate dimensiunile. `#tabs` este **unica
-  navigație**: arbore lateral pe desktop și același arbore într-un sertar pe telefon. `erp.js` construiește
+  navigație**: bandă superioară cu dropdownuri pe desktop și același arbore într-un sertar pe telefon. `erp.js` construiește
   numai bara contextuală și mută în ea selectorul real de firmă și navigarea reală pe perioade —
-  nu există copii, meniu superior, ribbon sau bară de stare care să derive de la permisiuni.
+  nu există copii, ribbon sau bară de stare care să derive de la permisiuni.
   Același strat înlocuiește emoji-urile structurale și simbolurile din controale (butoane, linkuri
   de acțiune, secțiuni extensibile și atașamente) cu un singur set SVG outline. Conversia păstrează
   simbolurile necunoscute și actualizează pictograma atunci când eticheta unui control se schimbă.
@@ -166,10 +232,10 @@ Aplicația gestionează **mai multe firme** în aceeași instanță:
 - **O firmă, o singură evidență.** Fiecare firmă are un **proprietar** (`firma.ownerId` — contul
   care a înscris-o). O firmă se înregistrează o singură dată: `POST /api/firme` și înscrierea
   publică refuză cu **409** un CUI deja folosit și trimit spre cererea de acces (aceeași gardă
-  și la schimbarea CUI-ului unei firme existente, altfel poarta s-ar ocoli în doi pași). Ca să
-  poți deține firme, contul trebuie să aibă **CNP** valid în profil — proprietarul e o persoană
-  identificată, nu doar un nume de utilizator. Codurile se validează cu cifra de control
-  (`src/identitate.js`).
+  și la schimbarea CUI-ului unei firme existente, altfel poarta s-ar ocoli în doi pași). În etapa
+  fail-closed, proprietarul este contul autentificat și aplicația nu cere CNP-ul real al patronului
+  ca precondiție pentru o firmă declarată fictivă. CNP/CUI introduse în scenarii de test se validează
+  totuși cu cifra de control (`src/identitate.js`).
 - **Două căi de a primi acces la o firmă, ambele prin acord explicit** — decide de fiecare dată
   celălalt, nu cel care cere:
   - **contabil → patron** (`accessRequests`): contabilul cere acces după CUI, proprietarul aprobă.
@@ -194,9 +260,16 @@ Aplicația gestionează **mai multe firme** în aceeași instanță:
 Aplicația cere **login** și aplică **drepturi pe firmă**:
 - Tabelul `users` în `data/db.json`: `{ id, username, salt, hash, role, firme[] }`. Parolele sunt
   hash-uite cu **scrypt** + salt; sesiunea e un **cookie semnat HMAC** (`sid`, HttpOnly, 7 zile).
-- Roluri: **admin** (vede toate firmele, gestionează utilizatori) și **user** (vede doar firmele
-  alocate). Toate rutele `/api`, `/pdf`, `/xml` sunt protejate; rapoartele sunt filtrate pe firma
-  activă a utilizatorului, iar `?firma=ID` e ignorat dacă nu are acces.
+- Rolul global **admin/user** stabilește administrarea instalării și vizibilitatea firmelor. În
+  interiorul unei firme, matricea din `src/permissions.js` atribuie rolul `vizualizare`, `operator`,
+  `verificator`, `aprobator`, `proprietar` sau `administrator` și verifică acțiuni atomice (citire,
+  operare, salarii, trezorerie, validare/aprobare/postare, pregătire/aprobare document/depunere declarații,
+  administrare fiscală, aprobare/închidere, export, blocare și echipă). Pregătitorul nu își aprobă
+  propria lună: contribuțiile sunt rezolvate din articole, extras, pașii și dovezile persistente.
+  Excepția este numai administrativă, motivată și auditată. Toate
+  rutele `/api`, `/pdf`, `/xml` sunt protejate; rapoartele sunt filtrate pe firma activă a
+  utilizatorului, iar `?firma=ID` este ignorat dacă nu are acces. Contractul poate fi citit prin
+  `GET /api/permissions/matrix` și este afișat fără duplicare în Setări → Utilizatori.
 - La prima pornire se creează automat **admin / admin** (schimbă parola imediat din Setări →
   „Schimbă parola”; aplicația te avertizează).
 - Gestionarea utilizatorilor (adăugare, rol, firme alocate, resetare parolă) e în Setări →
@@ -234,7 +307,9 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   zile” → un cookie semnat `tfd` sare peste codul 2FA pe acel dispozitiv. „Revocă dispozitivele de
   încredere” (sau dezactivarea 2FA) le invalidează pe toate (`tfdEpoch`).
 - **Backup automat al bazei de date:** Setări → „Backup” (admin) — buton „Fă backup acum”, listă cu
-  descărcare, și **backup automat zilnic**. Mecanism: `src/backup.js` (`backupNow`) copiază `data/db.json`
+  descărcare, și **backup automat zilnic**. Înainte de copiere, verificatorul global validează
+  graful și jurnalul durabil; descărcarea recalculează rădăcina și o expune în
+  `X-Contab-Integrity-Root`. Mecanism: `src/backup.js` (`backupNow`) copiază `data/db.json`
   în `data/backups/db-YYYYMMDD-HHMMSS.json` și păstrează ultimele 30. Rularea zilnică e făcută de
   `scripts/backup.js` printr-un **cron** (`30 3 * * * node /var/www/contab/scripts/backup.js`,
   log în `data/backups/backup.log`). API: `POST /api/backup` · `GET /api/backups` ·
@@ -257,7 +332,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   alertă (max. una pe oră); la înscriere, utilizatorii cu email primesc un **mesaj de bun venit**
   cu primii pași.
 - **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
-  comanda e în antetul scriptului): 50 verificări cap-coadă pe instanța reală, cu contul demo —
+  comanda e în antetul scriptului): 65 verificări cap-coadă pe instanța reală, cu contul demo —
   inclusiv FAQ-ul public de pe login, dicționarul contabil, cardul de pro-rata din tab-ul TVA, căutarea globală (Ctrl+K) și
   două porți care au nevoie de un browser adevărat, deci nu pot trăi în `npm test`: contrastul AA
   al comenzilor din antet (în ambele teme) și **modul simplu fără coduri de cont** —
@@ -265,7 +340,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   expert, ca să nu treacă nici o regresie care ar ascunde totul pentru toată lumea).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
-  rulează **161 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
+  rulează **164 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
   deci rularea produce mai multe rezultate) — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
   credențiale, declarațiile și situațiile XML accesibile profilului seed, **restaurarea efectivă** a unui backup (verificată
@@ -273,7 +348,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   se randează, filtrul schimbă conținutul, iar un cont fără drepturi nu vede nici cardul, nici
   datele din spatele lui), **carcasa cu o singură navigație** — `#tabs` este unicul arbore desktop,
   iar firma și perioada există o singură dată în bara contextuală — plus **modul simplu** verificat
-  pe vizibilitatea calculată de browser, cu acordeonul DESCHIS (o măsurătoare care îl lasă închis
+  pe vizibilitatea calculată de browser, cu dropdownurile DESCHISE (o măsurătoare care le lasă închise
   raportează zero scăpări indiferent de adevăr), **feedback-ul semantic** (inclusiv toasturi
   succes/eroare, timere consecutive și prioritate pentru cititoarele de ecran) și **ecranul de
   intrare pe telefon**, unde se dovedește că derularea rămâne în stratul de deasupra și nu aduce
@@ -289,13 +364,15 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
 - **Arhivă completă + copie offsite (zilnic):** pe lângă copia `db.json`, cronul creează
   `data/backups/full-YYYYMMDD-HHMMSS.zip` — `db.json` + un **instantaneu consistent** al bazei
   relaționale (SQLite prin `VACUUM INTO`, sigur sub WAL; sau `contab.sql` prin `pg_dump` pe
-  driverul PostgreSQL) + **toate documentele din `data/uploads/`** — păstrează
+  driverul PostgreSQL) + **toate documentele din `data/uploads/`**, jurnalul durabil și dovada
+  `integrity/global-chain.json`. Verificarea arhivei recalculează rădăcina exclusiv din copiile
+  aflate în ZIP și o confruntă cu dovada — păstrează
   ultimele 14 și o trimite **în afara serverului**: pe email (Resend, `CONTAB_BACKUP_EMAIL_TO` +
   `RESEND_API_KEY` în `.env`) și/sau cu **rclone** (`RCLONE_REMOTE`, obligatoriu peste 20MB).
   Restaurare după dezastru: dezarhivezi zip-ul → `db.json` prin Setări → Backup → Restaurează,
   `uploads/*` înapoi în `data/uploads/`.
 - **Restaurare backup din UI:** Setări → „Backup” → încarcă un fișier `db.json`; serverul îl
-  validează (trebuie să conțină `firme`/`users`), face automat un backup al stării curente, apoi
+  validează structural și prin lanțul global înainte de orice mutație, face automat un backup al stării curente, apoi
   înlocuiește baza și o reîncarcă. `POST /api/restore` (admin, multipart).
 - **Resetare parolă prin email:** „Ai uitat parola?” pe ecranul de login → introduci utilizator/email
   → primești un link `/?reset=TOKEN` (valabil 1 oră) dacă ai email setat și SMTP e configurat.

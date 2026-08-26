@@ -6,7 +6,7 @@ Organizat pe modulele din `src/routes/`; endpoint-urile mărunte sau pur interne
 listate exhaustiv — pentru ele, sursa e ruta însăși, care după refactorizarea pe servicii
 e doar un adaptor subțire ușor de citit.
 
-Actualizat: 2026-07-16.
+Actualizat: 2026-08-26.
 
 ---
 
@@ -20,7 +20,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 - Orice cale `/api|/pdf|/xml|/csv|/efactura` cere sesiune — fără ea: **401** `{ "error": "Neautentificat" }`.
 - Rute publice (fără sesiune): `/api/health`, `/api/login`, `/api/logout`, `/api/me`,
   `/api/register`, `/api/forgot-password`, `/api/reset/:token`, `/api/invite/:token`,
-  `/api/plans`, `/api/demo-login`, `/api/stripe/webhook`.
+  `/api/plans`, `/api/legal-status`, `/api/demo-login`, `/api/stripe/webhook`.
 - Un cont cu parolă implicită e forțat să o schimbe: până atunci are acces doar la
   `/api/me`, `/api/logout`, `/api/change-password` (restul: 403 cu `mustChange`).
 
@@ -43,6 +43,8 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
   logul structurat.
 - **402** = firma activă nu are abonament/probă validă (paywall per firmă); corpul conține
   `firmaTrialExpired`, `firmaId`, `firmaNume`.
+- **428** = regimul datelor firmei este neclasificat ori acceptarea DPA pentru date reale nu mai
+  este curentă. Răspunsul conține `code` și `legalMode`; clasificarea se face prin `/api/legal/mode`.
 
 ### Plafoane (rate limit)
 
@@ -83,7 +85,7 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 | `POST /api/login` | `{ username, password, code?, remember? }` | `code` acceptă TOTP sau cod de rezervă one-time; `{ twofa: true }` dacă mai trebuie codul; 401 credențiale/cod greșit; 429 lockout |
 | `POST /api/logout` | — | `{ ok }` |
 | `GET /api/me` | — | `{ user }` sau `{ user: null }` (public) |
-| `POST /api/register` | `{ nume, username, password }` | `{ ok, firma, user }` + sesiune; 400 validări; 403 înscriere dezactivată; 429 peste 5/oră |
+| `POST /api/register` | `{ nume, username, password, email, tvaPlatitor, acceptLegal:true }` | `{ ok, firma, user }` + sesiune; firma pornește `dataMode:test`; acceptarea păstrează versiunile și SHA-256-urile documentelor; 400 validări; 403 înscriere dezactivată; 429 peste 5/oră |
 | `POST /api/forgot-password` | `{ login }` | mereu `{ ok, message }` generic (fără enumerare de conturi) |
 | `GET /api/reset/:token` / `POST /api/reset/accept` | token din email | validare + setare parolă nouă; 400 token invalid/expirat |
 | `POST /api/change-password` | `{ oldPassword, newPassword }` | `{ ok, sessionsRevoked, trustedDevicesRevoked }`; păstrează numai sesiunea curentă și invalidează dispozitivele 2FA „de încredere”; 400 parolă veche greșită / nouă slabă / identică; 409 schimbare concurentă |
@@ -108,14 +110,83 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
 | `GET /api/firme` | — | `{ firme: [...cu _sub (starea abonamentului)], firmaActiva }` — doar firmele accesibile |
-| `POST /api/firme` | `{ nume, cui?, ... }` | `{ ok, firma, firmaActiva }`; 403 demo |
+| `POST /api/firme` | `{ nume, cui?, confirmFictitious:true, ... }` | `{ ok, firma, firmaActiva }`; firma pornește în modul test; 403 demo |
 | `POST /api/firme/:id` | câmpuri de firmă | `{ ok, firma }`; 403 fără acces |
 | `POST /api/firme/:id/activate` | — | `{ ok, firmaActiva }` — comută firma activă |
 | `DELETE /api/firme/:id` | `{ confirmName }` | `{ ok, filesDeleted }`; numai proprietarul firmei sau administratorul, cu denumirea exactă drept confirmare; elimină toate colecțiile și fișierele firmei |
-| `GET /api/firme/:id/export` / `export-zip` | — | descărcare JSON / ZIP (cu fișierele documentelor) |
-| `POST /api/firme/import` (`?mode=replace`) / `import-zip` | bundle JSON / ZIP multipart | `{ ok, firmaId, replaced }`; `replace` suprascrie firma activă (cu plasă de siguranță pe server) |
-| `POST /api/firme/:id/test-clone` | — | `{ ok, firmaId, nume }` — clonă `[TEST]` + comutare pe ea |
+| `GET /api/firme/:id/export` / `export-zip` | — | descărcare JSON / ZIP (cu fișierele documentelor); cere `data.export` pe firma cerută |
+| `POST /api/firme/import` (`?mode=replace`) / `import-zip` | firmă nouă: `{ bundle, dataMode:"test", confirmFictitious:true }` sau acceptările `real`; ZIP: aceleași câmpuri multipart; `replace` cere ca firma activă să aibă deja regim juridic operațional | `{ ok, firmaId, replaced }`; `replace` suprascrie firma activă (cu plasă de siguranță pe server) |
+| `POST /api/firme/:id/test-clone` | — | `{ ok, firmaId, nume }` — clonă `[TEST]` numai dintr-o sursă deja fictivă; o firmă reală nu poate fi reetichetată fără anonimizare |
 | `POST /api/firme/:id/subscribe`, `GET /api/subscription`, `POST /api/subscription/*` | — | fluxul de abonare Stripe per firmă |
+
+## Regimul juridic și AI per firmă (`src/routes/legal.js`)
+
+| Endpoint | Cerere | Răspuns / erori |
+|---|---|---|
+| `GET /api/legal-status` | — | public: `{ ready, mode, missing, versions, documents, provider }`; nu expune secrete |
+| `GET /api/legal` | — | starea firmei active, acceptarea curentă, dreptul de administrare și opt-in-ul AI |
+| `POST /api/legal/mode` | `{ mode:"test", confirmFictitious:true }` | declară exclusiv date fictive; proprietarul firmei; revocă opt-in-ul AI anterior |
+| `POST /api/legal/mode` | `{ mode:"real", acceptTerms:true, acceptPrivacy:true, acceptDpa:true }` | activează date reale numai dacă poarta globală este completă; păstrează actor/data/versiuni/hash-uri; 503 `LEGAL_READINESS_INCOMPLETE` altfel |
+| `POST /api/legal/ai` | `{ enabled, confirmExternalProcessing? }` | opt-in/revocare per firmă; activarea păstrează furnizorul, modelul, scopul și documentele juridice curente |
+
+Un import ca firmă nouă este refuzat cu 428 până când cererea declară explicit regimul; regimul și
+acceptarea din pachet nu sunt niciodată considerate autoritate. Restaurarea peste firma activă este
+permisă numai dacă regimul ei juridic este deja operațional. Schimbarea oricărui document juridic
+schimbă hash-ul și invalidează acceptarea pentru scrieri noi pe firmele reale. AI este implicit oprit
+și folosește fallback-ul local.
+
+## Profil fiscal cu istoric (`src/routes/config.js`)
+
+Profilul este rezolvat prin `profileAt(...)` la data operațiunii, nu din setările curente. Fiecare
+revizie este o fotografie completă în tabelul `fiscal_profile_history`, cu intervalul efectiv
+`validFrom`/`validTo` și momentul tranzacțional `recordedAt`. Astfel, data de la care o schimbare
+produce efecte nu este confundată cu momentul în care a fost consemnată; o schimbare de regim din
+2026 nu modifică retroactiv declarațiile din 2025.
+Pentru o lună se folosește ultima zi a lunii, iar pentru un an data de 31 decembrie.
+
+| Endpoint | Cerere | Răspuns / erori |
+|---|---|---|
+| `GET /api/fiscal-profile?asOf=` | `asOf=YYYY-MM-DD`, `YYYY-MM` sau `YYYY` | profilul normalizat valabil la data cerută, inclusiv `fiscalRevisionId`, `fiscalValidFrom`, `fiscalValidTo` și `fiscalRecordedAt` |
+| `GET /api/fiscal-profile/history` | — | `{ fields, history[] }`, cu fotografiile, intervalele `validFrom`/`validTo` și `recordedAt` în ordine descrescătoare |
+| `POST /api/fiscal-profile/history` | `{ validFrom, note?, changes }` | `{ ok, revision, company, history }`; `recordedAt` este stabilit exclusiv de server; cere `fiscal.manage`; 400 la dată/câmp fiscal necunoscut |
+| `GET /api/fiscal-review` | — | starea reviziei externe a motorului: `{ ready, fiscalYear, approved, pending, invalid, total, sourceManifestHash, sourceFiles, runtimeRulesHash, signatureScheme, cases[] }`; fiecare caz expune hash-ul runtime și aprobarea verificată, dacă există |
+
+`POST /api/company` acceptă în continuare câmpurile fiscale pentru compatibilitate. Interfața îi
+trimite explicit data curentă prin `fiscalValidFrom`; un client API vechi care nu trimite data
+păstrează semantica istorică, retroactivă. Pentru importuri sau schimbări de regim datate se
+folosește ruta dedicată de istoric.
+
+## Categoria contabilă a bilanțului (`src/balanceCategory.js`)
+
+Categoria este calculată separat de profilul fiscal, din total active, cifra de afaceri și
+numărul mediu de salariați, cu pragurile aplicabile exercițiului și regula celor două exerciții
+consecutive. Deciziile sunt append-only în `balance_category_history`; o reconfirmare păstrează
+revizia veche ca supersedată. Hash-ul include indicatorii anului curent și precedent, pragurile și
+decizia anterioară, astfel că modificarea datelor blochează XML-ul până la reconfirmare.
+
+| Endpoint | Cerere | Răspuns / erori |
+|---|---|---|
+| `GET /api/balance-category?year=` | `year=YYYY`, opțional `numarMediuSalariati=` | `{ assessment, confirmation, confirmedAndCurrent }`; calculul nu folosește `regimImpozit` |
+| `GET /api/balance-category/history` | — | `{ history, labels }`, câte o decizie activă pe exercițiu |
+| `POST /api/balance-category/confirm` | `{ year, category, numarMediuSalariati?, justification? }` | confirmare versionată; cere cont de contabil + `balance.category.confirm` (adminul poate remedia controlat); abaterea de la calcul sau datele neconcludente cer justificare |
+| `GET /xml/bilant?year=` | — | 409 dacă lipsește confirmarea ori hash-ul ei nu mai corespunde; formularul este ales numai din confirmarea anuală |
+
+## Permisiuni pe firmă (`src/permissions.js`, `src/routes/users.js`)
+
+`GET /api/permissions/matrix` întoarce contractul unic `{ roles, actions }` folosit și de server,
+și de interfața de administrare. Rolurile sunt `vizualizare`, `operator`, `verificator`,
+`aprobator`, `proprietar`, `administrator`; acțiunile separă citirea/operarea, salariile,
+trezoreria (`treasury.read|write|approve`), articolele, pregătirea și confirmarea declarațiilor,
+administrarea fiscală, aprobarea/închiderea lunii, anul, exportul și echipa. Restricțiile
+istorice `readonly` și `faraSalarii` se aplică peste rol. Migrarea v7 materializează o singură dată
+rolul istoric `aprobator` pentru colaboratorii existenți; după migrare, lipsa unui rol explicit
+înseamnă strict `vizualizare`, nu aprobare implicită.
+
+`operator` pregătește documente, salarii, trezorerie și declarații, dar nu le confirmă și nu
+închide perioade. `verificator` poate aproba articole/trezorerie și exporta. Numai
+`aprobator`/`proprietar`/`administrator` confirmă depuneri și închid luna/anul. Derogarea
+`control.override` și blocarea administrativă sunt rezervate administratorului; derogarea cere
+motiv și produce eveniment de audit distinct.
 
 ## Documente & upload (`src/routes/documents.js`)
 
@@ -134,7 +205,7 @@ preluarea identității și a factorilor de autentificare ai utilizatorului.
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
 | `GET /api/entries` | `?period=YYYY-MM` | articolele firmei active, sortate |
-| `POST /api/entries` | `{ tip, fields, fileId?, spvMsgId?, motivRevizuire? }` | `{ ok, entry, stoc }`; liniile `fields.stoc[]` (productId+gestiuneId+cantitate) generează descărcarea CMP/FIFO atomic; 409 la stoc insuficient/recalcul retroactiv, 400 la tip/câmpuri/data invalide sau perioadă închisă |
+| `POST /api/entries` | `{ tip, fields, fileId?, spvMsgId?, motivRevizuire?, duplicateOverride?: { duplicateId, reason } }` | `{ ok, entry, stoc }`; liniile `fields.stoc[]` (productId+gestiuneId+cantitate) generează descărcarea CMP/FIFO atomic; 409 la stoc insuficient/recalcul retroactiv sau duplicat central. Duplicatul răspunde `{ error, code:"DUPLICATE_ENTRY", duplicateId, duplicateKeys }`; cheia facturii este direcție+CUI+serie/număr normalizat+exercițiu, suplimentată cu SPV ID/SHA-256, fără sumă/monografie. `duplicateOverride` cere `control.override` (administrator), motiv de minimum 10 caractere și `duplicateId` exact; succesul păstrează metadatele pe articol și evenimentul durabil `entry.duplicate.override`. 400 la tip/câmpuri/data invalide ori perioadă închisă; după storno, repostarea este permisă |
 | `POST /api/preview` | `{ tip, fields }` | `{ ok: true, tipNume, lines, total }` — articolul **exact** cum va fi salvat, prin aceeași compunere (`composeEntry`); nu scrie nimic și nu consumă un id. Un articol încă incomplet întoarce **200** `{ ok: false, mesaj }` (e starea normală în timpul completării, nu o eroare); 400 doar fără `tip` |
 | `DELETE /api/entries/:id` | — | `{ ok, removed }`; id inexistent NU e eroare (`removed: 0`); 404 articol străin; 400 perioadă închisă |
 | `GET /api/recurring` / `due?period=` | — | șabloanele firmei / cele scadente în perioadă |
@@ -198,14 +269,61 @@ nu poate fi descărcată accidental o declarație din corecția încă nepostat�
 | `GET /api/plati/propuneri?tip=furnizori&asOf=YYYY-MM-DD` | — | soldurile furnizorilor cu starea IBAN-ului și totalul rândurilor pregătite |
 | `POST /xml/pain001` | `{ execDate, moneda?, plati:[{ beneficiar, iban, bic?, suma, detalii?, ref? }] }` | fișier ISO 20022 `pain.001`; validează plătitorul, beneficiarii, IBAN-urile, sumele și setul de caractere EPC |
 
+## Extrase bancare și reconciliere (`src/routes/bank.js`, `src/bankStatements.js`)
+
+Fișierul încărcat devine document justificativ persistent, cu amprentă SHA-256. Fiecare extras
+din fișier păstrează IBAN-ul, moneda, intervalul și soldurile, iar fiecare tranzacție păstrează
+referința băncii, data contabilizării și data valutei. Un fișier cu mai multe `<Stmt>` creează
+extrase distincte, inclusiv pentru IBAN-uri și valute diferite.
+
+| Rută | Corp / parametri | Răspuns / regulă |
+|---|---|---|
+| `POST /api/bank/parse` | multipart `file` — CSV, MT940 sau CAMT.053 | creează `bank_statement` + `bank_transaction`; același hash este refuzat cu 409, iar o tranzacție deja cunoscută este marcată `exclusa` cu legătură la original |
+| `GET /api/bank/statements?period=YYYY-MM` | perioadă opțională | lista extraselor; fiecare include verdictul soldurilor și al dovezilor din jurnal |
+| `GET /api/bank/statements/:id` | — | extrasul, tranzacțiile și reconcilierea completă |
+| `PATCH /api/bank/statements/:id` | `{ iban?, currency?, openingBalance?, closingBalance?, periodFrom?, periodTo?, reason? }` | completează metadatele cu istoric append-only; suprascrierea cere motiv, intervalul trebuie să cuprindă liniile, iar IBAN/moneda se blochează după prima postare |
+| `PATCH /api/bank/transactions/:id` | `{ tip, fields, stinge?[] }` | confirmă clasificarea/punctajul și trece linia în `punctata`, fără articol contabil încă |
+| `POST /api/bank/import` | `{ statementId, transactions:[{ id, tip?, fields?, stinge?[] }] }` | prevalidează și postează atomic liniile selectate; cere identitate/interval/solduri complete și `sold inițial + mișcări = sold final`; tranzacțiile valutare cer curs și folosesc 5124 |
+| `POST /api/bank/transactions/:id/exclude` | `{ reason, entryId? }` | excluderea cere duplicatul detectat sau un articol existent care reproduce exact suma și sensul |
+| `GET /api/bank/reconciliation?period=YYYY-MM` | — | controlul cockpitului: diferență totală, extrase lipsă, tranzacții nepostate, articole 5121/5124 nelegate și continuitatea soldurilor între extrase succesive |
+
+Stările liniei sunt `propusa → punctata → postata`; `exclusa` este o ramură justificată, nu o
+ștergere. Începând cu `company.bankReconciliationFrom`, cockpitul nu permite închiderea lunii până
+când diferența bancară este zero. Lunile anterioare datei de adoptare rămân accesibile fără a cere
+reconstruirea retroactivă a tuturor extraselor istorice.
+
+## Documente deschise și scadențe (`src/routes/openItems.js`, `src/openItems.js`)
+
+| Rută | Corp / parametri | Răspuns / regulă |
+|---|---|---|
+| `GET /api/open-items?asOf=YYYY-MM-DD&sens=creanta|datorie` | — | documente, sold rezidual, scadență, stingeri și totaluri din jurnalul postat |
+| `PATCH /api/open-items/:entryId` | `{ dueDate?, contractualTermDays?, dispute?, disputeSince?, affiliated?, guaranteed?, reason }` | PATCH parțial; păstrează câmpurile omise și adaugă versiunea veche/nouă, autorul și motivul în istoric |
+| `GET /api/open-items/:entryId/history` | — | metadata curentă și versiunile auditate, în ordine descrescătoare |
+| `POST /api/open-items/allocate` | `{ paymentId, allocations:[{ documentId, amount?, allocationDate? }] }` | stingeri parțiale document-cu-document, append-only și idempotente; data nu poate preceda documentul sau plata |
+| `GET /api/open-items/reconciliation?asOf=` | — | punctaj registru–carte mare pe toate conturile de terți; alocările orfane/cross-partner/overflow fac verdictul invalid chiar dacă totalurile coincid |
+
+Aging-ul, provizioanele, propunerile de plată, Nota 5 și cash-flow-ul citesc această proiecție
+centrală; nu mențin solduri paralele.
+
 ## Închideri fiscale (`src/routes/closings.js`)
 
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
-| `POST /api/close-vat?period=YYYY-MM` | — | `{ ok, result, lockedUntil, message? }` — postează regularizarea și **blochează perioada** (blocajul doar avansează); 400 dacă perioada nu e o lună |
-| `POST /api/close-year?year=` | — | `{ ok, result }` sau `{ ok, message: 'Nimic de inchis.' }` |
-| `GET /api/profit-tax-preview`, `POST /api/close-profit-tax?year=` | `cheltNedeductibile?, deduceri?, pierdereReportata?` (query sau body) | 691=4411 o dată pe an (400 la dublă înregistrare); pierderea de reportat se memorează pe firmă și la impozit 0; pierderea explicită bate pe cea memorată |
-| `GET /api/distribute-preview`, `POST /api/distribute-result?year=` | — | 121→117 (profit) sau 117→121 (pierdere) |
+| `POST /api/close-vat?period=YYYY-MM` | — | `{ ok, result, lockedUntil, message? }` — postează doar regularizarea TVA; **nu blochează perioada**. `lockedUntil` rămâne în răspuns pentru compatibilitate și nu este modificat; 400 dacă perioada nu e o lună |
+| `GET /api/annual-close?year=` | — | cockpitul anual derivat din dovezi: revizia externă + pașii contabili, progres, blocaje, detalii, temeiuri legale și verdictul `annual.manage` al utilizatorului |
+| `POST /api/annual-inventory-control` | `{ year, control: { categories, reconciliation, governance } }` | salvează cele nouă controale de completitudine și invalidează orice aprobare anterioară; cere `annual.manage` |
+| `POST /api/annual-inventory-control/approve` | `{ year }` | aprobă hash-ul exact al matricei numai după acoperirea domeniilor, punctaj/regularizare, comisie, proces-verbal și semnături |
+| `POST /api/close-year?year=` | — | `{ ok, result }` sau `{ ok, message: 'Nimic de inchis.' }`; cere `annual.manage` și refuză închiderea dacă matricea inventarierii nu este completă și aprobată |
+| `GET /api/profit-tax-preview`, `POST /api/close-profit-tax?year=` | `cheltNedeductibile?, deduceri?, pierdereReportata?` (query sau body) | 691=4411 o dată pe an (409 la dublă înregistrare); pierderea de reportat se memorează pe firmă și la impozit 0; pierderea explicită bate pe cea memorată; POST cere `annual.manage` |
+| `GET /api/distribute-preview`, `POST /api/distribute-result?year=` | POST: `{ data?: YYYY-MM-DD }` (implicit `01-01` din anul următor) | 121→117 (profit) sau 117→121 (pierdere); articolul se postează obligatoriu în anul următor celui închis; 409 la dublură; POST cere `annual.manage` |
+| `GET /api/dosar-anual/status?year=` | — | anul este închis sau nu, toate versiunile persistente și rezultatul verificării ZIP/manifest/semnătură pentru fiecare |
+| `POST /api/dosar-anual/seal?year=` | `{ newRevision?, reason? }` | cere `annual.manage` și cockpit anual complet; prima sigilare este idempotentă, cererile concurente sunt serializate per firmă/an, iar o revizie cere motiv de minimum 10 caractere și păstrează versiunea anterioară |
+| `GET /api/dosar-anual?year=&version=` | — | servește octeții versiunii sigilate după verificare, chiar dacă un marcaj derivat de închidere s-a pierdut ulterior; 409 dacă versiunea lipsește ori integritatea nu se confirmă; ruta nu regenerează rapoarte |
+
+Cockpitul anual parcurge, în ordine, revizia fiscală externă, inventarierea, evaluarea, amortizarea, balanța, impozitul,
+închiderea conturilor, generarea situațiilor, depunerea și repartizarea rezultatului. Starea este
+recalculată din registre și articole; nu există o bifă manuală care să poată declara un pas gata
+fără dovadă contabilă.
 
 ## Rapoarte & situații (`src/routes/reports.js`, `dashboard.js`)
 
@@ -213,6 +331,12 @@ Citiri pure pe firma activă; parametrii uzuali `?period=` / `?year=`.
 
 - `GET /api/journal`, `/api/ledger?cont=`, `/api/balance`, `/api/fisa-cont?cont=` — registre.
 - `GET /api/statements/pl|bilant|bilant-f10|cashflow|equity` — situații financiare.
+- `GET /api/notes?year=` și `GET /pdf/note?year=` — cele 8 note explicative generate din
+  balanță, documentele deschise, active, stocuri și politicile contabile configurate.
+- `GET /api/cash-forecast/13-weeks?start=&scenario=`, `POST /api/cash-forecast/13-weeks/snapshot`
+  și `GET /api/cash-forecast/13-weeks/backtest?id=` — prognoza directă, fotografia imuabilă și
+  comparația cu realizatul. `GET /pdf/cash-forecast-13-weeks?start=&scenario=` exportă calculul
+  live, iar `?snapshot=` exportă exact fotografia verificată, fără recalculare.
 - `GET /api/analytic`, `/api/aging?asOf=` — balanța analitică și scadențarul (FIFO).
 - `GET /api/dashboard` — KPI + `primiiPasi` (onboarding) + alerte e-Factura;
   `/api/dashboard-charts`, `/api/cash-forecast?months=`, `/api/missing-docs?period=`.
@@ -220,6 +344,10 @@ Citiri pure pe firma activă; parametrii uzuali `?period=` / `?year=`.
   `X-Dashboard-Cache: hit|miss` spune care cale a servit cererea. Câmpul
   `primiiPasi.wizardAscuns` e per utilizator, deci se suprapune *după* memo.
 - `GET /api/reconcile`, `/api/compensations` (+ `POST` pentru nota 401=4111).
+
+La sigilarea dosarului anual, notele explicative intră în PDF și JSON. Fiecare fotografie de
+cash-flow pe 13 săptămâni din exercițiu este verificată intern și arhivată separat în PDF și JSON;
+o fotografie cu hash invalid blochează sigilarea în loc să fie împachetată drept probă validă.
 
 ### Catalogul duratelor normale de funcționare — `src/routes/assets.js`
 
@@ -245,20 +373,29 @@ aprobarea și eventuala forțare.
   (conturile firmei) și `validabile` (declarațiile lunii care se pot valida).
 - `POST /api/monthly-close/step` `{period, step, responsabilId, due, nota}` — alocarea unui pas;
   `due: ''` revine la termenul implicit (derivat din termenul real de depunere al lunii).
-- `POST /api/monthly-close/validate` `{period, tip}` — rulează validarea pre-depunere și **păstrează
+- `POST /api/monthly-close/validate` `{period, tip}` — cere `entry.validate`, rulează validarea pre-depunere și **păstrează
   dovada** (cine, când, verdict, SHA-256 al XML-ului și amprenta datelor-sursă). Dacă cifrele,
   configurarea fiscală sau subregistrele se schimbă, dovada devine automat „învechită” și cere
   revalidare. Aceeași funcție ca `GET /api/validate/:type` (`src/declarationCheck.js`).
-- `POST /api/monthly-close/approve` / `unapprove` `{period, nota}` — asumarea explicită a lunii;
+- `POST /api/monthly-close/approve` / `unapprove` `{period, nota}` — cer `close.approve`; reprezintă asumarea explicită a lunii;
   refuzată cât timp există pași nerezolvați. Aprobarea este legată de amprenta conținutului; orice
   modificare anterioară blocării sau a dovezilor XML o invalidează și versiunea veche rămâne în
-  istoricul dosarului.
-- `POST /api/monthly-close/close` `{period, force, motiv}` — blochează perioada. Cu pași deschiși
+  istoricul dosarului. Utilizatorul care a creat articole, a punctat banca, a completat pași ori a
+  validat dovezi/declarații în lună nu își poate da singur aprobarea (`409
+  SELF_APPROVAL_REQUIRED`). Numai administratorul poate consemna excepția cu
+  `{override:true,motiv}` și motiv de minimum 10 caractere; contribuțiile detectate și motivul
+  rămân în dosar și în audit (`control.override`).
+- `POST /api/monthly-close/close` `{period, force, motiv}` — cere `close.manage` și blochează perioada. Cu pași deschiși
   se refuză (400); **doar un administrator** poate forța (`force:true`), obligatoriu cu `motiv`
   (≥10 caractere), care rămâne pe dosarul lunii și în audit (`inchidere.fortata`).
 - Export: aceleași rapoarte există ca `/pdf/*` și `/csv/*` (CSV cu `;` și BOM UTF-8).
 
 ## Declarații & e-Factura (`src/routes/declarations.js`, `declarationsXml.js`, `anaf.js`)
+
+Artefactele XML destinate depunerii și tranzițiile `transmisa`/`depusa` răspund
+`409 FISCAL_REVIEW_REQUIRED` până când toate cazurile externe au aprobare validă pe hash-ul codului
+curent. `GET /api/validate/:type`, rapoartele și recapitulările rămân disponibile pentru revizie.
+Rectificativele trec prin aceeași poartă; istoricul deja depus rămâne integral vizibil.
 
 - `GET /api/livrabile?period=` — borderoul lunar: ce declarații se depun și termenele.
 - `GET /xml/d300|d301|d307|d311|d394|d390|d112|d100|d107|d205|saft?period=/an=` — XML-urile de declarații
@@ -281,9 +418,70 @@ aprobarea și eventuala forțare.
 - `GET /api/d311?period=YYYY-MM` — recapitularea operațiunilor din perioada în care codul normal
   de TVA este anulat. `GET /xml/d311?period=` generează schema IV (data anulării și OB_11…OB_52)
   sau schema V (data reînregistrării și OB_61/62), fără a permite combinarea lor.
-- `GET /api/declarations` + `POST /api/declarations/set` — registrul depunerilor; traseu
-  `nedepusa → generata → transmisa → depusa`, cu SHA-256 al artefactului și recipisă obligatorie
-  pentru `depusa`; o declarație depusă nu poate fi retrogradată.
+- `GET /api/declarations` + `POST /api/declarations/set` — registrul depunerilor. Matricea autorizată
+  este `nedepusa → generata → aprobata → transmisa → depusa`, cu ramurile explicate `generata/aprobata/transmisa → eroare`,
+  `eroare → generata` și `nedepusa/generata/aprobata → scutita`; celelalte salturi sunt refuzate. `set` nu
+  poate marca direct `aprobata` sau `depusa`. Artefactul și fiecare element din `depuneri[]` păstrează
+  `profileSnapshot` și `profileHash` pentru profilul valabil în perioada declarată. Stările terminale
+  nu pot fi retrogradate.
+  Fiecare rând expune `dossier`: identitatea deterministă și unică pe `(firmaId, tip, period)`,
+  starea de persistență, numărul de artefacte/depuneri/evenimente, hash-ul terminal și verdictul de integritate.
+- `POST /api/declarations/approve` — `{ tip, period, dossierId?, artifactHash, note? }`. Este
+  singura cale către `aprobata`: clientul trebuie să numească SHA-256-ul complet văzut de aprobator,
+  iar serverul îl confruntă cu binarul arhivat. Dovada append-only conține dosarul, hash-ul și
+  dimensiunea documentului, actorul, momentul UTC, hash-ul reviziei fiscale, legătura la aprobarea
+  precedentă și propriul `approvalHash`. Retry-ul identic este idempotent. Regenerarea cu alți
+  octeți revine la `generata` și cere o aprobare nouă; aprobarea veche nu este ștearsă.
+  Tranziția la `transmisa` copiază exclusiv `approval.artifactHash` în câmpul imuabil
+  `transmittedArtifactHash` și leagă `transmittedApprovalHash`; nu alege ultimul element din
+  `artifacts[]` și nici proiecția ultimei versiuni generate.
+- `POST /api/declarations/confirm-filed` (multipart: `tip`, `period`, `dossierId?`, `recipisa`,
+  `file`) — singura confirmare inițială `transmisa → depusa`. Numărul și fișierul XML/ZIP/PDF al
+  recipisei sunt obligatorii și se scriu atomic împreună cu depunerea; nu poate exista o proiecție
+  `depusa` fără dovada exactă. Artefactul depunerii este `transmittedArtifactHash`, adică artefactul
+  ales de aprobare, chiar dacă dosarul conține versiuni generate ulterior. SHA-256 și dimensiunea
+  fișierului sunt recalculate înainte de scriere. Depunerea primește un `submissionId` determinist
+  din dosar și ordinal, plus un `submissionHash` care sigilează semantic firma, declarația, perioada,
+  ordinalul, caracterul inițial/rectificativ, artefactul transmis, aprobarea și numărul recipisei.
+  Fiecare fișier de recipisă păstrează aceeași ancoră în `filingBinding`; `receiptBindingHash` acoperă
+  împreună această ancoră, SHA-256-ul, dimensiunea, numele și tipul fișierului. O recipisă copiată la
+  altă depunere rămâne un binar valid, dar face verificarea semantică a dosarului să eșueze.
+- Fiecare schimbare este un eveniment append-only în `stateEvents[]`: secvență, stare inițială/finală,
+  moment, actor, acțiunea autorizată, dovezi, `previousHash` și `hash`. Verificarea dosarului recalculează
+  lanțul și validează din nou matricea, autorizația și dovezile obligatorii. Bazele anterioare sunt
+  materializate onest printr-un singur `legacy.snapshot` care sigilează starea observată și hash-ul
+  istoricului vechi; migrarea nu inventează tranziții retroactive. Hash-ul terminal este inclus și
+  în jurnalul durabil NDJSON la fiecare generare, tranziție, depunere sau atașare, ca ancoră externă
+  dosarului din baza operațională.
+  Evenimentele noi folosesc schema v2 și verifică explicit `approval.recorded` plus egalitatea
+  dintre hash-ul aprobat și artefactul transmis/depus. Evenimentele v1 istorice rămân verificabile
+  după matricea sub care au fost create, fără a li se fabrica retroactiv aprobări de document.
+- `GET /api/declarations/dosar?tip=&period=` — proiecția canonică a unui singur dosar de depunere:
+  aceeași identitate reunește profilul fiscal fotografiat, artefactele, istoricul stărilor, toate
+  evenimentele sigilate, depunerile/rectificativele și recipisele. `timeline[]` este proiecția
+  server-side, în ordine de consemnare: evenimentele dosarului păstrează secvența, actorul și
+  hash-urile compacte, iar schimbările de profil păstrează distinct `occurredAt` (`recordedAt`),
+  `effectiveAt` (`validFrom`) și `validTo`. Fiecare revizie indică dacă se aplică perioadei și dacă
+  fotografia ei a fost folosită de dosar/artefact/depunere; fiecare rectificativă apare separat cu
+  ordinal, motiv, `submissionHash` și referințele recipiselor. Aceeași proiecție este inclusă în
+  rândurile `GET /api/declarations`, pentru cronologia vizibilă din registru. Răspunsul nu include base64. `dossierId` poate fi trimis
+  pe mutații și descărcări; o identitate care nu corespunde perechii declarație/perioadă este refuzată.
+- `POST /api/declarations/rectificativa` (multipart: `tip`, `period`, `dossierId?`, `motiv?`,
+  `tipRec?`, `recipisa`, `file`) — adaugă o depunere, nu o rescrie pe cea veche. Fișierul exact al
+  recipisei este obligatoriu; pe o perioadă închisă rămâne obligatoriu și motivul scris.
+- `POST /api/declarations/recipisa-file` (multipart: `tip`, `period`, `ordinal`, `file`) — păstrează
+  binarul exact al recipisei cu SHA-256 pe depunerea aleasă și construiește server-side legătura
+  `submissionId`/`submissionHash`/`receiptBindingHash`; clientul nu poate furniza sau schimba această
+  asociere. Atașarea repetată a aceluiași binar este idempotentă. `POST /api/declarations/artifact-file`
+  repară bazele istorice care aveau numai hash-ul XML-ului depus. Dacă originalul diferă de
+  artefactul selectat anterior, cere motiv și păstrează ambele versiuni plus schimbarea de hash;
+  istoricul nu se suprascrie. Corecția resigilează ancora depunerii și recipisele, păstrând
+  `submissionBindingHistory` și `filingBindingHistory`. Sunt acceptate numai originale XML, ZIP și PDF.
+- `GET /api/declarations/artifact-file?tip=&period=&ordinal=&variant=submitted|generated` și
+  `GET /api/declarations/recipisa-file?tip=&period=&ordinal=&sha256=` — descarcă octeții arhivați
+  ai oricărei depuneri/rectificative. Înainte de răspuns se recalculează SHA-256 și dimensiunea;
+  un binar lipsă sau deteriorat este refuzat, nu regenerat din datele curente. Descărcarea trece
+  și prin verificarea globală a tuturor lanțurilor și răspunde cu `X-Contab-Integrity-Root`.
 - `GET /xml/efactura/:id` — factura UBL 2.1 (CIUS-RO); `GET /api/efactura-list?period=`.
 - ANAF/SPV (OAuth per firmă): `GET /api/anaf/authorize|callback|config`,
   `POST /api/anaf/upload|verify`, `GET /api/anaf/inbox|spv-mesaje`,
@@ -303,10 +501,16 @@ aprobarea și eventuala forțare.
 
 - `GET/POST /api/users`, `DELETE /api/users/:id`, `POST /api/invites` +
   `GET /api/invite/:token` / `POST /api/invite/accept` — conturi și invitații.
-- `POST /api/impersonate` / `POST /api/impersonate/stop` — intrare pe contul unui
-  utilizator (auditată; alt admin nu poate fi impersonat).
+- `POST /api/impersonate` — `{ userId, password, code, reason, ticket, durationMinutes? }`;
+  cere reautentificarea administratorului, cod TOTP curent (nu recovery code), motiv și tichet;
+  accesul expiră automat în maximum 30 de minute și este auditat cu întregul context.
+  `POST /api/impersonate/stop` îl oprește anticipat; alt admin nu poate fi impersonat.
 - `POST /api/backup`, `GET /api/backups`, `GET /api/backup/file/:name`,
-  `POST /api/restore` (multipart) — backup/restaurare completă.
+  `POST /api/restore` (multipart) — backup/restaurare completă. Crearea, descărcarea și preflight-ul
+  restaurării folosesc același verificator global; răspunsul de creare/restaurare include
+  `integrityRoot`, iar descărcarea îl pune în `X-Contab-Integrity-Root`. Arhivele `full-*.zip`
+  includ `integrity/global-chain.json`, confruntat la verificare cu rădăcina recalculată din
+  `db.json` și copiile jurnalului din arhivă.
 - `POST /api/pg-restore-drill` — restaurează `contab.sql` din ultima arhivă într-o bază PostgreSQL
   **temporară** și verifică rezultatul (rejucare fără erori, balanța fiecărei firme, echivalență cu
   `db.json` din aceeași arhivă); baza temporară e ștearsă mereu. Răspuns:
@@ -322,6 +526,11 @@ aprobarea și eventuala forțare.
   `?limit/offset` pentru istoric). `GET /csv/audit` / `/csv/audit/system` — export CSV (tot ce
   e reținut în baza vie, implicit maximum 20.000; sistemul doar admin). `GET /api/audit/durable`
   listează/descarcă fișierele lunare append-only, iar `/api/audit/durable/verify` verifică lanțul
-  SHA-256 peste toate lunile și răspunde 409 la orice ruptură.
+  SHA-256 peste toate lunile și răspunde 409 la orice ruptură. `GET /api/integrity/global`
+  (admin) întoarce verdictul comun, rădăcina SHA-256, numărătorile, ancorele, lipsurile și problemele
+  localizate pentru profiluri, dosare de depunere, arhive anuale, cash-flow și audit. Exporturile
+  CSV/durabile de audit sunt refuzate dacă acest verdict global nu este valid.
 - `GET/POST /api/fiscal-config` — cotele fiscale configurabile (reset la standard cu
-  `{ reset: true }`). `GET /api/health` e public și intenționat minimal.
+  `{ reset: true }`). Administratorii trebuie să activeze 2FA înainte de orice operațiune în afara
+  configurării factorului. `GET /api/health` e public și intenționat minimal: nu expune numărul
+  firmelor/utilizatorilor sau diagnostice de proces.

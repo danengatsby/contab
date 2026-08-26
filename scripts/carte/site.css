@@ -51,6 +51,14 @@ body { margin:0; background:var(--paper); color:var(--ink);
 .inapoi:hover { text-decoration:underline; }
 .inapoi:focus-visible { outline:2px solid var(--verde); outline-offset:2px; border-radius:.15rem; }
 
+.limbi { display:inline-flex; gap:.2rem; padding:.15rem; margin:0 0 .75rem .45rem;
+  border:1px solid var(--rule-2); border-radius:.35rem; vertical-align:middle; }
+.nav .limbi a { display:block; padding:.16rem .42rem; border:0; border-radius:.22rem; color:var(--ink-3);
+  font-size:.68rem; line-height:1.25; font-weight:700; text-decoration:none; }
+.nav .limbi a:hover { background:var(--bar); color:var(--ink); }
+.nav .limbi a.activ { background:var(--verde); color:var(--paper); }
+.nav .limbi a:focus-visible { outline:2px solid var(--verde); outline-offset:1px; }
+
 .cauta { width:100%; padding:.42rem .6rem; border:1px solid var(--rule-2); border-radius:.3rem;
   background:var(--paper); color:var(--ink); font:inherit; font-size:.83rem;
   font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif; }
@@ -87,6 +95,7 @@ body { margin:0; background:var(--paper); color:var(--ink);
   color:var(--ink-2); cursor:pointer; line-height:1.2; }
 .buton:hover { background:var(--bar); color:var(--ink); }
 .buton:focus-visible { outline:2px solid var(--verde); outline-offset:1px; }
+.limba-scurta { text-decoration:none; font-weight:700; }
 .meniu-buton { display:none; }
 
 /* `scroll-margin-top`: deschiderea directa a unui link cu diez (#anexa-B) face browserul

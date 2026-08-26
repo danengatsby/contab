@@ -1,0 +1,466 @@
+{
+ "titlu": "Accounting, in the order it actually happens",
+ "subtitlu": "A book about Romanian accounting, organized not by textbook chapters but by the accounting cycle — the real journey of an amount, from the document received to the balance sheet filed.",
+ "teza": [
+  "Textbooks teach accounting by topic: accounts, then VAT, then payroll. Practice doesn't work that way. A company goes through the same sequence every month, in the same order, and each step depends on the one before it.",
+  "The book follows the sequence. Each part is a phase of the cycle; each chapter answers a question you ask yourself at exactly that moment — not three months earlier."
+ ],
+ "doua": [
+  {
+   "cap": "What the business owner learns",
+   "txt": "What happens to the documents they bring in, why they're required, and how to read the figures that come out at the end. No formulas."
+  },
+  {
+   "cap": "What the accountant learns",
+   "txt": "The bookkeeping treatment (monografie) behind each operation, the legal basis, and the checks that catch an error before it reaches a declaration."
+  }
+ ],
+ "parti": [
+  {
+   "nr": "I",
+   "titlu": "Why accounting looks the way it does",
+   "faza": "before any figures",
+   "rezumat": "The part missing from most textbooks: what question all this work actually answers. Without it, the rest looks like bureaucracy.",
+   "capitole": [
+    {
+     "nr": "1",
+     "titlu": "Two questions, and neither about accounts",
+     "nota": "How much did I earn? What do I have and to whom do I owe it? Everything that follows serves these two questions.",
+     "semn": false
+    },
+    {
+     "nr": "2",
+     "titlu": "Why every amount is written twice",
+     "nota": "Double-entry bookkeeping (partida dublă) isn't a bureaucratic convention — it's a built-in check: every movement has a source and a destination.",
+     "semn": false
+    },
+    {
+     "nr": "3",
+     "titlu": "The drawers: the chart of accounts",
+     "nota": "Why 4111 means \"customers\" and 401 means \"suppliers\" — a vocabulary to learn, not a list to memorize.",
+     "semn": false
+    },
+    {
+     "nr": "4",
+     "titlu": "Who's responsible for the figures",
+     "nota": "The business owner brings the documents and knows the business. The accountant checks, signs, and bears professional responsibility. Neither replaces the other.",
+     "semn": false
+    },
+    {
+     "nr": "5",
+     "titlu": "The accounting cycle: the book's map",
+     "nota": "The fourteen phases, in the order they occur, and why the order isn't negotiable.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "II",
+   "titlu": "Opening the financial year",
+   "faza": "phase 1",
+   "rezumat": "Done once a year and rarely touched — but if it's wrong here, nothing that follows can be easily corrected.",
+   "capitole": [
+    {
+     "nr": "6",
+     "titlu": "The company and its tax regimes",
+     "nota": "VAT payer or not, corporate income tax or micro-enterprise tax: this choice determines what declarations you owe all year.",
+     "semn": false
+    },
+    {
+     "nr": "7",
+     "titlu": "The opening trial balance",
+     "nota": "Where you start from, when the company isn't in its first year. Carrying over balances from another program, account by account.",
+     "semn": false
+    },
+    {
+     "nr": "8",
+     "titlu": "The equality that must hold from day one",
+     "nota": "Total debit = total credit. An unbalanced opening trial balance never closes properly later.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "III",
+   "titlu": "The document",
+   "faza": "phase 2",
+   "rezumat": "The only door in. The rule that organizes the whole book: nothing enters accounting except through a supporting document.",
+   "capitole": [
+    {
+     "nr": "9",
+     "titlu": "Nothing goes in without a document",
+     "nota": "Why this rule isn't formalism, but the only guarantee that the figures can be defended in an audit.",
+     "semn": false
+    },
+    {
+     "nr": "10",
+     "titlu": "From paper to journal entry",
+     "nota": "Which account is debited, which is credited, with what amount — and how to read a journal entry (notă contabilă) without knowing the formula.",
+     "semn": false
+    },
+    {
+     "nr": "11",
+     "titlu": "The vocabulary of situations",
+     "nota": "Over one hundred twenty typical operations, grouped by family: sales, purchases, treasury, payroll, fixed assets, adjustments.",
+     "semn": false
+    },
+    {
+     "nr": "12",
+     "titlu": "Draft, validated, approved, posted",
+     "nota": "The separation between who enters and who takes responsibility. Only what's posted enters the accounting records.",
+     "semn": false
+    },
+    {
+     "nr": "13",
+     "titlu": "The checks at the door",
+     "nota": "Does the arithmetic add up? Is the rate correct? Is the period open? Is the partner known? Is the document perhaps already recorded?",
+     "semn": false
+    },
+    {
+     "nr": "14",
+     "titlu": "The invoice you issue",
+     "nota": "Numbering, mandatory content, and the electronic file sent to the ANAF system.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "IV",
+   "titlu": "The money",
+   "faza": "phase 3",
+   "rezumat": "The treasury account is the only one that can be checked against an outside reality: the bank statement. That's why it's also the best error detector.",
+   "capitole": [
+    {
+     "nr": "15",
+     "titlu": "Bank and cash",
+     "nota": "Receipts, payments, and why the cash balance must never be negative.",
+     "semn": false
+    },
+    {
+     "nr": "16",
+     "titlu": "Reconciliation, line by line",
+     "nota": "The accounting records versus the statement. What doesn't match is exactly what needs clarifying — the rest needs no attention.",
+     "semn": false
+    },
+    {
+     "nr": "17",
+     "titlu": "Legal thresholds and limits",
+     "nota": "The cash register, cash payments between companies, treasury advances: thresholds that check themselves.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "V",
+   "titlu": "What you have, what you produce, who works",
+   "faza": "phases 4–6",
+   "rezumat": "The three masses that require their own tracking, beyond the accounts: goods, people, and things that get used up over time.",
+   "capitole": [
+    {
+     "nr": "18",
+     "titlu": "Inventory: in quantity and in value",
+     "nota": "Receipts, issues, warehouses. Weighted average cost or FIFO — what the choice changes in the month's result.",
+     "semn": false
+    },
+    {
+     "nr": "19",
+     "titlu": "Production: from raw materials to finished product",
+     "nota": "The recipe, the consumption, the production cost, and how it ends up in inventory.",
+     "semn": false
+    },
+    {
+     "nr": "20",
+     "titlu": "Physical inventory count",
+     "nota": "The moment when counted reality confronts the book records. Surpluses, shortages, liability charges, the report.",
+     "semn": false
+    },
+    {
+     "nr": "21",
+     "titlu": "The payroll",
+     "nota": "Gross, contributions, tax, net — and who pays each part: the employee or the company.",
+     "semn": false
+    },
+    {
+     "nr": "22",
+     "titlu": "The rights you lose if you don't claim them",
+     "nota": "The personal deduction, non-taxable amounts, leave entitlements. An unfilled field costs real money, every month.",
+     "semn": false
+    },
+    {
+     "nr": "23",
+     "titlu": "Fixed assets and depreciation",
+     "nota": "How an asset gets used up over time, why the useful life isn't chosen at random, and what the official catalog says.",
+     "semn": false
+    },
+    {
+     "nr": "24",
+     "titlu": "Leasing",
+     "nota": "An installment that isn't a single expense: principal, interest, and VAT, each with its own path.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "VI",
+   "titlu": "What doesn't come from a document",
+   "faza": "phase 7",
+   "rezumat": "The part textbooks cover in three pages and simple programs skip entirely. Without it, the balance sheet looks fine — but it isn't true.",
+   "capitole": [
+    {
+     "nr": "25",
+     "titlu": "Adjustments: the accounting of time",
+     "nota": "Entries that don't come from correspondence, but from the passage of time and economic reality.",
+     "semn": false
+    },
+    {
+     "nr": "26",
+     "titlu": "Foreign currency revaluation",
+     "nota": "Receivables and payables in foreign currency, brought to the closing exchange rate. The difference is revenue or expense, not a technical adjustment.",
+     "semn": false
+    },
+    {
+     "nr": "27",
+     "titlu": "Adjustments for doubtful receivables",
+     "nota": "When a customer is late, when they stop paying altogether, and how the adjustment is reversed if they do pay after all.",
+     "semn": false
+    },
+    {
+     "nr": "28",
+     "titlu": "Delimitation over time",
+     "nota": "Insurance paid today for twelve months isn't this month's expense. Prepaid expenses and deferred revenue.",
+     "semn": false
+    },
+    {
+     "nr": "29",
+     "titlu": "It's reversed, not erased",
+     "nota": "The correction is made through a reversing entry, which stays linked to the original one. The trace of the error is part of the evidence — that's why it's written \"in red,\" not scratched out.",
+     "semn": true
+    }
+   ]
+  },
+  {
+   "nr": "VII",
+   "titlu": "The registers and verification",
+   "faza": "phase 8",
+   "rezumat": "The same operations, seen from two angles — and the tool that tells you whether everything holds together.",
+   "capitole": [
+    {
+     "nr": "30",
+     "titlu": "Chronological: the journal ledger (registrul-jurnal)",
+     "nota": "Everything that happened, in the order it happened. The register the law requires first.",
+     "semn": false
+    },
+    {
+     "nr": "31",
+     "titlu": "Systematic: the general ledger (cartea mare)",
+     "nota": "The same operations, grouped by account. This is where every check starts: from the figure, back to the document that produced it.",
+     "semn": false
+    },
+    {
+     "nr": "32",
+     "titlu": "The trial balance (balanța de verificare)",
+     "nota": "Opening balance + turnover = closing balance, and total debit equals total credit. If it doesn't close, you find out here — not at the balance sheet.",
+     "semn": false
+    },
+    {
+     "nr": "33",
+     "titlu": "Balanced doesn't mean correct",
+     "nota": "The book's most counterintuitive chapter: a symmetrical error passes any balance check. What the trial balance catches, what it doesn't, and what must be verified differently.",
+     "semn": true
+    },
+    {
+     "nr": "34",
+     "titlu": "The aging schedule (scadențarul)",
+     "nota": "Who owes you, whom you owe, and since when. The age of balances as a management tool, not just a reporting one.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "VIII",
+   "titlu": "The state",
+   "faza": "phases 9 and 13",
+   "rezumat": "What you owe, when, and how you prove you filed. A declaration isn't a form to fill in, but the result of a month already recorded.",
+   "capitole": [
+    {
+     "nr": "35",
+     "titlu": "VAT: collected, deductible, payable",
+     "nota": "How the return is built from the month's operations and why the balance naturally carries over from one month to the next.",
+     "semn": false
+    },
+    {
+     "nr": "36",
+     "titlu": "Special regimes",
+     "nota": "Cash-basis VAT, pro-rata, reverse charge, the margin scheme, triangular transactions. When the general rule doesn't apply.",
+     "semn": false
+    },
+    {
+     "nr": "37",
+     "titlu": "Declarations and their deadlines",
+     "nota": "What a company owes depending on the chosen regime, from the VAT return to the annual financial statements.",
+     "semn": false
+    },
+    {
+     "nr": "38",
+     "titlu": "Filing and proof",
+     "nota": "The Virtual Private Space (SPV), the signature, the receipt. What matters isn't the declaration itself, but the confirmation that it was received.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "IX",
+   "titlu": "Closing",
+   "faza": "phases 10–11",
+   "rezumat": "The moment the month or year becomes final. The order of steps matters, and skipping one only shows up months later.",
+   "capitole": [
+    {
+     "nr": "39",
+     "titlu": "Closing the month, step by step",
+     "nota": "Complete documents, the statement reconciled, adjustments made, VAT determined, declarations filed.",
+     "semn": false
+    },
+    {
+     "nr": "40",
+     "titlu": "Status is derived from data, not checked off",
+     "nota": "Why a manual checkbox lies: it stays checked even after the data underneath it has changed.",
+     "semn": false
+    },
+    {
+     "nr": "41",
+     "titlu": "Locking the period",
+     "nota": "A closed month is no longer touched. And if it must be, forcing it open requires a written reason that stays on record.",
+     "semn": false
+    },
+    {
+     "nr": "42",
+     "titlu": "Closing the year",
+     "nota": "Revenues and expenses are cleared into the income statement account. What \"closing the year\" actually means.",
+     "semn": false
+    },
+    {
+     "nr": "43",
+     "titlu": "From accounting result to fiscal result",
+     "nota": "The fiscal record register (registrul de evidență fiscală): which expenses aren't deductible, which revenues aren't taxed, and why tax isn't calculated from accounting profit.",
+     "semn": false
+    },
+    {
+     "nr": "44",
+     "titlu": "Allocation of the result",
+     "nota": "The legal reserve, retained earnings, dividends and their tax. The last step of one financial year and the first of the next.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "X",
+   "titlu": "The financial statements",
+   "faza": "phase 12",
+   "rezumat": "The documents everything else was done for. They're generated from the same records — not compiled separately.",
+   "capitole": [
+    {
+     "nr": "45",
+     "titlu": "The income statement",
+     "nota": "Did you earn or lose during the year, and from what exactly: operations or financial activity.",
+     "semn": false
+    },
+    {
+     "nr": "46",
+     "titlu": "The balance sheet",
+     "nota": "What you have and what you owe on a given date. Why the two sides are equal by construction, not by luck.",
+     "semn": false
+    },
+    {
+     "nr": "47",
+     "titlu": "The annexes",
+     "nota": "The cash flow statement, changes in equity, the explanatory notes. What they say and why they aren't filed in the same file.",
+     "semn": false
+    },
+    {
+     "nr": "48",
+     "titlu": "The four consistencies to check before signing",
+     "nota": "Assets = liabilities. The balance sheet result = the income statement result. Cash flow's cash = the balance of treasury accounts. The change = the sum of the three activities.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "XI",
+   "titlu": "The trail",
+   "faza": "phase 14",
+   "rezumat": "What remains after everything has been filed — and why this part matters exactly on the day someone starts asking questions.",
+   "capitole": [
+    {
+     "nr": "49",
+     "titlu": "Archiving",
+     "nota": "The month's file, the year's file, the legal retention periods. What \"I have the documents\" means when they're requested.",
+     "semn": false
+    },
+    {
+     "nr": "50",
+     "titlu": "Who did what and when",
+     "nota": "The operations log as an internal control tool, not a surveillance one.",
+     "semn": false
+    },
+    {
+     "nr": "51",
+     "titlu": "What a program can't do",
+     "nota": "A program calculates and checks. It doesn't decide whether an expense belongs to the company, doesn't sign the balance sheet, and doesn't bear responsibility for anyone.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "—",
+   "titlu": "Appendices",
+   "faza": "to use, not to read",
+   "rezumat": "",
+   "capitole": [
+    {
+     "nr": "A",
+     "titlu": "The chart of accounts, by class",
+     "nota": "With plain-language explanations for the accounts a small company actually touches.",
+     "semn": false
+    },
+    {
+     "nr": "B",
+     "titlu": "Case studies: common situations",
+     "nota": "From a goods invoice to reactivating a written-off receivable, each with the complete journal entry — generated from the application, not written by hand.",
+     "semn": false
+    },
+    {
+     "nr": "C",
+     "titlu": "The tax calendar",
+     "nota": "What's filed, by when, and by whom — by regime.",
+     "semn": false
+    },
+    {
+     "nr": "D",
+     "titlu": "Glossary: accounting term ↔ plain language",
+     "nota": "\"Journal entry\" (articol contabil) means a record. \"To reverse\" (a storna) means to correctly cancel. Plus the everyday vocabulary of declarations.",
+     "semn": false
+    },
+    {
+     "nr": "E",
+     "titlu": "Consistency checks",
+     "nota": "The short list to run through before every filing, in the order that catches the most errors.",
+     "semn": false
+    }
+   ]
+  }
+ ],
+ "subsol": [
+  {
+   "cap": "Structure",
+   "txt": "11 parts, 51 chapters, 5 appendices. Each part corresponds to a phase of the accounting cycle, and the chapters follow the order in which the questions arise in practice."
+  },
+  {
+   "cap": "The two levels",
+   "txt": "The base text is written for someone who has never done accounting. Where the subject calls for it, the chapter continues with the case study, the legal basis, and the corresponding check, marked separately, so the two readings don't get mixed up."
+  },
+  {
+   "cap": "The two marked chapters",
+   "txt": "Chapters 29 and 33 are the ones I'd write first: \"it's reversed, not erased\" and \"balanced doesn't mean correct.\" Both contradict intuition, both explain errors that go unnoticed for months on end."
+  }
+ ]
+}

@@ -1,0 +1,192 @@
+{
+ "parte": "Part IV · The money · phase 3",
+ "nr": "17",
+ "titlu": "Legal ceilings and limits",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Cash is the only form of payment that leaves no trace with anyone else. A bank transfer passes through a bank and is recorded by a third party; a banknote handed from one person to another does not. Hence a legal framework that limits cash more strictly than any other operation in accounting."
+  },
+  {
+   "tip": "p",
+   "text": "This chapter is short and worth reading even if your business works almost exclusively through the bank. The reason is that exceeding the ceilings is sanctioned directly, and the sanction takes no account of good intentions: it doesn't matter that the transaction was real and correctly recorded."
+  },
+  {
+   "tip": "h",
+   "text": "The four thresholds"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Legal limits on cash",
+   "cap": [
+    "Limit",
+    "Ceiling",
+    "How it is calculated"
+   ],
+   "randuri": [
+    [
+     "Payment to a legal entity",
+     "5,000 lei",
+     "per day and per each person"
+    ],
+    [
+     "Payment to an individual",
+     "10,000 lei",
+     "per day and per person"
+    ],
+    [
+     "Total cash receipts",
+     "10,000 lei",
+     "per day, from all persons combined"
+    ],
+    [
+     "Cash register balance",
+     "50,000 lei",
+     "at the end of the day"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "nota": "All four are calculated per DAY, not per month or per transaction. A payment of 12,000 lei doesn't become legal if it's split into three receipts on the same day."
+  },
+  {
+   "tip": "p",
+   "text": "The last line of the note is the part small businesses miss most often. The ceiling is per day and per partner, not per document. Splitting a payment into several receipts issued on the same day doesn't get around the limit—on the contrary, it's exactly the pattern an inspection looks for."
+  },
+  {
+   "tip": "h",
+   "text": "Why the balance ceiling is different from the others"
+  },
+  {
+   "tip": "p",
+   "text": "The first three limits concern flows: how much can go in or out in a day. The fourth concerns the stock: how much can remain overnight in the cash register."
+  },
+  {
+   "tip": "p",
+   "text": "This distinction has a practical consequence. A business can perfectly respect the payment limits and still exceed the balance ceiling, simply because it collected a lot and did not deposit the cash at the bank. The check is done at the end of each day, not at the end of the month—and the solution is depositing the surplus, on the same day."
+  },
+  {
+   "tip": "cheie",
+   "text": "Three ceilings are checked on transactions, one on the end-of-day balance. They can be violated independently."
+  },
+  {
+   "tip": "h",
+   "text": "The check that verifies itself"
+  },
+  {
+   "tip": "p",
+   "text": "All four limits have a rare property in accounting: they can be fully calculated from data already recorded. They require no additional information, no judgment, no interpretation."
+  },
+  {
+   "tip": "p",
+   "text": "That's why they have no business being kept in anyone's memory. Software can track them continuously and warn on the day they approach the threshold, not the following month, when the excess has already become an accomplished fact. Alongside tracking the fiscal ceilings in Chapter 6, this is one of the few places where automation prevents a fine, not just saves time."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth demanding from any accounting software that these thresholds be kept in a single, dated place, not scattered through the code. Law 70/2015 has been amended several times since its enactment, and a business that has the limits written in one place can update them in a minute."
+  },
+  {
+   "tip": "h",
+   "text": "Cash advances"
+  },
+  {
+   "tip": "p",
+   "text": "When you give money to an employee to buy something for the business, the money hasn't left the patrimony yet: it has only moved from one pocket to another. Until it's justified with documents, it remains a receivable from the employee, in account 542 Cash advances."
+  },
+  {
+   "tip": "p",
+   "text": "The usual mistake is recording it directly as an expense at the moment the money is handed over. This is wrong for two reasons: the expense doesn't yet have a supporting document, and if the employee brings back change, the change has nowhere to return to."
+  },
+  {
+   "tip": "p",
+   "text": "The balance of account 542 at the end of the month is a list of questions: who holds unjustified company money, and since when. An old balance there isn't an accounting problem—it's a discipline problem."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The ceilings are those in Law 70/2015: 5,000 lei/day/legal entity for payments, 10,000 lei/day/individual, 10,000 lei/day total ceiling on receipts, and 50,000 lei cash register balance at the end of the day, respectively. Three useful clarifications in practice. First: splitting is explicitly sanctioned, so the check must be done by aggregating per day and per partner, not per document—an inspection that looks at individual receipts catches nothing. Second: the balance ceiling allows justified temporary excesses—amounts intended for paying salaries or other personnel entitlements, for a limited number of days—and treating them as a violation produces false alarms; the regime for these exceptions must be configured, not ignored. Third: for account 542, the advance must be justified with documents within the term set by internal decision, and amounts not justified by the deadline become, from a tax perspective, salary-type benefits—with all the resulting contribution and tax consequences; an old balance in 542 isn't just an administrative oversight, but a quantifiable tax risk. Finally, the negative cash balance check, covered in Chapter 15, is complementary to these ceilings: the former signals a recording error, the latter a violation of the law, and confusing them leads to incorrectly applied corrections."
+  },
+  {
+   "tip": "h",
+   "text": "What's next"
+  },
+  {
+   "tip": "p",
+   "text": "Phase three has ended. Documents are recorded, cash is tracked and reconciled with the statement, and the legal limits are under observation."
+  },
+  {
+   "tip": "p",
+   "text": "Next comes the part where accounting stops being just a record of papers and starts measuring physical things: goods in the warehouse, hours worked by people, wear on a piece of equipment. These are phases four, five and six, and the first of them is inventory."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 17.1 — the ceiling, per day and per partner",
+   "enunt": [
+    "On one day, the business pays in cash to the same supplier, a legal entity: 2,000 lei in the morning, 2,000 at noon, and 1,500 in the evening, with three separate receipts. On the same day it collects 4,000 lei in cash from two clients.",
+    "Was anything violated? What should have been done?"
+   ],
+   "rezolvare": [
+    "Yes. Payments to a legal entity are capped at 5,000 lei per day and per each person. Total paid: 5,500 lei, so an excess of 500—and splitting into three receipts doesn't get around the limit, it's exactly the pattern an inspection looks for.",
+    "The receipts are fine: 4,000 lei, below the daily total ceiling of 10,000.",
+    "What should have been done: the first two payments in cash (4,000), the third through the bank. Or all three through the bank, which costs nothing and requires no verification.",
+    "The correct check, which software can perform: aggregation by DAY and by PARTNER, not by document. Anyone looking at individual receipts sees nothing—all three are below the ceiling."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The unjustified advance: how it becomes a tax problem"
+  },
+  {
+   "tip": "p",
+   "text": "Account 542 seems the most harmless in treasury: money given to an employee, justified a few days later. Over time, however, it becomes one of the most expensive positions in the trial balance—and not because of the amount."
+  },
+  {
+   "tip": "p",
+   "text": "Justification is done with documents, within a term set by internal decision. Amounts not justified by the deadline don't remain a convenient receivable from the employee: from a tax perspective they become salary-type benefits, with everything that follows—income tax and contributions, calculated as for a salary."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What an unjustified 3,000-lei advance costs",
+   "cap": [
+    "If treated as…",
+    "The consequence"
+   ],
+   "randuri": [
+    [
+     "a receivable from the employee",
+     "recovered from salary or repaid"
+    ],
+    [
+     "a salary-type benefit",
+     "added to gross: CAS, CASS, tax, plus CAM for the business"
+    ],
+    [
+     "nothing—stays in the balance, year after year",
+     "upon inspection, reclassified as a benefit, with accessories for the entire period"
+    ]
+   ],
+   "nota": "The third option is the one chosen most often, because it requires no decision. It's also the most expensive."
+  },
+  {
+   "tip": "cheie",
+   "text": "An old balance in 542 is not an administrative oversight. It's a quantifiable tax risk, which grows with every month nobody asks about it."
+  },
+  {
+   "tip": "p",
+   "text": "The check is simple and worth doing monthly, along with the reconciliation: the balance of account 542, broken down by person, with the date each amount was granted. Any position older than the internal deadline is a question worth asking—and a question asked in time costs a phone call, not a recalculation of contributions."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Cash is limited by law because it is the only payment that leaves no trace with a third party.",
+    "Four thresholds: 5,000 lei/day to a company, 10,000 lei/day to an individual, 10,000 lei/day total receipts, 50,000 lei cash register balance.",
+    "All are calculated PER DAY and per partner, not per document. Splitting into several receipts doesn't get around the limit.",
+    "The balance ceiling can be violated even when all payments were correct—it's checked at the end of each day.",
+    "All four can be calculated from data already recorded, so they have no business being kept in anyone's memory.",
+    "Money given to an employee remains a receivable in 542 until justified; amounts not justified by the deadline become salary-type benefits."
+   ]
+  }
+ ]
+}

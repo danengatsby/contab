@@ -18,21 +18,32 @@ const fiscalProfile = require('../fiscalProfile');
 const fiscal = require('../fiscal');
 const pdf = require('../pdf');
 const dosarAnual = require('../dosarAnual');
+const annualArchiveIntegrity = require('../annualArchiveIntegrity');
+const globalChain = require('../globalChain');
+const auditLog = require('../auditLog');
+const annualClose = require('../annualClose');
+const permissions = require('../permissions');
 const { analyticBalance } = require('../analytic');
 const { sendList } = require('../paginate');
 const { statPlataPostata } = require('../payroll');
 
 module.exports = function register(app, ctx) {
-  const { S, wrap, activeId } = ctx;
+  const { S, wrap, activeId, logAudit } = ctx;
   const microYield = () => new Promise((resolve) => setImmediate(resolve));
 
-  // Declarantul (intocmitorul) pentru XML-urile din dosar — din datele personale ale utilizatorului.
-  function declarantFromReq(req) {
-    const p = (req.user && req.user.profil) || {};
-    if (!p.numeComplet) return null;
-    const parts = String(p.numeComplet).trim().split(/\s+/);
-    const nume = parts.pop() || '';
-    return { nume, prenume: parts.join(' '), functie: 'Contabil' };
+  function globalDownloadGuard(res) {
+    try {
+      const report = globalChain.verifyGraph(db.get(), { auditResult: auditLog.verify(), requireAudit: true });
+      if (!report.ok) {
+        res.status(409).json({ error: 'Descărcarea a fost oprită: verificarea globală a lanțului a eșuat.',
+          code: 'GLOBAL_CHAIN_INVALID' }); return null;
+      }
+      res.setHeader('X-Contab-Integrity-Root', report.rootHash);
+      return report;
+    } catch (_) {
+      res.status(409).json({ error: 'Descărcarea a fost oprită: lanțul global nu a putut fi verificat.',
+        code: 'GLOBAL_CHAIN_UNAVAILABLE' }); return null;
+    }
   }
 
   // ── Registre si jurnale de baza (JSON) ──
@@ -86,17 +97,17 @@ module.exports = function register(app, ctx) {
   }));
   // Raportul articolelor stornate (perechi original -> nota de storno) pentru control intern
   app.get('/api/storno-report', (req, res) => res.json(rep.stornoReport(S(req), req.query.period || null)));
-  app.get('/api/vat-preview', (req, res) => { const v = S(req); return res.json(acc.vatClosing(v, acc.vatPeriod(v.company, req.query.period || null))); });
+  app.get('/api/vat-preview', (req, res) => { const v = S(req); return res.json(acc.vatClosing(v, acc.vatPeriod(v, req.query.period || null))); });
   app.get('/api/vat-journals', (req, res) => {
     const v = S(req);
-    const eff = acc.vatPeriod(v.company, req.query.period || null); // trimestru la regim 'T'
+    const eff = acc.vatPeriod(v, req.query.period || null); // trimestru la regimul perioadei
     return res.json(Object.assign(acc.vatJournals(v, eff), { period: eff, trimestrial: /^\d{4}-Q[1-4]$/.test(String(eff)) }));
   });
   app.get('/api/tva-neexigibila', (req, res) => res.json(acc.tvaNeexigibila(S(req), req.query.period || null)));
   // Reconciliere TVA (pregatire e-TVA): pozitia perioadei + constatari (cote neconforme, e-Factura netrimise)
   app.get('/api/tva-reconciliere', (req, res) => {
     const v = S(req);
-    const eff = acc.vatPeriod(v.company, req.query.period || null); // trimestru la regim 'T'
+    const eff = acc.vatPeriod(v, req.query.period || null); // trimestru la regimul perioadei
     return res.json(Object.assign(rep.tvaReconciliation(v, eff), { trimestrial: /^\d{4}-Q[1-4]$/.test(String(eff)) }));
   });
   // Reconciliere e-TVA: decontul PRECOMPLETAT ANAF (XML lipit/incarcat) <-> D300-ul propriu, rand-cu-rand.
@@ -108,7 +119,7 @@ module.exports = function register(app, ctx) {
     catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
     const xmlPeriod = /^\d{4}$/.test(anaf.an) && /^\d{1,2}$/.test(anaf.luna) ? anaf.an + '-' + String(anaf.luna).padStart(2, '0') : null;
     const reqPeriod = /^\d{4}-\d{2}$/.test(String(req.query.period || '')) ? req.query.period : null;
-    const period = acc.vatPeriod(v.company, reqPeriod || xmlPeriod || null);
+    const period = acc.vatPeriod(v, reqPeriod || xmlPeriod || null);
     const own = xml.d300Rows(rep.d300(v, period));
     return res.json(etva.reconcile(own, anaf.rows, {
       period, cuiPropriu: String(v.company.cui || '').replace(/^ro/i, ''),
@@ -117,7 +128,10 @@ module.exports = function register(app, ctx) {
   });
   app.get('/api/livrabile', (req, res) => res.json(rep.livrabile(S(req), req.query.period || new Date().toISOString().slice(0, 7))));
   // `plafoane` porneste motorul art. 25/40^2; fara el registrul ar arata doar procentele fixe.
-  const optPlaf = (req) => ({ plafoane: fiscal.FISCAL, cursEur: Number(req.query.cursEur) || Number((S(req).company || {}).cursEur) || 0 });
+  const optPlaf = (req) => ({
+    plafoane: fiscal.rulesAt(String(req.query.year || new Date().getFullYear()) + '-12').rates,
+    cursEur: Number(req.query.cursEur) || Number((S(req).company || {}).cursEur) || 0,
+  });
   app.get('/api/registru-fiscal', (req, res) => res.json(rep.registruFiscal(S(req), req.query.year || String(new Date().getFullYear()), null, optPlaf(req))));
   app.get('/api/cashbook', (req, res) => res.json(acc.cashBankJournal(S(req), req.query.cont || '5121', req.query.period || null)));
   app.get('/api/cash-valuta', (req, res) => res.json(acc.cashRegisterValuta(S(req), req.query.period || null, req.query.moneda || 'EUR')));
@@ -148,7 +162,7 @@ module.exports = function register(app, ctx) {
   });
 
   // ── Recapitulatii declaratii + registre/jurnale (PDF) ──
-  app.get('/pdf/vat', (req, res) => { const v = S(req); return pdf.vatPdf(res, v.company, acc.vatJournals(v, acc.vatPeriod(v.company, req.query.period || null))); });
+  app.get('/pdf/vat', (req, res) => { const v = S(req); return pdf.vatPdf(res, v.company, acc.vatJournals(v, acc.vatPeriod(v, req.query.period || null))); });
   app.get('/pdf/d112', (req, res) => {
     const v = S(req); const period = req.query.period || new Date().toISOString().slice(0, 7);
     try {
@@ -162,8 +176,8 @@ module.exports = function register(app, ctx) {
   // (PDF stat de plata / fluturas: src/routes/payroll.js)
   app.get('/pdf/d300', (req, res) => {
     const v = S(req);
-    if (!fiscalProfile.build(v.company).tvaPlatitor) return res.status(400).send('Firma nu e plătitoare de TVA — nu depune D300.');
-    const pd = acc.vatPeriod(v.company, req.query.period || null);
+    if (!fiscalProfile.profileAt(v, req.query.period).tvaPlatitor) return res.status(400).send('Firma nu e plătitoare de TVA — nu depune D300.');
+    const pd = acc.vatPeriod(v, req.query.period || null);
     return pdf.d300Pdf(res, v.company, rep.d300(v, pd));
   });
   app.get('/pdf/d100', (req, res) => pdf.d100Pdf(res, S(req).company, rep.d100micro(S(req), req.query.period || null)));
@@ -199,16 +213,57 @@ module.exports = function register(app, ctx) {
     pdf.f4109Pdf(res, v.company, { period, aparate });
   });
   app.get('/pdf/obligatii', (req, res) => pdf.obligatiiPdf(res, S(req).company, rep.obligatii(S(req), req.query.period || null)));
-  // Dosarul contabil anual: arhiva imutabila (ZIP) a exercitiului — registre + balanta + situatii +
-  // declaratii (XML) + manifest cu amprente SHA-256. Sub /api (ca /api/firme/N/export-zip): mostenește
-  // garda de sesiune + plafonul de export (EXPORT_LIMITED). Export mare, per firma activa.
+  app.get('/api/dosar-anual/status', (req, res) => {
+    const year = String(req.query.year || new Date().getFullYear()); const fid = activeId(req);
+    const rows = dosarAnual.archiveRows(db.get(), fid, year).map((row) => {
+      const check = annualArchiveIntegrity.verifyStored(row);
+      return { id: row.id, year: row.year, version: row.version, createdAt: row.createdAt,
+        createdByName: row.createdByName, reason: row.reason, fileName: row.fileName, bytes: row.bytes,
+        zipSha256: row.zipSha256, contentRootHash: row.contentRootHash, verified: check.ok,
+        verificationError: check.ok ? null : check.reason };
+    });
+    res.json({ year, closed: dosarAnual.isYearClosed(S(req), year), versions: rows });
+  });
+
+  // Sigilarea este o SCRIERE explicita, numai dupa finalizarea cockpitului anual. Repetarea este
+  // idempotenta; o rectificativa ulterioara creeaza o versiune noua si o pastreaza pe cea veche.
+  app.post('/api/dosar-anual/seal', wrap(async (req, res) => {
+    const year = String(req.query.year || (req.body || {}).year || new Date().getFullYear()); const fid = activeId(req);
+    permissions.assert(req.user, fid, 'annual.manage', db.getFirma(fid));
+    const annual = annualClose.status(db.get(), S(req), year);
+    if (!annual.sePoateFinaliza) {
+      return res.status(409).json({ error: 'Dosarul se sigilează numai după finalizarea cockpitului anual.', blocante: annual.blocante });
+    }
+    const out = await dosarAnual.seal(db.get(), S(req), year, {
+      uploadDir: db.UPLOAD_DIR, nextId: db.nextId, userId: req.user && req.user.id,
+      username: req.user && req.user.username, newRevision: !!(req.body || {}).newRevision,
+      reason: (req.body || {}).reason,
+    });
+    if (out.created) { db.save(); logAudit('dosar.anual.sigilat', year + ' v' + out.row.version + ' · ' + out.row.zipSha256.slice(0, 12), { req }); }
+    res.json({ ok: true, created: out.created, year, version: out.row.version, fileName: out.row.fileName,
+      bytes: out.row.bytes, zipSha256: out.row.zipSha256, contentRootHash: out.row.contentRootHash });
+  }));
+
+  // Descarcarea NU genereaza si NU modifica: citeste versiunea persistenta, ii verifica ZIP-ul,
+  // toate fisierele si semnatura manifestului, apoi serveste exact octetii sigilati.
   app.get('/api/dosar-anual', wrap(async (req, res) => {
-    // `year` e deja sanitizat global (bootstrap): ori 4 cifre, ori gol -> anul curent.
-    const year = String(req.query.year || new Date().getFullYear());
-    const r = await dosarAnual.build(S(req), year, { username: req.user && req.user.username, who: declarantFromReq(req) });
+    const year = String(req.query.year || new Date().getFullYear()); const fid = activeId(req);
+    permissions.assert(req.user, fid, 'data.export', db.getFirma(fid));
+    if (!globalDownloadGuard(res)) return;
+    const row = dosarAnual.stored(db.get(), fid, year, req.query.version);
+    if (!row) {
+      if (!dosarAnual.isYearClosed(S(req), year)) return res.status(409).json({ error: 'Exercițiul ' + year + ' nu este închis.' });
+      return res.status(409).json({ error: 'Dosarul anual nu este încă sigilat. Finalizează cockpitul anual și folosește acțiunea de sigilare.' });
+    }
+    // O versiune deja sigilată este autonomă față de starea live: manifestul ei dovedește anul,
+    // firma și închiderea de la momentul sigilării. Pierderea accidentală a unui marcaj derivat de
+    // închidere nu are voie să facă artefactul persistent imposibil de recuperat.
+    const verified = annualArchiveIntegrity.verifyStored(row);
+    if (!verified.ok) return res.status(409).json({ error: 'Arhiva persistentă nu trece verificarea de integritate: ' + verified.reason });
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + r.name + '"');
-    res.send(r.buffer);
+    res.setHeader('Content-Disposition', 'attachment; filename="' + row.fileName + '"');
+    res.setHeader('ETag', '"sha256-' + row.zipSha256 + '"');
+    res.send(verified.buffer);
   }));
   app.get('/pdf/registru-inventar', (req, res) => {
     const an = req.query.an || String(new Date().getFullYear());

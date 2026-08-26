@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "description": "Registrul cheilor publice autorizate ale revizorilor externi. Implicit nu există niciun revizor autorizat.",
+  "reviewers": {}
+}

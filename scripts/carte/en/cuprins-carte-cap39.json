@@ -1,0 +1,256 @@
+{
+ "parte": "Part IX · Closing · phases 10–11",
+ "nr": "39",
+ "titlu": "Closing the month, step by step",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Closing the month is not an operation, but a sequence. Everything that makes it up has already been described in the previous chapters — the documents, the bank statement, the adjustments, the VAT, the declarations. What is added here is their order, and it matters more than it seems."
+  },
+  {
+   "tip": "p",
+   "text": "The reason is simple: each step relies on the one before it. A step taken too early will have to be redone, and redoing it always costs more than waiting."
+  },
+  {
+   "tip": "h",
+   "text": "The six steps"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The order of monthly closing",
+   "cap": [
+    "Step",
+    "What it means",
+    "What it blocks if missing"
+   ],
+   "randuri": [
+    [
+     "1. Complete documents",
+     "all of the month's documents are recorded and posted",
+     "everything that follows"
+    ],
+    [
+     "2. Bank statement reconciled",
+     "receipts and payments are recorded and matched",
+     "VAT on collection, the payment schedule"
+    ],
+    [
+     "3. VAT adjusted",
+     "the adjustment entry is posted and covers the month",
+     "the VAT return"
+    ],
+    [
+     "4. Declarations validated and filed",
+     "each declaration is validated and has a confirmation receipt",
+     "approval"
+    ],
+    [
+     "5. Approval",
+     "someone explicitly takes responsibility that the month is correct",
+     "locking"
+    ],
+    [
+     "6. Period locked",
+     "the month becomes read-only",
+     "nothing — it's the last one"
+    ]
+   ],
+   "nota": "A step cannot be worked on before the previous one. Not as an administrative rule, but because it lacks the data."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth noting that the first three steps produce records, the fourth produces documents for the state, and the last two produce nothing: they are acts of accountability. Closing is not an accounting operation, but a decision about accounting already done."
+  },
+  {
+   "tip": "h",
+   "text": "Why the order is not negotiable"
+  },
+  {
+   "tip": "p",
+   "text": "The most frequent temptation is generating declarations before the documents are complete — usually because the deadline is approaching. The consequence is predictable: an invoice arriving in the meantime changes the VAT return, and the declaration already filed must be corrected."
+  },
+  {
+   "tip": "p",
+   "text": "The second temptation is reconciling the bank statement after the VAT adjustment. For a company using VAT on collection, this order is simply wrong: chargeability depends on payments, so an adjustment made before reconciliation works with incomplete data."
+  },
+  {
+   "tip": "cheie",
+   "text": "Every skipped step is paid for later, with interest. A step done on time costs minutes; the same step redone after filing costs an amended return."
+  },
+  {
+   "tip": "h",
+   "text": "The four states of a step"
+  },
+  {
+   "tip": "p",
+   "text": "In a well-built flow, a step doesn't just have \"done\" and \"not done.\" It has four states, and the distinction between them is what turns a list into a tool."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What a step can be",
+   "cap": [
+    "State",
+    "What it says",
+    "What you do"
+   ],
+   "randuri": [
+    [
+     "done",
+     "nothing left to resolve",
+     "move on"
+    ],
+    [
+     "open",
+     "it's its turn, but it has something unfinished",
+     "resolve what's listed"
+    ],
+    [
+     "blocked",
+     "waiting on a previous step",
+     "don't work on it yet"
+    ],
+    [
+     "not applicable",
+     "has no relevance for this company",
+     "ignore it — it's not a gap"
+    ]
+   ],
+   "nota": "The last state matters: for a company not registered for VAT, step 3 is not \"not done,\" but has no object. Confusing them produces permanent alarms."
+  },
+  {
+   "tip": "p",
+   "text": "The distinction between \"blocked\" and \"open\" is what changes the way of working. A blocked step is not an outstanding task, but one that hasn't started yet — and a system that displays them the same way produces a list of ten things to do where, in fact, there is only one."
+  },
+  {
+   "tip": "h",
+   "text": "Who is responsible for each step"
+  },
+  {
+   "tip": "p",
+   "text": "In a small business, the same person does all the steps. In one with a team, they get divided — and then a question arises that isn't accounting-related: who exactly is responsible for each, and by when."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth recording, since it's the only information in the whole flow that cannot be deduced from the data. What has been recorded can be seen in the accounting; who was supposed to handle it and by what date is nowhere visible if no one writes it down."
+  },
+  {
+   "tip": "p",
+   "text": "It's a general observation about any workflow: only what cannot be deduced needs to be persisted. The rest is read from the data, each time, fresh — and the next chapter shows why."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The order above is imposed by dependencies between tasks, not by any particular rule, but it supports distinct legal obligations: preparing the trial balance at least monthly, preparing and filing declarations on time, and keeping the documents that prove the transactions. Three practical observations. First: correlation checks — VAT journals against the balances of accounts 4426 and 4427, personnel accounts against D112, third-party balances against the receivables and payables statement — are performed between step 3 and step 4, not after filing; a correlation checked in the wrong order discovers errors that can only be corrected through an amended return. Second: for companies using VAT on collection, bank reconciliation is a substantive condition for determining chargeability, not a treasury check — which is why step 2 necessarily precedes step 3. Third: the month's file — the trial balance, the journals, the declarations with their receipts, the adjustment entries and any approval decisions — must be assembled at closing, not reconstructed during an audit; the practice of later reconstruction is exactly what produces files missing precisely the documents that should have justified the reasoning."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "A question remains that the flow above raises without answering: how does anyone know a step is done? The usual answer — because I checked it off — is the wrong one, and the next chapter explains why."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 39.1 — what's blocked and what's open",
+   "enunt": [
+    "On the 14th of the month, the status of the previous month's closing shows: documents complete, the bank statement recorded but not reconciled, no VAT adjustment entry, declarations not generated, month not approved.",
+    "What state is each of the six steps in, and what is being worked on now?"
+   ],
+   "rezolvare": [
+    "Step 1 (documents): DONE.",
+    "Step 2 (bank statement reconciled): OPEN — it's its turn, and the blockage is explicit: there are still unmatched transactions.",
+    "Step 3 (VAT adjusted): BLOCKED by step 2. It's not an outstanding task, it's one that hasn't started. For a company using VAT on collection, an adjustment made before reconciliation would work with incomplete data.",
+    "Step 4 (declarations): BLOCKED by 3. Step 5 (approval): BLOCKED by 4. Step 6 (locking): BLOCKED by 5.",
+    "Only ONE thing is being worked on: the reconciliation. A system that showed five outstanding tasks instead of one would turn a useful list into noise no one reads anymore.",
+    "If the company were not VAT-registered, step 3 would not be \"not done,\" but WITHOUT OBJECT — the fourth state, which must not be confused with the other three."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What it looks like on a screen"
+  },
+  {
+   "tip": "p",
+   "text": "The flow is not a checklist, but a state read from the data. Here is June for the example company, as the application sees it on July 14 — with the blockages spelled out, not just a traffic light."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Closing June, on July 14",
+   "cap": [
+    "Step",
+    "State",
+    "Why"
+   ],
+   "randuri": [
+    [
+     "1. Complete documents",
+     "open",
+     "an invoice issued during the month, not yet submitted to SPV"
+    ],
+    [
+     "2. Bank statement reconciled",
+     "done",
+     "—"
+    ],
+    [
+     "3. VAT adjusted",
+     "blocked",
+     "the adjustment entry is not posted"
+    ],
+    [
+     "4. Declarations filed",
+     "blocked",
+     "D300 not filed, deadline July 25"
+    ],
+    [
+     "5. Approval",
+     "blocked",
+     "the month is not approved yet"
+    ],
+    [
+     "6. Period locked",
+     "blocked",
+     "the period is still open"
+    ]
+   ],
+   "nota": "Progress: 1 step out of 6. Only ONE thing is being worked on — the first open one. The other four are not outstanding tasks, but tasks that haven't started."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth noting what each blockage says: not \"not ready,\" but exactly what's missing and, where relevant, by when. A flow that showed six red lights would be a dashboard; one that says \"an invoice not submitted to SPV\" is a work list."
+  },
+  {
+   "tip": "p",
+   "text": "The second row is just as instructive: the bank statement is \"done,\" even though the month isn't closed. A step's state doesn't depend on the month's state — it's derived from its own data, independently. That's why a step can revert from \"done\" to \"open\" without anyone touching it, if a new document arrives."
+  },
+  {
+   "tip": "h",
+   "text": "Who is responsible and by when"
+  },
+  {
+   "tip": "p",
+   "text": "In a small business, the same person does all six steps, and the question doesn't arise. In one with a team, it becomes the main source of delay: everyone thinks the next step belongs to someone else."
+  },
+  {
+   "tip": "p",
+   "text": "The person responsible and the internal deadline are the only information in the whole flow that cannot be deduced from the data — there is nowhere in the accounting that shows who was supposed to handle it. That's why they are recorded, while the rest is not: it's the same rule as in the next chapter, memorize the decisions and recalculate the facts."
+  },
+  {
+   "tip": "p",
+   "text": "Internal deadlines are usually anchored to the legal one: if the declaration is filed on the 25th, the bank reconciliation has an internal deadline on the 8th, and the trial balance on the 15th. Anchoring serves a practical purpose — when the legal deadline shifts, everything else shifts too, without anyone redoing the calculation."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Closing the month is a sequence, not an operation: six steps, each supported by the one before it.",
+    "The first three produce records, the fourth produces documents for the state, the last two are acts of accountability.",
+    "Declarations generated before documents are complete will need correcting — it's the most frequent temptation and the most expensive.",
+    "For companies using VAT on collection, bank reconciliation necessarily precedes the VAT adjustment.",
+    "A step has four states, not two: done, open, blocked, and without object — confusing the last ones produces false alarms.",
+    "Only what cannot be deduced from the data is recorded: the person responsible, the deadline, the note, the approval."
+   ]
+  }
+ ]
+}

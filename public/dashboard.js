@@ -2,7 +2,7 @@
 // Dashboard (tab-ul Acasa) + analize derivate: KPI-uri, rezumat executiv, alerte, primii pasi,
 // buget vs realizat, previziune cash-flow, comparatie an-la-an si graficele SVG. Extras din app.js
 // (Etapa 5). Depinde de nucleu; navigarea intre tab-uri (goTab) e INJECTATA prin setDashboardDeps.
-import { $, $$, api, fmt, H, USER, toast } from './core.js';
+import { $, $$, api, fmt, H, USER, toast, uiLocale } from './core.js';
 // Randul de termen de pe Acasa e ACELASI lucru cu cel din ecranul Notificari, deci imprumuta de
 // acolo eticheta actiunii, vechimea restantei si navigarea — nu si le rescrie. Sensul dashboard →
 // livrabile nu inchide niciun ciclu (livrabile importa core/periods/entries, nu dashboard).
@@ -305,32 +305,12 @@ function renderPrimiiPasi(p) {
   $('#primiiPasiList').innerHTML = stepsHtml(pasi)
     + `<div class="muted" data-u="u30">${gata} din ${pasi.length} pași făcuți · Nu știi ce tip de document ai? Folosește <b>🧭 Înregistrează ghidat</b> de mai jos.</div>`;
   wireSteps('#primiiPasiList');
-  maybeShowWizard(p, pasi);
-}
-// Wizard-ul de primă autentificare: overlay peste checklist, DOAR pentru firma complet goală
-// (nicio înregistrare) și doar dacă utilizatorul nu l-a închis vreodată („Mai târziu" persistă
-// pe cont, prin /api/onboarding/dismiss — nu în localStorage). Pașii sunt aceiași cu checklist-ul;
-// alegerea unui pas doar închide overlay-ul (checklist-ul rămâne), ✕/„Mai târziu" îl ascund definitiv.
-let fwShown = false;
-function maybeShowWizard(p, pasi) {
-  const w = $('#fwWizard'); if (!w) return;
-  if (fwShown || p.wizardAscuns || p.nrInregistrari > 0) return;
-  fwShown = true; // o singură dată per sesiune de pagină, chiar dacă dashboard-ul se reîncarcă
-  $('#fwSteps').innerHTML = stepsHtml(pasi);
-  wireSteps('#fwSteps', () => w.classList.add('hidden'));
-  const dismiss = async () => {
-    w.classList.add('hidden');
-    try { await api('/api/onboarding/dismiss', { method: 'POST' }); } catch (e) { /* demo sau offline: ramane doar pe sesiune */ }
-  };
-  $('#fwLater').addEventListener('click', dismiss, { once: true });
-  $('#fwClose').addEventListener('click', dismiss, { once: true });
-  w.classList.remove('hidden');
 }
 // Rezumatul executiv (mod simplu): situația firmei în limbaj de business, cu drill-down —
 // bani disponibili, de încasat, de plătit, obligații stat & salarii, rezultat + termene.
 async function renderRezumat(k, notif) {
   const box = $('#rezumatKpis'); if (!box) return;
-  $('#rezumatData').textContent = '· la zi, ' + new Date().toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('#rezumatData').textContent = '· la zi, ' + new Date().toLocaleDateString(uiLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
   const tile = (ic, lbl, val, sub, cls, go, hint) => `<div class="kpi go ${cls}" data-go="${go}" role="link" tabindex="0" title="${hint}">
     <div class="kpi-top"><span class="kpi-ic">${ic}</span></div>
     <div class="lbl">${lbl}</div><div class="val">${fmt(val)}</div><div class="sub">${sub}</div></div>`;
@@ -399,26 +379,58 @@ $('#budgetForm') && $('#budgetForm').addEventListener('submit', async (e) => {
     renderBudget($('#stmtYear') ? $('#stmtYear').value : f.an.value);
   } catch (err) { $('#budgetStatus').className = 'status err'; $('#budgetStatus').textContent = err.message; }
 });
+let lastForecast13 = null;
 async function renderForecast() {
   const box = $('#forecastView'); if (!box) return;
-  const months = ($('#fcMonths') && $('#fcMonths').value) || 6;
-  let f; try { f = await api('/api/cash-forecast?months=' + months); } catch (e) { box.innerHTML = ''; return; }
+  const scenario = ($('#fcScenario') && $('#fcScenario').value) || 'base';
+  let f; try { f = await api('/api/cash-forecast/13-weeks?scenario=' + encodeURIComponent(scenario)); } catch (e) { box.innerHTML = ''; return; }
+  lastForecast13 = f;
+  const pdfLink = $('#fcPdf');
+  if (pdfLink) pdfLink.href = '/pdf/cash-forecast-13-weeks?scenario=' + encodeURIComponent(scenario)
+    + '&start=' + encodeURIComponent(f.startDate);
   const sign = (v) => (v > 0 ? '+' : '') + fmt(v);
   const rows = f.rows.map((r) => `<tr${r.closing < 0 ? ' data-u="u34"' : ''}>
-    <td>${r.period}</td><td class="num">${fmt(r.opening)}</td>
-    <td class="num">${r.incClienti ? '+' + fmt(r.incClienti) : ''}</td>
-    <td class="num">${r.recIn ? '+' + fmt(r.recIn) : ''}</td>
-    <td class="num">${r.platiFurnizori ? '−' + fmt(r.platiFurnizori) : ''}</td>
-    <td class="num">${r.recOut ? '−' + fmt(r.recOut) : ''}</td>
+    <td>S${r.week}<br><span class="muted">${H(r.startDate)}–${H(r.endDate.slice(5))}</span></td><td class="num">${fmt(r.opening)}</td>
+    <td class="num">${r.customerReceipts ? '+' + fmt(r.customerReceipts) : ''}</td>
+    <td class="num">${r.recurringIn ? '+' + fmt(r.recurringIn) : ''}</td>
+    <td class="num">${r.supplierPayments ? '−' + fmt(r.supplierPayments) : ''}</td>
+    <td class="num">${r.payroll ? '−' + fmt(r.payroll) : ''}</td>
+    <td class="num">${r.taxes ? '−' + fmt(r.taxes) : ''}</td>
+    <td class="num">${r.leasing ? '−' + fmt(r.leasing) : ''}</td>
+    <td class="num">${r.recurringOut ? '−' + fmt(r.recurringOut) : ''}</td>
     <td class="num" data-style="color:${r.net >= 0 ? 'var(--accent)' : 'var(--danger)'}">${sign(r.net)}</td>
     <td class="num" data-style="font-weight:600;color:${r.closing < 0 ? 'var(--danger)' : 'inherit'}">${fmt(r.closing)}</td></tr>`).join('');
-  box.innerHTML = `<p class="muted">Numerar acum: <b>${fmt(f.cashNow)}</b> lei · de încasat: ${fmt(f.openReceivables)} · de plătit: ${fmt(f.openPayables)}</p>
-    ${f.riscLichiditate ? `<div class="notice warning"><span class="notice-icon">⚠️</span><div><b>Risc de lichiditate:</b> soldul de numerar proiectat scade până la <b>${fmt(f.minClosing)}</b> lei. Urmărește încasările sau amână plăți.</div></div>` : ''}
-    <table><thead><tr><th>Luna</th><th class="num">Sold inițial</th><th class="num">Înc. clienți</th><th class="num">Venit recurent</th><th class="num">Plăți furnizori</th><th class="num">Chelt. recurentă</th><th class="num">Flux net</th><th class="num">Sold final</th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    <p class="muted" data-u="u35">Model: luna curentă încasează soldurile deschise de clienți și plătește datoriile către furnizori; toate lunile adaugă facturile recurente scadente. Estimare orientativă, nu garanție.</p>`;
+  const u = f.unplanned || {}; const missing = (u.missingDueDateReceivables || 0) + (u.missingDueDatePayables || 0);
+  const bt = (f.snapshots || []).find((x) => x.verified && x.backtest && x.backtest.completedWeeks > 0);
+  const scenarioLabel = { base: 'Bază', prudent: 'Prudent', optimist: 'Optimist' };
+  const snapshotHistory = (f.snapshots || []).length ? `<details class="decl-archive"><summary>Ultimele fotografii persistente (${f.snapshots.length} din ${f.snapshotCount || f.snapshots.length})</summary>
+    <table><thead><tr><th>Salvată</th><th>Scenariu</th><th>SHA-256</th><th>Backtesting</th><th>Fișier</th></tr></thead><tbody>${f.snapshots.map((s) => {
+    const backtest = s.backtest && s.backtest.completedWeeks
+      ? s.backtest.completedWeeks + ' săpt. · abatere ' + sign(s.backtest.varianceNet) + ' lei' : 'încă fără săptămâni încheiate';
+    const download = '/pdf/cash-forecast-13-weeks?snapshot=' + encodeURIComponent(s.id);
+    return `<tr><td>${H(String(s.createdAt || '').slice(0, 16).replace('T', ' '))}${s.createdByName ? `<div class="muted">${H(s.createdByName)}</div>` : ''}</td>
+      <td>${H(scenarioLabel[s.scenario] || s.scenario)}</td><td><code class="annual-archive-hash">${H(s.forecastHash || '—')}</code></td>
+      <td>${s.verified ? H(backtest) : '<span class="st st-stornat">integritate eșuată</span>'}</td>
+      <td>${s.verified ? `<a class="btn small" target="_blank" href="${H(download)}">⬇ PDF</a>` : '<span class="muted">Descărcare blocată</span>'}</td></tr>`;
+  }).join('')}</tbody></table></details>` : '';
+  box.innerHTML = `<p class="muted">Numerar la început: <b>${fmt(f.cashNow)}</b> lei · de încasat: ${fmt(f.openReceivables)} · de plătit: ${fmt(f.openPayables)}</p>
+    ${f.liquidityRisk ? `<div class="notice warning"><span class="notice-icon">⚠️</span><div><b>Risc de lichiditate:</b> soldul proiectat scade până la <b>${fmt(f.minClosing)}</b> lei.</div></div>` : ''}
+    ${missing ? `<div class="notice warning"><span class="notice-icon">⚠️</span><div><b>${fmt(missing)} lei fără scadență confirmată</b> nu au fost plasați artificial în prima săptămână. Completează documentele deschise.</div></div>` : ''}
+    <div class="tablewrap"><table><thead><tr><th>Săptămâna</th><th class="num">Sold inițial</th><th class="num">Clienți</th><th class="num">Intrări recurente</th><th class="num">Furnizori</th><th class="num">Salarii</th><th class="num">Taxe</th><th class="num">Leasing</th><th class="num">Ieșiri recurente</th><th class="num">Flux net</th><th class="num">Sold final</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <p class="muted">Ipoteze: ${H(f.assumptions.scenarioLabel)}, creanțe litigioase fără procent explicit ${H(f.assumptions.disputedWithoutExplicitProbabilityPct)}%, furnizori 100%, salarii în ziua ${H(f.assumptions.salaryPaymentDay)}, taxe în ziua ${H(f.assumptions.taxPaymentDay)}. SHA bază: ${H(f.basisHash.slice(0, 12))}…</p>
+    ${bt ? `<p class="muted">Backtesting ${H(bt.startDate)} · ${H(bt.backtest.completedWeeks)} săptămâni încheiate: abatere netă <b>${sign(bt.backtest.varianceNet)}</b> lei.</p>` : '<p class="muted">Salvează o fotografie pentru a compara ulterior prognoza cu mișcările reale de trezorerie.</p>'}
+    ${snapshotHistory}`;
 }
-$('#fcMonths') && $('#fcMonths').addEventListener('change', renderForecast);
+$('#fcScenario') && $('#fcScenario').addEventListener('change', renderForecast);
+$('#fcSnapshot') && $('#fcSnapshot').addEventListener('click', async () => {
+  const scenario = ($('#fcScenario') && $('#fcScenario').value) || 'base';
+  try {
+    const r = await api('/api/cash-forecast/13-weeks/snapshot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenario, startDate: lastForecast13 && lastForecast13.startDate }) });
+    toast(r.created ? 'Fotografia de cash-flow a fost sigilată pentru backtesting' : 'Aceeași fotografie există deja');
+    renderForecast();
+  } catch (e) { toast(e.message, true); }
+});
 function renderYoY(yo) {
   const box = $('#yoyView'); if (!box) return;
   if (!yo || yo.prevYear == null) { box.innerHTML = '<p class="muted">—</p>'; return; }

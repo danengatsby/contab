@@ -2,8 +2,7 @@
 
 // DIVERSE — vezi index.js pentru contractul tipurilor.
 
-const { L, F, TROZ } = require('./helpers');
-const fiscal = require('../fiscal');
+const { L, F, TROZ, rate } = require('./helpers');
 const { round2 } = require('../util');
 
 module.exports = [
@@ -76,8 +75,9 @@ module.exports = [
     id: 'dobanda_bancara',
     nume: 'Dobanda bancara (extras)',
     grup: 'Trezorerie',
-    fields: [F.data, F.document, F.suma, F.analiticBanca],
-    build: (d) => [L('666', '5121', d.suma, 'Cheltuieli privind dobânzile')],
+    fields: [F.data, F.document, F.suma,
+      { name: 'cont', label: 'Cont bancar', type: 'select', options: [...TROZ, { value: '5124', label: '5124 Banca în valută' }], default: '5121' }, F.analiticBanca],
+    build: (d) => [L('666', d.cont || '5121', d.suma, 'Cheltuieli privind dobânzile')],
   },
   {
     id: 'import_vamal',
@@ -86,11 +86,11 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document,
       { name: 'valoareBunuri', label: 'Valoarea in vama a bunurilor (lei)', type: 'number', required: true },
       { name: 'taxeVamale', label: 'Taxe vamale (lei)', type: 'number', default: 0 },
-      { name: 'cota', label: 'Cota TVA in vama (%)', type: 'number', default: fiscal.FISCAL.tvaStandard },
+      { name: 'cota', label: 'Cota TVA in vama (%)', type: 'number', default: 0, fiscalRate: 'tvaStandard' },
       { name: 'contBun', label: 'Cont bunuri (stoc/imobilizare)', type: 'account', default: '371' }, F.proRataMixt],
     build: (d) => {
       const baza = round2(d.valoareBunuri + (d.taxeVamale || 0));
-      const tva = round2((baza * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
+      const tva = round2((baza * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
       const lines = [L(d.contBun || '371', '401', d.valoareBunuri, 'Import - valoarea bunurilor')];
       if (d.taxeVamale > 0) lines.push(L(d.contBun || '371', '446', d.taxeVamale, 'Taxe vamale (în costul bunurilor)'));
       lines.push(L('4426', '446', tva, 'TVA în vamă (deductibilă)'));
@@ -139,11 +139,11 @@ module.exports = [
     grup: 'Stocuri',
     fields: [F.data, F.partener, F.document,
       { name: 'valoareImputata', label: 'Valoare imputata (fara TVA)', type: 'number', required: true },
-      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: fiscal.FISCAL.tvaStandard },
+      { name: 'cota', label: 'Cota TVA (%)', type: 'number', default: 0, fiscalRate: 'tvaStandard' },
       { name: 'contCreanta', label: 'Cont creanta', type: 'select',
         options: [{ value: '4282', label: '4282 Alte creante personal' }, { value: '461', label: '461 Debitori diversi' }], default: '4282' }],
     build: (d) => {
-      const tva = round2((d.valoareImputata * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
+      const tva = round2((d.valoareImputata * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
       const o = [L(d.contCreanta || '4282', '7588', d.valoareImputata, 'Imputare lipsă la inventar - venit')];
       if (tva > 0) o.push(L(d.contCreanta || '4282', '4427', tva, 'TVA aferentă imputării'));
       return o;

@@ -43,10 +43,11 @@ function valoare(e, sens) {
   return total;
 }
 
-function prag(sens) {
+function prag(sens, date) {
+  const rates = fiscal.rulesAt(date).rates;
   return Number(sens === 'introducere'
-    ? fiscal.FISCAL.pragIntrastatIntroduceri
-    : fiscal.FISCAL.pragIntrastatExpedieri) || 0;
+    ? rates.pragIntrastatIntroduceri
+    : rates.pragIntrastatExpedieri) || 0;
 }
 
 function taraIntrastatValida(cod) {

@@ -208,6 +208,7 @@ function applySecurityGuards(app, ctx) {
   const db = require('./db');
   const log = require('./log');
   const plans = require('./plans');
+  const permissions = require('./permissions');
   const uploadGuard = require('./uploadGuard');
   const { currentUser } = require('./session');
 
@@ -241,7 +242,7 @@ function applySecurityGuards(app, ctx) {
   });
 
   // Orice ruta de API/livrabile (pdf/xml/csv/efactura) cere sesiune, cu exceptia celor publice.
-  const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest', '/api/client-error', '/api/registru-anaf']);
+  const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/legal-status', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest', '/api/client-error', '/api/registru-anaf']);
   app.use((req, res, next) => {
     if (PUBLIC_PATHS.has(req.path) || req.path.startsWith('/api/invite/') || req.path.startsWith('/api/reset/')) return next();
     if (/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) {
@@ -284,22 +285,62 @@ function applySecurityGuards(app, ctx) {
     next();
   });
 
-  // ── Drepturi granulare per utilizator (Setari -> Utilizatori, setate de admin) ──
-  //  - readonly:    doar vizualizare — blocheaza orice scriere pe date (raman permise rutele de cont)
-  //  - faraSalarii: fara acces la modulul de salarizare (date sensibile), nici macar in citire
-  const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|messages|subscription|checkout|stripe)/;
-  const RO_ALLOW = /^\/api\/firme\/\d+\/activate$/; // schimbarea firmei active e tot o "citire"
-  const SALARII_RX = /^\/(api\/(angajati|stat-plata|registru-salarii)|pdf\/(stat-plata|fluturas|adeverinta|registru-salarii)|xml\/d112)/;
+  // Conturile administrator au acces transversal la toate firmele, configuratia fiscala,
+  // backup si impersonare. Pana la inrolarea 2FA, sesiunea poate face exclusiv operatiunile
+  // necesare configurarii factorului (plus identificare, schimbare parola si logout).
+  const ADMIN_2FA_ALLOW = /^\/api\/(?:me|meta|logout|change-password|2fa(?:\/|$))/;
   app.use((req, res, next) => {
-    const dr = req.user && req.user.drepturi;
-    if (!req.user || req.user.role === 'admin') return next();
-    const fid = activeId(req);
-    const firmaRol = req.user.firmaRoluri && (req.user.firmaRoluri[String(fid)] || req.user.firmaRoluri[fid]);
-    if (dr && dr.faraSalarii && SALARII_RX.test(req.path)) {
-      return res.status(403).json({ error: 'Nu ai acces la modulul de salarizare (drept restrictionat de administrator).' });
+    const principal = req.realUser || req.user;
+    if (principal && principal.role === 'admin' && !principal.twofa && !ADMIN_2FA_ALLOW.test(req.path)) {
+      return res.status(428).json({
+        error: 'Activează autentificarea în doi pași înainte de a folosi contul de administrator.',
+        twofaRequired: true,
+      });
     }
-    if (((dr && dr.readonly) || firmaRol === 'vizualizare') && req.method !== 'GET' && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
-      return res.status(403).json({ error: 'Cont doar-citire: poti vizualiza datele, dar nu le poti modifica. Cere administratorului drept de operare.' });
+    next();
+  });
+
+  // Datele unei firme vechi/importate nu sunt declarate automat „de test” si nici „reale”.
+  // Pana cand proprietarul alege explicit, scrierile de lucru sunt oprite. Firmele de test merg,
+  // iar firmele reale cer atat readiness global, cat si acceptarea versiunii DPA curente.
+  const legal = require('./legalCompliance');
+  const LEGAL_WRITE_EXEMPT = /^\/api\/(logout|me|meta|legal(?:\/|$)|profile|account|change-password|sessions|2fa|messages|plans|subscription|checkout|stripe|impersonate|firme(?:\/|$))/;
+  app.use((req, res, next) => {
+    if (!req.user || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) || LEGAL_WRITE_EXEMPT.test(req.path)) return next();
+    if (!/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) return next();
+    const firma = db.getFirma(activeId(req));
+    if (!firma) return next();
+    const state = legal.firmState(firma);
+    if (state.operational) return next();
+    return res.status(428).json({
+      error: state.reason === 'DATA_MODE_UNCLASSIFIED'
+        ? 'Declară în Setări dacă firma folosește date fictive sau date reale înainte de prima scriere.'
+        : 'Prelucrarea datelor reale este oprită până la completarea cadrului juridic și acceptarea DPA-ului curent.',
+      code: state.reason,
+      legalMode: state.mode,
+    });
+  });
+
+  // ── Matrice centrala pe ACTIUNI ───────────────────────────────────────────────────────────
+  // Permisiunea generica `write` ramane gardul minim al mutatiilor, dar NU mai autorizeaza
+  // implicit salarii, trezorerie, depuneri, profil fiscal, inchideri ori exporturi. Catalogul
+  // de rute sensibile este unic in permissions.requiredActions si se aplica inclusiv pe GET-urile
+  // cu efect (XML fiscal) sau cu risc de exfiltrare (PDF/CSV).
+  const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|messages|subscription|checkout|stripe)/;
+  const RO_ALLOW = /^\/api\/firme(?:\/demo)?$|^\/api\/firme\/\d+\/activate$/;
+  // Crearea primei firme / a firmei demo nu are inca un context de firma pe care sa existe
+  // dreptul `write`; serviciul valideaza separat contul si operatia. Activarea ramane o citire.
+  app.use((req, res, next) => {
+    if (!req.user) return next();
+    const fid = activeId(req);
+    const firma = db.getFirma(fid);
+    for (const action of permissions.requiredActions(req.method, req.path, req.body)) {
+      const v = permissions.verdict(req.user, fid, action, firma);
+      if (!v.ok) return res.status(403).json({ error: v.reason, permission: action, firmaRole: v.role });
+    }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
+      const v = permissions.verdict(req.user, fid, 'write', firma);
+      if (!v.ok) return res.status(403).json({ error: v.reason, permission: 'write', firmaRole: v.role });
     }
     next();
   });
@@ -326,8 +367,8 @@ function applySecurityGuards(app, ctx) {
     if (f && plans.firmaLocked(f)) {
       const st = plans.firmaStatus(f).status;
       return res.status(402).json({
-        error: (st === 'expired' ? 'Proba pentru firma „' + (f.nume || '') + '" a expirat.' : 'Firma „' + (f.nume || '') + '" nu are abonament activ.')
-          + ' Continuarea lucrului se face cu abonament (plata pe firmă). Te abonezi acum?',
+        error: (st === 'expired' ? 'Proba pentru firma „' + (f.nume || '') + '” a expirat.' : 'Firma „' + (f.nume || '') + '” nu are abonament activ.')
+          + ' Continuarea lucrului costă 99 lei/lună/firmă. Te abonezi acum?',
         firmaTrialExpired: true, firmaId: f.id, firmaNume: f.nume || '', firmaStatus: st,
       });
     }
@@ -350,7 +391,8 @@ function applySecurityGuards(app, ctx) {
         if (res.statusCode !== 200) return;
         log.info('export servit', log.ctx(req, { status: 200 }));
         if (req.path.startsWith('/xml/')) {
-          try { logAudit('export.xml', String(req.originalUrl || req.path).slice(0, 120), { req }); }
+          try { logAudit('export.xml', String(req.originalUrl || req.path).slice(0, 120)
+            + String(req.filingAuditDetail || ''), { req }); }
           catch (e) { log.error('audit export esuat dupa trimiterea raspunsului', log.ctx(req, { status: 500, err: e })); }
         }
       });

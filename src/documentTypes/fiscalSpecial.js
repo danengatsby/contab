@@ -2,7 +2,7 @@
 
 // RETINERI LA SURSA + PRO-RATA/BUNURI DE CAPITAL — vezi index.js pentru contractul tipurilor.
 
-const { L, F, TROZ } = require('./helpers');
+const { L, F, TROZ, rate } = require('./helpers');
 const { round2 } = require('../util');
 const fiscal = require('../fiscal'); // cotele NU se hardcodeaza — sursa unica e fiscalConfig
 const d107 = require('../d107');
@@ -16,7 +16,8 @@ const PLATA_RETINERE = TROZ.concat([{ value: '462', label: 'Neplătită încă (
  *  462 se deschide si se inchide in acelasi articol cand plata se face pe loc; altfel ramane cu
  *  soldul net de platit. */
 function construieste(fel, d, contCheltuiala, explicatie) {
-  const r = fiscal.retinereLaSursa(fel, d.baza, d.cota);
+  const r = fiscal.retinereLaSursa(fel, d.baza, d.cota,
+    { period: d.data, rules: d._fiscalRuleSet });
   const lines = [];
   if (r.brut > 0) lines.push(L(contCheltuiala, '462', r.brut, explicatie + ' (brut)'));
   if (r.impozit > 0) {
@@ -122,7 +123,7 @@ module.exports = [
     grup: 'Retineri la sursa',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'baza', label: 'Chirie bruta (lei)', type: 'number', required: true },
-      { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: fiscal.FISCAL.impozitVenit },
+      { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: 0, fiscalRate: 'impozitVenit' },
       { name: 'cont', label: 'Platita din', type: 'select', options: PLATA_RETINERE, default: '5121' }],
     build: (d) => construieste('chirii', d, '612', 'Chirie datorată persoanei fizice'),
   },
@@ -132,7 +133,7 @@ module.exports = [
     grup: 'Retineri la sursa',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'baza', label: 'Premiu brut (lei)', type: 'number', required: true },
-      { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: fiscal.FISCAL.impozitVenit },
+      { name: 'cota', label: 'Cota impozit (%)', type: 'number', default: 0, fiscalRate: 'impozitVenit' },
       { name: 'cont', label: 'Platit din', type: 'select', options: PLATA_RETINERE, default: '5311' }],
     build: (d) => construieste('premii', d, '623', 'Premiu acordat persoanei fizice'),
   },
@@ -160,9 +161,9 @@ module.exports = [
     grup: 'Regularizari',
     fields: [F.data, F.document,
       { name: 'baza', label: 'Valoarea bunurilor lipsa (fara TVA)', type: 'number', required: true },
-      { name: 'cota', label: 'Cota TVA dedusa la achizitie (%)', type: 'number', default: fiscal.FISCAL.tvaStandard }],
+      { name: 'cota', label: 'Cota TVA dedusa la achizitie (%)', type: 'number', default: 0, fiscalRate: 'tvaStandard' }],
     build: (d) => {
-      const tva = round2(((Number(d.baza) || 0) * (Number(d.cota) || fiscal.FISCAL.tvaStandard)) / 100);
+      const tva = round2(((Number(d.baza) || 0) * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
       return tva > 0
         ? [L('635', '4426', tva, 'Ajustarea TVA dedusă pentru lipsa neimputabilă (art. 304)')]
         : [];

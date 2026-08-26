@@ -164,6 +164,7 @@ $('#firmaProprieForm') && $('#firmaProprieForm').addEventListener('submit', asyn
       body: JSON.stringify({
         nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, oras: f.oras.value,
         tipEntitate: f.tipEntitate.value, tvaPlatitor: f.tvaPlatitor.checked,
+        confirmFictitious: f.confirmFictitious.checked,
       }),
     });
     const cui = f.cui.value;
@@ -172,32 +173,12 @@ $('#firmaProprieForm') && $('#firmaProprieForm').addEventListener('submit', asyn
     await deps.init(); deps.onTab('setari');
   } catch (err) {
     st.className = 'status err'; st.textContent = err.message;
-    const cod = (err.data || {}).code;
     if (err.status === 409) {
       const ca = $('#cerereAccesForm');
       if (ca) { ca.cui.value = f.cui.value; ca.scrollIntoView({ behavior: 'smooth', block: 'center' }); ca.cui.focus(); }
     }
-    // „Completeaza-ti CNP-ul" trimitea intr-un card aflat mult mai jos in aceeasi pagina, pe care
-    // trebuia sa-l CAUTI. Un mesaj care numeste un loc fara sa te duca acolo e o sarcina, nu un
-    // indiciu: dupa mutarea firmelor in capul paginii, „Contul meu" a ajuns al saptelea card.
-    if (cod === 'CNP_LIPSA') dutaLaCnp(st);
   }
 });
-
-/** Duce utilizatorul la campul CNP din „Contul meu" si il evidentiaza cateva secunde. */
-function dutaLaCnp(st) {
-  const cnp = $('#profileForm') && $('#profileForm').cnp;
-  if (!cnp) return;
-  if (st) {
-    st.innerHTML += ' <button type="button" class="linkbtn" id="mergiLaCnp">Completează CNP-ul →</button>';
-    const b2 = $('#mergiLaCnp');
-    if (b2) b2.addEventListener('click', () => dutaLaCnp(null));
-  }
-  cnp.closest('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  cnp.focus();
-  cnp.classList.add('camp-cerut');
-  setTimeout(() => cnp.classList.remove('camp-cerut'), 4000);
-}
 // Contabilii isi pot avea si ei propria firma (foarte des, chiar biroul lor). Formularul nu li se
 // arata din start — ei vin sa preia firmele altora — dar nici nu li se inchide usa: un rand de
 // text il deschide. Un cont fara nicio cale spre firma proprie ar fi fost o fundatura.
@@ -216,13 +197,6 @@ export async function renderFirme() {
   const patron = USER.tipCont !== 'contabil';
   $('#firmaProprieBox') && $('#firmaProprieBox').classList.toggle('hidden', !patron);
   $('#firmaProprieLink') && $('#firmaProprieLink').classList.toggle('hidden', patron);
-  // CNP-ul e conditie pentru inscriere: se spune INAINTE de a incerca, cu drum direct la camp
-  const cn = $('#cnpNecesar');
-  if (cn) {
-    cn.classList.toggle('hidden', !!USER.cnpSetat || USER.role === 'admin');
-    const g = $('#cnpNecesarGo');
-    if (g && !g._wired) { g._wired = true; g.addEventListener('click', () => dutaLaCnp(null)); }
-  }
   $('#firmaExport').href = '/api/firme/' + data.firmaActiva + '/export-zip';
   // Contul demo (public, partajat) nu gestioneaza firme si nici setarile contului:
   // fara Firmele mele / mediu de test / restaurare, si fara profil / parola / 2FA / conexiune SPV.
@@ -360,8 +334,18 @@ export async function renderUsers() {
     };
   }
   $('#userFirmeChecks').innerHTML = firmeChecks([]);
-  const users = await api('/api/users');
+  const [users, perm] = await Promise.all([api('/api/users'), api('/api/permissions/matrix')]);
   renderFirmePersoane(users);
+  const matrice = $('#permissionsMatrix');
+  if (matrice) {
+    const roles = perm.roles || [];
+    const actions = perm.actions || [];
+    matrice.innerHTML = `<table><thead><tr><th>Acțiune</th>${roles.map((r) => `<th>${H(r.role)}</th>`).join('')}</tr></thead><tbody>${
+      actions.map((a) => `<tr><td>${H(a.label)}</td>${roles.map((r) => {
+        const x = (r.actions || []).find((p) => p.key === a.key);
+        return `<td class="num">${x && x.allowed ? '<span class="pill ok">✓</span>' : '<span class="muted">—</span>'}</td>`;
+      }).join('')}</tr>`).join('')}</tbody></table>`;
+  }
   // tipul utilizatorului: admin / tester (proba) / necontabil (Start) / contabil (Pro)
   const tipPill = (u) => {
     const c = { admin: 'background:#2f2e2a;color:#fff', contabil: 'background:#e2f5e8;color:#0a7d33', necontabil: 'background:#e7eefc;color:#1652d6', tester: 'background:#fff4e0;color:#b26a00' }[u.tip] || '';
@@ -450,7 +434,7 @@ export async function renderColaboratori() {
 async function addColaborator(mod) {
   const key = ($('#colaboratorKey').value || '').trim();
   if (!key) { toast('Completează utilizatorul sau emailul.', true); return; }
-  const rol = ($('#colaboratorRol') && $('#colaboratorRol').value) || 'aprobator';
+  const rol = ($('#colaboratorRol') && $('#colaboratorRol').value) || 'vizualizare';
   const body = mod === 'invite' ? { mod: 'invite', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '', rol } : { mod: 'existing', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '', rol };
   if (mod === 'invite' && !body.username) { toast('Pentru invitație alege un nume de utilizator (nu email).', true); return; }
   try {

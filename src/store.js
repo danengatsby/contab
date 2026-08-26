@@ -68,6 +68,9 @@ const ARRAY_COLLS = [
   { key: 'users', firma: false, hasId: true },
   // cursurile BNR sunt GLOBALE (nu per firma): o zi = un rand, id = 'YYYY-MM-DD'
   { key: 'cursuriBnr', firma: false, hasId: true },
+  // FiscalRuleSet-uri publicate append-only. Definitile incorporate raman in cod; aici se
+  // persista numai versiunile ulterioare, cu hash si approvalId verificabile la hidratare.
+  { key: 'fiscalRuleSets', firma: false, hasId: true },
   { key: 'firme', firma: false, hasId: true },
   { key: 'documents', firma: true, hasId: true },
   { key: 'entries', firma: true, hasId: true },
@@ -83,6 +86,10 @@ const ARRAY_COLLS = [
   // bilant, cealalta numara bucati intr-un depozit.
   { key: 'inventarAnual', firma: true, hasId: true },
   { key: 'openingAnalytic', firma: true, hasId: false },
+  { key: 'openItemAllocations', firma: true, hasId: true },
+  { key: 'openItemReconciliations', firma: true, hasId: true },
+  { key: 'bankStatements', firma: true, hasId: true },
+  { key: 'bankTransactions', firma: true, hasId: true },
   { key: 'audit', firma: true, hasId: true },
   { key: 'customAccounts', firma: false, hasId: false },
   // Catalogul duratelor HG 2139/2004: GLOBAL, ca planul de conturi — acelasi pentru toate firmele.
@@ -91,7 +98,17 @@ const ARRAY_COLLS = [
   { key: 'recurringInvoices', firma: true, hasId: true },
   { key: 'recipes', firma: true, hasId: true },
   { key: 'budgets', firma: true, hasId: true },
+  { key: 'cashForecastSnapshots', firma: true, hasId: true },
   { key: 'declarations', firma: true, hasId: true },
+  // Binarul ZIP este deliberat in randul persistent: descarcarea nu regenereaza nimic, iar
+  // backupul bazei poarta exact arhiva sigilata si versiunile ei append-only.
+  { key: 'annualArchives', firma: true, hasId: true },
+  // Numele snake_case este intenționat: acesta este tabelul temporal fiscal_profile_history.
+  { key: 'fiscal_profile_history', firma: true, hasId: true },
+  // Istoricul anual al incadrarii contabile, separat de profilul fiscal si de campul-oglinda al firmei.
+  { key: 'balance_category_history', firma: true, hasId: true },
+  { key: 'balance_sheet_mappings', firma: true, hasId: true },
+  { key: 'balance_sheet_adjustments', firma: true, hasId: true },
   { key: 'closings', firma: true, hasId: true },
   { key: 'extractInterventions', firma: true, hasId: true },
   { key: 'leasingContracts', firma: true, hasId: true },
@@ -202,6 +219,12 @@ function schema() {
     if (c.firma) sdb.exec(`CREATE INDEX IF NOT EXISTS idx_${c.key}_firma ON ${c.key}(firmaId)`);
     if (c.hasId) sdb.exec(`CREATE INDEX IF NOT EXISTS idx_${c.key}_id ON ${c.key}(id)`);
   }
+  // Invariantul dosarului de depunere este apărat și sub stratul de servicii. Expresia citește
+  // identitatea din blob-ul sursă; rândurile istorice fără câmpuri valide nu sunt confundate între
+  // ele, dar două dosare reale pentru aceeași firmă/tip/perioadă nu pot fi comise.
+  sdb.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_declarations_dossier_unique
+    ON declarations(firmaId, lower(json_extract(data, '$.tip')), json_extract(data, '$.period'))
+    WHERE json_extract(data, '$.tip') IS NOT NULL AND json_extract(data, '$.period') IS NOT NULL`);
   sdb.exec(`CREATE TABLE IF NOT EXISTS partners (
     firmaId INTEGER NOT NULL, cui TEXT NOT NULL, data TEXT NOT NULL,
     PRIMARY KEY (firmaId, cui)

@@ -88,6 +88,7 @@ function applyAccLabels(simplu) {
 function applyUiMode(mode) {
   document.body.classList.toggle('simple-ui', mode === 'simplu');
   applyAccLabels(mode === 'simplu');
+  document.dispatchEvent(new CustomEvent('contab:ui-mode', { detail: { mode } }));
   const b = $('#uiModeBtn');
   if (b) {
     b.textContent = mode === 'simplu' ? '🎓 Simplu' : '🛠 Expert';

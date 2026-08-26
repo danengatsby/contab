@@ -4,7 +4,7 @@
 var PANEL_INFO = [
   // Dashboard
   ['Comparație an-la-an', 'Veniturile, cheltuielile și rezultatul anului curent față de anul precedent, cu variația procentuală pe fiecare indicator.'],
-  ['Previziune cash-flow', 'Estimarea banilor disponibili în lunile următoare, din soldul curent + mediile încasărilor și plăților. Orientativă, nu o garanție.'],
+  ['Cash-flow direct', 'Proiecție pe 13 săptămâni din scadențe document-cu-document, salarii, taxe, leasing și recurente. Ipotezele sunt vizibile, iar fotografiile se compară ulterior cu realizatul.'],
   ['Evoluție lunară', 'Venituri, cheltuieli și profit pe fiecare lună a anului — vezi dintr-o privire lunile bune și cele slabe.'],
   ['Structura soldurilor', 'Cât ai de încasat de la clienți față de cât ai de plătit furnizorilor — echilibrul creanțe vs datorii.'],
   ['Top creanțe', 'Clienții cu cele mai mari sume neîncasate — cu ei începi urmărirea încasărilor.'],
@@ -13,7 +13,7 @@ var PANEL_INFO = [
   // Documente
   ['1 · Încarcă documentul', 'Tragi PDF-ul sau poza facturii primite; AI-ul citește furnizorul, CUI-ul, baza și TVA-ul și propune tipul de înregistrare.'],
   ['2 · Verifică și salvează', 'Câmpurile extrase, editabile. Verifici sumele și tipul, apoi salvezi — articolul contabil se generează automat, cu previzualizare.'],
-  ['Import extras bancar', 'Încarci extrasul (CSV/MT940); tranzacțiile sunt potrivite cu partenerii după nume/CUI și propuse ca încasări/plăți de confirmat.'],
+  ['Import extras bancar', 'Încarci CSV/MT940/CAMT.053; aplicația păstrează hash-ul, IBAN-ul și soldurile, refuză reimportul și propune punctajul pentru confirmare.'],
   ['Facturi primite în SPV', 'Facturile electronice primite în SPV. „Importă" descarcă XML-ul și îl transformă într-o înregistrare de cumpărare, cu documentul atașat.'],
   ['📥 Import direct e-Factura', 'Ai deja XML-ul e-Factura (de pe email etc.)? Îl încarci aici fără conexiune SPV.'],
   ['1 · Emite un document de ieșire', 'Factura ta către client: completezi liniile, numărul vine automat din serie, iar PDF-ul și e-Factura XML se generează singure.'],
@@ -35,7 +35,7 @@ var PANEL_INFO = [
   ['Jurnal de vânzări', 'Facturile emise cu TVA colectată în perioadă — baza decontului D300 și a D394.'],
   ['Jurnal de cumpărări', 'Achizițiile cu TVA deductibilă în perioadă, cu taxarea inversă marcată.'],
   ['TVA la încasare — exigibilitate', 'Regim TVA la încasare: introduci suma încasată/plătită și cota; TVA devenită exigibilă se calculează și se postează automat.'],
-  ['Închide TVA-ul lunii', 'Regularizarea lunară: 4427 se compensează cu 4426, diferența merge în 4423 (de plată) sau 4424 (de recuperat).'],
+  ['Regularizează TVA-ul lunii', 'Regularizarea lunară: 4427 se compensează cu 4426, diferența merge în 4423 (de plată) sau 4424 (de recuperat). Luna se blochează separat, la finalul cockpitului.'],
   // Închideri
   ['Impozit pe profit', 'Calculul anual: profit contabil + nedeductibile − deduceri − pierdere reportată, apoi cota de 16%. Postează 691 = 4411.'],
   ['Închiderea anuală', 'Închide conturile de venituri și cheltuieli (clasele 6/7) în 121 „Profit și pierdere".'],
@@ -52,7 +52,7 @@ var PANEL_INFO = [
   ['SAF-T', 'Fișierul standard de audit (D406): conturi, parteneri, facturi și toate articolele anului, în XML-ul cerut de ANAF.'],
   // Livrabile + portofoliu
   ['🏛 Fișa Rol', 'Soliciți de la ANAF fișa pe plătitor (obligațiile firmei din evidența fiscală) și descarci documentele din mesajele SPV.'],
-  ['📮 De depus', 'Declarațiile lunii cu termenul legal și starea lor: generată, transmisă, apoi depusă numai când ai recipisa.'],
+  ['📮 De depus', 'Declarațiile lunii cu termenul legal și traseul lor: generată, aprobată pe hash-ul exact, transmisă, apoi depusă numai când ai recipisa.'],
   ['Status declarații', 'Distribuția declarațiilor lunii pe stări (generate, transmise, depuse, nedepuse și erori), pe tot portofoliul.'],
   ['⚠️ Top firme cu atenționări', 'Firmele cu restanțe la depuneri sau erori — cele care cer intervenție primele.'],
   ['Firme din portofoliu', 'Situația fiecărei firme: declarații așteptate, depuse, nedepuse, erori și atenționări pe luna selectată.'],
@@ -97,7 +97,7 @@ var PANEL_INFO = [
   ['🔒 Blocare perioadă', 'Blochează lunile deja declarate: nu se mai pot adăuga sau modifica înregistrări în ele.'],
   ['Extragere cu AI', 'Citirea automată a documentelor încărcate (PDF/poze) cu Claude API; se poate opri de aici.'],
   ['Trimitere în SPV', 'Conexiunea OAuth cu ANAF pentru e-Factura și serviciile SPV; necesită aplicație înregistrată și certificat digital.'],
-  ['Date demonstrative', 'Încarcă exemplul din ghid (luna iunie) ca să explorezi aplicația cu date reale.'],
+  ['Date demonstrative', 'Încarcă exemplul din ghid (luna iunie) ca să explorezi aplicația cu date fictive, dar realiste.'],
   ['📋 Jurnal de audit', 'Cine a făcut ce și când: acțiunile importante, cu autor, firmă și dată.'],
   ['📁 Arhivă documente', 'Toate fișierele încărcate, cu căutare și descărcare.'],
 ];

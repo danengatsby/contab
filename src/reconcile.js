@@ -4,6 +4,7 @@ const { round2 } = require('./util');
 const { sortEntries, postedEntries } = require('./accounting');
 const { settle } = require('./matching');
 const { CONTURI_CREANTE, CONTURI_DATORII } = require('./analytic');
+const openItems = require('./openItems');
 
 // Perimetrul vine din analytic.js, ca fisele de partener si vechimea soldurilor (aging) sa
 // acopere prin constructie aceleasi conturi. Inainte erau doar 4111 si 401, deci o factura de
@@ -17,6 +18,13 @@ const esteCreanta = (cont) => CONTURI_CREANTE.includes(cont);
  * automata factura <-> plata/incasare de aceeasi suma.
  */
 function reconcile(db) {
+  const central = openItems.registry(db, null);
+  const explicitByPayment = new Map();
+  for (const a of central.allocations.filter((x) => x.source === 'manual' || x.source === 'legacy-link')) {
+    const k = String(a.paymentId); const list = explicitByPayment.get(k) || [];
+    if (!list.includes(String(a.documentId))) list.push(String(a.documentId));
+    explicitByPayment.set(k, list);
+  }
   const groups = new Map();
   const keyOf = (partener, cui) => (partener || cui || '').toUpperCase().trim();
   // Soldurile initiale pe partener (preluarea de la contabilitatea anterioara) sunt tot creante
@@ -56,7 +64,9 @@ function reconcile(db) {
       const gkey = key + '|' + cont;
       const g = groups.get(gkey) || { key, cont, den: e.partener || key, cui: e.partenerCui || '', items: [] };
       if (!g.cui && e.partenerCui) g.cui = e.partenerCui;
-      g.items.push({ entryId: e.id, data: e.data, doc: e.document || '', tipNume: e.tipNume, debit: round2(d), credit: round2(c), matched: false, stinge: e.stinge });
+      g.items.push({ entryId: e.id, data: e.data, doc: e.document || '', tipNume: e.tipNume,
+        debit: round2(d), credit: round2(c), matched: false,
+        stinge: explicitByPayment.get(String(e.id)) || e.stinge });
       groups.set(gkey, g);
     }
   }

@@ -2,7 +2,7 @@
 
 // Listele de inregistrari (recente/intrate/iesite), actiunile pe rand, documentele lipsa, arhiva.
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, fmt, toast, api, META, setMeta, confirmAction, promptAction } from './core.js';
+import { $$, $, H, fmt, dataRo, toast, api, META, setMeta, confirmAction, promptAction } from './core.js';
 import { pget, workMonth, lunaLabel, onPeriodChange, fillPeriods } from './periods.js';
 
 const D = { goTab: null };
@@ -194,14 +194,47 @@ async function loadMissingDocs() {
     : '<div data-u="u18">✓ Nu pare să lipsească niciun document recurent.</div>'}
     </div></div>`;
 }
+
+function archiveSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(n < 10 * 1024 ? 1 : 0) + ' KB';
+  return (n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0) + ' MB';
+}
+
+/** Istoricul permanent al dosarului anual. Funcție pură: serverul decide integritatea,
+ * interfața afișează fiecare versiune și descarcă explicit octeții acelei versiuni. */
+export function annualArchiveVersionsHtml(status, year) {
+  const state = status || {}; const versions = (state.versions || []).slice()
+    .sort((a, b) => Number(b.version) - Number(a.version));
+  const open = state.closed ? '' : `<div class="notice warning annual-archive-state"><span class="notice-icon">⚠️</span><div>
+    Exercițiul ${H(year)} este încă deschis. Dosarul poate fi sigilat numai după finalizarea închiderii anuale.</div></div>`;
+  if (!versions.length) return open + `<p class="muted annual-archive-empty">Nicio versiune sigilată pentru ${H(year)}.</p>`;
+  const rows = versions.map((v) => {
+    const verified = v.verified === true;
+    const created = dataRo(v.createdAt) + (String(v.createdAt || '').match(/T(\d{2}:\d{2})/) ? ' · ' + String(v.createdAt).match(/T(\d{2}:\d{2})/)[1] + ' UTC' : '');
+    const check = verified
+      ? '<span class="st st-postat">integritate verificată</span>'
+      : `<span class="st st-stornat" title="${H(v.verificationError || 'Verificarea integrității a eșuat')}">integritate eșuată</span>`;
+    const href = '/api/dosar-anual?year=' + encodeURIComponent(year) + '&version=' + encodeURIComponent(v.version);
+    return `<tr><td><b>v${H(v.version)}</b></td><td>${H(created)}${v.createdByName ? `<div class="muted">${H(v.createdByName)}</div>` : ''}</td>
+      <td>${H(v.reason || '—')}</td><td>${H(archiveSize(v.bytes))}</td><td>${check}</td>
+      <td><code class="annual-archive-hash">${H(v.zipSha256 || '—')}</code></td>
+      <td>${verified ? `<a class="btn small" href="${H(href)}">📦 Descarcă v${H(v.version)}</a>` : '<span class="muted">Descărcare blocată</span>'}</td></tr>`;
+  }).join('');
+  return open + `<div class="tablewrap annual-archive-versions"><table><thead><tr><th>Versiune</th><th>Sigilată</th><th>Motiv</th>
+    <th>Dimensiune</th><th>Stare</th><th>SHA-256 ZIP</th><th>Fișier exact</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 async function loadArhiva() {
   const p = pget('arhiva') || workMonth();
   const monthly = /^\d{4}-\d{2}$/.test(p);
   const yr = p.slice(0, 4);
   const pq = '?period=' + p; const yq = '?year=' + yr;
-  const [all, payroll] = await Promise.all([
+  const [all, payroll, annualStatus] = await Promise.all([
     api('/api/entries'),
     monthly ? api('/api/stat-plata?period=' + encodeURIComponent(p)) : Promise.resolve(null),
+    api('/api/dosar-anual/status?year=' + encodeURIComponent(yr)),
   ]);
   const payrollPosted = !!(payroll && payroll.postat);
   const inPer = (e) => (e.period || (e.data || '').slice(0, 7)).startsWith(p);
@@ -241,7 +274,9 @@ async function loadArhiva() {
     <div class="card"><h3>📚 07 · Registre & Bilanț</h3>
       <p class="muted">Registrele obligatorii și situațiile financiare.</p>
       ${L('/pdf/journal' + pq, '⬇ Registru-jurnal PDF')}${L('/csv/journal' + pq, 'Jurnal CSV')}${L('/pdf/ledger' + pq, '⬇ Cartea mare PDF')}${L('/pdf/balance' + pq, '⬇ Balanță PDF')}${L('/csv/balance' + pq, 'Balanță CSV')}${L('/pdf/pl' + yq, '⬇ Cont P&P PDF')}${L('/pdf/bilant' + pq, '⬇ Bilanț PDF')}
-      <hr class="soft" data-u="u18"><p class="muted" data-u="u18">Dosarul anului într-o arhivă imutabilă (registre + balanță + situații + declarații XML), cu amprente SHA-256 pentru integritate — pentru păstrare și control.</p>${L('/api/dosar-anual' + yq, '📦 Dosar anual (ZIP)')}</div>`;
+      <hr class="soft" data-u="u18"><p class="muted" data-u="u18">Dosarul anual este un ZIP persistent, sigilat după finalizarea cockpitului: documente justificative și extrase originale, state, stoc, aprobări, declarațiile și recipisele exacte. Descărcarea verifică manifestul semnat și nu regenerează rapoartele.</p>
+      <button id="sealAnnualArchive" class="btn small" data-year="${H(yr)}"${annualStatus.closed ? '' : ' disabled'}>🔏 ${(annualStatus.versions || []).length ? 'Creează versiune nouă' : 'Sigilează prima versiune'}</button>
+      <div id="annualArchiveVersions">${annualArchiveVersionsHtml(annualStatus, yr)}</div></div>`;
   $$('#arhivaView [data-go]').forEach((b) => b.addEventListener('click', () => D.goTab(b.dataset.go)));
   const vb = $('#validateDecl');
   if (vb) vb.addEventListener('click', async () => {
@@ -258,6 +293,31 @@ async function loadArhiva() {
       return `<div data-u="u29"><b>${icon} ${r.label}</b>${msgs.length ? ': ' + msgs.join(' · ') : ' — fără probleme'}</div>`;
     }).join('');
     vb.disabled = false;
+  });
+  const seal = $('#sealAnnualArchive');
+  if (seal) seal.addEventListener('click', async () => {
+    seal.disabled = true;
+    try {
+      const body = {};
+      if ((annualStatus.versions || []).length) {
+        const reason = await promptAction('Versiunea existentă rămâne imuabilă. Pentru o rectificativă se creează o versiune nouă, cu motiv.', {
+          title: 'Versiune nouă a dosarului anual', label: 'Motivul versiunii noi', required: true,
+          minLength: 10, multiline: true, confirmLabel: 'Sigilează versiunea nouă',
+        });
+        if (reason == null) return;
+        body.newRevision = true; body.reason = reason;
+      } else {
+        const yes = await confirmAction('Sigilarea este posibilă numai după închidere, depunere, repartizare și atașarea recipiselor. ZIP-ul rezultat nu se mai modifică.', {
+          title: 'Sigilezi dosarul anual?', confirmLabel: 'Sigilează', danger: false,
+        });
+        if (!yes) return;
+      }
+      const result = await api('/api/dosar-anual/seal?year=' + encodeURIComponent(seal.dataset.year), {
+        method: 'POST', body: JSON.stringify(body),
+      });
+      toast('Dosar anual sigilat: versiunea ' + result.version + ' · SHA-256 ' + result.zipSha256.slice(0, 12) + '…');
+      await loadArhiva();
+    } catch (e) { toast(e.message, true); } finally { seal.disabled = !annualStatus.closed; }
   });
 }
 onPeriodChange('arhiva', loadArhiva);

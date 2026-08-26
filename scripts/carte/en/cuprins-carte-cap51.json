@@ -1,0 +1,248 @@
+{
+ "parte": "Part XI · The trail · phase 14",
+ "nr": "51",
+ "titlu": "What a program cannot do",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "This book was written starting from how an accounting program works, and fifty chapters have shown how much can be automated: entries composed from document types, VAT returns compiled from records, trial balances checked, declarations generated, controls run continuously."
+  },
+  {
+   "tip": "p",
+   "text": "The closing chapter is about the other side — and it is the most important one of all, precisely because the power of automation makes its limits easy to forget."
+  },
+  {
+   "tip": "h",
+   "text": "Three things it does well"
+  },
+  {
+   "tip": "p",
+   "text": "They deserve to be listed first, so that the limit stands out by contrast. A program calculates without getting tired, checks without skipping a line, and remembers without forgetting."
+  },
+  {
+   "tip": "p",
+   "text": "All three are qualities a human being lacks. A tired accountant makes calculation errors; a rushed one skips a check; anyone can forget a deadline. Nothing that follows contradicts the fact that, on these three points, the machine is decisively better."
+  },
+  {
+   "tip": "h",
+   "text": "What it cannot do"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The limit, by category",
+   "cap": [
+    "It cannot…",
+    "Because…"
+   ],
+   "randuri": [
+    [
+     "say whether a transaction actually took place",
+     "a document can be compliant and false at the same time"
+    ],
+    [
+     "decide whether an expense belongs to the business",
+     "the answer lies in reality, not in the data"
+    ],
+    [
+     "judge whether a receivable is still recoverable",
+     "it depends on what is known about the client, not on how many days have passed"
+    ],
+    [
+     "choose between equally permitted treatments",
+     "the choice commits the business for years"
+    ],
+    [
+     "sign",
+     "a signature is an assumption of responsibility"
+    ],
+    [
+     "answer for someone else",
+     "responsibility cannot be delegated to a software provider"
+    ]
+   ],
+   "nota": "All six share the same structure: they require information that does not exist in the data, or a decision that commits someone."
+  },
+  {
+   "tip": "cheie",
+   "text": "A program answers questions about data. Accounting, at its decisive points, asks questions about reality."
+  },
+  {
+   "tip": "h",
+   "text": "The example that sums them all up"
+  },
+  {
+   "tip": "p",
+   "text": "An invoice for five thousand lei for \"consulting services.\" The document is compliant: it has all the required elements, the supplier has a valid VAT code, the amount matches the payment on the bank statement, and the program can record it correctly without any intervention."
+  },
+  {
+   "tip": "p",
+   "text": "The only question that matters appears nowhere in the data: was the consultancy actually provided? And if it was, was it related to the business's activity?"
+  },
+  {
+   "tip": "p",
+   "text": "The answer cannot be read from any field, cannot be inferred from any correlation, and cannot be checked by any rule. Someone knows it — the administrator who ordered the service — or no one knows it, which is itself already an answer."
+  },
+  {
+   "tip": "p",
+   "text": "The consequences are real: the deductibility of the expense, the right to deduct VAT, and in extreme cases, the legal classification of the transaction. All of them hinge on information that is not in the system."
+  },
+  {
+   "tip": "h",
+   "text": "Why automation does not reduce responsibility"
+  },
+  {
+   "tip": "p",
+   "text": "The opposite argument is often heard: if the program does everything, the accountant is less responsible. The reality is the opposite, and it is worth understanding why."
+  },
+  {
+   "tip": "p",
+   "text": "Automation does not eliminate decisions; it moves them earlier. The choice of inventory valuation method, the depreciation period, the materiality threshold, the treatment of an unusual transaction — all of these are made once and then applied automatically to thousands of transactions."
+  },
+  {
+   "tip": "p",
+   "text": "A wrong decision made manually affects one document. The same wrong decision, embedded in an automatic rule, affects an entire year. The power of the tool increases, rather than decreases, the consequences of the judgment that configures it."
+  },
+  {
+   "tip": "h",
+   "text": "The correct division of labor"
+  },
+  {
+   "tip": "p",
+   "text": "Everything the book has described ultimately suggests a simple, stable division of labor between human and machine."
+  },
+  {
+   "tip": "p",
+   "text": "The machine does what is repetitive, verifiable, and tedious: it calculates, adds, compares, flags. The human does what requires knowledge of the reality behind the documents and what carries responsibility: classifying, judging, deciding, signing."
+  },
+  {
+   "tip": "p",
+   "text": "The boundary between them is not technological but logical. It will not shift as programs advance, because it separates questions that can be answered from data from questions that cannot."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "This distinction has a precise legal counterpart, discussed in Chapter 4: responsibility for organizing and running the accounting rests with the business owner, while the accountant is responsible for the compliant preparation of records, under the Accounting Law no. 82/1991; the software provider bears no responsibility for the content of the records, regardless of the degree of automation. Four final observations. First: using an information system does not reduce the obligation to verify supporting documents with respect to the reality of the transaction — automation shifts the control, it does not eliminate it, and a procedure that provides no human verification over automatically recorded transactions is, from an internal control standpoint, an incomplete procedure. Second: the accounting policies chosen and the parameters configured in the system are professional decisions that must be documented in the accounting policies manual and maintained in accordance with the principle of consistency of methods; a parameter changed without a written decision produces an undeclared change of policy. Third: for transactions lacking economic substance or with an artificial classification, the tax authority may reclassify the form, under the Fiscal Procedure Code — a classification that is formally correct but contrary to reality is not defended by the fact that it was generated automatically. Fourth, and the one that closes the book: professional judgment cannot be delegated. It can be documented, discussed, and verified, but responsibility for it remains, entirely, with the person who signs."
+  },
+  {
+   "tip": "h",
+   "text": "Closing"
+  },
+  {
+   "tip": "p",
+   "text": "The book began with a simple statement: accounting does not track money, it tracks profit. Fifty chapters later, the statement can be restated more precisely."
+  },
+  {
+   "tip": "p",
+   "text": "Accounting is the discipline of telling the truth about an economic activity, in a form that someone else can verify. Its rules seem arbitrary until you understand that each one solves a problem of trust: double-entry bookkeeping makes errors visible, the supporting document makes statements probable, the reversal entry preserves the trail of a mistake, the closing of a period makes the past stable."
+  },
+  {
+   "tip": "p",
+   "text": "A program can apply all these rules faster and more consistently than a human. What it cannot do — and what therefore remains the essence of the profession — is know whether the recorded event actually happened, and answer for the claim that it did."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 51.1 — what the machine can decide",
+   "enunt": [
+    "For each item, say whether the answer can be obtained from the data or requires a human:",
+    "(a) Does the invoice amount match the base plus VAT? (b) Did the supplier have a valid code on the invoice date? (c) Was the merchandise delivered? (d) Is the chosen depreciation period the right one? (e) Does the trial balance close? (f) Does this expense belong to the business?"
+   ],
+   "rezolvare": [
+    "(a) From the data. It is arithmetic; it can be fully verified automatically.",
+    "(b) From the data. The code is checked against a public registry, on the date of the transaction.",
+    "(c) REQUIRES A HUMAN. The document can be compliant and false at the same time; no correlation can distinguish a real delivery from a recorded one.",
+    "(d) REQUIRES A HUMAN. The catalog gives a range, not a fixed figure; choosing within the range commits the business for years and is a professional decision.",
+    "(e) From the data. This is exactly the check the machine does best.",
+    "(f) REQUIRES A HUMAN, and it is the most expensive question on the list. The answer is not in any field, cannot be inferred from any correlation, and cannot be checked by any rule.",
+    "Score: three out of six can be fully automated. The other three are the profession — and no advance in software will shift them, because the boundary is not technological but logical: it separates questions about DATA from questions about REALITY."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "When the machine misreads"
+  },
+  {
+   "tip": "p",
+   "text": "Automatic data extraction from a document has changed day-to-day work more than anything else in recent years. But it has also changed the nature of errors: they are no longer typing errors, but errors of understanding — and they look different."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "How a human errs, how a machine errs",
+   "cap": [
+    "",
+    "Human error",
+    "Machine error"
+   ],
+   "randuri": [
+    [
+     "form",
+     "a changed figure, a wrong date",
+     "a plausible value, taken from the wrong place"
+    ],
+    [
+     "frequency",
+     "rare and isolated",
+     "systematic, on the same type of document"
+    ],
+    [
+     "how it looks",
+     "usually stands out from the pattern",
+     "fits the pattern perfectly"
+    ],
+    [
+     "how it is caught",
+     "by rereading the document",
+     "by comparing against the document, deliberately"
+    ]
+   ],
+   "nota": "The third row is the one that matters: a machine error looks correct. That is why automatic plausibility checks do not catch it."
+  },
+  {
+   "tip": "p",
+   "text": "The classic example is a VAT rate read from the wrong line of the invoice: 11% instead of 21%. The amount is plausible, the arithmetic checks out if the base was read from the same place, and the document appears in order. It is discovered only at the VAT return stage, or during an audit — and, in the meantime, the same mistake has repeated on every invoice from the same supplier."
+  },
+  {
+   "tip": "cheie",
+   "text": "A human makes a mistake once. A machine makes the same mistake every time — which is easier to fix, but only after someone has noticed that it is making it."
+  },
+  {
+   "tip": "h",
+   "text": "Why confirmation is not a formality"
+  },
+  {
+   "tip": "p",
+   "text": "The step where the operator confirms the data read seems like a checkbox, and by the hundredth invoice it becomes one. Yet it is the only point in the entire flow where a human looks at the document and the figure at the same time."
+  },
+  {
+   "tip": "p",
+   "text": "A well-designed flow does not require confirming every field, only the ones that matter and the ones with low confidence: the rate, the counterparty, the total. The rest is accepted tacitly — not out of carelessness, but because attention demanded everywhere is attention given nowhere."
+  },
+  {
+   "tip": "p",
+   "text": "And when a business chooses automatic posting — without confirmation — the decision must be made knowingly: time is gained, and exactly the moment when one would have noticed that the machine is systematically misreading is lost. The reasonable compromise is automatic posting only when ALL checks pass, as shown in Chapter 13, plus spot-checking of what has been posted."
+  },
+  {
+   "tip": "h",
+   "text": "What remains, in the end"
+  },
+  {
+   "tip": "p",
+   "text": "The book ends where it began: with two questions. The first — how much have I earned — received an answer that can be calculated. The second — what do I have and to whom do I owe it — likewise."
+  },
+  {
+   "tip": "p",
+   "text": "What cannot be calculated is whether they are true. Their truth depends on documents that were read, classifications that were chosen, estimates that were made — and each of these is someone's decision. Accounting does not produce the truth; it produces a verifiable statement, and someone signs it."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "A program calculates, verifies, and remembers better than any human — on these three points, the matter is closed.",
+    "It cannot know whether a transaction actually took place: a document can be compliant and false at the same time.",
+    "It cannot decide whether an expense belongs to the business, cannot choose between permitted treatments, and cannot sign.",
+    "Automation does not reduce responsibility: it moves decisions earlier, and a wrong decision affects a year, not a document.",
+    "The boundary between human and machine is logical, not technological: it separates questions about data from questions about reality.",
+    "Professional judgment can be documented and verified, but it cannot be delegated."
+   ]
+  }
+ ]
+}

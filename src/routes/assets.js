@@ -265,14 +265,19 @@ module.exports = function register(app, ctx) {
   // Inregistreaza amortizarea lunii (6811 = 281x), o linie pe mijloc fix
   app.post('/api/assets/depreciation', (req, res) => {
     const period = req.query.period;
-    if (!period) return res.status(400).json({ error: 'Lipseste perioada (YYYY-MM).' });
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ''))) return res.status(400).json({ error: 'Lipseste perioada valida (YYYY-MM).' });
     const d = db.get();
+    const existent = (d.entries || []).find((e) => e.firmaId === activeId(req) && !e.stornat
+      && e.tip === 'amortizare_lunara' && e.period === period);
+    if (existent) {
+      const depExistenta = assets.monthlyDepreciation(S(req).assets, period);
+      return res.json({ ok: true, idempotent: true, message: 'Amortizarea lunii este deja înregistrată.',
+        entry: existent, result: depExistenta });
+    }
     try { db.assertPeriodOpen(activeId(req), period, 'Inregistrarea amortizarii'); }
     catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
     const dep = assets.monthlyDepreciation(S(req).assets, period);
     if (!dep.lines.length) return res.json({ ok: true, message: 'Nicio amortizare de inregistrat pentru ' + period + '.', result: dep });
-    const exists = d.entries.find((e) => e.firmaId === activeId(req) && e.tip === 'amortizare_lunara' && e.period === period);
-    if (exists) return res.status(400).json({ error: 'Amortizarea pentru ' + period + ' este deja inregistrata.' });
     // Articolul se scrie direct in `d.entries`, deci NU trece prin `composeEntry` — singurul loc
     // care verifica apartenenta la plan. Verificarea se face aici, altfel un cont de amortizare
     // absent (activ vechi, plan incomplet) ar ajunge tacut in balanta si in SAF-T, la ANAF.

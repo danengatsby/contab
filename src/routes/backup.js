@@ -10,6 +10,7 @@ const secretbox = require('../secretbox');
 const fs = require('fs');
 const db = require('../db');
 const backupLib = require('../backup');
+const globalChain = require('../globalChain');
 const notify = require('../notify'); // proba de trimitere SMTP (butonul de email de test)
 
 module.exports = function register(app, ctx) {
@@ -27,8 +28,9 @@ module.exports = function register(app, ctx) {
 
   app.post('/api/backup', requireAdmin, (req, res) => {
     const r = doBackup();
-    logAudit('backup.create', r.name, { req, firmaId: null });
-    res.json({ ok: true, file: r.name, count: r.count });
+    logAudit('backup.create', r.name + ' · rădăcină ' + r.integrity.rootHash, { req, firmaId: null });
+    res.json({ ok: true, file: r.name, count: r.count,
+      integrityRoot: r.integrity.rootHash, integrityComplete: r.integrity.complete });
   });
   app.get('/api/backups', requireAdmin, (req, res) => {
     const s = db.get().settings.backup || {};
@@ -47,6 +49,10 @@ module.exports = function register(app, ctx) {
   app.get('/api/backup/file/:name', requireAdmin, (req, res) => {
     const p = backupLib.backupPath(db.DATA_DIR, req.params.name);
     if (!p) return res.status(404).send('Backup inexistent');
+    const check = backupLib.verifyJsonBackup(p);
+    if (!check.ok) return res.status(409).json({ error: 'Backupul nu trece verificarea globală a lanțului.',
+      code: 'GLOBAL_CHAIN_INVALID', issues: check.integrity && check.integrity.issues || [] });
+    res.setHeader('X-Contab-Integrity-Root', check.integrityRoot);
     res.download(p);
   });
   // Restaurare: incarca un fisier db.json -> face backup curentului -> inlocuieste -> reincarca
@@ -57,10 +63,15 @@ module.exports = function register(app, ctx) {
     if (!Array.isArray(parsed.firme) || !parsed.firme.length || !Array.isArray(parsed.users)) {
       return res.status(400).json({ error: 'Nu pare o baza de date Contabo valida (lipsesc firme/users).' });
     }
-    logAudit('backup.restore', req.file.originalname, { req, firmaId: null });
+    let integrity;
+    try { db.validateRestoreGraph(parsed); integrity = globalChain.verifyGraph(parsed); } catch (e) {
+      return res.status(e.status || 409).json({ error: e.message });
+    }
+    logAudit('backup.restore', req.file.originalname + ' · rădăcină ' + integrity.rootHash, { req, firmaId: null });
     doBackup(); // siguranta: salveaza starea curenta inainte de inlocuire
     db.restoreFromJson(req.file.path); // seteaza in memorie + persista (driver + oglinda JSON)
-    res.json({ ok: true, message: 'Baza de date a fost restaurata. Va trebui sa te autentifici din nou.' });
+    res.json({ ok: true, integrityRoot: integrity.rootHash,
+      message: 'Baza de date a fost restaurata. Va trebui sa te autentifici din nou.' });
   });
 
   // Drill de restaurare NATIVA PostgreSQL, la cerere (admin): restaureaza `contab.sql` din ultima

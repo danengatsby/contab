@@ -41,15 +41,8 @@ const curat = async () => {
 const pozitioneazaMeniu = async () => {
   await pg.evaluate(() => {
     const meniu = document.querySelector('#tabs');
-    const activ = meniu?.querySelector('button[data-tab].active');
-    const grup = activ?.closest('.navgroup');
     if (!meniu) return;
-    if (!grup) {
-      meniu.scrollTop = 0;
-      return;
-    }
-    const top = meniu.scrollTop + grup.getBoundingClientRect().top - meniu.getBoundingClientRect().top;
-    meniu.scrollTop = Math.max(0, top - 4);
+    meniu.querySelectorAll('.navgroup.open').forEach((grup) => grup.classList.remove('open'));
   });
   await pg.waitForTimeout(160);
 };
@@ -101,15 +94,11 @@ const tab = async (nume, asteptare = 1600) => {
 };
 const acasa = async () => {
   await tab('dashboard', 1400);
-  // Schimbarea obligatorie a parolei trece prin Setări și lasă acel acordeon
-  // deschis. Acasă trebuie fotografiat în starea normală de început de zi:
-  // grupul de lucru Documente & facturi, același pe care aplicația îl deschide
-  // la o pornire fără intermezzo-ul de securitate.
+  // Schimbarea obligatorie a parolei trece prin Setări și poate lăsa dropdownul deschis.
+  // Acasă se fotografiază în starea normală, fără un submeniu peste conținut.
   await pg.evaluate(() => {
-    const grup = document.querySelector('#tabs .navgroup');
-    if (grup && !grup.classList.contains('open')) grup.querySelector('.navlabel')?.click();
     const meniu = document.querySelector('#tabs');
-    if (meniu) meniu.scrollTop = 0;
+    meniu?.querySelectorAll('.navgroup.open').forEach((grup) => grup.classList.remove('open'));
   });
   await pg.waitForTimeout(300);
 };
@@ -140,7 +129,7 @@ await capt('fb-4-tva', async () => {
 await capt('fb-5-balanta', async () => tab('balanta', 2000));
 
 const surse = [
-  'index.html', 'styles.css', 'u.css', 'erp.css', 'design-system.css', 'erp.js',
+  'index.html', 'styles.css', 'u.css', 'erp.css', 'design-system.css', 'erp.js', 'i18n.js',
   'dashboard.js', 'docflow.js', 'livrabile.js', 'rapoarte.js', 'sw.js',
 ];
 const hash = crypto.createHash('sha256');

@@ -17,6 +17,62 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+section('Dosar anual persistent: manifest semnat, integritate și restaurare');
+{
+  const AdmZip = require('adm-zip');
+  const annualIntegrity = require('../../src/annualArchiveIntegrity');
+  const dosarAnual = require('../../src/dosarAnual');
+  const restoreDrill = require('../../src/restoreDrill');
+  const signingKey = 'cheie-test-dosar-anual-2026-cu-peste-32-caractere';
+  const proof = Buffer.from('octeții exacți ai documentului', 'utf8');
+  const files = [{ path: 'probe/original.txt', sha256: annualIntegrity.sha256(proof), bytes: proof.length,
+    category: 'document-justificativ', retentionYears: 5 }];
+  const manifest = {
+    schemaVersion: 2, archiveType: 'contab-annual-accounting-archive', archiveVersion: 1,
+    year: '2026', company: { id: 1, name: 'Test SRL' }, files, contentRootHash: annualIntegrity.rootHash(files), sealedAt: '2027-05-01T10:00:00.000Z',
+    signature: null,
+  };
+  manifest.signature = annualIntegrity.signManifest(manifest, { signingKey });
+  const zip = new AdmZip(); zip.addFile(files[0].path, proof);
+  zip.addFile('manifest.json', Buffer.from(JSON.stringify(manifest), 'utf8'));
+  const bytes = zip.toBuffer();
+  const row = { firmaId: 1, year: '2026', version: 1, zipSha256: annualIntegrity.sha256(bytes), zipBase64: bytes.toString('base64') };
+  ok('verificarea recalculează fișierele, rădăcina și semnătura HMAC',
+    annualIntegrity.verifyStored(row, { signingKey }).ok === true);
+  ok('o arhivă semnată nu poate fi mutată pe altă identitate de firmă',
+    annualIntegrity.verifyStored(Object.assign({}, row, { firmaId: 2 }), { signingKey }).ok === false);
+  const changed = new AdmZip(bytes); changed.updateFile('probe/original.txt', Buffer.from('alterat', 'utf8'));
+  const changedBytes = changed.toBuffer();
+  const changedRow = Object.assign({}, row, { zipSha256: annualIntegrity.sha256(changedBytes), zipBase64: changedBytes.toString('base64') });
+  ok('modificarea unui document este detectată chiar dacă SHA-ul ZIP stocat e recalculat',
+    annualIntegrity.verifyStored(changedRow, { signingKey }).ok === false);
+  const changedManifest = JSON.parse(JSON.stringify(manifest)); changedManifest.sealedAt = '2027-05-02T10:00:00.000Z';
+  const signatureTamper = new AdmZip(bytes);
+  signatureTamper.updateFile('manifest.json', Buffer.from(JSON.stringify(changedManifest), 'utf8'));
+  ok('modificarea manifestului fără cheia de semnare este detectată',
+    /semnătura/.test(annualIntegrity.verifyBuffer(signatureTamper.toBuffer(), { signingKey }).reason || ''));
+  const oldArchiveKey = process.env.CONTAB_ARCHIVE_SIGNING_KEY;
+  process.env.CONTAB_ARCHIVE_SIGNING_KEY = signingKey;
+  try {
+    const drillOk = restoreDrill.drillGraph({ firme: [], annualArchives: [row] });
+    ok('drill-ul de restaurare verifică și arhiva anuală, nu doar balanța', drillOk.ok && drillOk.annualArchives === 1);
+    const drillBad = restoreDrill.drillGraph({ firme: [], annualArchives: [changedRow] });
+    ok('restaurarea este refuzată când un dosar anual a fost alterat', !drillBad.ok && drillBad.archiveErrors.length === 1);
+    let restoreErr = null;
+    try { db.validateRestoreGraph({ firme: [{ id: 1 }], users: [], annualArchives: [changedRow] }); } catch (e) { restoreErr = e; }
+    ok('preflight-ul rutei de restore refuză arhiva înainte de înlocuirea bazei', restoreErr && restoreErr.status === 409);
+  } finally {
+    if (oldArchiveKey == null) delete process.env.CONTAB_ARCHIVE_SIGNING_KEY;
+    else process.env.CONTAB_ARCHIVE_SIGNING_KEY = oldArchiveKey;
+  }
+  ok('anul deschis nu este tratat ca închis din simpla existență a datelor',
+    dosarAnual.isYearClosed({ company: {}, entries: [] }, '2026') === false);
+  ok('istoricul explicit al închiderii permite sigilarea exercițiului',
+    dosarAnual.isYearClosed({ company: { annualCloseHistory: { 2026: { at: '2027-01-01' } } }, entries: [] }, '2026') === true);
+  eq('selectarea fără versiune întoarce ultima versiune persistentă',
+    dosarAnual.stored({ annualArchives: [{ firmaId: 1, year: '2026', version: 1 }, { firmaId: 1, year: '2026', version: 2 }] }, 1, '2026').version, 2);
+}
+
 section('Service layer stocuri: autorizarea dublata pe firma (src/stocksService.js)');
 const ssvc = require('../../src/stocksService');
 const dbx = db.get();
@@ -61,7 +117,8 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   const fsvc = require('../../src/firmeService');
   const dC = db.get();
   const fidC = db.nextFirmaId();
-  dC.firme.push({ id: fidC, nume: 'Colab SRL', ownerId: 90001, subscription: { status: 'active', plan: 'grandfathered' } });
+  const firmaC = { id: fidC, nume: 'Colab SRL', ownerId: 90001, subscription: { status: 'active', plan: 'grandfathered' } };
+  dC.firme.push(firmaC);
   // id-uri manuale unice (db.nextUserId() citeste starea curenta; 3 apeluri inainte de push ar da acelasi id)
   const owner = { id: 90001, username: 'proprietar', role: 'user', firme: [fidC], firmaActiva: fidC };
   const acc = { id: 90002, username: 'contabilx', email: 'c@x.ro', role: 'user', firme: [999], subscription: { status: 'active', plan: 'pro' } };
@@ -69,6 +126,9 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   dC.users.push(owner, acc, adminU);
   db.save();
   eq('list: initial doar proprietarul', fsvc.listCollaborators(fidC).map((c) => c.username).join(','), 'proprietar');
+  eq('firma neclasificata nu poate acorda acces la date',
+    errStatus(() => fsvc.addExistingCollaborator(owner, fidC, { email: 'c@x.ro' })), 428);
+  firmaC.dataMode = 'test';
   // adaugare cont existent (dupa email) -> capata acces
   const added = fsvc.addExistingCollaborator(owner, fidC, { email: 'c@x.ro', rol: 'operator' });
   eq('addExisting: contabilx capata firma', added.username + ':' + db.get().users.find((u) => u.id === acc.id).firme.includes(fidC), 'contabilx:true');
@@ -416,7 +476,9 @@ eq('period-lock pe firma inexistenta -> 404', errStatus(() => esvc.setPeriodLock
 eq('period-lock cu format invalid -> 400', errStatus(() => esvc.setPeriodLock(fidOk, '05-2026')), 400);
 eq('period-lock cu luna invalida -> 400', errStatus(() => esvc.setPeriodLock(fidOk, '2026-13')), 400);
 eq('blocare valida', esvc.setPeriodLock(fidOk, '2026-05').lockedUntil, '2026-05');
-eq('deblocare cu null', esvc.setPeriodLock(fidOk, null).lockedUntil, null);
+eq('deblocare fara motiv -> 400', errStatus(() => esvc.setPeriodLock(fidOk, null)), 400);
+const unlockSvc = esvc.setPeriodLock(fidOk, null, 'Corecție aprobată de administrator');
+ok('deblocare cu motiv: override trasabil', unlockSvc.lockedUntil === null && unlockSvc.override === true);
 // TVA la incasare: validare + calculul sutei marite + baza exigibila
 eq('exigibilitate fara suma -> 400', errStatus(() => esvc.tvaExigibilitate(fidOk, { brut: 0, cota: 21 }, stubDeps)), 400);
 const tvaR = esvc.tvaExigibilitate(fidOk, { brut: 1210, cota: 21 }, stubDeps);
@@ -527,6 +589,10 @@ eq('chitanta pe firma lipsa -> 403', errStatus(() => cfsvc.assignChitanta(null, 
 const firmaCfg = db.getFirma(fidOk);
 firmaCfg.lockedUntil = '2026-05'; const subInit = firmaCfg.subscription;
 eq('metoda de stoc necunoscuta -> 400', errStatusCfg(() => cfsvc.updateCompany(fidOk, { metodaEvaluareStoc: 'lifo' })), 400);
+eq('categorie contabila necunoscuta -> 400', errStatusCfg(() => cfsvc.updateCompany(fidOk, { categorieRaportare: 'micro-fiscal' })), 400);
+const categorieCfgVeche = firmaCfg.categorieRaportare;
+cfsvc.updateCompany(fidOk, { categorieRaportare: 'mic' });
+eq('categoria contabila valida se salveaza separat', firmaCfg.categorieRaportare, 'mic');
 cfsvc.updateCompany(fidOk, {
   nume: 'Firma Editata SRL', caen: '6201',                 // profil — permise
   logoFile: 'furat.png', id: 424242, campNecunoscut: 'x',  // tehnice — ignorate
@@ -544,6 +610,7 @@ eq('politica CMP/FIFO nu se schimba retroactiv dupa prima iesire',
   errStatusCfg(() => cfsvc.updateCompany(fidOk, { metodaEvaluareStoc: metodaCfgVeche === 'fifo' ? 'cmp' : 'fifo' })), 409);
 db.get().stockMovements = db.get().stockMovements.filter((m) => m !== mvPolitica);
 if (metodaCfgVeche === undefined) delete firmaCfg.metodaEvaluareStoc; else firmaCfg.metodaEvaluareStoc = metodaCfgVeche;
+if (categorieCfgVeche === undefined) delete firmaCfg.categorieRaportare; else firmaCfg.categorieRaportare = categorieCfgVeche;
 delete firmaCfg.lockedUntil; // curatenie
 // logo: validare pe magic bytes, nu pe extensie
 const tmpLogoBad = path.join(os.tmpdir(), 'contab-logo-bad-' + process.pid + '.png');
@@ -592,6 +659,8 @@ const clsvc = require('../../src/closingsService');
 const firmaCl = db.getFirma(fidOk);
 const prevLockCl = firmaCl.lockedUntil || null;
 const prevLossCl = firmaCl.pierdereFiscala;
+const prevAnnualHistoryCl = firmaCl.annualCloseHistory;
+const prevProfitHistoryCl = firmaCl.profitTaxHistory;
 firmaCl.lockedUntil = null;
 // gardele de firma si de format
 eq('inchidere TVA pe firma inexistenta -> 403', errStatus(() => clsvc.closeVat(9999, '2026-06')), 403);
@@ -600,13 +669,18 @@ eq('inchidere TVA pe luna 13 -> 400', errStatus(() => clsvc.closeVat(fidOk, '202
 eq('inchidere anuala fara an -> 400', errStatus(() => clsvc.closeYear(fidOk, null)), 400);
 eq('impozit pe profit fara an -> 400', errStatus(() => clsvc.closeProfitTax(fidOk, {}, null)), 400);
 eq('inchidere anuala cu an malformat -> 400', errStatus(() => clsvc.closeYear(fidOk, '2035-x')), 400);
-// blocarea perioadei la inchiderea TVA: se blocheaza si fara TVA de regularizat, doar inainte
+// Regularizarea TVA NU este blocarea lunii: cockpitul lunar face blocarea la ultimul pas.
 const cv1 = clsvc.closeVat(fidOk, '2035-01');
-ok('perioada blocata chiar si fara TVA de regularizat', cv1.lockedUntil === '2035-01' && cv1.posted === false);
-eq('inchiderea lunii urmatoare avanseaza blocajul', clsvc.closeVat(fidOk, '2035-02').lockedUntil, '2035-02');
-eq('inchiderea unei luni mai VECHI nu da blocajul inapoi', clsvc.closeVat(fidOk, '2034-12').lockedUntil, '2035-02');
-// inchiderea anuala pe un an fara rulaje: nimic postat
+ok('fara TVA: nu posteaza si lasa perioada deschisa', cv1.lockedUntil === null && cv1.posted === false);
+eq('regularizarea lunii urmatoare nu creeaza blocaj', clsvc.closeVat(fidOk, '2035-02').lockedUntil, null);
+firmaCl.lockedUntil = '2034-11';
+eq('regularizarea nu modifica nici un blocaj existent', clsvc.closeVat(fidOk, '2034-12').lockedUntil, '2034-11');
+firmaCl.lockedUntil = null;
+// inchiderea anuala se executa numai dupa blocarea lui decembrie, prin perioada tehnica 13
+eq('inchiderea anuala inainte de blocarea lui decembrie -> 400', errStatus(() => clsvc.closeYear(fidOk, '2035')), 400);
+firmaCl.lockedUntil = '2035-12';
 ok('an fara rulaje: posted=false, fara nota', clsvc.closeYear(fidOk, '2035').posted === false && !db.get().entries.some((e) => e.firmaId === fidOk && e.tip === 'inchidere_an' && e.period === '2035-12'));
+ok('retry inchidere anuala este idempotent', clsvc.closeYear(fidOk, '2035').idempotent === true);
 // optiunile impozitului: pierderea explicita bate pierderea memorata pe firma
 firmaCl.pierdereFiscala = { 2034: 500 };
 eq('pierderea memorata pe anul precedent se preia implicit', clsvc.profitTaxOptions(fidOk, {}, 2035).pierdereReportata, 500);
@@ -620,17 +694,17 @@ ok('camp lipsa => null, deci motorul calculeaza', clsvc.profitTaxOptions(fidOk, 
 ok('camp gol (sirul vid din formular) => tot null', clsvc.profitTaxOptions(fidOk, { deduceri: '', cheltNedeductibile: '' }, 2035).deduceri === null);
 ok('zero transmis EXPLICIT ramane suprascriere cu zero', clsvc.profitTaxOptions(fidOk, { deduceri: 0, cheltNedeductibile: 0 }, 2035).deduceri === 0);
 eq('o valoare transmisa ajunge neatinsa', clsvc.profitTaxOptions(fidOk, { deduceri: 250 }, 2035).deduceri, 250);
-// impozitul pe profit: dubla inregistrare refuzata; pierderea se memoreaza si la impozit 0
+// impozitul pe profit: retry idempotent; pierderea se memoreaza si la impozit 0
 db.get().entries.push({ id: 'cl-svc-dbl', firmaId: fidOk, data: '2036-12-31', period: '2036-12', tip: 'impozit_profit', tipNume: 'Impozit pe profit', lines: [], system: true });
-eq('impozitul deja inregistrat pe an -> 400', errStatus(() => clsvc.closeProfitTax(fidOk, {}, '2036')), 400);
+ok('impozitul deja inregistrat pe an -> succes idempotent', clsvc.closeProfitTax(fidOk, {}, '2036').idempotent === true);
 db.get().entries = db.get().entries.filter((e) => e.id !== 'cl-svc-dbl');
 const cpt = clsvc.closeProfitTax(fidOk, {}, '2035');
 ok('an fara profit: posted=false + pierderea de reportat memorata pe firma', cpt.posted === false && firmaCl.pierdereFiscala['2035'] !== undefined);
 const pierdereInainteBlocaj = JSON.stringify(firmaCl.pierdereFiscala);
-firmaCl.lockedUntil = '2038-12';
-eq('impozit pe profit in an inchis -> 400 inainte de efecte laterale', errStatus(() => clsvc.closeProfitTax(fidOk, {}, '2038')), 400);
+firmaCl.lockedUntil = '2037-12';
+eq('impozit pe profit inainte de blocarea lui decembrie -> 400 inainte de efecte laterale', errStatus(() => clsvc.closeProfitTax(fidOk, {}, '2038')), 400);
 eq('refuzul nu modifica reportul pierderii fiscale', JSON.stringify(firmaCl.pierdereFiscala), pierdereInainteBlocaj);
-firmaCl.lockedUntil = '2035-02';
+firmaCl.lockedUntil = '2037-12';
 // D107 trebuie să poată fi refăcută DUPĂ închidere: serviciul păstrează atât instantaneul
 // declarației, cât și bucket-ul rămas pe beneficiar pentru anul următor.
 const prevD107History = firmaCl.d107Istoric;
@@ -653,11 +727,37 @@ delete db.get().partners[fidOk]['14399840'];
 if (prevD107History === undefined) delete firmaCl.d107Istoric; else firmaCl.d107Istoric = prevD107History;
 if (prevSponsorDetail === undefined) delete firmaCl.sponsorizareReportDetaliat; else firmaCl.sponsorizareReportDetaliat = prevSponsorDetail;
 if (prevSponsorReport === undefined) delete firmaCl.sponsorizareReport; else firmaCl.sponsorizareReport = prevSponsorReport;
-// repartizarea rezultatului: sold 121 zero -> nimic de repartizat
-ok('121 zero: posted=false, fara nota', clsvc.distributeResult(fidOk, '2035').posted === false && !db.get().entries.some((e) => e.firmaId === fidOk && e.tip === 'repartizare_rezultat' && e.period === '2035-12'));
+// repartizarea rezultatului: data este din anul urmator si este legata de hotararea AGA.
+firmaCl.lockedUntil = '2035-12';
+const agaZero = { numar: '1/2036', data: '2036-03-01' };
+ok('121 zero: posted=false, dar hotararea AGA este validata', clsvc.distributeResult(fidOk, '2035', agaZero.data, agaZero).posted === false
+  && clsvc.distributeResult(fidOk, '2035', agaZero.data, agaZero).data === agaZero.data
+  && !db.get().entries.some((e) => e.firmaId === fidOk && e.tip === 'repartizare_rezultat' && e.rezultatAn === '2035'));
+eq('repartizare fara numarul AGA -> 400', errStatus(() => clsvc.distributeResult(fidOk, '2035', '2036-03-01')), 400);
+eq('repartizare cu data invalida -> 400', errStatus(() => clsvc.distributeResult(fidOk, '2035', '2036-02-30', { numar: '2', data: '2036-02-30' })), 400);
+eq('repartizare in acelasi an cu rezultatul -> 400', errStatus(() => clsvc.distributeResult(fidOk, '2035', '2035-12-31', { numar: '2', data: '2035-12-31' })), 400);
+const fidDist = 7790;
+db.get().firme.push({ id: fidDist, nume: 'REPARTIZARE TEST SRL', cui: '7790', lockedUntil: '2040-12' });
+db.get().entries.push({ id: 'cl-dist-profit', firmaId: fidDist, data: '2040-12-31', period: '2040-12',
+  tip: 'inchidere_an', tipNume: 'Inchidere test', status: 'postat', system: true,
+  lines: [{ debit: '704', credit: '121', suma: 1000 }] });
+const dist = clsvc.distributeResult(fidDist, '2040', '2041-03-15', { numar: '3/2041', data: '2041-03-15' });
+const distEntry = db.get().entries.find((e) => e.firmaId === fidDist && e.tip === 'repartizare_rezultat');
+ok('repartizarea se posteaza in anul urmator chiar daca decembrie e blocat', dist.posted === true
+  && dist.data === '2041-03-15' && distEntry.data === '2041-03-15' && distEntry.period === '2041-03'
+  && distEntry.rezultatAn === '2040');
+ok('a doua repartizare a aceluiasi rezultat -> succes idempotent',
+  clsvc.distributeResult(fidDist, '2040', '2041-04-01', { numar: '4/2041', data: '2041-04-01' }).idempotent === true);
+db.getFirma(fidDist).lockedUntil = '2043-01';
+eq('repartizarea este refuzata daca perioada din anul urmator e blocata',
+  errStatus(() => clsvc.distributeResult(fidDist, '2042', '2043-01-15', { numar: '1/2043', data: '2043-01-15' })), 400);
+db.get().entries = db.get().entries.filter((e) => e.firmaId !== fidDist);
+db.get().firme = db.get().firme.filter((f) => f.id !== fidDist);
 // restaurare
 firmaCl.lockedUntil = prevLockCl;
 if (prevLossCl === undefined) delete firmaCl.pierdereFiscala; else firmaCl.pierdereFiscala = prevLossCl;
+if (prevAnnualHistoryCl === undefined) delete firmaCl.annualCloseHistory; else firmaCl.annualCloseHistory = prevAnnualHistoryCl;
+if (prevProfitHistoryCl === undefined) delete firmaCl.profitTaxHistory; else firmaCl.profitTaxHistory = prevProfitHistoryCl;
 
 section('Service layer salarizare (src/payrollService.js)');
 const paysvc = require('../../src/payrollService');
@@ -773,7 +873,7 @@ ok('instantaneul salarial v3 este legat de articol si pastreaza randul complet p
 // adevarata, fiindca `payrollHistory` se inlocuia. Dar ARTICOLUL se adauga: a doua apasare dubla
 // tacut 641=421 si toate retinerile, iar istoricul continua sa arate o singura luna, deci nimic
 // nu tradea dublura. Jurnalul e append-only: statul se posteaza o data, corectia se face prin storno.
-eq('repostarea aceleiasi luni e REFUZATA (jurnal append-only)', errStatus(() => paysvc.postStatPlata(7788, '2026-06', stubDeps)), 400);
+eq('repostarea aceleiasi luni e REFUZATA (jurnal append-only)', errStatus(() => paysvc.postStatPlata(7788, '2026-06', stubDeps)), 409);
 eq('articolul de salarii ramane unul singur', db.get().entries.filter((e) => e.firmaId === 7788 && e.tip === 'stat_plata' && e.period === '2026-06').length, 1);
 eq('si instantaneul lunar tot unul', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
 // Data articolului e ultima zi REALA a lunii, nu „ziua 30". Postarea retroactiva este blocata:
@@ -810,7 +910,7 @@ paysvc.upsertAngajat(7788, { id: angR.id, nume: 'Ion Salariat', salariuBrut: 900
 const payR = paysvc.paySalaries(7788, '2026-06', 'cont-gresit', stubDeps);
 ok('plata: suma = restul de plata, cont implicit 5121', payR.suma > 0 && payR.suma === spR.totals.restPlata && payR.cont === '5121');
 eq('a doua plata integrala a aceleiasi luni este refuzata',
-  errStatus(() => paysvc.paySalaries(7788, '2026-06', '5311', stubDeps)), 400);
+  errStatus(() => paysvc.paySalaries(7788, '2026-06', '5311', stubDeps)), 409);
 eq('statul nu se storneaza inaintea platii active',
   errStatus(() => esvc.stornoEntry(spR.entry.id, 7788, () => true, '2027-03-02')), 409);
 esvc.stornoEntry(payR.entry.id, 7788, () => true, '2027-03-02');
@@ -1046,7 +1146,7 @@ section('Harta lunii: banda din frontend deriva din pasii inchiderii');
   const monthlyClose = require('../../src/monthlyClose');
   const appSrc = require('fs').readFileSync(require('path').join(RADACINA, 'public', 'app.js'), 'utf8');
   const bloc = (appSrc.match(/const PASII_LUNII = \[([\s\S]*?)\];/) || [])[1] || '';
-  const dinFront = [...bloc.matchAll(/\{\s*key:\s*'([a-z]+)',\s*tab:\s*(?:'([a-z]+)'|null)/g)]
+  const dinFront = [...bloc.matchAll(/\{\s*key:\s*'([a-z_]+)',\s*tab:\s*(?:'([a-z-]+)'|null)/g)]
     .map((m) => ({ key: m[1], tab: m[2] || null }));
   const dinServer = monthlyClose.STEPS.map((s) => ({ key: s.key, tab: s.tab || null }));
 
@@ -1387,6 +1487,66 @@ section('Extras bancar — parsere CSV / MT940 + sugestii (src/bank.js)');
   eq('potrivire bancara: factura stinsa legata', sugM[0].potrivire.facturi[0].doc, 'ALX 1024');
   eq('potrivire bancara: documentul facturii pre-completat pe potrivirea exacta', sugM[0].fields.document, 'ALX 1024');
   eq('potrivire bancara: legatura de decontare (stinge) propusa spre confirmare', JSON.stringify(sugM[0].stinge), JSON.stringify(['inv1']));
+
+  const bsr = require('../../src/bankStatements');
+  const camtMulti = '<Document><BkToCstmrStmt>'
+    + '<Stmt><Id>S-RON</Id><FrToDt><FrDtTm>2026-08-01T00:00:00</FrDtTm><ToDtTm>2026-08-31T23:59:59</ToDtTm></FrToDt>'
+    + '<Acct><Id><IBAN>RO49AAAA1B31007593840000</IBAN></Id><Ccy>RON</Ccy></Acct>'
+    + '<Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy="RON">100</Amt><CdtDbtInd>CRDT</CdtDbtInd></Bal>'
+    + '<Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="RON">150</Amt><CdtDbtInd>CRDT</CdtDbtInd></Bal>'
+    + '<Ntry><NtryRef>RON-1</NtryRef><Amt Ccy="RON">50</Amt><CdtDbtInd>CRDT</CdtDbtInd><BookgDt><Dt>2026-08-10</Dt></BookgDt><AddtlNtryInf>Incasare RON</AddtlNtryInf></Ntry></Stmt>'
+    + '<Stmt><Id>S-EUR</Id><Acct><Id><IBAN>GB82WEST12345698765432</IBAN></Id><Ccy>EUR</Ccy></Acct>'
+    + '<Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">200</Amt><CdtDbtInd>CRDT</CdtDbtInd></Bal>'
+    + '<Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="EUR">180</Amt><CdtDbtInd>CRDT</CdtDbtInd></Bal>'
+    + '<Ntry><NtryRef>EUR-1</NtryRef><Amt Ccy="EUR">20</Amt><CdtDbtInd>DBIT</CdtDbtInd><BookgDt><Dt>2026-08-11</Dt></BookgDt><AddtlNtryInf>Plata EUR</AddtlNtryInf></Ntry></Stmt>'
+    + '</BkToCstmrStmt></Document>';
+  const multi = bank.parseDetailed(camtMulti);
+  eq('CAMT complet: doua <Stmt> inseamna doua extrase/IBAN-uri', multi.length, 2);
+  eq('CAMT complet: identitate + moneda pe fiecare extras', multi.map((s) => s.iban + '/' + s.currency).join('|'),
+    'RO49AAAA1B31007593840000/RON|GB82WEST12345698765432/EUR');
+  eq('CAMT complet: soldurile de deschidere/inchidere sunt pastrate', multi.map((s) => s.openingBalance + '>' + s.closingBalance).join('|'), '100>150|200>180');
+  ok('IBAN: validare ISO mod 97 pentru conturi RO si GB', bsr.validIban(multi[0].iban) && bsr.validIban(multi[1].iban));
+  eq('hash fisier: acelasi continut are aceeasi identitate', bsr.fileHash(Buffer.from(camtMulti)), bsr.fileHash(Buffer.from(camtMulti)));
+  const k1 = bsr.transactionKey(multi[0], multi[0].transactions[0], 1);
+  eq('identificator tranzactie: acelasi ID bancar pe acelasi IBAN este stabil', k1, bsr.transactionKey(multi[0], multi[0].transactions[0], 9));
+  ok('identificator tranzactie: IBAN-ul izoleaza aceeasi referinta intre conturi',
+    k1 !== bsr.transactionKey(multi[1], Object.assign({}, multi[1].transactions[0], { externalId: 'RON-1' }), 1));
+
+  const st = { id: 'bst-test', iban: multi[0].iban, currency: 'RON', openingBalance: 100, closingBalance: 150,
+    periodFrom: '2026-08-01', periodTo: '2026-08-31' };
+  const tx = { id: 'btx-test', statementId: st.id, bookingDate: '2026-08-10', amount: 50, direction: 'in', currency: 'RON', status: 'postata', entryId: 'be-test' };
+  const be = { id: 'be-test', data: '2026-08-10', period: '2026-08', bankTransactionId: tx.id, bankStatementId: st.id,
+    bankAccount: { iban: st.iban, currency: 'RON', amount: 50, direction: 'in' },
+    lines: [{ debit: '5121', credit: '4111', suma: 50 }] };
+  const verdict = bsr.summarize(st, [tx], [be], [tx]);
+  ok('extras complet: formula si dovada in jurnal dau diferenta zero', verdict.ok && verdict.difference === 0 && verdict.calculatedClosing === 150);
+  ok('soldurile lipsa raman lipsa (null nu este transformat tacit in zero)',
+    bsr.summarize(Object.assign({}, st, { openingBalance: null }), [tx], [be], [tx]).metadataMissing.includes('sold inițial'));
+  ok('extras dezechilibrat: diferenta aritmetica nu poate fi mascata de articol',
+    !bsr.summarize(Object.assign({}, st, { closingBalance: 151 }), [tx], [be], [tx]).ok);
+  ok('stare propusa: miscarea fara articol ramane diferenta de reconciliere',
+    bsr.summarize(st, [Object.assign({}, tx, { status: 'propusa', entryId: null })], [], [tx]).difference === 50);
+  const outside = bsr.summarize(st, [Object.assign({}, tx, { bookingDate: '2026-09-01' })], [be], [tx]);
+  ok('extrasul refuza o tranzactie in afara intervalului declarat', !outside.ok
+    && outside.integrityProblems.some((p) => p.code === 'transaction-outside-statement'));
+  const crossedProof = bsr.summarize(st, [tx], [Object.assign({}, be, { bankTransactionId: 'alta-tranzactie' })], [tx]);
+  ok('o suma egala fara legatura inversa la tranzactia exacta nu este dovada bancara', !crossedProof.ok && crossedProof.orphaned === 1);
+  const linkedTwice = [{ id: 'ex-1', statementId: st.id, bookingDate: '2026-08-10', amount: 50, direction: 'in', currency: 'RON', status: 'exclusa', linkedEntryId: be.id },
+    { id: 'ex-2', statementId: st.id, bookingDate: '2026-08-11', amount: 50, direction: 'in', currency: 'RON', status: 'exclusa', linkedEntryId: be.id }];
+  const reusedProof = bsr.summarize(Object.assign({}, st, { closingBalance: 200 }), linkedTwice, [be], linkedTwice);
+  ok('acelasi articol nu poate dovedi doua linii distincte ale aceluiasi extras', !reusedProof.ok && reusedProof.orphaned === 1);
+  const ctlBank = bsr.periodControl({ company: { bankReconciliationFrom: '2026-08' }, bankStatements: [st], bankTransactions: [tx], entries: [be] }, '2026-08');
+  ok('cockpit banca: extrasul complet si toate miscarile legate dau zero', ctlBank.required && ctlBank.ok && ctlBank.difference === 0);
+  const ctlOrfan = bsr.periodControl({ company: { bankReconciliationFrom: '2026-08' }, bankStatements: [st], bankTransactions: [tx], entries: [be,
+    { id: 'manual-bank', data: '2026-08-12', period: '2026-08', lines: [{ debit: '5121', credit: '461', suma: 10 }] }] }, '2026-08');
+  ok('cockpit banca: articolul 5121 fara tranzactie din extras blocheaza luna', !ctlOrfan.ok && ctlOrfan.unlinkedEntries.length === 1);
+  const st2 = { id: 'bst-test-2', iban: st.iban, currency: 'RON', openingBalance: 149, closingBalance: 149,
+    periodFrom: '2026-08-16', periodTo: '2026-08-31' };
+  const st1 = Object.assign({}, st, { periodFrom: '2026-08-01', periodTo: '2026-08-15' });
+  const ctlContinuity = bsr.periodControl({ company: { bankReconciliationFrom: '2026-08' }, bankStatements: [st1, st2],
+    bankTransactions: [tx], entries: [be] }, '2026-08');
+  ok('cockpit banca: doua extrase succesive pe acelasi IBAN trebuie sa aiba solduri continue',
+    !ctlContinuity.ok && ctlContinuity.continuity.length === 1 && ctlContinuity.continuityDifference === 1);
 }
 
 section('Extractor — euristici pe text de factura (src/extractor.js)');
@@ -1674,6 +1834,27 @@ section('Migrari DB versionate (src/migrations.js)');
   eq('produs fara camp -> activ:true', dMig.products[0].activ, true);
   eq('produs dezactivat -> ramane false', dMig.products[1].activ, false);
   eq('produs activ -> ramane true (idempotent)', dMig.products[2].activ, true);
+  const bootstrapAdmin = dMig.users.find((u) => u.role === 'admin');
+  ok('instalarea nouă nu mai creează credentialul predictibil admin/admin',
+    bootstrapAdmin && !require('../../src/auth').verifyPassword('admin', bootstrapAdmin.salt, bootstrapAdmin.hash)
+      && bootstrapAdmin.mustChange === true);
+}
+
+{
+  const dFiscal = { firme: [{ id: 7 }], partners: {}, openingBalances: {}, settings: {},
+    fiscal_profile_history: [
+      { id: 'fpr-vechi-1', firmaId: 7, validFrom: '2025-01-01', values: { regimImpozit: 'micro' }, createdAt: '2025-02-03T10:11:12.000Z' },
+      { id: 'fpr-vechi-2', firmaId: 7, validFrom: '2026-01-01', values: { regimImpozit: 'profit' } },
+    ] };
+  db.migrate(dFiscal);
+  const legacyMoment = dFiscal.fiscal_profile_history.find((x) => x.id === 'fpr-vechi-1');
+  const migrationMoment = dFiscal.fiscal_profile_history.find((x) => x.id === 'fpr-vechi-2');
+  eq('profil fiscal temporal: createdAt legacy devine recordedAt canonic',
+    legacyMoment.recordedAt, '2025-02-03T10:11:12.000Z');
+  ok('profil fiscal temporal: lipsa momentului vechi este consemnată onest la migrare',
+    /^\d{4}-\d{2}-\d{2}T/.test(migrationMoment.recordedAt)
+      && migrationMoment.recordedAtSource === 'database-migration');
+  eq('profil fiscal temporal: validTo este derivat ca limită exclusivă', legacyMoment.validTo, '2026-01-01');
 }
 
 {
@@ -1751,6 +1932,53 @@ section('Migrari DB versionate (src/migrations.js)');
     ok('firma fara istoric nu capata camp', d5.firme[3].pierderiFiscale === undefined);
     d5.schemaVersion = 4;
     ok('v5 e idempotent', mig.runMigrations(d5, { log: quiet }).some((x) => x.v === 5 && x.changed === 0));
+  }
+  {
+    const filings = require('../../src/declarations');
+    const bytes = Buffer.from('<d300 importat="1"/>');
+    const hash = require('crypto').createHash('sha256').update(bytes).digest('hex');
+    const d6 = { schemaVersion: 5, firme: [{ id: 5 }], declarations: [{
+      id: 'dcl-importat', firmaId: 5, tip: 'd300', period: '2026-06', status: 'depusa',
+      dossier: Object.assign(filings.dossierIdentity(5, 'd300', '2026-06'), { createdAt: '2026-07-01T00:00:00.000Z' }),
+      artifactHash: hash, artifacts: [{ sha256: hash, bytes: bytes.length, filename: 'd300.xml',
+        mime: 'application/xml', contentBase64: bytes.toString('base64') }],
+      importedSourceDocumentApprovals: [{ dossierId: 'dd_sursa', dossierKey: '1|d300|2026-06', approvalHash: 'a'.repeat(64) }],
+      transmittedArtifactHash: hash, transmittedApprovalHash: 'a'.repeat(64),
+      depuneri: [{ ordinal: 1, submittedArtifactHash: hash }],
+      stateEvents: [{ evidence: { importedSourceChainHash: 'b'.repeat(64) } }], stateChainHash: 'c'.repeat(64),
+    }] };
+    const ap6 = mig.runMigrations(d6, { log: quiet });
+    const migrated = d6.declarations[0];
+    ok('v6 separă dosarul-sursă fără să-i atribuie aprobarea/depunerea noii firme',
+      ap6.some((x) => x.v === 6 && x.changed === 1)
+        && migrated.status === 'generata' && migrated.depuneri.length === 0
+        && !migrated.transmittedArtifactHash && migrated.documentApprovals.length === 0);
+    ok('v6 păstrează dovada recuperabilă într-un pachet opac cu hash verificabil',
+      migrated.importedSourceFilingEvidence
+        && /^[a-f0-9]{64}$/.test(migrated.importedSourceFilingEvidence.evidenceHash)
+        && require('../../src/globalChain').verifyGraph(d6).ok);
+  }
+  {
+    const d7 = {
+      schemaVersion: 6,
+      firme: [{ id: 1, ownerId: 7 }, { id: 2 }],
+      users: [
+        { id: 7, role: 'user', firme: [1, 2] },
+        { id: 8, role: 'user', firme: [1, 2], firmaRoluri: { 1: 'operator' } },
+        { id: 1, role: 'admin', firme: [] },
+      ],
+    };
+    const ap7 = mig.runMigrations(d7, { log: quiet });
+    ok('v7 materializează explicit drepturile colaboratorilor istorici',
+      ap7.some((x) => x.v === 7 && x.changed === 2)
+        && d7.users[0].firmaRoluri['2'] === 'aprobator'
+        && d7.users[1].firmaRoluri['2'] === 'aprobator');
+    ok('v7 nu suprascrie rolul explicit și nu inventează rol pentru proprietar/admin',
+      d7.users[1].firmaRoluri['1'] === 'operator'
+        && !d7.users[0].firmaRoluri['1'] && !d7.users[2].firmaRoluri);
+    d7.schemaVersion = 6;
+    ok('v7 este idempotentă pe date deja materializate',
+      mig.runMigrations(d7, { log: quiet }).some((x) => x.v === 7 && x.changed === 0));
   }
   // re-rulare pe baza deja migrata: idempotent prin VERSIUNE (niciun pas)
   const applied2 = mig.runMigrations(dOld, { log: quiet });

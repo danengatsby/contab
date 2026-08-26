@@ -1,6 +1,6 @@
 'use strict';
 
-// Identitatea persoanelor si a firmelor: CNP (patronul, persoana fizica) si CUI (firma).
+// Identitatea persoanelor si a firmelor: CNP (cand un flux fiscal il cere) si CUI (firma).
 // Ambele au cifra de control, deci o greseala de tastare se prinde ACUM, nu peste o luna cand
 // firma s-a dublat sub un CUI aproape identic. Validarea nu inlocuieste verificarea la ANAF —
 // spune doar ca sirul e format corect, nu ca titularul exista.

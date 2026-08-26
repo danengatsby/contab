@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Contabo — Contabilitate românească, automatizată</title>
-  <meta name="description" content="Contabo: de la documentul scanat la declarația ANAF. Articole contabile automate, e-Factura, D300/D394/D112, SAF-T, salarizare, stocuri, situații financiare (bilanț, profit și pierdere, anexe), portofoliu multi-firmă și notificări de termene fiscale." />
+  <meta name="description" content="Contabo este un asistent contabil cu validare umană: de la documentul scanat la declarația ANAF pregătită pentru verificare. Articole contabile, e-Factura, declarații, salarizare, stocuri și situații financiare." />
   <link rel="stylesheet" href="/prezentare.css">
   <link rel="stylesheet" href="/u.css">
 </head>
@@ -31,18 +31,24 @@
     </div>
   </nav>
 
+  <div class="test-stage-notice" role="alert">
+    <div class="wrap"><span aria-hidden="true">⚠️</span><p><b>Folosește doar date fictive în etapa de test.</b>
+      Furnizorul nu este încă identificat juridic; nu încărca documente și nu introduce date despre
+      persoane sau firme reale. <a href="/termeni.html">Detalii în Termeni</a>.</p></div>
+  </div>
+
   <!-- ─────────────── HERO ─────────────── -->
   <header class="hero">
     <div class="wrap">
       <div>
         <span class="kicker">Contabilitate românească · OMFP 1802/2014 · parametri fiscali 2026</span>
-        <h1>De la documentul scanat la <em>declarația ANAF</em>, automat.</h1>
+        <h1>De la documentul scanat la <em>declarația ANAF</em>, cu control uman.</h1>
         <p class="sub">Aduci documentele — Contabo construiește articolul contabil, ține registrele,
           calculează TVA-ul și îți pregătește D300, D394, D112, e-Factura și SAF-T.
-          Tu doar verifici și confirmi.</p>
+          Este un asistent contabil: tu și contabilul autorizat verificați și confirmați; aplicația nu garantează singură tratamentul fiscal.</p>
         <div class="cta">
           <a class="btn primary" href="/?register=1">Începe proba gratuită — 30 de zile</a>
-          <button class="btn ghost" id="demoBtn">Vezi demo cu date reale</button>
+          <button class="btn ghost" id="demoBtn">Vezi demo cu date fictive</button>
         </div>
         <ul class="checks">
           <li>Fără card bancar</li>
@@ -106,7 +112,7 @@
       <div class="stat"><b>137</b> tipuri de operațiuni contabile gata pregătite</div>
       <div class="stat"><b>14</b> declarații și situații: D300 · D301 · D307 · D311 · D394 · D390 · D205 · D112 · D100 · D101 · D107 · SAF-T · Intrastat · bilanț</div>
       <div class="stat"><b>F10 + F20</b> depuse electronic, cu anexele complete în același PDF</div>
-      <div class="stat"><b>0</b> versiuni publicate fără trecerea prin validatorul ANAF</div>
+      <div class="stat"><b>Poartă de release</b> pentru formatele fiscale suportate, prin DUKIntegrator/XSD</div>
     </div>
   </div>
 
@@ -151,7 +157,7 @@
             <ul>
               <li><b>Facturi primite</b> — tragi PDF-ul sau o poză; AI-ul citește furnizorul, CUI-ul, baza, TVA-ul și totalul.</li>
               <li><b>Facturi emise</b> — completezi clientul și liniile; primești e-Factura XML pentru SPV + PDF, cu număr în serie continuă.</li>
-              <li><b>Extras bancar</b> — CSV/MT940; încasările și plățile se potrivesc singure cu partenerii.</li>
+              <li><b>Extras bancar</b> — CSV/MT940/CAMT.053; păstrează IBAN, solduri și hash, iar tu confirmi punctajul.</li>
               <li><b>Bonuri și scanate</b> — inclusiv direct de la scanerul local.</li>
             </ul>
           </div>
@@ -160,7 +166,7 @@
           <p>Aplicația construiește articolul contabil — tu doar verifici și salvezi.</p>
           <div class="pop"><span class="pt">Ce se întâmplă automat</span>
             <ul>
-              <li><b>~100 de tipuri de operațiuni</b>: vânzări, cumpărări, salarii, leasing, avansuri facturate, efecte de comerț, valută…</li>
+              <li><b>137 de tipuri de operațiuni</b>: vânzări, cumpărări, salarii, leasing, avansuri facturate, efecte de comerț, valută…</li>
               <li><b>TVA pe cote</b> (21% / 11% / scutit), inclusiv taxare inversă, TVA la încasare și facturi de avans.</li>
               <li><b>Stocurile se descarcă automat</b> la cost mediu ponderat, pe gestiuni.</li>
               <li>Partenerii, seriile și analiticele se rețin singure.</li>
@@ -197,7 +203,7 @@
           <div class="pop"><span class="pt">Ce face aplicația</span>
             Primești e-Factura XML pentru SPV, PDF-ul pentru client și înregistrarea <code>4111 = 704 + 4427</code>.
             La încasare, un click închide creanța.</div></div>
-        <div class="aex hv" tabindex="0"><i class="hint-i">i</i><b>Exemplu:</b> la sfârșit de lună apeși „Închide TVA"
+        <div class="aex hv" tabindex="0"><i class="hint-i">i</i><b>Exemplu:</b> la sfârșit de lună apeși „Regularizează TVA"
           <div class="pop"><span class="pt">Ce face aplicația</span>
             4427 se compensează cu 4426 și afli exact <b>cât ai de plată</b> (<code>4423</code>) sau de recuperat (<code>4424</code>).
             Decontul D300 e deja completat, defalcat pe cote.</div></div>
@@ -214,7 +220,7 @@
       <div class="grid">
         <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🤖</span><b>Documente citite cu AI</b><div class="pop">Încarci factura (PDF sau poză) — tipul, sumele și partenerul se completează singure.</div></div>
         <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🧾</span><b>e-Factura (CIUS-RO)</b><div class="pop">Emitere cu XML UBL pentru SPV, trimitere cu recipisă, import e-Factura primită.</div></div>
-        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🏦</span><b>Bancă & reconciliere</b><div class="pop">Import extras (CSV/MT940), potrivire automată cu partenerii, control sold și plafoane numerar.</div></div>
+        <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🏦</span><b>Bancă & reconciliere</b><div class="pop">CSV/MT940/CAMT.053, protecție la reimport, punctaj confirmat și diferență zero înainte de închiderea lunii.</div></div>
         <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🧮</span><b>TVA & declarații</b><div class="pop">Jurnale de vânzări/cumpărări, D300, D394, D390, D205 — defalcate pe cote, cu validare pre-depunere.</div></div>
         <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">📦</span><b>Stocuri & producție</b><div class="pop">Gestiuni la cost mediu ponderat, NIR, bon de consum, inventar cu proces-verbal, rețete/BOM.</div></div>
         <div class="feat hv" tabindex="0"><i class="hint-i">i</i><span class="ic">👥</span><b>Salarizare</b><div class="pop">State de plată cu cotele 2026, deducere personală, fluturași, adeverințe, D112.</div></div>
@@ -234,13 +240,14 @@
       <p class="kicker">Pentru contabili și firme cu portofoliu</p>
       <h2>Conformitatea, supravegheată dintr-un singur ecran</h2>
       <p class="lead">Dacă ții mai multe firme, Contabo îți arată în orice moment unde ești cu declarațiile:
-        ce e depus, ce e restant, cine are erori — fără să deschizi fiecare firmă în parte.</p>
+        ce e depus, ce e restant, cine are erori — fără să deschizi fiecare firmă în parte.
+        Portofoliul este comun, iar abonarea rămâne separată: <b>99 lei/lună/firmă</b>.</p>
       <p class="hint">Treci cu mouse-ul sau atinge un panou pentru detalii.</p>
       <div class="pillars">
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🗂</span><b>Portofoliu multi-firmă</b>
           <div class="pop">Vedere agregată peste toate firmele: declarații generate, transmise, depuse ori restante, % conformitate și atenționări.</div></div>
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">📋</span><b>Registrul depunerilor</b>
-          <div class="pop">Fiecare declarație cu termenul legal și artefactul exact: generată, transmisă, apoi depusă numai cu numărul recipisei ANAF.</div></div>
+          <div class="pop">Fiecare declarație cu termenul legal și artefactul exact: generată, aprobată pe SHA-256, transmisă, apoi depusă numai cu numărul recipisei ANAF.</div></div>
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🔔</span><b>Notificări de termene</b>
           <div class="pop">Restanțele și termenele din următoarele 7 zile, în aplicație și pe email, zilnic — pe toate firmele tale.</div></div>
         <div class="pillar hv" tabindex="0"><i class="hint-i">i</i><span class="ic">🏛</span><b>Fișa Rol din SPV</b>
@@ -261,7 +268,7 @@
         <li tabindex="0"><b>Emiți facturile tale</b><span class="mut">Clientul + liniile (cantitate × preț × cotă); numărul vine în serie continuă, iar e-Factura XML + PDF se generează automat.</span></li>
         <li tabindex="0"><b>Bagi banca</b><span class="mut">Încarci extrasul, aplicația potrivește încasările și plățile cu partenerii; în Reconciliere confirmi soldul.</span></li>
         <li tabindex="0"><b>Verifici rapoartele</b><span class="mut">Registru-jurnal, cartea mare, balanța (debit = credit), decontul de TVA pe cote — toate deja generate.</span></li>
-        <li tabindex="0"><b>Închizi luna</b><span class="mut">Amortizare, închidere TVA, apoi generezi și transmiți declarațiile; le marchezi „depuse” numai după recipisa ANAF.</span></li>
+        <li tabindex="0"><b>Închizi luna</b><span class="mut">Amortizare, regularizare TVA, apoi generezi și transmiți declarațiile; blocarea vine la final, după verificare și recipisele ANAF.</span></li>
       </ol>
     </div>
   </section>
@@ -270,11 +277,11 @@
   <section id="incredere">
     <div class="wrap">
       <p class="kicker">De ce poți avea încredere</p>
-      <h2>Fiecare versiune trece prin validatorul oficial ANAF</h2>
+      <h2>Fiecare versiune trece printr-o poartă tehnică pentru formatele fiscale suportate</h2>
       <p class="lead">Nu spunem „conform ANAF" și atât. <b>Înainte ca o versiune să ajungă la tine</b>,
-        declarațiile pe care le generează aplicația sunt trecute prin <b>DUKIntegrator — validatorul
-        publicat de ANAF</b> — și prin schema oficială XSD pentru e-Transport. Dacă o singură
-        declarație e respinsă, versiunea nu se publică.</p>
+        fișierele fiscale de referință din perimetrul menținut sunt trecute prin <b>DUKIntegrator — validatorul
+        publicat de ANAF</b> — sau prin schema oficială XSD aplicabilă. Dacă un fișier este respins,
+        versiunea nu se publică.</p>
       <div class="poarta">
         <div class="poarta-c">
           <b>„N-am putut verifica" nu înseamnă „e bine"</b>
@@ -282,9 +289,9 @@
             versiunea tot nu se publică. Absența unei verificări nu e tratată ca o verificare trecută.</p>
         </div>
         <div class="poarta-c">
-          <b>Verificat pe fiecare declarație</b>
-          <p>D300, D301, D307, D311, D394, D390, D205, D112, D100, D101, D107, SAF-T (D406) în toate variantele, plus
-            situațiile financiare S1120/S1121 și e-Transport — toate, la fiecare versiune.</p>
+          <b>Verificat pe referințele suportate</b>
+          <p>D300, D301, D307, D311, D394, D390, D205, D112, D100, D101, D107 și SAF-T (D406), plus
+            situațiile financiare S1120/S1121/S1122 și e-Transport — în variantele menținute de poarta de release.</p>
         </div>
         <div class="poarta-c">
           <b>Cotele stau într-un singur loc, datate</b>
@@ -292,8 +299,9 @@
             deducerea personală după grila în vigoare — configurabile, dacă legea se schimbă înaintea noastră.</p>
         </div>
       </div>
-      <p class="fineprint">Validarea de mai sus privește <b>formatul</b> declarațiilor generate de aplicație.
-        Declarația <b>ta</b>, cu cifrele tale, se validează tot cu DUKIntegrator înainte de depunere —
+      <p class="fineprint">Validarea de mai sus privește <b>formatul și corelațiile tehnice</b> ale fișierelor.
+        Nu confirmă încadrarea legală, tratamentul fiscal sau substanța cifrelor firmei. Declarația
+        <b>ta</b>, cu cifrele tale, se validează din nou cu DUKIntegrator înainte de depunere —
         vezi „Ce face aplicația și ce rămâne la tine".</p>
     </div>
   </section>
@@ -302,8 +310,8 @@
   <section class="alt" id="preturi">
     <div class="wrap">
       <p class="kicker">Prețuri</p>
-      <h2>Simplu: toate funcțiile, în fiecare plan</h2>
-      <p class="lead">Începi cu <b>30 de zile gratuit, fără card</b>. Planurile plătite se diferențiază doar prin preț — funcțiile sunt aceleași, complete.</p>
+      <h2>99 lei/lună/firmă, în Start sau Pro</h2>
+      <p class="lead">Începi cu <b>30 de zile gratuit, fără card</b>. Start și Pro au același preț și aceleași funcții; Start pornește în modul Simplu pentru antreprenori, iar Pro în modul Expert pentru contabili.</p>
       <div class="plans" id="plansGrid"><p data-u="u167">Se încarcă prețurile…</p></div>
     </div>
   </section>
@@ -313,7 +321,7 @@
     <div class="wrap">
       <p class="kicker">Onest despre conformitate</p>
       <h2>Ce face aplicația — și ce rămâne la tine</h2>
-      <p class="lead">Contabo te duce aproape de capăt: contabilitate corectă + formatele ANAF. Ultimii pași rămân, ca la orice soft, în grija ta:</p>
+      <p class="lead">Contabo te duce aproape de capăt: înregistrări și controale contabile + formatele ANAF suportate. Ultimii pași rămân, ca la orice soft, în grija ta:</p>
       <div class="honest">
         <ul>
           <li><b>Validează declarațiile</b> (D300, D394, D112, SAF-T) cu <b>DUKIntegrator</b> / XSD ANAF înainte de depunere — până atunci sunt ciorne.</li>
@@ -334,7 +342,7 @@
       <h2>Pe scurt</h2>
       <details><summary>Trebuie să știu contabilitate ca să folosesc aplicația?</summary><p>Nu. Alegi tipul documentului în limbaj simplu („factură de la furnizor", „încasare de la client"), iar aplicația pune conturile corecte. Există ghid pas cu pas și tur ghidat la prima logare.</p></details>
       <details><summary>Ce se întâmplă după cele 30 de zile de probă?</summary><p>Datele rămân. Alegi un plan plătit și continui exact de unde ai rămas — nimic nu se pierde.</p></details>
-      <details><summary>Pot ține mai multe firme?</summary><p>Da — aplicația e multi-firmă: comuți între firme dintr-un selector, fiecare cu datele, partenerii și declarațiile ei. Tab-ul Portofoliu îți arată conformitatea pe toate deodată.</p></details>
+      <details><summary>Pot ține mai multe firme?</summary><p>Da — aplicația e multi-firmă: comuți între firme dintr-un selector, fiecare cu datele, partenerii și declarațiile ei. Tab-ul Portofoliu îți arată conformitatea pe toate deodată. Abonamentul este separat pentru fiecare: <b>99 lei/lună/firmă</b>.</p></details>
       <details><summary>Micro sau impozit pe profit?</summary><p>Micro (1% din venituri) avantajează marjele mari; impozitul pe profit (16%) poate fi mai bun la marje mici. Aplicația îți arată comparativ ambele calcule, iar decizia o iei cu contabilul tău.</p></details>
       <details><summary>Datele mele sunt în siguranță?</summary><p>Cont propriu cu parolă și opțional 2FA, jurnal de audit al acțiunilor, backup zilnic automat cu copie în afara serverului.</p></details>
       <details><summary>Sunt la zi parametrii fiscali?</summary><p>Da — cotele 2026: TVA 21%/11%, dividende 16%, micro 1%, salariu minim cu comutare automată la 1 iulie, deducerea personală după grila în vigoare. Cotele sunt și configurabile manual.</p></details>
@@ -364,7 +372,7 @@
 
       <details><summary>Abonamentul include și facturare?</summary><p>Da — facturarea nu e „soft în plus", e parte din contabilitate: serii și numerotare automată, trei modele de PDF cu logo-ul tău (clasic, compact A5, detaliat cu recap TVA și sumă în litere), e-Factura XML generată și trimisă în SPV din aplicație, facturi recurente care se emit singure la scadență. O factură emisă corect e o amendă evitată.</p></details>
 
-      <details><summary>Cum pot fi sigur că declarațiile sunt depuse?</summary><p>Registrul păstrează traseul nedepusă → generată → transmisă → depusă, amprenta SHA-256 a fișierului și recipisa/indexul ANAF. Fără recipisă nu poate fi marcată depusă; restanțele rămân vizibile în notificări.</p></details>
+      <details><summary>Cum pot fi sigur că declarațiile sunt depuse?</summary><p>Registrul păstrează traseul nedepusă → generată → aprobată → transmisă → depusă, aprobarea legată de SHA-256-ul exact al fișierului și recipisa/indexul ANAF. Fără aprobarea aceleiași versiuni nu poate fi transmisă, iar fără recipisă nu poate fi marcată depusă; restanțele rămân vizibile în notificări.</p></details>
 
       <details><summary>Cum aflu ce taxe am de plată?</summary><p>Secțiunea de obligații îți arată pe fiecare lună ce datorezi la buget — TVA, impozit, contribuții pe salarii — cu recapitulațiile din care provin cifrele, verificabile până la documentul-sursă. Primești notificări înainte de termen, ca plata să fie o decizie planificată, nu o urgență.</p></details>
 

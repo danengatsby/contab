@@ -140,12 +140,12 @@ async function alertEmail(subiect, text) {
 async function main() {
   // 1) copia db.json (formatul asteptat de UI-ul Setari -> Backup)
   const r = backup.backupNow(DB_FILE, DATA_DIR, KEEP);
-  log('Contab backup OK:', r.name, '(pastrate', r.count + ')');
+  log('Contab backup OK:', r.name, '(pastrate', r.count + ', radacina ' + r.integrity.rootHash + ')');
 
   // 2) arhiva completa (db + sqlite + uploads)
   const f = backup.fullBackup(DB_FILE, DATA_DIR, KEEP_FULL);
   const sizeLabel = (f.size / 1024 / 1024).toFixed(1) + 'MB';
-  log('Arhiva completa OK:', f.name, '(' + sizeLabel + ')');
+  log('Arhiva completa OK:', f.name, '(' + sizeLabel + ', radacina ' + f.integrityRoot + ')');
 
   // 2b) VERIFICAREA restaurabilitatii, in DOUA straturi:
   //   - STRUCTURAL (verifyArchive): arhiva se deschide, db.json valid cu firme, sqlite prezent;
@@ -193,6 +193,7 @@ async function main() {
     try {
       fs.writeFileSync(path.join(DATA_DIR, 'backups', 'last-backup.json'), JSON.stringify({
         ts: new Date().toISOString(), name: f.name, ok: veri.ok, firme: veri.firme, sqlite: veri.sqlite, size: f.size, motiv: veri.motiv,
+        integrityRoot: veri.integrityRoot || null, integrityComplete: veri.integrity ? veri.integrity.complete : null,
         drill: { ok: drill.ok, nrFirme: drill.nrFirme, totalEntries: drill.totalEntries, motiv: drill.motiv },
         pgDrill: rezumatPgDrill(pgDrill || ultimulPgDrill),
         offsite: offsiteState,

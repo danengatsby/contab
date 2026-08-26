@@ -61,27 +61,40 @@ function start({ app, dbReady }) {
   // si a lui listen(). O instanta care porneste si abia apoi descopera ca semneaza sesiuni cu un
   // secret din baza a apucat deja sa emita cookie-uri forjabile. Vezi src/secretsGuard.js.
   require('./secretsGuard').assertSecrets();
-  acquireDbLock();
-  process.on('exit', releaseDbLock);
-
   const PORT = process.env.PORT || 8080;
   // Nginx este endpointul public; bind-ul local previne expunerea accidentala a portului Node.
   const HOST = process.env.HOST || '127.0.0.1';
   let server = null; // atribuit dupa hidratarea bazei (dbReady)
-  // CE COD PORNESTE. Pe aceasta instalare directorul de lucru E productia, deci un restart —
-  // oricare, inclusiv unul automat de la plafonul de memorie — publica exact ce e pe disc.
-  // Se semnaleaza, NU se blocheaza pornirea: un refuz de a porni ar lovi exact in urgenta in care
-  // tocmai ai pus o corectie pe disc si ai nevoie de proces sus. In dezvoltare (CONTAB_DEV) starea
-  // murdara e normala si mesajul ar fi doar zgomot.
-  if (!process.env.CONTAB_DEV) {
-    require('./deployState').read().then((v) => {
-      const av = require('./deployState').avertisment(v);
-      if (av) log.error('deploy: ' + av, { ramura: v.ramura, commit: v.commit, nrModificate: v.nrModificate });
-      else console.log('Cod: ' + v.ramura + '@' + v.commit + ' (arbore curat)');
-    }).catch(() => { /* diagnostic, nu conditie de pornire */ });
-  }
+  // CE COD PORNESTE. Poarta este in proces, nu in hook-ul npm, deci se aplica identic la
+  // `npm start`, `node server.js`, pm2 si systemd. Fara CONTAB_DEV=1, un depozit murdar,
+  // o alta ramura sau un `git status` imposibil de citit opresc procesul INAINTE de listen().
+  const deployState = require('./deployState');
+  const root = require('path').join(__dirname, '..');
+  const verificareDeploy = process.env.CONTAB_DEV === '1'
+    ? Promise.resolve({ v: null, p: deployState.pornirePermisa(null, { dev: true }) })
+    : deployState.read({ force: true }).then((v) => {
+      const fsd = require('fs');
+      const distributie = fsd.existsSync(require('path').join(root, '.distributie-portabila'))
+        || fsd.existsSync(require('path').join(root, '.distributie-windows'));
+      const inDepozit = fsd.existsSync(require('path').join(root, '.git'));
+      return { v, p: deployState.pornirePermisa(v, { distributie, inDepozit }) };
+    });
 
-  dbReady.then(() => {
+  verificareDeploy.then(({ v, p }) => {
+    if (!p.ok) {
+      const meta = v || {};
+      log.error('deploy BLOCAT: ' + p.motiv, {
+        ramura: meta.ramura, commit: meta.commit, nrModificate: meta.nrModificate,
+      });
+      process.exitCode = 1;
+      return;
+    }
+    if (v && v.cunoscut) console.log('Cod: ' + v.ramura + '@' + v.commit + ' (arbore curat)');
+    acquireDbLock();
+    process.on('exit', releaseDbLock);
+    return Promise.resolve(dbReady).then(() => true);
+  }).then((gata) => {
+    if (!gata) return;
     server = app.listen(PORT, HOST, () => {
       console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');
       for (const u of bannerUrls(HOST, PORT, os.networkInterfaces())) console.log(u);

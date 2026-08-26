@@ -1,0 +1,267 @@
+{
+ "parte": "Part I · Why accounting looks the way it does",
+ "nr": "1",
+ "titlu": "Two questions, and neither is about accounts",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "A business owner calling their accountant at the start of the month never asks what the balance of account 4111 is. They ask only one thing, in two forms: \"did I make money last month?\" or, more briefly, \"how are we doing?\""
+  },
+  {
+   "tip": "p",
+   "text": "The question seems like one. It's actually two, and they have different answers, calculated differently and read from different documents. All of accounting — the chart of accounts, double-entry bookkeeping, the fourteen phases in this book's table of contents — exists to answer them. They deserve to be named from the first chapter, since everything else serves them."
+  },
+  {
+   "tip": "h",
+   "text": "First, why it's not enough to look at the bank account"
+  },
+  {
+   "tip": "p",
+   "text": "The most natural reflex is to open the banking app. If you have more today than a month ago, it was a good month. It's an honest tool and everyone uses it — but it answers something different than you think."
+  },
+  {
+   "tip": "p",
+   "text": "Let's take a trading company, in an ordinary month. It started the month with 30,000 lei in the account. It bought goods worth 60,000, which the supplier left on credit. It sold all that merchandise for 100,000. Of the 100,000 invoiced, customers had paid only 40,000 by the end of the month — the rest is due the following month. Of the 60,000 debt to the supplier, the company paid 55,000."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What happened in the account",
+   "cap": [
+    "Movement",
+    "Lei"
+   ],
+   "randuri": [
+    [
+     "Balance at start of month",
+     "30.000"
+    ],
+    [
+     "Collected from customers",
+     "+40.000"
+    ],
+    [
+     "Paid to supplier",
+     "−55.000"
+    ],
+    [
+     "Balance at end of month",
+     "15.000"
+    ]
+   ],
+   "nota": "The money in the account decreased by 15,000 lei.",
+   "numerice": [
+    2
+   ],
+   "total": true
+  },
+  {
+   "tip": "p",
+   "text": "Looking only at the account, the month looks bad: you started with 30,000 and ended with 15,000. And yet the company sold, for 100,000, merchandise that had cost it 60,000. It earned, that month, 40,000 lei."
+  },
+  {
+   "tip": "p",
+   "text": "Both statements are true at the same time. The money decreased by 15,000 and the profit was 40,000. This is not a contradiction or an accounting subtlety: they are simply the answers to two different questions."
+  },
+  {
+   "tip": "h",
+   "text": "The first question: how much did I earn?"
+  },
+  {
+   "tip": "p",
+   "text": "A period's profit is measured by putting side by side what you sold and what it cost you to sell it — regardless of when the money comes in or goes out."
+  },
+  {
+   "tip": "p",
+   "text": "In our example: you sold 100,000 worth, that merchandise had cost you 60,000, so you earned 40,000. The fact that a customer pays you three weeks later doesn't change the reality that the merchandise left the warehouse and the company is entitled to the money. Nor does the fact that you still owe the supplier 5,000 change how much the merchandise cost you."
+  },
+  {
+   "tip": "p",
+   "text": "The document that answers this question is called the income statement. It's a two-column list for a given period: what came in as value (revenues) and what was consumed to make it come in (expenses). The difference is the result."
+  },
+  {
+   "tip": "cheie",
+   "text": "Profit is measured over a PERIOD — a month, a year. It doesn't make sense without stating for how long."
+  },
+  {
+   "tip": "h",
+   "text": "The second question: what do I have and to whom do I owe it?"
+  },
+  {
+   "tip": "p",
+   "text": "The second question isn't about a period, but about a moment. On the 31st of the month, what is in the company, and who has claims on what's there?"
+  },
+  {
+   "tip": "p",
+   "text": "The company in the example has, at the end of the month, 15,000 lei in the account and 60,000 receivable from customers — so 75,000 lei in total. The merchandise is gone, it's been sold. Of the 75,000, five thousand are not actually the company's: they're owed to the supplier. The remaining 70,000 belong to the business — the 30,000 put in at the start plus the 40,000 earned during the month."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Where the company stands on the 31st of the month",
+   "cap": [
+    "What the company has",
+    "Lei",
+    "Who has claims",
+    "Lei"
+   ],
+   "randuri": [
+    [
+     "Money in the account",
+     "15.000",
+     "Payables to supplier",
+     "5.000"
+    ],
+    [
+     "Receivable from customers",
+     "60.000",
+     "Money put in by the owner",
+     "30.000"
+    ],
+    [
+     "",
+     "",
+     "The month's profit",
+     "40.000"
+    ],
+    [
+     "Total",
+     "75.000",
+     "Total",
+     "75.000"
+    ]
+   ],
+   "nota": "The two columns are equal. Not by chance — everything in the company comes from somewhere, and every leu has an owner: either a creditor or the business owner.",
+   "numerice": [
+    2,
+    4
+   ],
+   "total": true
+  },
+  {
+   "tip": "p",
+   "text": "The document that answers this is called the balance sheet. It's not a report on how things went, but a snapshot: as of this date, this is what you have and this is what you owe."
+  },
+  {
+   "tip": "cheie",
+   "text": "Position is measured at a DATE. It doesn't make sense without stating which day."
+  },
+  {
+   "tip": "h",
+   "text": "The two questions meet at a single point"
+  },
+  {
+   "tip": "p",
+   "text": "Look once more at the right-hand column of the table above. The month's profit, the 40,000, appears there. This isn't a coincidence of page layout: the profit from a period increases exactly by that much what remains the owner's."
+  },
+  {
+   "tip": "p",
+   "text": "That's the link between the two documents, and it's the only one that matters at the start: the income statement explains why the company's wealth is different today from what it was at the start of the period. One says how much, the other says why."
+  },
+  {
+   "tip": "p",
+   "text": "That's why you can't choose just one. A business owner who looks only at profit may end up going bankrupt with profit on paper, because money comes in later than it goes out. One who looks only at the account may think a month in which they invested went badly, or that a month in which they collected old debts went well."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "What was called above \"regardless of when the money comes in\" has a name in regulations: accrual accounting. Revenues and expenses are recognized when the transactions occur, not when they're collected or paid, and the result is attributed to the financial year to which it belongs — the accrual/matching principle of period independence. The two documents in this chapter are the income statement (form F20) and the balance sheet (F10), the only two filed in the electronic file with ANAF; the cash flow statement and other annexes, which would have answered the question about money, are attached separately. The equality in the second table — total resources = total uses — is not a check added at the end, but the consequence of how each transaction is recorded: the subject of the next chapter."
+  },
+  {
+   "tip": "h",
+   "text": "Why the accounts come only after this"
+  },
+  {
+   "tip": "p",
+   "text": "A classic manual would have started with the chart of accounts. That's an order with its own logic, but it leaves the reader without an answer to the question \"why.\" Accounts are a tool, not a goal: drawers where amounts are gathered, so that at the end of the period you can compose the two documents without digging through every piece of paper."
+  },
+  {
+   "tip": "p",
+   "text": "An accounting program makes this invisible. You tell it what document you received — an invoice from a supplier, a receipt, a statement — and it chooses the drawers. But it remains useful to know what drawers exist and why there are so many, because when a figure looks strange, that's where you go back to."
+  },
+  {
+   "tip": "p",
+   "text": "Before the drawers, there's something else to clarify: why each amount is written in two places at once. This isn't a bureaucratic convention, but exactly the mechanism that makes the two columns in the second table come out equal every time. That's the subject of the next chapter."
+  },
+  {
+   "tip": "h",
+   "text": "The same month, with a single figure changed"
+  },
+  {
+   "tip": "p",
+   "text": "To show that the two questions really are independent, it's worth changing a single thing in the example and tracking what moves. We assume everything stays the same, but the customer pays in full during the month: not 40,000, but all 100,000."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Same activity, two collection scenarios",
+   "cap": [
+    "Item",
+    "Customer pays 40,000",
+    "Customer pays 100,000"
+   ],
+   "randuri": [
+    [
+     "Month's sales",
+     "100.000",
+     "100.000"
+    ],
+    [
+     "Cost of goods sold",
+     "60.000",
+     "60.000"
+    ],
+    [
+     "The month's profit",
+     "40.000",
+     "40.000"
+    ],
+    [
+     "Money in the account at the end",
+     "15.000",
+     "75.000"
+    ],
+    [
+     "Receivable from customers",
+     "60.000",
+     "0"
+    ]
+   ],
+   "numerice": [
+    2,
+    3
+   ],
+   "nota": "The profit is identical in both columns. Only where the value sits changes: in the account or with the customer."
+  },
+  {
+   "tip": "p",
+   "text": "The line that doesn't move is the one that matters. Collection doesn't create profit; it only moves an already-earned value from one place to another — from receivables into cash. And if the second column looks better, it's because the company has the same wealth in a more liquid form, not because it produced more."
+  },
+  {
+   "tip": "p",
+   "text": "This exercise is worth repeating mentally every time someone says \"this month went badly.\" The first question to ask is: are we talking about profit or about money? Almost always it's the second, while the decision is made as if it were the first."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 1.1 — two questions, two answers",
+   "enunt": [
+    "A services company starts the month with 12,000 lei in the account. It issues invoices worth 50,000 lei, of which it collects 30,000 by the end of the month. The month's expenses are: salaries 20,000, rent 4,000, utilities 1,500 — all paid during the month. It has no inventory.",
+    "Required: (a) the month's profit; (b) the account balance at the end; (c) why the two don't coincide."
+   ],
+   "rezolvare": [
+    "(a) Profit is calculated on what was produced, not on what was collected: 50,000 − 20,000 − 4,000 − 1,500 = 24,500 lei.",
+    "(b) Account balance: 12,000 + 30,000 collected − 25,500 paid = 16,500 lei.",
+    "(c) The difference between 24,500 and the account's increase of 4,500 is 20,000 lei — exactly the amount invoiced and not collected. It hasn't disappeared: it sits in receivables, meaning it's still the company's, just held by the customer.",
+    "The check that closes the reasoning: the increase in cash (4,500) plus the increase in receivables (20,000) gives 24,500, exactly the profit. It's not a coincidence — it's the first form of the link between the two documents."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Accounting answers two questions, not one: how much did I earn in a period, and what do I have as of a given date.",
+    "Profit and the money in the account are different things. A month can be profitable and yet the balance can still decrease.",
+    "Profit is read from the income statement, position from the balance sheet.",
+    "The two connect at one point: the period's profit increases by exactly that much the portion that remains the owner's.",
+    "Accounts are the tool by which these two documents are reached — that's why they come after them, not before."
+   ]
+  }
+ ]
+}

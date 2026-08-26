@@ -97,6 +97,12 @@ function platformaFisiere() {
     const lantBun = auditLog.verify();
     ok('lantul SHA-256 traverseaza inclusiv rotatia lunara', lantBun.ok && lantBun.chained === 3
       && /^[a-f0-9]{64}$/.test(lantBun.head || ''));
+    const copieArhivata = auditLog.verifyContents([
+      { name: 'audit-2026-08.ndjson', content: fsA.readFileSync(aug) },
+      { name: 'audit-2026-07.ndjson', content: fsA.readFileSync(iul) },
+    ]);
+    ok('acelasi verificator valideaza jurnalul copiat intr-un backup, independent de ordinea intrarilor',
+      copieArhivata.ok && copieArhivata.head === lantBun.head && copieArhivata.fileHashes.length === 2);
     ok('listFiles le vede pe amandoua, noile primele', (() => { const f = auditLog.listFiles(); return f[0] === 'audit-2026-08.ndjson' && f.includes('audit-2026-07.ndjson'); })());
     const augLinii = fsA.readFileSync(aug, 'utf8').trim().split('\n');
     const alterat = JSON.parse(augLinii[0]); alterat.detail = 'modificat dupa consemnare';

@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const store = require('../src/store');
+const declarations = require('../src/declarations');
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) { if (got === exp) pass += 1; else { fail += 1; console.error('  ✗ ' + name + ': got ' + JSON.stringify(got) + ', expected ' + JSON.stringify(exp)); } }
@@ -33,6 +34,13 @@ section('Persist initial + no-op');
 const db = base();
 db.entries = [mkEntry('e1', 1, 10), mkEntry('e2', 1, 20), mkEntry('e3', 2, 30)];
 db.audit = [{ id: 1, firmaId: 1, action: 'creare' }];
+const annualZipBase64 = Buffer.from('ZIP anual sigilat — octeți persistenți', 'utf8').toString('base64');
+db.annualArchives = [{ id: 'aar1', firmaId: 1, year: '2026', version: 1, immutable: true,
+  zipSha256: 'a'.repeat(64), zipBase64: annualZipBase64,
+  manifest: { schemaVersion: 2, archiveVersion: 1, files: [{ path: 'manifest-proba.txt', sha256: 'b'.repeat(64), bytes: 7 }] } }];
+const filingIdentity = declarations.dossierIdentity(1, 'd300', '2026-06');
+db.declarations = [{ id: 'dcl1', firmaId: 1, tip: 'd300', period: '2026-06', status: 'generata',
+  dossier: Object.assign({}, filingIdentity, { createdAt: '2026-07-01T08:00:00.000Z' }), artifacts: [], depuneri: [] }];
 db.seq = 7;
 store.persist(db);
 ok('persist scrie entries', store.written().includes('entries'));
@@ -54,14 +62,24 @@ store.persist(db);
 eq('schimbarea seq -> se scrie doar meta', store.written().join(','), 'meta');
 
 section('Hydrate reflecta fidel starea');
-const h = store.hydrate(DEF);
+let h = store.hydrate(DEF);
 eq('hydrate: numar entries', h.entries.length, 3);
 eq('hydrate: valoarea actualizata', h.entries.find((e) => e.id === 'e2').suma, 999);
 eq('hydrate: ordinea pastrata', h.entries.map((e) => e.id).join(','), 'e1,e2,e3');
 eq('hydrate: seq', h.seq, 8);
 eq('hydrate: audit', h.audit.length, 2);
+eq('hydrate: dosarul anual păstrează exact binarul base64', h.annualArchives[0].zipBase64, annualZipBase64);
+eq('hydrate: dosarul anual păstrează manifestul și versiunea', h.annualArchives[0].manifest.archiveVersion + '/' + h.annualArchives[0].version, '1/1');
+eq('hydrate: identitatea dosarului de depunere rămâne exactă', h.declarations[0].dossier.id, filingIdentity.id);
 store.persist(h);
 eq('persist imediat dupa hydrate -> zero scrieri (snapshot initializat)', store.written().length, 0);
+
+// Simulează un restart real al procesului, nu doar încă o citire pe aceeași conexiune.
+store.close(); store.open(FILE);
+h = store.hydrate(DEF);
+eq('restart: ZIP-ul anual sigilat supraviețuiește neschimbat', h.annualArchives[0].zipBase64, annualZipBase64);
+eq('restart: istoricul anual rămâne disponibil', h.annualArchives.map((a) => a.year + '/v' + a.version).join(','), '2026/v1');
+eq('restart: dosarul unic declarație/perioadă supraviețuiește neschimbat', h.declarations[0].dossier.key, '1|d300|2026-06');
 
 section('Delete incremental — restul raman, ordinea se pastreaza');
 h.entries = h.entries.filter((e) => e.id !== 'e1');
@@ -255,6 +273,20 @@ section('Indiciul de colectie: sare diff-ul, dar plasa nu lasa nimic pierdut');
 
   store.close(); rm2();
   store.open(FILE); store.hydrate(DEF); // restaureaza fisierul SI epoch-ul pentru sectiunile urmatoare
+}
+
+section('Dosar de depunere: unicitate impusă în SQLite');
+{
+  const dup = base();
+  dup.declarations = [
+    { id: 'd1', firmaId: 1, tip: 'd300', period: '2026-06' },
+    { id: 'd2', firmaId: 1, tip: 'D300', period: '2026-06' },
+  ];
+  store.resetDirty();
+  let uniqueError = null;
+  try { store.persist(dup); } catch (e) { uniqueError = e; }
+  ok('două rânduri pe aceeași firmă/tip/perioadă sunt refuzate de baza de date',
+    uniqueError && /idx_declarations_dossier_unique|UNIQUE constraint/i.test(String(uniqueError.message || uniqueError)));
 }
 
 

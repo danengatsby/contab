@@ -2,10 +2,10 @@
 // Modul de mesagerie (suport user <-> admin): firul de chat, inbox-ul de admin, cautare,
 // arhivare, atasamente, notificari (badge/titlu/sunet), indicator „scrie acum" si polling
 // aproape in timp real. Extras din app.js (Etapa 1 a modularizarii). Depinde doar de nucleu.
-import { $, $$, api, toast, USER, escMsg, escAttr, withCsrf, confirmAction } from './core.js';
+import { $, $$, api, toast, USER, escMsg, escAttr, withCsrf, confirmAction, uiLocale } from './core.js';
 
 function fmtMsgTime(iso) {
-  try { return new Date(iso).toLocaleString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
+  try { return new Date(iso).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
 }
 function fmtSize(b) { b = Number(b) || 0; if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(0) + ' KB'; return (b / 1048576).toFixed(1) + ' MB'; }
 // randeaza atasamentul: imaginile raster inline (thumbnail), restul ca buton de descarcare.

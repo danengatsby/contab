@@ -1,0 +1,360 @@
+{
+ "parte": "Part VII · The registers and verification · phase 8",
+ "nr": "32",
+ "titlu": "The trial balance",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The trial balance is the oldest control tool in accounting and, five hundred years later, still the most used. It is prepared monthly, before any report or declaration, and answers a single question: does everything balance?"
+  },
+  {
+   "tip": "p",
+   "text": "Its form is a list: one row for every account that was touched, eight columns of figures, a totals row. Its power lies in the last row."
+  },
+  {
+   "tip": "h",
+   "text": "The eight columns"
+  },
+  {
+   "tip": "p",
+   "text": "Every account appears with the balance it started from, what moved during the month, the sum of the two, and the balance it ended at — each, on debit and on credit."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The June trial balance — an excerpt",
+   "cap": [
+    "Account",
+    "OB D",
+    "OB C",
+    "Movement D",
+    "Movement C",
+    "CB D",
+    "CB C"
+   ],
+   "randuri": [
+    [
+     "1012 Share capital",
+     "",
+     "30.000",
+     "",
+     "",
+     "",
+     "30.000"
+    ],
+    [
+     "2131 Equipment",
+     "18.000",
+     "",
+     "",
+     "",
+     "18.000",
+     ""
+    ],
+    [
+     "281 Depreciation",
+     "",
+     "2.166,68",
+     "",
+     "466,67",
+     "",
+     "2.633,35"
+    ],
+    [
+     "371 Merchandise",
+     "20.000",
+     "",
+     "10.000",
+     "8.000",
+     "22.000",
+     ""
+    ],
+    [
+     "401 Suppliers",
+     "",
+     "15.000",
+     "12.100",
+     "12.100",
+     "",
+     "15.000"
+    ],
+    [
+     "4111 Customers",
+     "",
+     "",
+     "16.940",
+     "16.940",
+     "",
+     ""
+    ],
+    [
+     "5121 Bank",
+     "40.000",
+     "",
+     "",
+     "15.025",
+     "24.975",
+     ""
+    ],
+    [
+     "TOTAL",
+     "83.000",
+     "83.000",
+     "76.659,17",
+     "76.659,17",
+     "102.594,17",
+     "102.594,17"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "total": true,
+   "nota": "The \"total amounts\" columns (opening balance plus movement) have been omitted from this excerpt to save space; they add up to 159,659.17 on each side. Row 281 is a contra account: its balance is SUBTRACTED from 2131 — see Appendix A."
+  },
+  {
+   "tip": "p",
+   "text": "Row 4111 Customers deserves a closer look: it has movement on both sides and no balance. The customer was invoiced 16,940 lei and paid exactly that amount in the same month. The activity existed, the balance is zero — and a trial balance showing only balances would hide it completely."
+  },
+  {
+   "tip": "h",
+   "text": "The four equalities"
+  },
+  {
+   "tip": "p",
+   "text": "The total at the bottom of the table contains four pairs of figures, and each pair must consist of identical numbers. These are the four series of equalities, and each one proves something different."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What each equality proves",
+   "cap": [
+    "Equality",
+    "In the example",
+    "What it proves"
+   ],
+   "randuri": [
+    [
+     "total opening balance D = C",
+     "83.000",
+     "the month started from a balanced position"
+    ],
+    [
+     "total movement D = C",
+     "76.659,17",
+     "every transaction of the month had both sides"
+    ],
+    [
+     "total amounts D = C",
+     "159.659,17",
+     "the sum of the first two — verifies itself"
+    ],
+    [
+     "total closing balance D = C",
+     "102.594,17",
+     "the position reached is balanced"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "nota": "The second is the informative one: it must also equal the total of the general journal for the same month."
+  },
+  {
+   "tip": "p",
+   "text": "The correlation with the journal entry register is the most useful of all, because it links two registers prepared along different paths. The journal collects lines in chronological order; the trial balance collects them by account. If the totals don't match, a transaction entered one and not the other."
+  },
+  {
+   "tip": "h",
+   "text": "What happens when it doesn't balance"
+  },
+  {
+   "tip": "p",
+   "text": "In accounting kept on paper, a trial balance that wouldn't close meant hours of searching. In a software program, the situation shouldn't arise at all: entries are validated at recording time, and an unbalanced entry cannot be saved."
+  },
+  {
+   "tip": "p",
+   "text": "When it does occur, the cause is almost always one of three: opening balances carried over incorrectly at the start of the year, a transaction recorded directly in the database, bypassing the application, or a propagated rounding. The difference itself is the first clue — if it's divisible by nine, it's almost certainly a digit transposition."
+  },
+  {
+   "tip": "cheie",
+   "text": "The trial balance is done monthly, not annually. An error found in the month it occurred costs a minute; the same error found the following March costs a day."
+  },
+  {
+   "tip": "h",
+   "text": "What can be read from a trial balance, beyond the equalities"
+  },
+  {
+   "tip": "p",
+   "text": "An experienced accountant doesn't look at the trial balance as a balance test, but as an X-ray. Several things can be seen immediately, without any calculation."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Signals visible at a glance",
+   "cap": [
+    "What you see",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "credit balance on a cash account",
+     "impossible — a transaction is missing or dated incorrectly"
+    ],
+    [
+     "debit balance on 401 Suppliers",
+     "usually an advance paid, not recorded as such in 409"
+    ],
+    [
+     "credit balance on 4111 Customers",
+     "usually an unallocated receipt or an advance in 419"
+    ],
+    [
+     "expense account with large credit movement",
+     "many reversals — worth understanding why"
+    ],
+    [
+     "new account, appearing without explanation",
+     "a misclassification or an unchecked import"
+    ]
+   ],
+   "nota": "None of these signals unbalances the trial balance. They are all visible only if someone looks."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The trial balance is mandatory at least monthly under the Accounting Law and the norms regarding financial-accounting documents, and its preparation is a mandatory precondition for preparing the financial statements. Four points of practice. First: the form with four series of equalities is the usual one, but the regulations also allow the form with three series; what matters is that the opening balances be those carried over from the previous period's trial balance, not recalculated independently — recalculation masks exactly the error that carrying-over is meant to flag. Second: a trial balance is also prepared for the analytical accounts, separately from the synthetic one, and the agreement between them is a separate check, one that does not follow from the equalities of the synthetic trial balance. Third: at year-end closing, two trial balances are worked with — the one before the closing operations, used for preparing the financial statements, and the one after, in which the revenue and expense accounts have zero balance; confusing the two empties out reports built on the movements of the result accounts. Fourth: in electronic form, the trial balance must be reconstructible identically at any later moment for a closed period; a trial balance that is recalculated from current data and yields a different result than the one listed at the time signals a retroactive modification — exactly what the discipline described in Chapter 29 prohibits."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "A trial balance closed on all four equalities is good news. But it isn't the news most people think it is — and the next chapter is the most counterintuitive in the whole book."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 32.1 — read the trial balance like an X-ray",
+   "enunt": [
+    "A monthly trial balance shows: 5311 with a CREDIT balance of 1,240; 401 with a DEBIT balance of 3,000; 4111 with debit movement of 52,000 and credit movement of 52,000, zero balance; 581 with a debit balance of 8,500.",
+    "What does each row say?"
+   ],
+   "rezolvare": [
+    "5311 credit: impossible. Money that isn't in the cash register can't be taken out of it. It's a recording error — a missing receipt or an incorrectly dated payment.",
+    "401 debit: not impossible, but unusual. Usually it means an advance paid to a supplier that should have been recorded in 409, or a duplicate payment.",
+    "4111 with equal movements and zero balance: perfectly normal and INFORMATIVE — customers were invoiced and paid in the same month. A trial balance showing only balances would completely hide 52,000 lei of activity.",
+    "581 with a balance: one end of an internal transfer is missing. The transit account must be zero at closing; 8,500 there means money left one place and, on paper, never arrived at the other.",
+    "None of the four unbalances the trial balance. All are visible at a glance — but only if someone looks."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Three forms, the same trial balance"
+  },
+  {
+   "tip": "p",
+   "text": "The trial balance can be prepared with three, four, or five series of equalities, and the choice doesn't change the information, only how much of it is visible."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What each form shows",
+   "cap": [
+    "Form",
+    "Columns",
+    "What is lost compared to the next"
+   ],
+   "randuri": [
+    [
+     "three-series",
+     "prior amounts, movement, total amounts",
+     "the balances — they're calculated, but not displayed"
+    ],
+    [
+     "four-series",
+     "opening balance, movement, total amounts, closing balance",
+     "nothing essential; it's the usual form"
+    ],
+    [
+     "five-series",
+     "adds the balances from the start of the year",
+     "comparison with the opening of the fiscal year"
+    ]
+   ],
+   "nota": "The four-series form is the one used in this book and in most software programs. The five-series one helps with the annual closing, where it also matters where the year started from."
+  },
+  {
+   "tip": "p",
+   "text": "What doesn't change in any form is the number of accounts: the trial balance includes ALL accounts touched during the period, including those with zero balance, if they had movement. An account that received and gave the same amount existed that month, and a trial balance that omits it hides real activity — the case of account 4111 in the example above."
+  },
+  {
+   "tip": "h",
+   "text": "The analytical trial balance, the check that doesn't follow from the synthetic one"
+  },
+  {
+   "tip": "p",
+   "text": "The trial balance above is synthetic: one row per account. Alongside it, for accounts that require it, an analytical one is prepared — one row per partner, per stock location, per employee."
+  },
+  {
+   "tip": "p",
+   "text": "The link between them is a strict equality: the sum of the analytical balances of an account must be exactly its synthetic balance. And this check does NOT follow from the four equalities of the synthetic trial balance — it closes perfectly even if the analytical detail is wrong, because the balance check operates on totals, not on the breakdown."
+  },
+  {
+   "tip": "cheie",
+   "text": "The four equalities say nothing about the analytical detail. It's a separate check, and it's the one that uncovers partners entered twice under slightly different names."
+  },
+  {
+   "tip": "h",
+   "text": "What's done with it, after it's closed"
+  },
+  {
+   "tip": "p",
+   "text": "A verified trial balance is not an end in itself, but the starting point for all the other work of the month. The order is fixed and is worth remembering as a list."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What relies on the trial balance",
+   "cap": [
+    "Work",
+    "What it takes from the trial balance"
+   ],
+   "randuri": [
+    [
+     "The VAT return",
+     "the movements of accounts 4426 and 4427, the carry-forward balance"
+    ],
+    [
+     "D112",
+     "the balances of the personnel and contributions accounts"
+    ],
+    [
+     "The financial statements",
+     "the closing balances, on the trial balance BEFORE closing"
+    ],
+    [
+     "The statement of receivables and payables",
+     "the third-party balances, broken down analytically"
+    ],
+    [
+     "The fiscal record register",
+     "the movements of expense accounts with special treatment"
+    ]
+   ],
+   "nota": "All five start from the same place. That's why a wrong trial balance doesn't produce one error, but five."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "The trial balance is prepared monthly, before any report or declaration.",
+    "The four equalities concern opening balances, movements, total amounts, and closing balances.",
+    "The total movement in the trial balance must equal the total of the general journal for the same period.",
+    "An account with movement and zero balance shows real activity: a trial balance with only balances would hide it.",
+    "When it doesn't close: incorrect opening balances, direct writing to the database, or roundings. A difference divisible by nine means transposed digits.",
+    "Beyond the equalities, the trial balance reads like an X-ray — impossible balances are visible without any calculation."
+   ]
+  }
+ ]
+}

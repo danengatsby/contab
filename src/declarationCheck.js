@@ -20,6 +20,7 @@ const d107 = require('./d107');
 const d301 = require('./d301');
 const d307 = require('./d307');
 const d311 = require('./d311');
+const fiscalProfile = require('./fiscalProfile');
 const crypto = require('crypto');
 
 /** Tipurile pentru care stim sa construim XML (si deci sa validam). */
@@ -31,27 +32,30 @@ function buildXml(v, type, opts) {
   const period = o.period || null;
   const year = o.year || String(new Date().getFullYear());
   const declarant = o.declarant || null;
-  const pv = acc.vatPeriod(v.company, period); // D300/D394: agrega trimestrul la regim 'T'
-  if (type === 'd300') return xml.d300Xml(v.company, pv, rep.d300(v, pv), declarant);
-  if (type === 'd301') return xml.d301Xml(v.company, period, d301.report(v, period), declarant);
-  if (type === 'd307') return xml.d307Xml(v.company, period, d307.report(v, period), declarant);
-  if (type === 'd311') return xml.d311Xml(v.company, period, d311.report(v, period), declarant);
-  if (type === 'd394') return xml.d394Xml(v.company, pv, acc.vatJournals(v, pv), declarant, rep.achizitiiPfCarnet(v, pv));
-  if (type === 'd390') return xml.d390Xml(v.company, period, rep.d390(v, period));
-  if (type === 'd100') return xml.d100Xml(v.company, period, rep.d100(v, period), declarant);
-  if (type === 'd101') return xml.d101Xml(v.company, rep.d101(v, year, ptOpts.pentruDeclaratie(v, year)), declarant);
+  const annual = ['d101', 'd107', 'd205'].includes(type);
+  const hv = fiscalProfile.viewAt(v, annual ? year : period);
+  const company = hv.company;
+  const pv = acc.vatPeriod(hv, period); // D300/D394: agregă trimestrul după profilul istoric
+  if (type === 'd300') return xml.d300Xml(company, pv, rep.d300(hv, pv), declarant);
+  if (type === 'd301') return xml.d301Xml(company, period, d301.report(hv, period), declarant);
+  if (type === 'd307') return xml.d307Xml(company, period, d307.report(hv, period), declarant);
+  if (type === 'd311') return xml.d311Xml(company, period, d311.report(hv, period), declarant);
+  if (type === 'd394') return xml.d394Xml(company, pv, acc.vatJournals(hv, pv), declarant, rep.achizitiiPfCarnet(hv, pv));
+  if (type === 'd390') return xml.d390Xml(company, period, rep.d390(hv, period));
+  if (type === 'd100') return xml.d100Xml(company, period, rep.d100(hv, period), declarant);
+  if (type === 'd101') return xml.d101Xml(company, rep.d101(hv, year, ptOpts.pentruDeclaratie(hv, year)), declarant);
   if (type === 'd107') {
-    const po = ptOpts.pentruDeclaratie(v, year);
-    const pt = po.rezultatFiscal || acc.profitTax(v, year, po);
-    return xml.d107Xml(v.company, d107.report(v, year, pt), declarant);
+    const po = ptOpts.pentruDeclaratie(hv, year);
+    const pt = po.rezultatFiscal || acc.profitTax(hv, year, po);
+    return xml.d107Xml(company, d107.report(hv, year, pt), declarant);
   }
   if (type === 'intrastat') {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ''))) throw new Error('Perioadă Intrastat invalidă (folosește YYYY-MM).');
-    return xml.intrastatXml(v.company, period, rep.intrastat(v, period));
+    return xml.intrastatXml(company, period, rep.intrastat(hv, period));
   }
-  if (type === 'd205') return xml.d205Xml(v.company, year, rep.d205(v, year));
-  if (type === 'd112') return xml.d112Xml(v.company, period, statPlataPostata(v, period), declarant);
-  if (type === 'saft') return saft.saftXml(v, year);
+  if (type === 'd205') return xml.d205Xml(company, year, rep.d205(hv, year));
+  if (type === 'd112') return xml.d112Xml(company, period, statPlataPostata(hv, period), declarant);
+  if (type === 'saft') return saft.saftXml(hv, year);
   const e = new Error('Tip de declaratie necunoscut: ' + type);
   e.status = 400;
   throw e;
@@ -72,7 +76,7 @@ function validateFor(v, type, opts) {
     return { type, period: o.period || null, ok: false, errors: [e.message], warnings: [] };
   }
   const ctxVal = { cui: v.company.cui };
-  const pv = acc.vatPeriod(v.company, o.period || null);
+  const pv = acc.vatPeriod(v, o.period || null);
   // D300: cotele fara rand in v12 nu se vad in XML (tocmai fiindca nu le mai emitem) — se
   // calculeaza din aceeasi sursa ca decontul si se dau validarii ca sa le poata raporta.
   if (type === 'd300') ctxVal.coteFaraRand = xml.d300CoteFaraRand(rep.d300(v, pv));

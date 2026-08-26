@@ -10,11 +10,12 @@ const coa = require('../chartOfAccounts');
 const acc = require('../accounting');
 const rep = require('../reporting');
 const fxreval = require('../fxreval');
+const monthlyCloseService = require('../monthlyCloseService');
 const fiscal = require('../fiscal');
 const { aging, receivablesPayables } = require('../analytic');
 
 /** Partea DEDUCTIBILA din ajustarea creantelor eligibile (art. 26 alin. (1) lit. c), la rulare. */
-function pctArt26() { return Number(fiscal.FISCAL.ajustariCreantePct) || 0; }
+function ratesAt(value) { return fiscal.rulesAt(value).rates; }
 const { round2, period: periodOf, validIsoDate, validPeriod } = require('../util');
 const { sendList } = require('../paginate');
 
@@ -83,16 +84,32 @@ module.exports = function register(app, ctx) {
     if (!validPeriod(asOf) && !validIsoDate(asOf)) {
       return res.status(400).json({ error: 'Data reevaluării trebuie să fie YYYY-MM sau o dată calendaristică reală YYYY-MM-DD.' });
     }
-    const r = fxreval.buildRevaluation(S(req), asOf, Array.isArray(b.items) ? b.items : []);
-    if (!r.lines.length) return res.status(400).json({ error: 'Nicio diferenta de reevaluare de inregistrat.' });
-    for (const ln of r.lines) if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) return res.status(400).json({ error: 'Cont inexistent: ' + ln.debit + '/' + ln.credit });
     const data = String(asOf).length === 7 ? asOf + '-28' : asOf;
+    const period = periodOf(data);
+    const existent = (db.get().entries || []).find((e) => e.firmaId === fid && !e.stornat
+      && e.tip === 'reevaluare_valutara' && e.period === period);
+    if (existent) return res.json({ ok: true, idempotent: true, message: 'Reevaluarea perioadei este deja înregistrată.',
+      entry: existent, totalFavorabil: existent.reevaluationResult && existent.reevaluationResult.totalFavorabil || 0,
+      totalNefavorabil: existent.reevaluationResult && existent.reevaluationResult.totalNefavorabil || 0 });
+    const items = Array.isArray(b.items) ? b.items : [];
+    const r = fxreval.buildRevaluation(S(req), asOf, items);
+    if (!r.lines.length) {
+      if (!items.length) return res.status(400).json({ error: 'Completează soldurile și cursurile folosite pentru verificare.' });
+      let proof;
+      try { proof = monthlyCloseService.recordOperationalEvidence(fid, period, 'reevaluare_valutara',
+        { asOf, items, result: r }, req.user); }
+      catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+      if (!proof.idempotent) logAudit('reevaluare.valutara.zero', period + ': diferență zero confirmată', { req });
+      return res.json({ ok: true, idempotent: proof.idempotent, noDifference: true,
+        message: 'Reevaluarea a fost verificată; diferența este zero.', totalFavorabil: 0, totalNefavorabil: 0 });
+    }
+    for (const ln of r.lines) if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) return res.status(400).json({ error: 'Cont inexistent: ' + ln.debit + '/' + ln.credit });
     if (raspundeEroarePerioada(res, fid, data, 'Reevaluarea valutară')) return;
     const entry = {
       id: db.nextId('e'), firmaId: fid, data, period: periodOf(data),
       tip: 'reevaluare_valutara', tipNume: 'Reevaluare valutara la sfarsit de perioada',
       partener: '', document: 'Reevaluare ' + periodOf(data), explicatie: 'Diferențe de curs din reevaluarea soldurilor în valută',
-      fileId: null, system: false, lines: r.lines,
+      fileId: null, system: false, reevaluationResult: r, lines: r.lines,
     };
     db.pushEntry(entry, { context: 'reevaluare valutara' });
     logAudit('reevaluare.valutara', periodOf(data) + ': fav ' + r.totalFavorabil + ' / nefav ' + r.totalNefavorabil, { req });
@@ -129,6 +146,7 @@ module.exports = function register(app, ctx) {
     d.inventarAnual = d.inventarAnual || [];
     const ex = d.inventarAnual.find((x) => x.firmaId === fid && String(x.an) === an && String(x.cont) === cont);
     if (gol) {
+      if (!ex) return res.json({ ok: true, sters: false, idempotent: true });
       d.inventarAnual = d.inventarAnual.filter((x) => x !== ex);
       logAudit('inventar.valoare.sterge', an + ' ' + cont, { req });
       db.save();
@@ -136,9 +154,13 @@ module.exports = function register(app, ctx) {
     }
     const valoare = Number(b.valoareInventar);
     if (!Number.isFinite(valoare) || valoare < 0) return res.status(400).json({ error: 'Valoarea de inventar trebuie să fie un număr finit, pozitiv sau zero.' });
+    const cauza = String(b.cauza || '').slice(0, 300);
+    if (ex && ex.valoareInventar === round2(valoare) && String(ex.cauza || '') === cauza) {
+      return res.json({ ok: true, idempotent: true, valoare: ex });
+    }
     const rec = ex || { id: db.nextId('inv'), firmaId: fid, an, cont };
     rec.valoareInventar = round2(valoare);
-    rec.cauza = String(b.cauza || '').slice(0, 300);
+    rec.cauza = cauza;
     if (!ex) d.inventarAnual.push(rec);
     logAudit('inventar.valoare', an + ' ' + cont + ': ' + rec.valoareInventar, { req });
     db.save();
@@ -159,14 +181,9 @@ module.exports = function register(app, ctx) {
   // deducere pe TOT contul 6814. Adica se deducea pentru creante de 91 de zile, care nu au acest
   // drept: impozit subdeclarat, vizibil abia la control, cu accesorii.
   //
-  // DE CE E NEVOIE DE CONFIRMARE EXPLICITA, nu doar de calcul: aplicatia nu tine scadenta
-  // creantelor (vezi si `bilant.js`, unde creantele fara evidenta de scadenta merg integral la
-  // „pana la un an"), deci vechimea se masoara de la DATA DOCUMENTULUI. Cum scadenta e mereu
-  // ulterioara facturii, vechimea calculata asa e mai MARE decat cea legala: o creanta de 280 de
-  // zile de la factura poate avea 250 de la scadenta si sa nu se califice. Candidatii propusi de
-  // aplicatie sunt deci un plafon SUPERIOR, nu un raspuns. Fara confirmare, baza fiscala ramane
-  // ZERO si ajustarea e integral nedeductibila — „nu stiu" nu are voie sa cada in „se deduce",
-  // aceeasi regula ca la IPC-ul din art. 41.
+  // Registrul documentelor deschise masoara acum vechimea de la SCADENTA si tine conditiile la
+  // nivelul fiecarei creante. Datele istorice fara scadenta/afiliere/garantie raman „necunoscute"
+  // si sunt excluse fail-closed din baza fiscala; nu inventam o scadenta din data facturii.
   function computeProvizion(v, asOf, pct) {
     if (asOf && !validPeriod(asOf) && !validIsoDate(asOf)) {
       const e = new Error('Data ajustării trebuie să fie YYYY-MM sau o dată calendaristică reală YYYY-MM-DD.');
@@ -178,19 +195,25 @@ module.exports = function register(app, ctx) {
       e.status = 400; throw e;
     }
     const ag = aging(v, asOf);
-    const parteneri = (v.partners || {});
-    const detalii = ag.clienti.filter((c) => c.b90plus > 0).map((c) => {
-      const cheie = String(c.cui || '').replace(/^ro/i, '').replace(/\s/g, '');
-      const pr = parteneri[cheie] || {};
-      // Motivele de excludere se DUC PE RAND, nu se scad tacit: contabilul trebuie sa vada de ce
-      // o creanta veche de un an nu aduce nicio deducere.
+    const rates = ratesAt(asOf);
+    const pragFiscal = Number(rates.ajustariCreanteZile) || 270;
+    const docs = ((ag.registry || {}).openDocuments || []).filter((d) => d.sens === 'creanta' && d.overdueDays > 90);
+    const detalii = docs.map((d) => {
       const excluderi = [];
-      if (pr.afiliat) excluderi.push('persoană afiliată');
-      if (pr.creanteGarantate) excluderi.push('creanță garantată');
-      const eligibil = !excluderi.length ? round2(c.b270plus) : 0;
+      if (!d.dueKnown) excluderi.push('scadență neconfirmată');
+      if (!['4111', '4118', '418'].includes(d.account)) excluderi.push('natura comercială a creanței neconfirmată');
+      if (d.affiliated === true) excluderi.push('persoană afiliată');
+      else if (d.affiliated == null) excluderi.push('afiliere neconfirmată');
+      if (d.guaranteed === true) excluderi.push('creanță garantată');
+      else if (d.guaranteed == null) excluderi.push('garanții neconfirmate');
+      if (d.overdueDays <= pragFiscal) excluderi.push('nu depășește ' + pragFiscal + ' zile de la scadență');
+      const eligibil = !excluderi.length ? round2(d.residual) : 0;
       return {
-        partener: c.partener, cui: c.cui, vechi: c.b90plus, provizion: round2((c.b90plus * p) / 100),
-        peste270: round2(c.b270plus), eligibilArt26: eligibil, excluderi,
+        documentId: d.id, document: d.document, data: d.data, scadenta: d.dueKnown ? d.dueDate : null,
+        zileRestanta: d.overdueDays, litigiu: d.dispute, partener: d.partener, cui: d.cui,
+        vechi: d.residual, provizion: round2((d.residual * p) / 100),
+        peste270: d.dueKnown && d.overdueDays > pragFiscal ? round2(d.residual) : 0,
+        eligibilArt26: eligibil, excluderi,
       };
     });
     const base = round2(detalii.reduce((s, c) => s + c.vechi, 0));
@@ -206,12 +229,13 @@ module.exports = function register(app, ctx) {
       art26: {
         creanteEligibile: bazaEligibila,
         ajustareEligibila: art26Candidat,
-        deducereMaxima: round2((art26Candidat * pctArt26()) / 100),
-        pctDeductibil: pctArt26(),
-        vechimeDinDataDocumentului: true,
-        nota: 'Vechimea e măsurată de la data documentului, nu de la scadență (aplicația nu ține scadența creanțelor), '
-          + 'deci suma e un plafon superior. Deducerea de ' + pctArt26() + '% se acordă doar dacă cele trei condiții '
-          + 'din art. 26 alin. (1) lit. c) sunt îndeplinite cumulativ — confirmă-le explicit la înregistrare.',
+        deducereMaxima: round2((art26Candidat * Number(rates.ajustariCreantePct || 0)) / 100),
+        pctDeductibil: Number(rates.ajustariCreantePct) || 0,
+        vechimeDinDataDocumentului: false,
+        scadenteNecunoscute: round2(docs.filter((d) => !d.dueKnown).reduce((s, d) => s + d.residual, 0)),
+        nota: 'Vechimea este măsurată document-cu-document de la scadență. Creanțele fără scadență, '
+          + 'afiliere sau garanții confirmate sunt excluse din baza fiscală. Deducerea de ' + (Number(rates.ajustariCreantePct) || 0)
+          + '% rămâne condiționată de confirmarea contabilului înainte de înregistrare.',
       },
     };
   }

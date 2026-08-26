@@ -376,7 +376,7 @@ sect('7. Backup si restaurare');
 sect('8. Cine acceseaza aplicatia (panou de administrare)');
 {
   await adm.goto(BASE + '/', { waitUntil: 'networkidle' });
-  // `goTab`, nu un click pe butonul din meniu: bara laterala e un acordeon, iar butonul unui grup
+  // `goTab`, nu un click pe butonul din meniu: navigația are dropdownuri, iar butonul unui grup
   // inchis nu e VIZIBIL pentru Playwright, deci clickul expira. Aceeasi cale ca in scripts/e2e.mjs.
   // Restaurarea din sectiunea 7 readuce o baza in care contul pare „nou", deci apare ecranul de
   // bun-venit — un overlay care intercepteaza clickurile. Se inchide inainte de a atinge panoul.
@@ -819,15 +819,42 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
 }
 
 // ────────── 12. NAVIGAREA LOGICA + MODUL SIMPLU ───────────────────────────────
-// `#tabs` pastreaza ciclul contabil, iar Ghid/Mesaje/Cartea stau in uneltele globale. Firma,
-// perioada si uneltele sunt nodurile reale mutate in context, nu copii.
+// `#tabs` conține ciclul contabil și grupul Unelte. Doar firma și perioada sunt mutate în
+// context; panoul separat Unelte nu mai există.
 sect('12. Carcasa are o singura navigare logica si un context unic');
 {
   await adm.goto(BASE + '/', { waitUntil: 'networkidle' });
   await adm.evaluate(() => { const w = document.querySelector('#welcomeOverlay'); if (w) w.classList.add('hidden'); });
-  ok('arborele lateral si uneltele globale exista o singura data',
+  ok('navigatorul și grupul Unelte există o singură dată',
     (await adm.locator('#tabs').count()) === 1 && (await adm.locator('#sideTools').count()) === 1
+    && (await adm.locator('#tabs #sideTools').count()) === 1
     && (await adm.locator('#erpMenu,#erpTools').count()) === 0);
+  const topNav = await adm.evaluate(() => {
+    const antet = document.querySelector('.topbar').getBoundingClientRect();
+    const meniu = document.querySelector('#tabs').getBoundingClientRect();
+    const principal = document.querySelector('.shell > main').getBoundingClientRect();
+    return { antetStanga: antet.left, antetDreapta: antet.right, meniuSus: meniu.top,
+      principalStanga: principal.left, latime: innerWidth, scroll: document.documentElement.scrollWidth };
+  });
+  ok('desktop: meniul este sus, ocupă lățimea paginii și nu mai rezervă o coloană laterală',
+    topNav.antetStanga >= -0.5 && topNav.antetDreapta <= topNav.latime + 0.5
+      && topNav.meniuSus > 0 && topNav.principalStanga < 40 && topNav.scroll <= topNav.latime + 1);
+  await adm.click('#tabs .navgroup:has(button[data-tab="documente"]) > .navlabel');
+  const dropdown = await adm.evaluate(() => {
+    const g = document.querySelector('#tabs .navgroup:has(button[data-tab="documente"])');
+    const l = g.querySelector('.navlabel').getBoundingClientRect();
+    const m = g.querySelector('.navmenu').getBoundingClientRect();
+    return { vizibil: getComputedStyle(g.querySelector('.navmenu')).display !== 'none',
+      subEticheta: m.top >= l.bottom, inEcran: m.left >= 0 && m.right <= innerWidth };
+  });
+  ok('desktop: grupurile se deschid ca dropdown sub etichetă, integral în ecran',
+    dropdown.vizibil && dropdown.subEticheta && dropdown.inEcran);
+  await adm.click('#tabs button[data-tab="documente"]');
+  await adm.waitForTimeout(250);
+  ok('desktop: alegerea unei pagini închide dropdownul și activează conținutul',
+    !(await adm.locator('#tabs .navgroup:has(button[data-tab="documente"])').evaluate((g) => g.classList.contains('open')))
+      && (await adm.locator('#tab-documente').isVisible()));
+  await adm.evaluate(() => window.goTab('dashboard'));
   ok('bara contextuala este montata', (await adm.locator('#appContext').count()) === 1);
   const controaleUnice = await adm.evaluate(() => ({
     firme: document.querySelectorAll('#firmaSelect').length,
@@ -836,14 +863,21 @@ sect('12. Carcasa are o singura navigare logica si un context unic');
     firmaInContext: !!document.querySelector('#appContext #firmaSelect'),
     perioadaInContext: !!document.querySelector('#appContext .curgroup'),
     unelteInContext: !!document.querySelector('#appContext #sideTools'),
+    unelteInNavigator: !!document.querySelector('#tabs #sideTools'),
   }));
-  ok('firma, perioada si uneltele exista o singura data',
+  ok('firma, perioada și grupul Unelte există o singură dată',
     controaleUnice.firme === 1 && controaleUnice.perioade === 1 && controaleUnice.unelte === 1);
-  ok('firma, perioada si uneltele sunt in bara contextuala',
-    controaleUnice.firmaInContext && controaleUnice.perioadaInContext && controaleUnice.unelteInContext);
-  ok('Ghid, Cartea si Mesaje sunt doar in uneltele globale',
-    (await adm.locator('#sideTools #toolGhid, #sideTools #toolCartea, #sideTools #toolMesaje').count()) === 3
-    && (await adm.locator('#tabs [data-tab="ghid"], #tabs [data-tab="mesaje"], #tabs a[href="/carte/"]').count()) === 0);
+  ok('contextul păstrează firma/perioada, iar Unelte rămâne numai în navigator',
+    controaleUnice.firmaInContext && controaleUnice.perioadaInContext
+      && !controaleUnice.unelteInContext && controaleUnice.unelteInNavigator);
+  ok('cele cinci comenzi sunt directe după Acasă, iar Cartea/Mesaje rămân în Unelte',
+    await adm.evaluate(() => [...document.querySelector('#tabs').children].filter((el) => el.tagName === 'BUTTON')
+      .slice(0, 7).map((el) => el.id || el.dataset.tab).join(',')
+      === 'dashboard,toolGhid,paletaBtn,themeBtn,uiModeBtn,glossaryBtn,notificari')
+    && (await adm.locator('#sideTools #toolCartea, #sideTools #toolMesaje').count()) === 2
+    && (await adm.locator('#sideTools > button, #sideTools > a').count()) === 4
+    && (await adm.locator('#tabs [data-tab="ghid"], #tabs [data-tab="mesaje"], #tabs a[href="/carte/"]').count()) === 3
+    && (await adm.locator('#tabs [data-tab="portofoliu"]').count()) === 0);
 
   const masoara = () => adm.evaluate(() => {
     const viz = (e) => !!e && e.offsetParent !== null;
@@ -852,7 +886,7 @@ sect('12. Carcasa are o singura navigare logica si un context unic');
     const adv = new Set();
     toate.filter((x) => x.classList.contains('adv') || (x.closest('.navgroup') && x.closest('.navgroup').classList.contains('adv')))
       .forEach((x) => adv.add(x.dataset.tab));
-    // acordeonul se deschide integral inainte de citire, altfel ascunderea ar trece pe multime vida
+    // dropdownurile se deschid integral înainte de citire, altfel ascunderea ar trece pe mulțime vidă
     document.querySelectorAll('#tabs .navgroup').forEach((g) => { if (viz(g)) g.classList.add('open'); });
     const lateral = [...document.querySelectorAll('#tabs button[data-tab]')].filter(viz).map((x) => x.dataset.tab);
     return {
@@ -883,7 +917,7 @@ sect('12. Carcasa are o singura navigare logica si un context unic');
   ok('comutatorul revine pe expert', (await pune('expert')) === false);
   await adm.waitForTimeout(300);
   const e = await masoara();
-  ok('mod expert: toate intrarile tehnic-contabile revin in bara laterala', e.lateralAdv.length === e.nrAdv);
+  ok('mod expert: toate intrarile tehnic-contabile revin in meniul superior', e.lateralAdv.length === e.nrAdv);
   ok('mod expert: arborele ofera toate taburile', e.lateralTotal === e.totalTaburi);
 }
 
@@ -944,13 +978,17 @@ sect('14. Carcasa locală pe telefon (390px și 320px)');
       && (await adm.locator('.app-context-kicker').isVisible()));
   ok('mobil local: arborele unic pornește strâns',
     (await adm.locator('#bottomnav,#moreSheet').count()) === 0 && !(await adm.locator('#tabs').isVisible()));
-  ok('mobil local: Ghid, Cartea si Mesaje raman vizibile sus',
-    await adm.locator('#toolGhid').isVisible() && await adm.locator('#toolCartea').isVisible()
-      && await adm.locator('#toolMesaje').isVisible());
+  ok('mobil local: nu mai există un panou Unelte deasupra conținutului',
+    !(await adm.locator('#appContext #sideTools').count()) && !(await adm.locator('#sideTools').isVisible()));
   ok('mobil local: dashboardul nu derulează orizontal',
     await adm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await adm.click('#navToggleBtn');
-  ok('mobil local: Meniu deschide arborele desktop real', await adm.locator('#tabs').isVisible());
+  await adm.click('#navgrupUnelte > .navlabel');
+  ok('mobil local: Meniu arată cele cinci comenzi direct și restul în Unelte',
+    await adm.locator('#tabs').isVisible()
+      && (await adm.locator('#toolGhid:visible, #tabs > .nav-action:visible').count()) === 5
+      && (await adm.locator('#sideTools > button:visible, #sideTools > a:visible').count()) === 4
+      && !(await adm.locator('#tabs [data-tab="portofoliu"]').count()));
   await adm.click('#tabs .navgroup:has(button[data-tab="tva"]) > .navlabel');
   await adm.click('#tabs button[data-tab="tva"]');
   await adm.waitForTimeout(700);

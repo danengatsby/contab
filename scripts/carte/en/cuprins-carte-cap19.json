@@ -1,0 +1,229 @@
+{
+ "parte": "Part V · What you have, what you produce, who works · phases 4–6",
+ "nr": "19",
+ "titlu": "Production: from raw materials to finished product",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "A company that buys goods and sells them knows exactly what each piece cost it: it's written on the invoice. A company that produces has nowhere to read that figure — it has to calculate it, and the calculation is the only operation in accounting where the value of an asset is constructed, rather than taken over."
+  },
+  {
+   "tip": "p",
+   "text": "Hence the difficulty: production cost is not a figure you find, but one you decide. What exactly goes into it is a choice governed by rules, and both the stock value on the balance sheet and the period's result depend on it."
+  },
+  {
+   "tip": "h",
+   "text": "What goes into cost and what doesn't"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Production cost",
+   "cap": [
+    "Included",
+    "Not included"
+   ],
+   "randuri": [
+    [
+     "Raw materials actually consumed",
+     "Administrative expenses"
+    ],
+    [
+     "Direct labor of those who produce",
+     "Selling expenses"
+    ],
+    [
+     "Depreciation of equipment used",
+     "Losses from rejects above normal levels"
+    ],
+    [
+     "Utilities of the production section",
+     "Financial expenses, as a rule"
+    ]
+   ],
+   "nota": "The core rule: what was necessary to bring the good to the state and location where it currently is, is included. The rest are period expenses."
+  },
+  {
+   "tip": "p",
+   "text": "The distinction has immediate consequences. An expense included in cost stays in stock until sale, so it does not affect the current month's result. The same expense left out hits the result now. It's not a matter of preference: inflating production cost with administrative expenses is one of the oldest methods of showing a profit that doesn't exist."
+  },
+  {
+   "tip": "cheie",
+   "text": "What you put into cost you defer; what you leave out you pay for now. That is why the rule is not at the company's discretion."
+  },
+  {
+   "tip": "h",
+   "text": "The recipe: consumption known in advance"
+  },
+  {
+   "tip": "p",
+   "text": "For repetitive production, the quantities of materials needed for a product are known: so much wood, so much paint, so many screws. This list is called a recipe or specific consumption, and its practical usefulness is twofold."
+  },
+  {
+   "tip": "p",
+   "text": "First, it avoids manually entering consumption for each production run: you declare how much was produced, and the materials are automatically deducted from stock, in the proportions from the recipe. Then — and this is the more valuable part — it makes visible the difference between theoretical and actual consumption. When ten meters of material yield eight products instead of ten, the difference is not an accounting error: it's a process loss, and accounting is where it becomes measurable."
+  },
+  {
+   "tip": "h",
+   "text": "The two movements of a production run"
+  },
+  {
+   "tip": "p",
+   "text": "A completed production run produces two opposite entries: materials leave stock, the finished product enters."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Production with materials worth 600, product obtained",
+   "cap": [
+    "Operation",
+    "Debit",
+    "Credit",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Consumption of raw materials",
+     "601 Expenses with raw materials",
+     "301 Raw materials",
+     "600"
+    ],
+    [
+     "Entry of the finished product",
+     "345 Finished products",
+     "711 Revenue related to production costs",
+     "600"
+    ]
+   ],
+   "numerice": [
+    4
+   ],
+   "nota": "Account 711 is not actually a revenue: it's the mechanism through which the consumed expense is \"kept\" in the stock value until sale."
+  },
+  {
+   "tip": "p",
+   "text": "This pair explains something that puzzles at first sight: why production, taken alone, produces neither profit nor loss. The 600 consumption hit the result, and the entry of the product offset it by exactly that amount. The gain only appears at sale, when the product goes out at a price higher than its cost."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Production cost is established according to accounting regulations and includes the acquisition cost of raw materials and materials consumed, other direct expenses, as well as the share of indirect production expenses allocated rationally; general administrative expenses, selling expenses, and losses above normally accepted limits are not included. The allocation of indirect expenses is based on normal production capacity, not actual capacity — significant underutilization is not allowed to inflate unit cost, the portion related to unused capacity being a period expense. Account 711 ensures the correspondence between stock variation and the result, and its balance at period end reflects exactly the difference between the final and initial stock of products and work in progress; checking it is a useful control, because an incomplete write-off at sale shows up there before it shows up in the margin. For work in progress at period end, valuation is done at the actual cost of the stage reached, and its physical inventory — not just the bookkeeping records — is mandatory, being the area with the highest risk of stock overvaluation in all of accounting."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "Purchased stock and produced stock both sit in the warehouse, valued according to rules. The question remains that no bookkeeping record can answer: are they actually still there? That's the next chapter."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 19.1 — what goes into product cost",
+   "enunt": [
+    "A furniture manufacturer. For one batch the following were consumed: wood 6,000 lei, hardware 900, direct labor involved 4,200, workshop energy 800, the accountant's salary 3,000, rent of the finished goods warehouse 1,100, sales commission paid to an agent 700.",
+    "What is the production cost of the batch?"
+   ],
+   "rezolvare": [
+    "Included in cost: wood 6,000, hardware 900, direct labor 4,200, and workshop energy 800 — that is, direct materials, direct labor, and indirect production expenses. Total: 11,900 lei.",
+    "NOT included: the accountant's salary (administrative expense), the finished goods warehouse rent (selling expense, subsequent to production), and the agent's commission (selling expense). These are period expenses, not product expenses.",
+    "Why it matters: if the batch is not sold this month, the 11,900 remains in stock, as an asset, and does not affect the result. The 4,800 lei of period expenses affect it regardless.",
+    "The frequent mistake, in both directions: including administrative expenses in cost inflates stock and artificially defers the loss; excluding workshop energy undervalues stock and shifts profit to the month of sale."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What happens to what hasn't been finished"
+  },
+  {
+   "tip": "p",
+   "text": "Production rarely stops exactly on the 31st of the month. At closing there are almost always things started and unfinished — pieces on the line, a half-completed order, a service in progress. They have consumed materials and hours, so they have value, but they are not yet products."
+  },
+  {
+   "tip": "p",
+   "text": "That's what the work-in-progress accounts are for: 331 for products and 332 for services. They gather the cost accumulated up to the closing date, and in the following month they are resumed, when the work continues."
+  },
+  {
+   "tip": "p",
+   "text": "Without them, the month in which a large job is started shows a loss that doesn't exist — all expenses, no revenue — while the month in which it finishes shows an inflated profit. Work in progress is, therefore, also a matter of time allocation, like the one in chapter 28, only it's resolved in stocks, not in adjustment accounts."
+  },
+  {
+   "tip": "h",
+   "text": "The recipe: from a product to its consumption"
+  },
+  {
+   "tip": "p",
+   "text": "A company that produces the same thing multiple times does not recalculate each time what goes into it. It's written once — the quantities of raw materials for a unit or for a reference batch — and it's called a recipe, or, in production language, a bill of materials."
+  },
+  {
+   "tip": "p",
+   "text": "Its usefulness is twofold. Practically: when launching an order, consumption is calculated by multiplication, not by memory. From an accounting standpoint: the theoretical cost of the batch can be compared with the actual one, and the difference between them is management information that nothing else provides."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Recipe for 10 pieces, order for 25",
+   "cap": [
+    "Material",
+    "For 10 pcs",
+    "For 25 pcs",
+    "Unit cost",
+    "Value"
+   ],
+   "randuri": [
+    [
+     "Wood (m²)",
+     "4,00",
+     "10,00",
+     "150,00",
+     "1.500,00"
+    ],
+    [
+     "Hardware (set)",
+     "10,00",
+     "25,00",
+     "36,00",
+     "900,00"
+    ],
+    [
+     "Varnish (liters)",
+     "1,20",
+     "3,00",
+     "80,00",
+     "240,00"
+    ],
+    [
+     "Total materials",
+     "",
+     "",
+     "",
+     "2.640,00"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5
+   ],
+   "total": true,
+   "nota": "The factor is 2.5 and applies to each line. Labor and indirect expenses are added on top, at actual cost."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth noting what the recipe does NOT do: it does not impose. Actual consumption may differ — a broken piece, an unused remainder — and the consumption slip records what was actually consumed, not what was planned. The recipe is a calculated proposal, not a record."
+  },
+  {
+   "tip": "cheie",
+   "text": "The difference between recipe consumption and actual consumption is not an accounting error: it's exactly the information for which it's worth having a recipe."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "In production, cost is not read off an invoice: it is constructed, according to rules.",
+    "What was necessary to bring the good to its current state is included; administrative and selling expenses remain period expenses.",
+    "What you include in cost you defer until sale; what you leave out hits the result now — that's why the rule is not optional.",
+    "The recipe automatically deducts materials and, more importantly, makes visible the difference between theoretical and actual consumption.",
+    "Production itself produces neither profit nor loss: consumption is offset by the entry of the product. The gain appears only at sale."
+   ]
+  }
+ ]
+}

@@ -1,14 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════════════════
    CONTABO — stratul vizual al aplicației autentificate.
 
-   Loginul și aplicația folosesc acum aceeași familie vizuală: suprafețe calde,
-   accente teracotă, sidebar cărbune, spațiere generoasă și controale accesibile.
-   Nu există meniu superior duplicat, ribbon sau bară de stare: `#tabs` păstrează ciclul
-   contabil, iar `#appContext` reunește pagina, firma, perioada și destinațiile globale.
+   Loginul și aplicația folosesc aceeași familie vizuală: suprafețe calde,
+   accente teracotă, antet cărbune, spațiere generoasă și controale accesibile.
+   `#tabs` este meniul superior unic al ciclului contabil, iar `#appContext` reunește
+   pagina, firma, perioada și destinațiile globale.
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 body.erp {
-  --app-sidebar: 264px;
   --app-context-h: 76px;
   --app-charcoal: #24231f;
   --app-charcoal-2: #2f2e2a;
@@ -26,8 +25,7 @@ body.erp {
 
 /* ── Navigația unică ───────────────────────────────────────────────────────── */
 body.erp .shell {
-  display: flex;
-  align-items: stretch;
+  display: block;
   min-height: 100vh;
   margin: 0;
 }
@@ -37,19 +35,19 @@ body.erp .topbar {
   top: 0;
   z-index: 50;
   display: flex;
-  flex: 0 0 var(--app-sidebar);
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  width: var(--app-sidebar);
-  height: 100vh;
-  padding: 20px 14px 14px;
-  overflow: hidden;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+  min-height: 70px;
+  height: auto;
+  padding: 10px 20px 0;
+  overflow: visible;
   color: #f7f3ea;
   background: var(--app-charcoal);
   border: 0;
-  border-right: 1px solid rgba(255,255,255,.08);
-  box-shadow: 10px 0 34px rgba(36,35,31,.08);
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 8px 28px rgba(36,35,31,.13);
 }
 
 body.erp .topbar .brand {
@@ -57,10 +55,10 @@ body.erp .topbar .brand {
   display: flex;
   align-items: center;
   gap: 11px;
-  min-height: 54px;
-  margin: 0 4px 4px;
-  padding: 0 4px 15px;
-  border-bottom: 1px solid rgba(255,255,255,.12);
+  min-height: 44px;
+  margin: 0 auto 0 0;
+  padding: 0;
+  border: 0;
 }
 body.erp .brand .logo {
   display: grid;
@@ -89,79 +87,100 @@ body.erp .topbar > .firma-select,
 body.erp .topbar > .curgroup { display: none; }
 
 body.erp .topbar #tabs {
-  order: 4;
+  order: 6;
   display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 3px;
-  min-height: 0;
-  margin: 2px 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-color: rgba(255,255,255,.18) transparent;
-  scrollbar-width: thin;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 7px 0 10px;
+  overflow: visible;
+  border-top: 1px solid rgba(255,255,255,.1);
 }
 
 body.erp #tabs > button[data-tab]:not(.hidden),
-body.erp #tabs > a.navlink:not(.hidden) {
-  display: flex !important;
+body.erp #tabs > button.nav-action:not(.hidden),
+body.erp #tabs > a.navlink:not(.hidden),
+body.erp #tabs > .nav-language:not(.hidden) {
+  display: inline-flex !important;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 42px;
-  padding: 9px 12px;
+  gap: 7px;
+  width: auto;
+  min-height: 36px;
+  padding: 7px 10px;
   color: #d8d3c8;
   background: transparent;
   border: 0;
   border-radius: 10px;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.25;
-  text-align: left;
+  text-align: center;
   text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
 }
 body.erp #tabs > button[data-tab]:hover,
+body.erp #tabs > button.nav-action:hover,
 body.erp #tabs > a.navlink:hover {
   color: #fff;
   background: rgba(255,255,255,.08);
 }
 body.erp #tabs > a.navlink:focus-visible { outline-color: #fff; }
+body.erp #tabs > .nav-language {
+  color: #d8d3c8;
+  cursor: default;
+}
+body.erp #tabs > .nav-language select {
+  width: auto;
+  min-width: 50px;
+  min-height: 28px;
+  margin: 0;
+  padding: 3px 22px 3px 7px;
+  color: #fff;
+  color-scheme: dark;
+  background-color: rgba(255,255,255,.09);
+  border-color: rgba(255,255,255,.24);
+}
 body.erp #tabs > button[data-tab].active {
   color: #fff;
   background: rgba(194,97,60,.22);
-  box-shadow: inset 3px 0 0 var(--app-clay);
+  box-shadow: inset 0 -3px 0 var(--app-clay);
 }
 body.erp #tabs > button[data-tab].active .app-icon { color: #eea589; }
 
 body.erp #tabs .navgroup:not(.hidden) {
-  position: static !important;
-  display: block !important;
-  width: 100%;
+  position: relative !important;
+  display: inline-block !important;
+  flex: 0 0 auto;
+  width: auto;
 }
 body.erp #tabs .navlabel:not(.hidden) {
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center;
-  gap: 9px;
-  width: 100%;
-  min-height: 40px;
-  padding: 10px 12px 7px;
-  color: #afa99d;
+  gap: 7px;
+  width: auto;
+  min-height: 36px;
+  padding: 7px 9px;
+  color: #d1ccc1;
   background: transparent;
   border: 0;
   font: inherit;
-  font-size: 13px;
+  font-size: 12.75px;
   font-weight: 700;
   letter-spacing: .01em;
-  text-align: left;
+  text-align: center;
+  white-space: nowrap;
   cursor: pointer;
 }
 body.erp #tabs .navlabel::after {
-  width: 8px;
-  height: 8px;
-  margin-left: auto;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 2px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   content: "";
@@ -169,30 +188,45 @@ body.erp #tabs .navlabel::after {
   transform: rotate(45deg);
   transition: transform .18s ease;
 }
+body.erp #tabs .navlabel:hover { color: #fff; background: rgba(255,255,255,.08); }
+body.erp #tabs .navlabel.active {
+  color: #fff;
+  background: rgba(194,97,60,.18);
+  box-shadow: inset 0 -3px 0 var(--app-clay);
+}
 body.erp #tabs .navgroup.open > .navlabel { color: #f4d3c5; }
 body.erp #tabs .navgroup.open > .navlabel::after { transform: rotate(225deg); }
 body.erp #tabs .navmenu {
-  position: static !important;
+  position: absolute !important;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 80;
   display: none !important;
-  min-width: 0;
-  padding: 2px 0 7px 17px;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
+  min-width: 260px;
+  max-width: 340px;
+  max-height: min(68vh, 560px);
+  padding: 7px;
+  overflow-y: auto;
+  background: var(--app-charcoal-2);
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 12px;
+  box-shadow: 0 18px 42px rgba(0,0,0,.32);
 }
-body.erp #tabs .navgroup.open > .navmenu:not(.hidden) { display: block !important; }
-body.erp #tabs .navmenu button:not(.hidden) {
+body.erp #tabs .navgroup:nth-last-child(-n+3) > .navmenu { right: 0; left: auto; }
+body.erp #tabs .navgroup.open > .navmenu:not(.hidden) { display: grid !important; }
+body.erp #tabs .navmenu button:not(.hidden),
+body.erp #tabs .navmenu a.navlink:not(.hidden) {
   display: flex !important;
   align-items: center;
   gap: 9px;
   width: 100%;
-  min-height: 38px;
-  padding: 8px 10px;
+  min-height: 40px;
+  padding: 8px 11px;
   color: #cbc6bc;
   background: transparent;
   border: 0;
-  border-left: 1px solid rgba(255,255,255,.13);
-  border-radius: 0 9px 9px 0;
+  border: 0;
+  border-radius: 8px;
   font: inherit;
   font-size: 13.5px;
   font-weight: 500;
@@ -201,24 +235,27 @@ body.erp #tabs .navmenu button:not(.hidden) {
   white-space: normal;
   cursor: pointer;
 }
-body.erp #tabs .navmenu button:hover { color: #fff; background: rgba(255,255,255,.07); }
+body.erp #tabs .navmenu button:hover,
+body.erp #tabs .navmenu a.navlink:hover { color: #fff; background: rgba(255,255,255,.07); }
+body.erp #tabs .navmenu a.navlink:focus-visible { outline-color: #fff; }
 body.erp #tabs .navmenu button.active {
   color: #fff;
   background: rgba(194,97,60,.18);
-  border-left-color: #eea589;
+  box-shadow: inset 3px 0 0 #eea589;
   font-weight: 650;
+}
+body.erp #tabs #uiModeBtn.mod-expert {
+  color: #f0c14b;
+  background: rgba(240,193,75,.12);
 }
 body.erp #tabs .navmenu .app-icon { width: 17px; height: 17px; color: #aaa398; }
 body.erp #tabs .navhint { padding: 5px 12px; color: #8f897e; font-size: 12px; }
-/* Aceste două reguli trebuie să bată regulile de afișare ale acordeonului de mai sus, ambele
+/* Aceste două reguli trebuie să bată regulile de afișare ale dropdownurilor de mai sus, ambele
    fiind intenționat `!important`. Altfel modul simplu ar ascunde conținutul tehnic, dar nu și
    intrările lui din navigația unică. */
 body.erp.simple-ui #tabs .navgroup.adv { display: none !important; }
 body.erp.simple-ui #tabs .navmenu button.adv { display: none !important; }
 
-/* Până când erp.js mută uneltele în antetul contextual, nu le afișăm pentru o fracțiune de
-   secundă în bara laterală. Este același nod, nu o copie. */
-body.erp .topbar .side-tools { display: none; }
 body.erp .topbar #logoutBtn {
   display: inline-flex;
   align-items: center;
@@ -234,14 +271,14 @@ body.erp .topbar #logoutBtn {
   box-shadow: none;
 }
 body.erp .topbar #logoutBtn:hover { color: #fff; background: rgba(255,255,255,.14); }
-body.erp .topbar #userBadge { order: 7; margin: 2px 5px 0; color: #bdb8ac; font-size: 12.5px; }
-body.erp .topbar #logoutBtn { order: 8; width: 100%; }
+body.erp .topbar #userBadge { order: 2; margin: 0 3px 0 0; color: #bdb8ac; font-size: 12.5px; }
+body.erp .topbar #logoutBtn { order: 3; width: auto; }
+body.erp .topbar > .imper-banner:not(.hidden) { order: 5; flex: 1 0 100%; margin: 0; }
 body.erp #navToggleBtn,
 body.erp .nav-backdrop { display: none; }
 
 /* ── Bara contextuală: pagină + firmă + perioadă ───────────────────────────── */
 body.erp .shell > main {
-  flex: 1 1 auto;
   min-width: 0;
   max-width: none;
   margin: 0;
@@ -251,8 +288,7 @@ body.erp .shell > main {
 body.erp .shell > main > .tab { max-width: 1220px; margin: 0 auto; }
 
 body.erp .app-context {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 45;
   display: flex;
   flex-wrap: wrap;
@@ -267,64 +303,6 @@ body.erp .app-context {
   box-shadow: 0 8px 22px rgba(45,39,29,.045);
   backdrop-filter: blur(14px);
 }
-/* Uneltele globale sunt un singur rând, sus pe ORICE pagină. Pe lățimi mici rândul se
-   derulează în el însuși, astfel încât toate acțiunile rămân accesibile fără să lățească pagina. */
-body.erp .app-context .side-tools {
-  order: 3;
-  display: flex;
-  flex: 1 0 100%;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  min-width: 0;
-  margin: 0;
-  padding: 8px 0 0;
-  overflow-x: auto;
-  border-top: 1px solid var(--line);
-  scrollbar-color: color-mix(in srgb, var(--muted) 35%, transparent) transparent;
-  scrollbar-width: thin;
-}
-body.erp .app-context .side-tools-label {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 750;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-body.erp .app-context .side-tools .btn {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 6px 9px;
-  color: var(--ink);
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  font-size: 12.5px;
-  white-space: nowrap;
-  box-shadow: none;
-}
-body.erp .app-context .side-tools .btn:hover {
-  color: var(--app-clay);
-  background: color-mix(in srgb, var(--app-clay) 8%, var(--card));
-  border-color: color-mix(in srgb, var(--app-clay) 45%, var(--line));
-}
-body.erp .app-context .side-tools button[data-tab].active {
-  color: var(--app-clay);
-  background: color-mix(in srgb, var(--app-clay) 13%, var(--card));
-  border-color: color-mix(in srgb, var(--app-clay) 65%, var(--line));
-  box-shadow: inset 0 -2px 0 var(--app-clay);
-}
-body.erp .app-context .side-tools .btn.mod-expert {
-  color: #9a6b00;
-  background: color-mix(in srgb, #f0c14b 16%, var(--card));
-  border-color: color-mix(in srgb, #f0c14b 55%, var(--line));
-}
-body.dark.erp .app-context .side-tools .btn.mod-expert { color: #f0c14b; }
 body.erp .app-context-title { display: flex; align-items: center; gap: 12px; min-width: 160px; }
 body.erp .app-context-icon {
   width: 40px;
@@ -428,6 +406,9 @@ body.erp .tab > .toolbar { min-height: 0; margin: 0 0 14px; }
 body.erp .tab > .toolbar > h2 { display: none; }
 body.erp .tab > .toolbar > h2 + .spacer:last-child { display: none; }
 body.erp h1, body.erp h2, body.erp h3 { color: var(--ink); }
+/* Panoul public de autentificare este clonat după ce aplicația pornește și rămâne în același
+   <body>; titlul lui trebuie să păstreze contrastul alb pe fundalul bleumarin. */
+body.erp .auth-hero .ah-title { color: #fff; }
 body.erp h2 { font-size: 22px; }
 body.erp h3 { font-size: 18px; }
 body.erp .muted { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
@@ -489,6 +470,7 @@ body.erp.compact h3 { font-size: 18px; }
   }
   body.erp .topbar #userBadge { display: none; }
   body.erp .topbar #logoutBtn { order: 3; width: auto; }
+  body.erp .topbar > .imper-banner:not(.hidden) { order: 4; }
 
   /* Același arbore de navigație ca pe desktop, deschis ca sertar sub antet. */
   body.erp .topbar.nav-open #tabs {
@@ -496,6 +478,10 @@ body.erp.compact h3 { font-size: 18px; }
     inset: 58px auto 0 0;
     z-index: 2;
     display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 3px;
     width: min(86vw, 320px);
     margin: 0;
     padding: 12px 10px calc(18px + env(safe-area-inset-bottom,0));
@@ -504,6 +490,63 @@ body.erp.compact h3 { font-size: 18px; }
     background: var(--app-charcoal);
     border-top: 1px solid rgba(255,255,255,.1);
     box-shadow: 18px 16px 38px rgba(0,0,0,.25);
+  }
+  body.erp .topbar.nav-open #tabs > button[data-tab]:not(.hidden),
+  body.erp .topbar.nav-open #tabs > button.nav-action:not(.hidden),
+  body.erp .topbar.nav-open #tabs > a.navlink:not(.hidden),
+  body.erp .topbar.nav-open #tabs > .nav-language:not(.hidden) {
+    display: flex !important;
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 12px;
+    text-align: left;
+  }
+  body.erp .topbar.nav-open #tabs > button[data-tab].active {
+    box-shadow: inset 3px 0 0 var(--app-clay);
+  }
+  body.erp .topbar.nav-open #tabs .navgroup:not(.hidden) {
+    position: static !important;
+    display: block !important;
+    width: 100%;
+  }
+  body.erp .topbar.nav-open #tabs .navlabel:not(.hidden) {
+    display: flex !important;
+    width: 100%;
+    min-height: 40px;
+    padding: 10px 12px 7px;
+    color: #afa99d;
+    text-align: left;
+  }
+  body.erp .topbar.nav-open #tabs .navlabel::after {
+    width: 8px;
+    height: 8px;
+    margin: 0 0 0 auto;
+  }
+  body.erp .topbar.nav-open #tabs .navlabel.active { box-shadow: inset 3px 0 0 var(--app-clay); }
+  body.erp .topbar.nav-open #tabs .navmenu {
+    position: static !important;
+    display: none !important;
+    min-width: 0;
+    max-width: none;
+    max-height: none;
+    padding: 2px 0 7px 17px;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  body.erp .topbar.nav-open #tabs .navgroup.open > .navmenu:not(.hidden) { display: block !important; }
+  body.erp .topbar.nav-open #tabs .navmenu button:not(.hidden),
+  body.erp .topbar.nav-open #tabs .navmenu a.navlink:not(.hidden) {
+    min-height: 38px;
+    padding: 8px 10px;
+    border-left: 1px solid rgba(255,255,255,.13);
+    border-radius: 0 9px 9px 0;
+  }
+  body.erp .topbar.nav-open #tabs .navmenu button.active {
+    border-left-color: #eea589;
+    box-shadow: none;
   }
   body.erp .topbar.nav-open .nav-backdrop {
     position: fixed;
@@ -552,7 +595,6 @@ body.erp.compact h3 { font-size: 18px; }
   body.erp .app-context .firma-select { width: 100%; min-width: 0; max-width: none; }
   body.erp .app-context .curperiod { min-width: 106px; padding-inline: 6px; font-size: 13px; }
   body.erp .app-context .curnav { min-width: 36px; width: 36px; padding: 0; }
-
 }
 
 /* La limita minimă suportată, firma și perioada primesc fiecare rândul ei.

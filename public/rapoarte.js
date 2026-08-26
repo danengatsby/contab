@@ -3,7 +3,7 @@
 // Rapoarte contabile: jurnal, cartea mare, banca/casa, balanta, TVA/D300, inchideri, situatii. Extras din app.js (Etapa: spargerea fisierului mare).
 import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac, applyFiscalDefaults, plural } from './core.js';
 import { renderBudget } from './dashboard.js';
-import { pget, workMonth, setWorkMonth, nextMonth, lunaLabel, applyWorkMonth, onPeriodChange } from './periods.js';
+import { pget, workMonth, lunaLabel, onPeriodChange } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 import { stare, controaleHtml, leaga } from './paginare.js';
 import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved } from './formflow.js';
@@ -415,8 +415,147 @@ async function loadClosings() {
   if ($('#vcAn') && [...$('#vcAn').options].some((o) => o.value === m.slice(0, 4))) $('#vcAn').value = m.slice(0, 4);
   // Anul din cardul de inventariere urmeaza luna de lucru, ca restul pasilor de inchidere.
   if ($('#invAn')) $('#invAn').value = m.slice(0, 4);
-  previewVat(); previewProfitTax(); previewYear(); previewDistribution(); renderRegistruInventar();
+  if ($('#annualCockpitYear')) $('#annualCockpitYear').value = m.slice(0, 4);
+  if ($('#distDate') && !$('#distDate').value) $('#distDate').value = defaultDistributionDate($('#distYear').value);
+  previewVat(); previewProfitTax(); previewYear(); previewDistribution(); renderRegistruInventar(); renderAnnualCockpit();
 }
+
+function annualTemei(temei) {
+  if (!temei || !temei.length) return '';
+  return `<details class="temei"><summary class="muted">Temei legal: ${temei.map((x) => H(x.eticheta)).join(' · ')}</summary><ul>${
+    temei.map((x) => `<li><b>${H(x.eticheta)}</b> — ${H(x.ce)}</li>`).join('')}</ul></details>`;
+}
+function annualDetails(d) {
+  const items = Object.entries(d || {}).filter(([, value]) => value !== null && value !== '' && value !== false && (!Array.isArray(value) || value.length));
+  if (!items.length) return '';
+  return `<p class="annual-detail">${items.map(([key, value]) => `${H(key.replace(/([A-Z])/g, ' $1').toLowerCase())}: <b>${H(Array.isArray(value) ? value.join(', ') : value)}</b>`).join(' · ')}</p>`;
+}
+function annualInventoryHtml(matrix, canManage) {
+  if (!matrix) return '';
+  const control = matrix.control || {}; const categories = control.categories || {};
+  const domainRows = (matrix.rows || []).filter((x) => !['diferente_regularizare', 'guvernanta'].includes(x.key));
+  const rowHtml = domainRows.map((row) => {
+    const saved = categories[row.key] || {};
+    const blockers = (row.blockers || []).length ? `<div class="status err">${H(row.blockers.join(' '))}</div>` : '<span class="pill ok">complet</span>';
+    return `<tr data-aim-row="${H(row.key)}"><td><b>${H(row.label)}</b><br>${blockers}</td>
+      <td><select class="aim-status"${canManage ? '' : ' disabled'}><option value="">— alege —</option>
+        <option value="confirmat"${saved.status === 'confirmat' ? ' selected' : ''}>confirmat</option>
+        <option value="nu_se_aplica"${saved.status === 'nu_se_aplica' ? ' selected' : ''}>nu se aplică</option></select></td>
+      <td><input class="aim-evidence" value="${H(saved.evidence || '')}" placeholder="document / confirmare / locație"${canManage ? '' : ' disabled'} /></td>
+      <td><input class="aim-note" value="${H(saved.note || '')}" placeholder="justificare / observații"${canManage ? '' : ' disabled'} /></td></tr>`;
+  }).join('');
+  const rec = control.reconciliation || {}; const gov = control.governance || {};
+  const recRow = (matrix.rows || []).find((x) => x.key === 'diferente_regularizare') || {};
+  const govRow = (matrix.rows || []).find((x) => x.key === 'guvernanta') || {};
+  const approval = gov.approval;
+  return `<details class="annual-inventory-matrix"${matrix.complete ? '' : ' open'}>
+    <summary><b>Matricea de completitudine a inventarierii</b> · ${H(matrix.progress.complete)}/${H(matrix.progress.total)} controale
+      ${matrix.complete ? '<span class="pill ok">completă și aprobată</span>' : '<span class="pill warn">incompletă</span>'}</summary>
+    <p class="muted">Fiecare domeniu cere o dovadă sau o justificare explicită de neaplicabilitate. Salvarea oricărei modificări invalidează aprobarea anterioară.</p>
+    <div class="tablewrap"><table><thead><tr><th>Domeniu</th><th>Stare</th><th>Dovadă</th><th>Observații / justificare</th></tr></thead><tbody>${rowHtml}</tbody></table></div>
+    <h3>Diferență inventar–contabilitate și regularizare</h3>
+    ${(recRow.blockers || []).length ? `<div class="status err">${H(recRow.blockers.join(' '))}</div>` : '<span class="pill ok">complet</span>'}
+    <div class="dyn">
+      <label>Diferență totală (lei; scrie 0 dacă nu există)<input id="aimDifference" type="number" step="0.01" value="${rec.differenceAmount == null ? '' : H(rec.differenceAmount)}"${canManage ? '' : ' disabled'} /></label>
+      <label>Dovada punctajului<input id="aimRecEvidence" value="${H(rec.evidence || '')}" placeholder="centralizator / anexă"${canManage ? '' : ' disabled'} /></label>
+      <label>IDs note de regularizare<input id="aimEntryIds" value="${H((rec.adjustmentEntryIds || []).join(', '))}" placeholder="ex. e-104, e-105"${canManage ? '' : ' disabled'} /></label>
+      <label>Explicația regularizării<input id="aimRecNote" value="${H(rec.note || '')}"${canManage ? '' : ' disabled'} /></label>
+    </div>
+    <h3>Comisie, proces-verbal, semnături și aprobare</h3>
+    ${(govRow.blockers || []).length ? `<div class="status err">${H(govRow.blockers.join(' '))}</div>` : '<span class="pill ok">complet</span>'}
+    <div class="dyn">
+      <label class="full">Membrii comisiei (unul pe rând)<textarea id="aimCommittee" rows="3"${canManage ? '' : ' disabled'}>${H((gov.committee || []).join('\n'))}</textarea></label>
+      <label>Proces-verbal nr./referință<input id="aimMinutesRef" value="${H(gov.minutesRef || '')}"${canManage ? '' : ' disabled'} /></label>
+      <label>Data procesului-verbal<input id="aimMinutesDate" type="date" value="${H(gov.minutesDate || '')}"${canManage ? '' : ' disabled'} /></label>
+      <label class="full">Semnat de (aceleași nume, unul pe rând)<textarea id="aimSignedBy" rows="3"${canManage ? '' : ' disabled'}>${H((gov.signedBy || []).join('\n'))}</textarea></label>
+      <label class="full">Dovada semnăturilor<input id="aimSignatureEvidence" value="${H(gov.signatureEvidence || '')}" placeholder="fișier / registru / locație"${canManage ? '' : ' disabled'} /></label>
+    </div>
+    <p class="muted">${approval ? `Aprobare: ${H(approval.approvedByName || approval.approvedBy)} · ${H(String(approval.approvedAt || '').slice(0, 16).replace('T', ' '))}${govRow.approvalValid ? '' : ' · invalidată'}` : 'Matricea nu este aprobată.'}</p>
+    ${canManage ? '<div class="row"><button id="aimSave" class="btn primary">Salvează matricea</button><button id="aimApprove" class="btn">Aprobă matricea salvată</button></div>' : ''}
+  </details>`;
+}
+
+function collectAnnualInventoryControl(box, matrix) {
+  const categories = {};
+  box.querySelectorAll('[data-aim-row]').forEach((tr) => {
+    categories[tr.dataset.aimRow] = {
+      status: tr.querySelector('.aim-status').value,
+      evidence: tr.querySelector('.aim-evidence').value,
+      note: tr.querySelector('.aim-note').value,
+    };
+  });
+  return {
+    categories,
+    reconciliation: {
+      differenceAmount: box.querySelector('#aimDifference').value,
+      evidence: box.querySelector('#aimRecEvidence').value,
+      adjustmentEntryIds: box.querySelector('#aimEntryIds').value,
+      note: box.querySelector('#aimRecNote').value,
+    },
+    governance: {
+      committee: box.querySelector('#aimCommittee').value,
+      minutesRef: box.querySelector('#aimMinutesRef').value,
+      minutesDate: box.querySelector('#aimMinutesDate').value,
+      signedBy: box.querySelector('#aimSignedBy').value,
+      signatureEvidence: box.querySelector('#aimSignatureEvidence').value,
+      approval: matrix && matrix.control && matrix.control.governance && matrix.control.governance.approval,
+    },
+  };
+}
+async function renderAnnualCockpit() {
+  const box = $('#annualCockpit'); if (!box) return;
+  const year = ($('#annualCockpitYear') || {}).value || String(new Date().getFullYear());
+  box.innerHTML = '<p class="muted">Se calculează starea anului…</p>';
+  let r;
+  try { r = await api('/api/annual-close?year=' + encodeURIComponent(year)); }
+  catch (e) { box.innerHTML = `<p class="status err">${H(e.message)}</p>`; return; }
+  const state = {
+    gata: ['✓', 'gata'], deschis: ['●', 'de făcut'], blocat: ['○', 'așteaptă'], nuseaplica: ['—', 'nu se aplică'],
+  };
+  const steps = (r.steps || []).map((s) => {
+    const st = state[s.stare] || ['•', s.stare];
+    const info = s.detalii;
+    const waits = s.asteapta ? `<p class="closewait muted">Așteaptă: ${H(s.asteapta)}</p>` : '';
+    const blockers = (s.blocaje || []).length ? `<ul class="closeblock">${s.blocaje.map((b) => `<li>${H(b)}</li>`).join('')}</ul>` : '';
+    return `<li class="closestep is-${H(s.stare)}"><div class="closestep-h"><span class="closeicon">${st[0]}</span><b>${H(s.nume)}</b><span class="pill">${H(st[1])}</span></div>
+      <p class="muted">${H(s.descriere)}</p>${waits}${blockers}${annualDetails(info)}${annualTemei(s.temei)}</li>`;
+  }).join('');
+  const permission = r.permission && !r.permission.ok
+    ? `<div class="notice warning"><span class="notice-icon">🔒</span><div>${H(r.permission.reason)}</div></div>` : '';
+  const review = r.review && !r.review.ready
+    ? `<div class="notice warning"><span class="notice-icon">🔒</span><div><b>Revizie fiscală externă incompletă:</b> ${H(r.review.approved)}/${H(r.review.total)} cazuri aprobate pentru setul ${H(r.review.fiscalYear)}${r.review.invalid ? `; ${H(r.review.invalid)} invalidate după modificări` : ''}. Operațiunile anuale rămân blocate.</div></div>` : '';
+  const p13 = r.adjustmentPeriod
+    ? `<div class="notice ${r.adjustmentPeriod.open ? 'success' : 'warning'}"><span class="notice-icon">${r.adjustmentPeriod.open ? '✓' : '○'}</span><div><b>Perioada tehnică ${H(r.adjustmentPeriod.period)}</b> — ${r.adjustmentPeriod.open ? 'deschisă pentru operațiunile anuale autorizate' : 'se deschide după blocarea lunii decembrie'}. Data contabilă a notelor rămâne ${H(r.adjustmentPeriod.accountingDate)}.</div></div>` : '';
+  const canManage = !!(r.permission && r.permission.ok);
+  box.innerHTML = `<div class="closebar"><span class="closebarfill" data-style="width:${Number(r.progres && r.progres.procent) || 0}%"></span></div>
+    <p class="closemeta"><b>${r.progres.gata}/${r.progres.total}</b> pași finalizați · ${r.progres.procent}%${r.profile && r.profile.fiscalValidFrom ? ` · profil fiscal valabil din ${H(r.profile.fiscalValidFrom)}` : ''}</p>
+    ${p13}${review}${permission}${annualInventoryHtml(r.inventoryMatrix, canManage)}<ol class="closesteps">${steps}</ol>`;
+  const save = box.querySelector('#aimSave');
+  if (save) save.addEventListener('click', async () => {
+    save.disabled = true;
+    try {
+      await api('/api/annual-inventory-control', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, control: collectAnnualInventoryControl(box, r.inventoryMatrix) }) });
+      toast('Matricea inventarierii a fost salvată; aprobarea trebuie refăcută.'); renderAnnualCockpit();
+    } catch (e) { toast(e.message, true); save.disabled = false; }
+  });
+  const approve = box.querySelector('#aimApprove');
+  if (approve) approve.addEventListener('click', async () => {
+    approve.disabled = true;
+    try {
+      await api('/api/annual-inventory-control/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ year }) });
+      toast('Matricea inventarierii a fost aprobată.'); renderAnnualCockpit();
+    } catch (e) { toast(e.message, true); approve.disabled = false; }
+  });
+  ['#closeProfitTax', '#closeYear', '#distResult'].forEach((id) => { const el = $(id); if (el) el.disabled = !!(r.permission && !r.permission.ok) || !!(r.review && !r.review.ready); });
+}
+$('#annualCockpitRefresh') && $('#annualCockpitRefresh').addEventListener('click', renderAnnualCockpit);
+$('#annualCockpitYear') && $('#annualCockpitYear').addEventListener('change', () => {
+  const year = $('#annualCockpitYear').value;
+  ['#invAn', '#ptYear', '#yearInput', '#distYear'].forEach((id) => { if ($(id)) $(id).value = year; });
+  if ($('#distDate')) $('#distDate').value = defaultDistributionDate(year);
+  previewProfitTax(); previewYear(); previewDistribution(); renderRegistruInventar(); renderAnnualCockpit();
+});
 async function previewVat() {
   const p = pget('vc'); if (!p) { $('#vatPreview').textContent = 'Alege o perioadă.'; return; }
   const v = await api('/api/vat-preview?period=' + p);
@@ -427,17 +566,10 @@ async function previewVat() {
 $('#closeVat').addEventListener('click', async () => {
   const p = pget('vc'); if (!p) return toast('Alege o perioadă', true);
   try {
-    await api('/api/close-vat?period=' + p, { method: 'POST' });
+    const r = await api('/api/close-vat?period=' + p, { method: 'POST' });
     setMeta(await api('/api/meta'));
-    // avanseaza la luna urmatoare si muta TOATE filtrele (jurnal, balanta etc.) pe noua luna.
-    // `nm` e luna CHIAR setata: cand se inchide luna curenta, cea urmatoare ar fi in viitor si
-    // luna de lucru ramane pe loc — mesajul si filtrele trebuie sa spuna adevarul, nu intentia.
-    const nm = setWorkMonth(nextMonth(p));
-    applyWorkMonth();
     loadEntries();
-    $('#vcLuna').value = nm.slice(5);
-    if ([...$('#vcAn').options].some((o) => o.value === nm.slice(0, 4))) $('#vcAn').value = nm.slice(0, 4);
-    toast('Luna ' + lunaLabel(p) + ' închisă.' + (nm === p ? '' : ' Ai trecut la ' + lunaLabel(nm) + '.'));
+    toast(r.message || ('TVA regularizată pentru ' + lunaLabel(p) + '. Luna rămâne deschisă până la finalizarea cockpitului.'));
     previewVat();
   } catch (e) { toast(e.message, true); }
 });
@@ -449,7 +581,7 @@ async function previewYear() {
 }
 $('#closeYear').addEventListener('click', async () => {
   const y = $('#yearInput').value;
-  try { const r = await api('/api/close-year?year=' + y, { method: 'POST' }); toast('Închidere anuală: rezultat ' + fmt(r.result.rezultat) + ' lei'); setMeta(await api('/api/meta')); loadEntries(); }
+  try { const r = await api('/api/close-year?year=' + y, { method: 'POST' }); toast('Închidere anuală: rezultat ' + fmt(r.result.rezultat) + ' lei'); setMeta(await api('/api/meta')); loadEntries(); renderAnnualCockpit(); }
   catch (e) { toast(e.message, true); }
 });
 /**
@@ -526,6 +658,7 @@ $('#invSave') && $('#invSave').addEventListener('click', async () => {
     if ($('#invVal')) $('#invVal').value = '';
     if ($('#invCauza')) $('#invCauza').value = '';
     renderRegistruInventar();
+    renderAnnualCockpit();
   } catch (e) { toast(e.message, true); }
 });
 
@@ -535,24 +668,36 @@ $('#closeProfitTax') && $('#closeProfitTax').addEventListener('click', async () 
   for (const p of ptParams(($('#ptNed') || {}).value, ($('#ptDed') || {}).value, ($('#ptPierdere') || {}).value)) {
     const [k, val] = p.split('='); body[k] = Number(val);
   }
-  try { const r = await api('/api/close-profit-tax', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast(r.message || ('Impozit pe profit înregistrat: ' + fmt(r.result.impozit) + ' lei')); setMeta(await api('/api/meta')); loadEntries(); previewProfitTax(); }
+  try { const r = await api('/api/close-profit-tax', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); toast(r.message || ('Impozit pe profit înregistrat: ' + fmt(r.result.impozit) + ' lei')); setMeta(await api('/api/meta')); loadEntries(); previewProfitTax(); renderAnnualCockpit(); }
   catch (e) { toast(e.message, true); }
 });
-$('#distYear') && $('#distYear').addEventListener('change', previewDistribution);
+function defaultDistributionDate(_year) {
+  return '';
+}
+$('#distYear') && $('#distYear').addEventListener('change', () => {
+  if ($('#distDate')) $('#distDate').value = defaultDistributionDate($('#distYear').value);
+  previewDistribution();
+});
+$('#distDate') && $('#distDate').addEventListener('change', previewDistribution);
 async function previewDistribution() {
   const y = $('#distYear').value;
   const r = await api('/api/distribute-preview?year=' + y);
+  const data = ($('#distDate') || {}).value || defaultDistributionDate(y);
   const txt = r.sold121 === 0 ? 'Soldul contului 121 este 0 — nimic de repartizat.'
     : r.profit ? `Profit în 121: <b>${fmt(r.profit)}</b> lei\n→ se înregistrează: <b>121 = 117</b> ${fmt(r.profit)} lei`
       : `Pierdere în 121: <b>${fmt(r.pierdere)}</b> lei\n→ se înregistrează: <b>117 = 121</b> ${fmt(r.pierdere)} lei`;
-  $('#distPreview').innerHTML = txt;
+  $('#distPreview').innerHTML = txt + `\nHotărârea AGA / data articolului: <b>${H(data || 'alege data reală')}</b> (anul următor)`;
 }
 $('#distResult') && $('#distResult').addEventListener('click', async () => {
   const y = $('#distYear').value;
+  const data = ($('#distDate') || {}).value;
+  const agaNumar = (($('#distAgaNr') || {}).value || '').trim();
+  if (!data) return toast('Alege data înregistrării din anul următor', true);
+  if (!agaNumar) return toast('Completează numărul hotărârii AGA', true);
   try {
-    const r = await api('/api/distribute-result?year=' + y, { method: 'POST' });
+    const r = await api('/api/distribute-result?year=' + y, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data, aga: { numar: agaNumar, data } }) });
     toast(r.message || (r.result.profit ? 'Profit repartizat (121→117): ' + fmt(r.result.profit) + ' lei' : 'Pierdere reportată (117→121): ' + fmt(r.result.pierdere) + ' lei'));
-    setMeta(await api('/api/meta')); loadEntries();
+    setMeta(await api('/api/meta')); loadEntries(); renderAnnualCockpit();
   } catch (e) { toast(e.message, true); }
 });
 
@@ -603,7 +748,8 @@ async function fxPreview() {
   if (!items.length) return toast('Completează cel puțin un curs de închidere', true);
   let r; try { r = await api('/api/fx-reval/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ asOf, items }) }); } catch (e) { return toast(e.message, true); }
   const box = $('#fxRevalPreview');
-  if (!r.lines.length) { box.innerHTML = '<p class="muted">Nicio diferență de reevaluare (soldurile coincid cu cursul indicat).</p>'; $('#fxRevalPost').classList.add('hidden'); return; }
+  if (!r.lines.length) { box.innerHTML = '<p class="muted">Nicio diferență de reevaluare (soldurile coincid cu cursul indicat). Confirmă rezultatul pentru dosarul lunii.</p>'; $('#fxRevalPost').textContent = 'Confirmă diferența zero'; $('#fxRevalPost').classList.remove('hidden'); return; }
+  $('#fxRevalPost').textContent = 'Înregistrează reevaluarea';
   box.innerHTML = `<table><thead><tr><th>Cont</th><th>Sold contabil</th><th>Reevaluat</th><th>Diferență</th><th>Sens</th><th>Notă</th></tr></thead>
     <tbody>${r.results.filter((x) => x.lines.length).map((x) => `<tr><td class="acc">${x.account}</td><td class="num">${fmt(x.book)}</td><td class="num">${fmt(x.revaluedLei)}</td>
       <td class="num" data-style="color:${x.sens === 'favorabila' ? 'var(--accent)' : 'var(--danger)'}">${x.diff >= 0 ? '+' : ''}${fmt(x.diff)}</td>
@@ -616,7 +762,7 @@ $('#fxRevalPost') && $('#fxRevalPost').addEventListener('click', async () => {
   try {
     const r = await api('/api/fx-reval/post', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ asOf, items }) });
     $('#fxRevalStatus').className = 'status ok';
-    $('#fxRevalStatus').textContent = 'Reevaluare înregistrată: favorabil ' + fmt(r.totalFavorabil) + ' lei (765), nefavorabil ' + fmt(r.totalNefavorabil) + ' lei (665).';
+    $('#fxRevalStatus').textContent = r.message || ('Reevaluare înregistrată: favorabil ' + fmt(r.totalFavorabil) + ' lei (765), nefavorabil ' + fmt(r.totalNefavorabil) + ' lei (665).');
     $('#fxRevalArea').innerHTML = ''; $('#fxRevalPreview').innerHTML = ''; $('#fxRevalPost').classList.add('hidden');
     loadEntries();
   } catch (e) { $('#fxRevalStatus').className = 'status err'; $('#fxRevalStatus').textContent = e.message; }
@@ -723,18 +869,19 @@ async function loadStatements() {
     const noteSec = (s) => {
       let body;
       if (s.tabel) {
-        const head = '<tr>' + s.tabel.cols.map((c) => `<th class="${c.num ? 'num' : ''}" data-style="text-align:${c.num ? 'right' : 'left'}">${c.label}</th>`).join('') + '</tr>';
+        const head = '<tr>' + s.tabel.cols.map((c) => `<th class="${c.num ? 'num' : ''}" data-style="text-align:${c.num ? 'right' : 'left'}">${H(c.label)}</th>`).join('') + '</tr>';
         const body2 = s.tabel.rows.map((row) => '<tr' + (row._bold ? ' class="total"' : '') + '>' + s.tabel.cols.map((c) =>
-          `<td class="${c.num ? 'num' : ''}">${c.num ? (row[c.k] == null ? '—' : fmt(row[c.k])) : (row[c.k] == null ? '' : row[c.k])}</td>`).join('') + '</tr>').join('');
+          `<td class="${c.num ? 'num' : ''}">${c.num ? (row[c.k] == null ? '—' : fmt(row[c.k])) : H(row[c.k] == null ? '' : row[c.k])}</td>`).join('') + '</tr>').join('');
         body = head + body2;
       } else {
-        body = s.linii.map((l) => `<tr${l._bold ? ' class="total"' : ''}><td>${l.k}</td><td class="num">${l.v == null ? '—' : (l.raw ? l.v : fmt(l.v))}</td></tr>`).join('');
+        body = s.linii.map((l) => `<tr${l._bold ? ' class="total"' : ''}><td>${H(l.k)}</td><td class="num">${l.v == null ? '—' : (l.raw ? H(l.v) : fmt(l.v))}</td></tr>`).join('');
       }
-      return `<p data-u="u179"><b>${s.titlu}</b></p><table>${body}</table>`;
+      return `<p data-u="u179"><b>${H(s.titlu)}</b></p><table>${body}</table>`;
     };
-    $('#notesView').innerHTML = n.sections.map(noteSec).join('')
-      + '<p data-u="u180"><b>Nota 7 — Principii și politici contabile</b></p><ul class="muted" data-u="u181">'
-      + n.principii.map((p) => `<li>${p}</li>`).join('') + '</ul>';
+    $('#notesView').innerHTML = `<p class="muted">${H(n.sections.length + 1)} note generate din balanță, registrul documentelor deschise și politicile configurate pentru ${H(n.year)}.</p>`
+      + n.sections.map(noteSec).join('')
+      + '<p data-u="u180"><b>Nota 8 — Principii și politici contabile aplicate</b></p><ul class="muted" data-u="u181">'
+      + n.principii.map((p) => `<li>${H(p)}</li>`).join('') + '</ul>';
   }).catch(() => {});
   api('/api/statements/cashflow?year=' + y).then((cf) => {
     const cr = (label, val, cls) => `<tr class="${cls || ''}"><td>${label}</td><td class="num">${fmt(val)}</td></tr>`;

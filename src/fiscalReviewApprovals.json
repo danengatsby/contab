@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 2,
+  "description": "Aprobări externe semnate criptografic. Se completează numai din dosarul semnat de revizor; implicit niciun caz nu este aprobat.",
+  "approvals": {}
+}

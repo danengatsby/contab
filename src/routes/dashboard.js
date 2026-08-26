@@ -17,6 +17,8 @@ const stocks = require('../stocks');
 const dateFirma = require('../dateFirma');
 const { reconcile, compensablePartners, compensationLines } = require('../reconcile');
 const { analyticBalance, aging } = require('../analytic');
+const openItems = require('../openItems');
+const cash13 = require('../cashForecast13Weeks');
 const { round2, period: periodOf } = require('../util');
 const { sendList } = require('../paginate');
 
@@ -30,16 +32,18 @@ module.exports = function register(app, ctx) {
   // Trimite intreg setul dorit (idempotent): lista goala = dezlegare completa.
   app.post('/api/reconcile/link', (req, res) => {
     const b = req.body || {}; const fid = activeId(req); const d = db.get();
-    const own = (id) => d.entries.find((e) => e.id === String(id) && e.firmaId === fid);
-    const pay = own(b.paymentId);
-    if (!pay) return res.status(404).json({ error: 'Articolul de decontare nu exista.' });
-    const ids = Array.isArray(b.invoiceIds)
-      ? [...new Set(b.invoiceIds.map(String))].filter((id) => id !== pay.id && !!own(id))
-      : [];
-    if (ids.length) pay.stinge = ids; else delete pay.stinge;
-    logAudit('reconcile.link', pay.id + ' -> [' + ids.join(', ') + ']', { req, firmaId: fid });
-    db.save();
-    res.json({ ok: true, paymentId: pay.id, stinge: ids });
+    const ownIds = new Set((d.entries || []).filter((e) => Number(e.firmaId) === Number(fid)).map((e) => String(e.id)));
+    const ids = Array.isArray(b.invoiceIds) ? [...new Set(b.invoiceIds.map(String))].filter((id) => ownIds.has(id)) : [];
+    try {
+      const r = openItems.replaceAllocations(d, fid, String(b.paymentId || ''),
+        ids.map((documentId) => ({ documentId, amount: null })), req.user, db.nextId);
+      if (!r.idempotent) {
+        logAudit('reconcile.link', String(b.paymentId) + ' -> [' + ids.join(', ') + ']', { req, firmaId: fid });
+        db.save();
+      }
+      res.json({ ok: true, idempotent: !!r.idempotent, paymentId: String(b.paymentId || ''), stinge: ids,
+        allocations: r.allocations });
+    } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
   });
 
   // ── Compensare creante / datorii (partener client + furnizor) ──
@@ -132,6 +136,79 @@ module.exports = function register(app, ctx) {
     const fid = activeId(req);
     const templates = (db.get().recurringInvoices || []).filter((t) => t.firmaId === fid && t.activ !== false);
     res.json(rep.cashForecast(S(req), templates, { months: Number(req.query.months) || 6, startPeriod: req.query.start || null }));
+  });
+
+  function forecastTemplates(fid) {
+    return (db.get().recurringInvoices || []).filter((t) => Number(t.firmaId) === Number(fid) && t.activ !== false);
+  }
+  function snapshotPublic(row, view) {
+    return { id: row.id, createdAt: row.createdAt, createdByName: row.createdByName,
+      startDate: row.startDate, endDate: row.endDate, scenario: row.scenario,
+      basisHash: row.basisHash, forecastHash: row.forecastHash, verified: cash13.verifySnapshot(row),
+      backtest: cash13.verifySnapshot(row) ? cash13.backtest(view, row) : null };
+  }
+
+  app.get('/api/cash-forecast/13-weeks', (req, res) => {
+    try {
+      const fid = activeId(req); const view = S(req);
+      const value = cash13.forecast(view, forecastTemplates(fid), {
+        startDate: req.query.start || null, scenario: req.query.scenario || 'base',
+      });
+      const allSnapshots = (view.cashForecastSnapshots || []).slice()
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      const snapshots = allSnapshots.slice(0, 5).map((row) => snapshotPublic(row, view));
+      res.json(Object.assign(value, { snapshotCount: allSnapshots.length, snapshots }));
+    } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+  });
+
+  // PDF-ul poate fi o previzualizare live sau o fotografie identificată explicit. Pentru o
+  // fotografie nu se recalculează nimic: se verifică hash-ul și se tipărește forecast-ul păstrat.
+  app.get('/pdf/cash-forecast-13-weeks', (req, res) => {
+    try {
+      const fid = activeId(req); const view = S(req); let value; let meta = {};
+      if (req.query.snapshot) {
+        const row = (view.cashForecastSnapshots || []).find((x) => String(x.id) === String(req.query.snapshot));
+        if (!row) return res.status(404).send('Fotografia de cash-flow nu există în firma activă.');
+        if (!cash13.verifySnapshot(row)) return res.status(409).send('Fotografia de cash-flow este coruptă sau incompletă.');
+        value = row.forecast; meta = { snapshotId: row.id, createdAt: row.createdAt,
+          createdByName: row.createdByName, forecastHash: row.forecastHash };
+      } else {
+        value = cash13.forecast(view, forecastTemplates(fid), {
+          startDate: req.query.start || null, scenario: req.query.scenario || 'base',
+        });
+      }
+      return pdf.cashForecast13Pdf(res, view.company, value, meta);
+    } catch (e) { return res.status(e.status || 400).send(e.message); }
+  });
+
+  // Fotografia este append-only. Aceleași date și aceleași ipoteze întorc aceeași fotografie,
+  // ca retry-ul HTTP să nu creeze versiuni false; o schimbare de bază produce un hash nou.
+  app.post('/api/cash-forecast/13-weeks/snapshot', (req, res) => {
+    try {
+      const fid = activeId(req); const view = S(req); const body = req.body || {};
+      const value = cash13.forecast(view, forecastTemplates(fid), {
+        startDate: body.startDate || null, scenario: body.scenario || 'base',
+      });
+      const existing = (db.get().cashForecastSnapshots || []).find((x) => Number(x.firmaId) === Number(fid)
+        && x.startDate === value.startDate && x.scenario === value.scenario && x.basisHash === value.basisHash
+        && cash13.verifySnapshot(x));
+      if (existing) return res.json({ ok: true, created: false, snapshot: snapshotPublic(existing, view) });
+      const row = cash13.makeSnapshot(value, { id: db.nextId('cfs'), firmaId: fid,
+        createdBy: req.user && req.user.id, createdByName: req.user && req.user.username });
+      db.get().cashForecastSnapshots = db.get().cashForecastSnapshots || [];
+      db.get().cashForecastSnapshots.push(row);
+      logAudit('cash-flow.snapshot', row.startDate + ' · ' + row.scenario + ' · ' + row.forecastHash.slice(0, 12), { req, firmaId: fid });
+      db.save();
+      return res.json({ ok: true, created: true, snapshot: snapshotPublic(row, S(req)) });
+    } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  });
+
+  app.get('/api/cash-forecast/13-weeks/backtest', (req, res) => {
+    try {
+      const row = (S(req).cashForecastSnapshots || []).find((x) => String(x.id) === String(req.query.id || ''));
+      if (!row) return res.status(404).json({ error: 'Fotografia de cash-flow nu există în firma activă.' });
+      return res.json(cash13.backtest(S(req), row, req.query.asOf || null));
+    } catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
   });
 
   // Documente lipsa: furnizori care apareau lunar dar nu au document in luna selectata.

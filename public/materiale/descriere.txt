@@ -2,7 +2,7 @@ CONTABO — TEXT DE VANZARE
 Text simplu, pentru vanzare online cu abonament lunar. Se copiaza si se lipeste
 oriunde: pagina de vanzare, e-mail, oferta, magazin de aplicatii.
 
-Trei lungimi, dupa cat spatiu ai. Cifrele sunt verificate in cod la 2026-08-01.
+Trei lungimi, dupa cat spatiu ai. Cifrele sunt verificate in cod la 2026-08-24.
 
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -11,8 +11,8 @@ Trei lungimi, dupa cat spatiu ai. Cifrele sunt verificate in cod la 2026-08-01.
 
 Nu mai afla peste trei saptamani cat ai castigat luna trecuta.
 
-Contabo iti tine contabilitatea pe masura ce lucrezi: tragi factura in aplicatie,
-ea pune conturile, calculeaza TVA-ul si iti pregateste declaratiile pentru ANAF.
+Contabo este un asistent contabil cu validare umana: tragi factura in aplicatie,
+el propune conturile, calculeaza TVA-ul si iti pregateste declaratiile pentru verificare.
 De la 99 de lei pe luna. 30 de zile gratuit, fara card.
 
 
@@ -69,25 +69,25 @@ datorate, banii disponibili, cine iti datoreaza si de cate zile.
 Emiti o factura unui client? Completezi liniile si primesti deodata PDF-ul pentru
 el si e-Factura in format XML pentru SPV, cu numar in serie continua.
 
-La final de luna apesi „Inchide TVA". Decontul D300 e deja completat, defalcat pe
-cote. Descarci declaratiile si le depui.
+La final de luna apesi „Regularizeaza TVA". Decontul D300 este pregatit pentru
+verificare, defalcat pe cote. Luna ramane deschisa pana finalizezi cockpitul.
 
 Asta e tot. Nu trebuie sa stii contabilitate: alegi tipul documentului in limbaj
 obisnuit — „factura de la furnizor", „incasare de la client" — iar aplicatia pune
-conturile corecte. Sunt peste 100 de tipuri de operatiuni pregatite.
+conturile propuse. Sunt 137 de tipuri de operatiuni pregatite; tu verifici incadrarea.
 
 
 CE PRIMESTI PENTRU BANII ASTIA
 
 Facturare completa, cu e-Factura pentru SPV si import al facturilor primite.
-Toate declaratiile pentru ANAF: D300, D394, D112, D390, D100, D101, D205, SAF-T,
-Intrastat si situatiile financiare anuale.
+Cele 14 declaratii si situatii din perimetrul aplicatiei: D300, D301, D307, D311,
+D394, D390, D205, D112, D100, D101, D107, SAF-T, Intrastat si bilant.
 Registrele obligatorii: jurnal, cartea mare, balanta de verificare.
 Bilantul complet, cu contul de profit si pierdere si notele explicative.
 Stocuri pe gestiuni, cu productie si retete de fabricatie.
 Salarii, cu state de plata, fluturasi si D112.
 Mijloace fixe, amortizare si leasing.
-Import de extras bancar, cu potrivire automata a incasarilor.
+Import CSV/MT940/CAMT.053 cu identitatea extrasului, protectie la reimport, punctaj si control de sold.
 Scadentar, previziune de incasari, comparatie an la an.
 
 Toate, in orice plan. Nu exista module platite separat.
@@ -97,7 +97,8 @@ CAT COSTA
 
 Proba: 30 de zile, gratuit, fara card bancar.
 Start: 99 de lei pe luna, pentru cine isi tine singur evidenta.
-Pro: 199 de lei pe luna, pentru contabili si firme cu portofoliu.
+Pro: 99 de lei pe luna, pentru contabili si firme cu portofoliu. Are modul expert implicit;
+motorul contabil si functiile incluse sunt aceleasi ca in Start.
 
 Fa socoteala: cat platesti acum, in fiecare luna, doar ca cineva sa introduca
 documentele in program? Contabo face partea aceea. Contabilul tau ramane — dar
@@ -109,16 +110,17 @@ DE CE POTI AVEA INCREDERE
 
 Cele mai multe programe scriu „conform ANAF" si te lasa sa speri.
 
-Noi trecem fiecare versiune prin DUKIntegrator — validatorul publicat chiar de
-ANAF — inainte sa ajunga la tine. Daca o singura declaratie e respinsa, versiunea
-nu se publica. Iar daca validarea nu poate rula, versiunea tot nu se publica:
-„n-am putut verifica" nu inseamna „e bine".
+La fiecare versiune, fisierele fiscale de referinta din perimetrul suportat trec
+prin DUKIntegrator sau schema XSD aplicabila. Daca un fisier e respins, versiunea
+nu se publica. Daca validarea nu poate rula, versiunea tot nu se publica.
+Validarea priveste forma si corelatiile tehnice, nu tratamentul fiscal ori
+substanta cifrelor firmei.
 
 Peste asta ruleaza automat, la fiecare versiune, mii de controale: balante care
 trebuie sa se inchida, TVA pe fiecare cota, salarii pe grila in vigoare.
 
-Cotele fiscale sunt cele in vigoare si stau intr-un singur loc, datate — se
-actualizeaza cand se schimba legea, nu cand ne aducem aminte.
+Parametrii fiscali stau intr-un singur loc si sunt datati, ca actualizarile sa fie
+controlabile. Specialistul verifica intotdeauna cota si tratamentul aplicabil spetei.
 
 
 NU RISTI NIMIC
@@ -155,6 +157,8 @@ Nu inlocuieste validarea oficiala: declaratia ta, cu cifrele tale, se valideaza 
 DUKIntegrator inainte de depunere.
 Nu inlocuieste contabilul autorizat. Calculeaza si pregateste; raspunderea fiscala
 ramane a ta.
+Nu garanteaza singur corectitudinea fiscala. Artefactele de depunere si inchiderea
+anuala raman blocate pana cand revizia externa acopera versiunea fiscala curenta.
 Nu inlocuieste casa de marcat fiscala.
 Nu pastreaza documentele originale in locul tau.
 

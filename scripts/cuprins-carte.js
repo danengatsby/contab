@@ -34,13 +34,48 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const AdmZip = require('adm-zip');
 
 const RADACINA = path.join(__dirname, '..');
 const IESIRE = path.join(RADACINA, 'public', 'descarcari');
-const NUME = 'Cuprins-carte-contabilitate-B5';
-const D = JSON.parse(fs.readFileSync(path.join(__dirname, 'cuprins-carte.json'), 'utf8'));
+if (process.argv.includes('--all')) {
+  for (const limba of ['ro', 'en']) {
+    const r = spawnSync(process.execPath, [__filename, `--lang=${limba}`], {
+      cwd: RADACINA, stdio: 'inherit', env: process.env,
+    });
+    if (r.status !== 0) process.exit(r.status == null ? 1 : r.status);
+  }
+  process.exit(0);
+}
+
+const LIMBA = ((process.argv.find((x) => x.startsWith('--lang=')) || '').split('=')[1] === 'en') ? 'en' : 'ro';
+const EN = LIMBA === 'en';
+const SURSE = EN ? path.join(__dirname, 'carte', 'en') : __dirname;
+const NUME = EN ? 'Accounting-in-the-Order-It-Happens-B5-EN' : 'Cuprins-carte-contabilitate-B5';
+const NUME_HTML = EN ? 'Accounting-in-the-Order-It-Happens-EN.html' : 'Cuprins-carte-contabilitate.html';
+const D = JSON.parse(fs.readFileSync(path.join(SURSE, 'cuprins-carte.json'), 'utf8'));
+const L = EN ? {
+  chapter: 'Chapter ', appendix: 'Appendix ', appendices: 'Appendices', part: 'Part', partUpper: 'PART',
+  solution: 'Solution', lang: 'en', locale: 'en-GB', subject: 'Contents — a presentation book about accounting',
+  contentsLabel: 'Contents · presentation book', contents: 'Contents', book: 'The book', sections: 'sections',
+  backApp: '← Back to the application', search: 'Search the contents…', noMatch: 'No chapter matches your search.',
+  theme: 'Theme', themeAria: 'Change theme', previous: 'Previous', next: 'Next', navAria: 'Book contents',
+  stepsAria: 'Previous and next chapter', downloadPdf: 'Download PDF (B5, print-ready)',
+  downloadDocx: 'Download DOCX', downloadHtml: 'Download HTML (one file, offline)',
+  siteUrl: 'https://contabo.space/carte/en/', sitePath: path.join('public', 'carte', 'en'),
+  altUrl: '/carte/', altLabel: 'RO', currentLabel: 'EN', pdfMarker: /^\s*(Chapter\s+\d+|Appendix\s+[A-E])\s*$/m,
+} : {
+  chapter: 'Capitolul ', appendix: 'Anexa ', appendices: 'Anexe', part: 'Partea', partUpper: 'PARTEA',
+  solution: 'Rezolvare', lang: 'ro', locale: 'ro-RO', subject: 'Cuprins — carte de prezentare a contabilitatii',
+  contentsLabel: 'Cuprins · carte de prezentare', contents: 'Cuprins', book: 'Cartea', sections: 'de secțiuni',
+  backApp: '← Înapoi la aplicație', search: 'Caută în cuprins…', noMatch: 'Niciun capitol nu se potrivește.',
+  theme: 'Temă', themeAria: 'Schimbă tema', previous: 'Înapoi', next: 'Înainte', navAria: 'Cuprinsul cărții',
+  stepsAria: 'Capitolul precedent și următor', downloadPdf: 'Descarcă PDF (B5, de tipar)',
+  downloadDocx: 'Descarcă DOCX', downloadHtml: 'Descarcă HTML (un fișier, offline)',
+  siteUrl: 'https://contabo.space/carte/', sitePath: path.join('public', 'carte'),
+  altUrl: '/carte/en/', altLabel: 'EN', currentLabel: 'RO', pdfMarker: /^\s*(Capitolul\s+\d+|Anexa\s+[A-E])\s*$/m,
+};
 // Capitolele scrise pe larg vin din fisiere proprii, ca sa nu umfle cuprinsul. Cartea se
 // construieste in ordinea din `CAPITOLE`: cuprinsul, apoi textul, in ordinea din carte.
 const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json', 'cuprins-carte-cap3.json', 'cuprins-carte-cap4.json', 'cuprins-carte-cap5.json', 'cuprins-carte-cap6.json', 'cuprins-carte-cap7.json', 'cuprins-carte-cap8.json',
@@ -61,15 +96,15 @@ const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json', 'cuprins
   'cuprins-carte-cap49.json', 'cuprins-carte-cap50.json', 'cuprins-carte-cap51.json',
   'cuprins-carte-capA.json', 'cuprins-carte-capB.json', 'cuprins-carte-capC.json',
   'cuprins-carte-capD.json', 'cuprins-carte-capE.json']
-  .map((f) => JSON.parse(fs.readFileSync(path.join(__dirname, f), 'utf8')));
+  .map((f) => JSON.parse(fs.readFileSync(path.join(SURSE, f), 'utf8')));
 
 // Eticheta de deasupra titlului: capitolele au numar, anexele au litera. O singura
 // functie, ca .docx si .html sa nu poata divergea.
-const eticheta = (nr) => (/^\d+$/.test(String(nr)) ? 'Capitolul ' : 'Anexa ') + nr;
+const eticheta = (nr) => (/^\d+$/.test(String(nr)) ? L.chapter : L.appendix) + nr;
 
 const MM = 56.6929; // 1 mm in twips (1 inch = 1440 twips = 25,4 mm)
 const tw = (mm) => String(Math.round(mm * MM));
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // ── 1) DOCX ────────────────────────────────────────────────────────────────
 // Un .docx e un ZIP de OOXML, deci se scrie direct — fara nicio dependinta de
@@ -130,7 +165,7 @@ function faDocx() {
   b.push(P('', 'Gol'));
 
   for (const p of D.parti) {
-    const et = p.nr === '—' ? 'Anexe' : `PARTEA ${p.nr}`;
+    const et = p.nr === '—' ? L.appendices : `${L.partUpper} ${p.nr}`;
     b.push(P('', null, run(et, { caps: true, color: '2C5B44', sz: '17' })));
     b.push(P(p.titlu, 'Parte'));
     b.push(P(p.faza, 'Faza'));
@@ -161,7 +196,7 @@ function faDocx() {
       } else if (bl.tip === 'exercitiu') {
         b.push(P(bl.titlu, 'ExT'));
         for (const t of bl.enunt) b.push(P(t, 'Ex'));
-        if (bl.rezolvare) { b.push(P('Rezolvare', 'ExR')); for (const t of bl.rezolvare) b.push(P(t, 'Ex')); }
+        if (bl.rezolvare) { b.push(P(L.solution, 'ExR')); for (const t of bl.rezolvare) b.push(P(t, 'Ex')); }
       } else if (bl.tip === 'recap') {
         b.push(P(bl.titlu, 'RecapT'));
         for (const pt of bl.puncte) b.push(P('', 'Recap', run('•\u00a0\u00a0') + run(pt)));
@@ -199,7 +234,7 @@ function faDocx() {
   const styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
     + '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Cambria" w:hAnsi="Cambria"/>'
-    + '<w:sz w:val="21"/><w:szCs w:val="21"/><w:lang w:val="ro-RO"/></w:rPr></w:rPrDefault>'
+    + `<w:sz w:val="21"/><w:szCs w:val="21"/><w:lang w:val="${L.locale}"/></w:rPr></w:rPrDefault>`
     + '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="276" w:lineRule="auto"/></w:pPr>'
     + '</w:pPrDefault></w:docDefaults>'
     + stil('Normal', 'Normal', '21')
@@ -260,8 +295,8 @@ function faDocx() {
     + '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
     + 'xmlns:dc="http://purl.org/dc/elements/1.1/">'
     + `<dc:title>${esc(D.titlu)}</dc:title>`
-    + '<dc:subject>Cuprins — carte de prezentare a contabilitatii</dc:subject>'
-    + '<dc:language>ro-RO</dc:language></cp:coreProperties>', 'utf8'));
+    + `<dc:subject>${esc(L.subject)}</dc:subject>`
+    + `<dc:language>${L.locale}</dc:language></cp:coreProperties>`, 'utf8'));
   z.addFile('word/_rels/document.xml.rels', Buffer.from('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
     + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
@@ -278,7 +313,7 @@ function faDocx() {
 // ── 2) HTML de tipar ───────────────────────────────────────────────────────
 function faHtml() {
   const parti = D.parti.map((p) => {
-    const et = p.nr === '—' ? 'Anexe' : `Partea ${esc(p.nr)}`;
+    const et = p.nr === '—' ? L.appendices : `${L.part} ${esc(p.nr)}`;
     const randuri = p.capitole.map((c) => `<div class="rand${c.semn ? ' semn' : ''}">`
       + `<span class="nr">${esc(c.nr)}</span><div class="txt"><b>${esc(c.titlu)}</b>`
       + `<span class="nota">${esc(c.nota)}</span></div></div>`).join('\n');
@@ -288,7 +323,7 @@ function faHtml() {
       + `<div class="randuri">${randuri}</div></section>`;
   }).join('\n');
 
-  return `<!doctype html><html lang="ro"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="${L.lang}"><head><meta charset="utf-8">
 <title>${esc(D.titlu)}</title>
 <style>
   @page { size: 176mm 250mm; margin: 20mm 18mm 18mm 22mm; }
@@ -385,7 +420,7 @@ function faHtml() {
     text-align:left !important; }
 </style></head><body>
 <header class="antet">
-  <p class="eticheta">Cuprins · carte de prezentare</p>
+  <p class="eticheta">${L.contentsLabel}</p>
   <h1>${esc(D.titlu)}</h1>
   <p class="subtitlu">${esc(D.subtitlu)}</p>
 </header>
@@ -434,7 +469,7 @@ function blocuriHtml(c) {
         + `<h4>${esc(bl.titlu)}</h4>`
         + bl.enunt.map((t) => `<p>${esc(t)}</p>`).join('')
         + (bl.rezolvare
-          ? '<p class="ex-r">Rezolvare</p>' + bl.rezolvare.map((t) => `<p>${esc(t)}</p>`).join('')
+          ? `<p class="ex-r">${L.solution}</p>` + bl.rezolvare.map((t) => `<p>${esc(t)}</p>`).join('')
           : '')
         + '</aside>');
     } else {
@@ -455,7 +490,7 @@ function blocuriHtml(c) {
 // ACELASI JSON, deci nu poate spune altceva decat celelalte trei.
 function faHtmlEcran() {
   const parti = D.parti.map((p) => {
-    const et = p.nr === '—' ? 'Anexe' : `Partea ${esc(p.nr)}`;
+    const et = p.nr === '—' ? L.appendices : `${L.part} ${esc(p.nr)}`;
     const randuri = p.capitole.map((c) => `<div class="rand${c.semn ? ' semn' : ''}">`
       + `<span class="nr">${esc(c.nr)}</span><p class="titlu"><b>${esc(c.titlu)}</b>`
       + `<span class="nota">${esc(c.nota)}</span></p></div>`).join('\n');
@@ -465,7 +500,7 @@ function faHtmlEcran() {
       + `<div class="randuri">${randuri}</div></section>`;
   }).join('\n');
 
-  return `<!doctype html><html lang="ro"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="${L.lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(D.titlu)}</title>
 <style>
@@ -592,7 +627,7 @@ function faHtmlEcran() {
   }
 </style></head><body><div class="foaie">
 <header class="antet">
-  <p class="eticheta">Cuprins · carte de prezentare</p>
+  <p class="eticheta">${L.contentsLabel}</p>
   <h1>${esc(D.titlu)}</h1>
   <p class="subtitlu">${esc(D.subtitlu)}</p>
 </header>
@@ -614,7 +649,7 @@ ${CAPITOLE.map(blocuriHtml).join('\n')}
 //
 // Textul TUTUROR capitolelor sta in pagina de la inceput, iar JS-ul doar arata unul si le
 // ascunde pe celelalte. Asa site-ul merge si offline, si fara nicio cerere dupa incarcare.
-const SITE = path.join(RADACINA, 'public', 'carte');
+const SITE = path.join(RADACINA, L.sitePath);
 
 function faSite() {
   fs.mkdirSync(SITE, { recursive: true });
@@ -648,44 +683,51 @@ function faSite() {
     + `<div class="teza">${D.teza.map((t) => `<p>${esc(t)}</p>`).join('')}</div>`
     + `<div class="fise">${D.doua.map((c) => `<div class="fisa"><h3>${esc(c.cap)}</h3><p>${esc(c.txt)}</p></div>`).join('')}</div>`
     + '<div class="desc">'
-    + `<a href="/descarcari/${NUME}.pdf">Descarcă PDF (B5, de tipar)</a>`
-    + `<a href="/descarcari/${NUME}.docx">Descarcă DOCX</a>`
+    + `<a href="/descarcari/${NUME}.pdf">${L.downloadPdf}</a>`
+    + `<a href="/descarcari/${NUME}.docx">${L.downloadDocx}</a>`
     // HTML-ul de UN SINGUR FISIER ramane util exact pentru ce site-ul nu poate: salvat pe disc,
     // se deschide fara retea si fara fisierele alaturate. Pe web se citeste site-ul.
-    + '<a href="/descarcari/Cuprins-carte-contabilitate.html" download>Descarcă HTML (un fișier, offline)</a>'
+    + `<a href="/descarcari/${NUME_HTML}" download>${L.downloadHtml}</a>`
     + '</div>'
     + `<div class="fise">${D.subsol.map((s2) => `<div class="fisa"><h3>${esc(s2.cap)}</h3><p>${esc(s2.txt)}</p></div>`).join('')}</div>`
     + '</section>';
 
-  const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8">
+  const html = `<!doctype html><html lang="${L.lang}" data-carte-limba="${L.lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(D.titlu)}</title>
 <meta name="description" content="${esc(D.subtitlu)}">
+<link rel="alternate" hreflang="ro" href="https://contabo.space/carte/">
+<link rel="alternate" hreflang="en" href="https://contabo.space/carte/en/">
 <link rel="stylesheet" href="site.css">
 </head><body>
 <div class="cadru">
-<nav class="nav" aria-label="Cuprinsul cărții">
+<nav class="nav" aria-label="${L.navAria}">
   <div class="nav-cap">
     <p class="nav-titlu">${esc(D.titlu)}</p>
-    <p class="nav-sub">${CAPITOLE.length} de secțiuni</p>
-    <a class="inapoi" href="/">← Înapoi la aplicație</a>
-    <input class="cauta" type="search" placeholder="Caută în cuprins…" aria-label="Caută în cuprins">
+    <p class="nav-sub">${CAPITOLE.length} ${L.sections}</p>
+    <a class="inapoi" href="/">${L.backApp}</a>
+    <div class="limbi ui" role="group" aria-label="Language / Limbă">
+      <a class="limba${EN ? '' : ' activ'}" href="/carte/" data-limba="ro" lang="ro">RO</a>
+      <a class="limba${EN ? ' activ' : ''}" href="/carte/en/" data-limba="en" lang="en">EN</a>
+    </div>
+    <input class="cauta" type="search" placeholder="${L.search}" aria-label="${L.search}">
   </div>
-  <a href="#coperta" data-id="coperta" data-titlu="Cuprins" data-drum="Cartea" data-cauta="cuprins coperta inceput"><span class="n">·</span><span>Cuprins</span></a>
+  <a href="#coperta" data-id="coperta" data-titlu="${L.contents}" data-drum="${L.book}" data-cauta="${EN ? 'contents cover beginning' : 'cuprins coperta inceput'}"><span class="n">·</span><span>${L.contents}</span></a>
   ${navHtml}
-  <p class="gol" hidden>Niciun capitol nu se potrivește.</p>
+  <p class="gol" hidden>${L.noMatch}</p>
 </nav>
-<main class="text">
+<main class="text" data-book-title="${esc(D.titlu)}">
   <div class="bara">
-    <button class="buton meniu-buton ui" type="button" aria-label="Cuprins">☰ Cuprins</button>
+    <button class="buton meniu-buton ui" type="button" aria-label="${L.contents}">☰ ${L.contents}</button>
     <span class="drum"></span>
-    <button class="buton tema-buton ui" type="button" aria-label="Schimbă tema">Temă</button>
+    <a class="buton limba-scurta ui" href="${L.altUrl}" data-limba="${EN ? 'ro' : 'en'}" aria-label="${EN ? 'Versiunea în română' : 'English version'}">${L.altLabel}</a>
+    <button class="buton tema-buton ui" type="button" aria-label="${L.themeAria}">${L.theme}</button>
   </div>
   ${coperta}
   ${CAPITOLE.map(blocuriHtml).join('\n')}
-  <nav class="pasi" aria-label="Capitolul precedent și următor">
-    <a class="prec" href="#"><span class="et">Înapoi</span><span class="tt"></span></a>
-    <a class="urm" href="#"><span class="et">Înainte</span><span class="tt"></span></a>
+  <nav class="pasi" aria-label="${L.stepsAria}">
+    <a class="prec" href="#"><span class="et">${L.previous}</span><span class="tt"></span></a>
+    <a class="urm" href="#"><span class="et">${L.next}</span><span class="tt"></span></a>
   </nav>
 </main>
 </div>
@@ -724,7 +766,7 @@ function paginiCapitole(pdfCale) {
   pagini.forEach((pag, i) => {
     // eticheta („Capitolul 7" / „Anexa B") sta singura pe rand, in capul paginii de deschidere
     const primele = pag.split('\n').filter((l) => l.trim()).slice(0, 4).join('\n');
-    if (/^\s*(Capitolul\s+\d+|Anexa\s+[A-E])\s*$/m.test(primele)) start.push(i + 1);
+    if (L.pdfMarker.test(primele)) start.push(i + 1);
   });
   return start;
 }
@@ -799,14 +841,14 @@ fs.chmodSync(docx, 0o644);
 console.log(`   .docx  ${(fs.statSync(docx).size / 1024).toFixed(1)} KB  ${path.relative(RADACINA, docx)}`);
 
 // HTML-ul de CITIT: livrabil, se descarca si se deschide in orice browser, si offline.
-const htmlEcran = path.join(IESIRE, 'Cuprins-carte-contabilitate.html');
+const htmlEcran = path.join(IESIRE, NUME_HTML);
 fs.writeFileSync(htmlEcran, faHtmlEcran(), 'utf8');
 fs.chmodSync(htmlEcran, 0o644);
 console.log(`   .html  ${(fs.statSync(htmlEcran).size / 1024).toFixed(1)} KB  ${path.relative(RADACINA, htmlEcran)}`);
 
 // SITE-ul de citit: cuprinsul la stanga, capitolul la dreapta.
 const site = faSite();
-console.log(`   site   ${(fs.statSync(site).size / 1024).toFixed(1)} KB  ${path.relative(RADACINA, site)}  ->  https://contabo.space/carte/`);
+console.log(`   site   ${(fs.statSync(site).size / 1024).toFixed(1)} KB  ${path.relative(RADACINA, site)}  ->  ${L.siteUrl}`);
 
 // HTML-ul de TIPAR ramane intermediar (in tmp): exista doar ca sa iasa PDF-ul din el.
 const htmlCale = path.join(os.tmpdir(), `${NUME}-tipar.html`);

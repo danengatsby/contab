@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "generatedAt": "2026-08-23T07:28:18.394Z",
-  "uiCache": "contab-shell-v26",
-  "sourceFingerprint": "a94289ab992c0378e4b4a3fc13abd61c044216c6d0886fbf9083d531d493beb5",
+  "generatedAt": "2026-08-26T13:03:49.363Z",
+  "uiCache": "contab-shell-v31",
+  "sourceFingerprint": "613688aa155846d8c4269c6dd1faf580a8871c34e310a3e13b3da17108cf7dcb",
   "sources": [
     "index.html",
     "styles.css",
@@ -10,6 +10,7 @@
     "erp.css",
     "design-system.css",
     "erp.js",
+    "i18n.js",
     "dashboard.js",
     "docflow.js",
     "livrabile.js",

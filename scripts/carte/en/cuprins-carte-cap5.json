@@ -1,0 +1,275 @@
+{
+ "parte": "Part I · Why accounting looks the way it does",
+ "nr": "5",
+ "titlu": "The Accounting Cycle: A Map of the Book",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The four chapters so far have laid the tools on the table: what questions accounting answers, why every amount is recorded twice, exactly where it's recorded, and who's responsible for what. What remains is the order — and unlike the rest, this order isn't a didactic convention."
+  },
+  {
+   "tip": "p",
+   "text": "Every month a company goes through the same sequence of operations, and each step assumes the previous one has been completed. You can't settle VAT before recording the month's invoices. You can't close the month without reconciling the bank statement. You can't prepare the balance sheet until all months are closed. This sequence is called the accounting cycle, and the book follows it step by step."
+  },
+  {
+   "tip": "h",
+   "text": "Why Not by Topic, Like Textbooks"
+  },
+  {
+   "tip": "p",
+   "text": "A classic textbook divides the material into thematic chapters: accounts, then inventory, then payroll, then VAT. That's a good order for someone taking an exam and a poor one for someone running a company, for two reasons."
+  },
+  {
+   "tip": "p",
+   "text": "First, because it hides the dependencies. In reality, an inventory error shows up in VAT, and a payroll error shows up in the balance sheet. Presented separately, the topics look independent; in practice they lean on one another."
+  },
+  {
+   "tip": "p",
+   "text": "Second, because it answers questions at a different moment than when they arise. Someone keeping the books for a company doesn't ask \"what do I know about depreciation,\" but \"what do I need to do now, since it's the 25th of the month.\" This book is organized around the second kind of question."
+  },
+  {
+   "tip": "cheie",
+   "text": "The order of the phases isn't an author's choice. It's a real dependency: each step consumes the result of the one before it."
+  },
+  {
+   "tip": "h",
+   "text": "The Fourteen Phases"
+  },
+  {
+   "tip": "p",
+   "text": "The full cycle looks like this. The right-hand column shows the pace at which each phase runs — and here lies the chapter's second important idea: not everything is done monthly."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Accounting Cycle, in Order",
+   "cap": [
+    "Phase",
+    "What's Done",
+    "Pace"
+   ],
+   "randuri": [
+    [
+     "1",
+     "Opening the fiscal year — company data, tax regimes, opening balances",
+     "once a year"
+    ],
+    [
+     "2",
+     "Supporting documents — everything that enters the accounting records",
+     "daily"
+    ],
+    [
+     "3",
+     "Treasury — receipts, payments, reconciliation with the bank statement",
+     "daily / weekly"
+    ],
+    [
+     "4",
+     "Inventory — receipts, issues, production",
+     "daily"
+    ],
+    [
+     "5",
+     "Payroll — the month's payroll statement",
+     "monthly"
+    ],
+    [
+     "6",
+     "Fixed assets — depreciation, leasing installments",
+     "monthly"
+    ],
+    [
+     "7",
+     "Adjustments — what doesn't come from a received document",
+     "monthly"
+    ],
+    [
+     "8",
+     "Ledgers and the trial balance",
+     "monthly"
+    ],
+    [
+     "9",
+     "VAT — the period's return",
+     "monthly / quarterly"
+    ],
+    [
+     "10",
+     "Closing the month — verification, approval, locking",
+     "monthly"
+    ],
+    [
+     "11",
+     "Closing the year — the result, the tax, the distribution",
+     "once a year"
+    ],
+    [
+     "12",
+     "Annual financial statements",
+     "once a year"
+    ],
+    [
+     "13",
+     "Returns and their filing",
+     "at legal deadlines"
+    ],
+    [
+     "14",
+     "Archiving — the month's file, the year's file",
+     "continuous"
+    ]
+   ],
+   "numerice": [
+    1
+   ],
+   "nota": "Phases 2–4 are the day-to-day work. Phases 5–10 are the end-of-month ritual. Phases 11–12 are done only once a year, after all months have been closed."
+  },
+  {
+   "tip": "h",
+   "text": "Three Rhythms, Not One"
+  },
+  {
+   "tip": "p",
+   "text": "The most costly confusion at small companies is thinking everything happens \"in accounting, once a month.\" In reality, the cycle has three overlapping rhythms, and mixing them up is the classic source of chaos in March, when documents from September are being hunted down."
+  },
+  {
+   "tip": "p",
+   "text": "The daily rhythm belongs to documents and money. An invoice received today and recorded today costs a minute; the same invoice looked for four months later costs an afternoon, and sometimes it's never found at all."
+  },
+  {
+   "tip": "p",
+   "text": "The monthly rhythm belongs to checks: payroll, depreciation, adjustments, trial balance, VAT, closing. It's a list to be gone through in order, and skipping a step isn't noticed right away — it's noticed at the next step that depends on it."
+  },
+  {
+   "tip": "p",
+   "text": "The annual rhythm belongs to the balance sheet: the result, the tax, the distribution, the financial statements. It's done only once, but only after all twelve months are closed. That's why a month left open in July becomes a problem in May of the following year."
+  },
+  {
+   "tip": "h",
+   "text": "Why the Book Groups Two Distant Phases"
+  },
+  {
+   "tip": "p",
+   "text": "One single departure from the strict order deserves explanation, since it's visible in the table of contents. Part Eight treats VAT (phase 9) and returns (phase 13) together, even though four phases lie between them."
+  },
+  {
+   "tip": "p",
+   "text": "The reason is that, from the company's point of view, they're the same thing: what you owe the state and how you prove you filed. The VAT return is the first return a company encounters and the most frequent one, and separating it from the rest of the returns would have split a single idea across two places. The rest of the book follows the order of the phases without exceptions."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "The cycle described here is the practical form of two requirements found in the regulations: chronological and systematic recording of operations, and the preparation of financial statements based on the trial balance at the closing of the fiscal year. The pace of phase 9 isn't an internal choice: the VAT fiscal period is the month or the quarter, depending on turnover and on whether there are intra-Community acquisitions, and changing it triggers a recalculation of deadlines for the entire year. Phases 10 and 11 differ not just in frequency but in effects: closing the month establishes the VAT payable and locks the period, while closing the year extinguishes the accounts in classes 6 and 7 into account 121 and prepares the distribution of the result — an operation which, in turn, cannot be done before the financial statements are approved. Phase 14 isn't administrative: retention periods run from the closing of the fiscal year, and reconstructing a lost document is a regulated procedure, not a formality. Finally, the order also has an audit consequence: a month reopened after returns have been filed requires a reversal in the current period, not a change to the closed one — which is why the lock in phase 10 is a safeguard, not an obstacle."
+  },
+  {
+   "tip": "h",
+   "text": "How to Read the Rest of the Book"
+  },
+  {
+   "tip": "p",
+   "text": "Each part that follows is a phase. The chapters within it answer the questions that arise at exactly that moment, in the order in which they arise. Someone running a company can read the book once from start to finish, then return to the part they need on any given day."
+  },
+  {
+   "tip": "p",
+   "text": "The main text is written for someone who has no accounting background. Where the subject requires it, the chapter continues with a section for the accountant — the ledger entries, the legal basis, the verification — marked distinctly, so the two readings don't get mixed up. A business owner can skip these sections without losing the thread; an accountant will find them exactly where expected."
+  },
+  {
+   "tip": "p",
+   "text": "The introductory part ends here. The next chapter begins the cycle proper, with the phase that's done only once and on which the whole rest of the year depends: opening the fiscal year."
+  },
+  {
+   "tip": "h",
+   "text": "The Map, on an Actual Month"
+  },
+  {
+   "tip": "p",
+   "text": "The phases only make sense once you see them dated. Here is the same sequence, laid out over the days of an ordinary month at a small VAT-registered company with two employees."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Month, Day by Day",
+   "cap": [
+    "When",
+    "What's Done",
+    "Phase"
+   ],
+   "randuri": [
+    [
+     "throughout",
+     "documents are recorded as they arrive",
+     "2"
+    ],
+    [
+     "1st–5th of the following month",
+     "missing documents are completed, unreceived invoices are requested",
+     "2"
+    ],
+    [
+     "5–8",
+     "the month's bank statement is recorded and reconciled",
+     "3"
+    ],
+    [
+     "8–10",
+     "inventory, payroll, depreciation",
+     "4–6"
+    ],
+    [
+     "10–15",
+     "adjustments: advances, foreign currency, accruals",
+     "7"
+    ],
+    [
+     "15–18",
+     "trial balance and reconciliations",
+     "8"
+    ],
+    [
+     "18–24",
+     "returns are generated, validated, filed",
+     "9"
+    ],
+    [
+     "25",
+     "payment of obligations",
+     "9"
+    ],
+    [
+     "after filing",
+     "the period is locked",
+     "10"
+    ]
+   ],
+   "nota": "The dates aren't a rule, but a rhythm that leaves room for correction. Whoever reaches the trial balance on the 24th has no time left to fix what they find."
+  },
+  {
+   "tip": "p",
+   "text": "Notice that filing takes a single day, while everything before it takes three weeks. This ratio is precisely the book's thesis: the return isn't a task in itself, but the consequence of a month already done. Whoever treats it as a task fills it out on the 24th and corrects it on the 3rd."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 5.1 — What Breaks If You Change the Order",
+   "enunt": [
+    "Pressed by the deadline, an accountant generates the VAT return on the 20th of the month, before reconciling the bank statement and before the trial balance. On the 22nd, three purchase invoices from the reported month arrive.",
+    "What happens to each of: (a) the return already generated; (b) the month's trial balance; (c) the company's standing in an audit."
+   ],
+   "rezolvare": [
+    "(a) The return is incomplete: the deductible VAT of the three invoices is missing, so the company declares more payable than it actually owes. If it has already been filed, the correction requires an amending return.",
+    "(b) The trial balance prepared after recording the invoices will no longer match the filed return — and the correlation between the turnover of account 4426 and the purchases journal, which should have been checked before filing, now comes out wrong.",
+    "(c) In an audit, the discrepancy between the records and the return is the first thing that shows up. It isn't a calculation error but an ORDER error, and it's fixable — but the fix costs an amending return and an explanation, instead of two days of waiting.",
+    "The moral, which is precisely the chapter's point: the phases aren't a ritual, they're dependencies. Skipping one doesn't save time — it pushes the cost further down the line, with interest."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key Takeaways from This Chapter",
+   "puncte": [
+    "The accounting cycle has fourteen phases, and their order is a real dependency: each step consumes the result of the one before it.",
+    "There are three rhythms, not one: daily for documents and money, monthly for checks and closing, annual for the balance sheet.",
+    "A month left open doesn't remain that month's problem — it becomes a problem when the year is closed.",
+    "The book follows the phases, with one explained departure: VAT and returns are grouped together, because they answer the same question.",
+    "From here on, each part is a phase; the chapters within it answer the questions arising at that moment of the month."
+   ]
+  }
+ ]
+}

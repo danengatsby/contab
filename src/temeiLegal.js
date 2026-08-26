@@ -92,6 +92,28 @@ const CICLU = [
     ],
   },
   {
+    key: 'amortizare_lunara', faza: 'lunar', nume: 'Amortizarea lunii',
+    descriere: 'Amortizarea activelor eligibile este calculată și înregistrată pentru perioadă.',
+    temei: [
+      t('O1802', 'reglementările contabile', 'Amortizarea contabilă se înregistrează sistematic pe durata de utilizare economică.'),
+      t('CF', 'art. 28', 'Regulile amortizării fiscale pentru activele amortizabile.'),
+    ],
+  },
+  {
+    key: 'reevaluare_valutara', faza: 'lunar', nume: 'Reevaluarea valutară',
+    descriere: 'Elementele monetare în valută se evaluează la cursul de închidere al perioadei.',
+    temei: [t('O1802', 'reglementările contabile', 'Creanțele, datoriile și disponibilitățile în valută se evaluează la cursul de la închiderea perioadei.')],
+  },
+  {
+    key: 'ajustari_inventar', faza: 'lunar', nume: 'Inventariere și ajustări',
+    descriere: 'În decembrie se consemnează inventarierea generală și analiza ajustărilor rezultate.',
+    temei: [
+      t('L82', 'art. 7 alin. (1)', 'Inventarierea generală se efectuează cel puțin o dată în cursul exercițiului financiar.'),
+      t('L82', 'art. 8', 'Rezultatele inventarierii și evaluării se înregistrează în contabilitate.'),
+      t('O2861', 'normele de inventariere', 'Organizarea, documentarea și valorificarea rezultatelor inventarierii.'),
+    ],
+  },
+  {
     key: 'tva', faza: 'lunar', nume: 'Regularizarea TVA',
     descriere: 'TVA colectată și deductibilă se regularizează; rezultă taxa de plată sau de recuperat.',
     temei: [

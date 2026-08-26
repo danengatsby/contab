@@ -1,0 +1,279 @@
+{
+ "parte": "Part VIII · The state · phases 9 and 13",
+ "nr": "38",
+ "titlu": "Filing and Proof",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "This chapter is short because it has a single idea, and that idea matters more than its length: the document that counts is not the declaration, but the confirmation that it was received."
+  },
+  {
+   "tip": "p",
+   "text": "A perfectly prepared declaration, saved on the accountant's computer, has no legal value whatsoever. A declaration with a mistake, submitted and confirmed, exists. The first is penalized as not having been filed; the second is corrected."
+  },
+  {
+   "tip": "h",
+   "text": "The Receipt"
+  },
+  {
+   "tip": "p",
+   "text": "When filing electronically, the system returns a confirmation file — the receipt. It contains the submission identifier, the exact timestamp, and the status: accepted or rejected."
+  },
+  {
+   "tip": "p",
+   "text": "The receipt is the only proof that the obligation was fulfilled. Not the screen display, not the email from the software, not the fact that the button was pressed. During an inspection, the question is \"show the receipt,\" and the answer \"I did file it, I'm sure\" carries no weight."
+  },
+  {
+   "tip": "cheie",
+   "text": "Without a receipt, a declaration is an intention. With a receipt, it is a fact. The distinction is the same as between a draft and a published article, from chapter 29."
+  },
+  {
+   "tip": "p",
+   "text": "From this, a simple practical rule follows: the receipt is downloaded and archived in the same folder as the declaration, immediately, not \"when it's needed.\" Two years later, retrieving it from the tax system is possible, but not always convenient — and an inspection does not wait."
+  },
+  {
+   "tip": "h",
+   "text": "The Three States"
+  },
+  {
+   "tip": "p",
+   "text": "An electronic submission does not have two possible outcomes, but three, and confusing the first two is the source of the most unpleasant surprises."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What a submission can return",
+   "cap": [
+    "Status",
+    "What it means",
+    "What you do"
+   ],
+   "randuri": [
+    [
+     "Accepted",
+     "the declaration went through, the obligation is fulfilled",
+     "you archive the receipt"
+    ],
+    [
+     "Rejected",
+     "validation failed — the declaration does NOT exist",
+     "you correct it and resubmit, within the deadline"
+    ],
+    [
+     "No response",
+     "the submission was not completed",
+     "you verify; you do NOT assume it went through"
+    ],
+    [
+     "Accepted with errors",
+     "it went through, but flagged discrepancies exist",
+     "you analyze it; it may require a corrective declaration"
+    ]
+   ],
+   "nota": "The third state is the dangerous one: on screen, the absence of a response looks almost the same as a success."
+  },
+  {
+   "tip": "p",
+   "text": "The third row deserves emphasis. A submission that was not completed — interrupted connection, expired session, certificate not uploaded — produces no error message to the taxpayer in many situations. The company only finds out when a payment notice arrives, months later, with late-payment increases having accrued in the meantime."
+  },
+  {
+   "tip": "p",
+   "text": "The rule, for any system that files automatically: \"could not verify\" does not mean \"it's fine.\" A program that reports a submission as successful simply because it did not receive an error makes exactly the mistake an experienced accountant avoids."
+  },
+  {
+   "tip": "h",
+   "text": "Who Signs"
+  },
+  {
+   "tip": "p",
+   "text": "Electronic filing is done using a qualified digital certificate, previously registered with the tax administration for that particular company. The certificate belongs to an individual — the administrator, the accountant, or the authorized representative — not to the company."
+  },
+  {
+   "tip": "p",
+   "text": "The practical consequence is usually discovered at the worst possible moment: if the person holding the certificate leaves and the power of attorney has not been updated, the company can no longer file anything until the formalities are redone. It is worth checking before the deadline, not on the day of it."
+  },
+  {
+   "tip": "h",
+   "text": "The Virtual Private Space (SPV)"
+  },
+  {
+   "tip": "p",
+   "text": "Communication with the tax administration is no longer optionally electronic: companies are required to enroll in the Virtual Private Space (Spațiul Privat Virtual, SPV), and administrative acts are communicated through it."
+  },
+  {
+   "tip": "p",
+   "text": "The consequence is more important than it seems. An act communicated through this channel is considered communicated, and appeal deadlines run from that moment — regardless of whether anyone opened the message. An unread electronic mailbox produces the same effects as a refused registered letter."
+  },
+  {
+   "tip": "p",
+   "text": "That is why periodic checking is not an administrative formality, but a protective measure. It naturally fits into the monthly rhythm from chapter 37, alongside the filing itself."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "Filing by electronic remote transmission means is regulated by the Fiscal Procedure Code and by the orders approving the enrollment and use procedure for the Virtual Private Space (SPV), and communication of fiscal administrative acts through this channel takes effect from the date they are made available. Four practical observations. First: the receipt must be kept together with the declaration for the entire duration of the statute-of-limitations period for establishing tax claims, not just for the current fiscal year; a file of declarations without receipts is, practically speaking, an empty file. Second: the \"accepted with errors\" status does not suspend the effects of the filing, but the flagged errors typically resurface in subsequent discrepancy notifications — addressing them at the time of filing is much cheaper than responding to a notification later. Third: for declarations with their own validation regime, D406 among them, rejection may occur at a point after transmission, so the receipt confirmation does not equate to acceptance; checking the final status is a separate step that must be done explicitly. Fourth: the power of attorney for filing is granted and revoked through a dedicated form, and its validity must be tracked independently from the validity of the digital certificate — the two expire on different dates, and the company discovers the absence of one of them exactly on the day of the deadline."
+  },
+  {
+   "tip": "h",
+   "text": "What Comes Next"
+  },
+  {
+   "tip": "p",
+   "text": "With this chapter, Part Eight closes. The company has calculated its obligations, has declared them, and has proof that it declared them."
+  },
+  {
+   "tip": "p",
+   "text": "Next comes the part about the moment when the month or year becomes final: closing. There, the order of steps matters more than anywhere else, and skipping one only becomes apparent months later."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 38.1 — what you actually have",
+   "enunt": [
+    "During an inspection, proof of D300 filing is requested for three months. The accountant has: for the first month, the XML file and a screenshot with the message \"submitted\"; for the second, the downloaded receipt; for the third, nothing — but recalls having filed it.",
+    "What is accepted?"
+   ],
+   "rezolvare": [
+    "First month: the XML file proves the declaration was prepared, not that it was received. The screenshot is not proof — it does not carry the authority's signature and does not identify the submission. It can be reconstructed by checking the status in the virtual space, but without the receipt, the situation is \"unproven.\"",
+    "Second month: the receipt is the proof. Here everything is in order.",
+    "Third: recollection is not proof. If the submission existed, it can be found in the authority's records; if not, the obligation is unfulfilled, and the fine accrues regardless of the fact that the amount was paid.",
+    "The rule, stated once and for all: the receipt is downloaded and archived IMMEDIATELY, in the same folder as the declaration. Not \"when it's needed\" — that's exactly the moment when you no longer have time to look for it."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What Is Kept, and For How Long"
+  },
+  {
+   "tip": "p",
+   "text": "The receipt is not useful on the day of filing — at that point everyone already knows it was filed. It is useful years later, and that determines its retention regime: it is archived together with the declaration, for the entire period during which the authority may still establish obligations for that period."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The File of a Submission",
+   "cap": [
+    "What is kept",
+    "What it is for"
+   ],
+   "randuri": [
+    [
+     "the filed file",
+     "shows WHAT was declared"
+    ],
+    [
+     "the receipt",
+     "shows THAT it was received, and when"
+    ],
+    [
+     "the trial balance it was built on",
+     "shows WHAT it resulted from"
+    ],
+    [
+     "the month's adjustment entries",
+     "shows the reasoning that isn't visible in the figures"
+    ]
+   ],
+   "nota": "The first two are downloaded on the day of filing. The last two already exist — they just need to be placed in the same location."
+  },
+  {
+   "tip": "p",
+   "text": "The order in the table is also the order in which an inspector will ask for them: first what you declared, then proof that you declared it, then where the figure comes from. A file containing only the first two answers the compliance question and leaves the substantive one open."
+  },
+  {
+   "tip": "h",
+   "text": "Corrective Filing: What Can Be Done, and Until When"
+  },
+  {
+   "tip": "p",
+   "text": "A wrongly filed declaration is corrected through a corrective declaration. The mechanism seems simple and has three subtleties that, together, produce most of the problems."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Three Things to Know About Corrective Filings",
+   "cap": [
+    "Aspect",
+    "What needs to be known"
+   ],
+   "randuri": [
+    [
+     "form",
+     "some declarations are corrected in full, not by the difference"
+    ],
+    [
+     "the practical deadline",
+     "correction is no longer possible once an inspection has begun for that period"
+    ],
+    [
+     "the effect",
+     "corrects the declaration, NOT the payment — late-payment charges accrue from the original deadline"
+    ]
+   ],
+   "nota": "The first row is the one that produces duplicate amounts: a corrective declaration resubmitted as a difference, where the form requires the total, adds to it instead of replacing it."
+  },
+  {
+   "tip": "p",
+   "text": "The second row changes how errors discovered late should be viewed: the legal correction deadline is long, but the practical one closes on the day the inspection notice arrives. That's why a known error should not be postponed — it is corrected while the correction is still within the company's control, not the inspection's."
+  },
+  {
+   "tip": "cheie",
+   "text": "The receipt proves that you filed. It does not prove that you filed CORRECTLY — nor that you paid. These are three distinct obligations, with three distinct proofs."
+  },
+  {
+   "tip": "h",
+   "text": "Two Paths, Not One"
+  },
+  {
+   "tip": "p",
+   "text": "It's easy to believe the Virtual Private Space is a single-window service. In practice there are two different paths, with different responses, and confusing them means looking for proof where it isn't."
+  },
+  {
+   "tip": "p",
+   "text": "Tax declarations are validated and filed as a file, and the proof is the receipt described above. Electronic invoices go a different route: they are uploaded one by one, receive a registration number, and the response comes later — either the sealed invoice or the errors. There is no filing receipt for an invoice, and no upload number for a tax return."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What Proves What",
+   "cap": [
+    "What you sent",
+    "What you get back",
+    "What you keep as proof"
+   ],
+   "randuri": [
+    [
+     "A tax declaration",
+     "the receipt, with the registration number",
+     "the filed declaration + the receipt, together"
+    ],
+    [
+     "An electronic invoice",
+     "the upload number, then the sealed invoice or the errors",
+     "the sealed file — not just the number"
+    ],
+    [
+     "A transport declaration",
+     "the code accompanying the goods",
+     "the code, attached to the accompanying document"
+    ]
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "The second thing that gets forgotten: messages do not stay there forever. The space is a communication channel, not an archive — documents must be downloaded and kept with you, along with the rest of the month's file. A company that relies on the fact that \"they're in the SPV anyway\" discovers their absence exactly when it needs them."
+  },
+  {
+   "tip": "cheie",
+   "text": "The Virtual Private Space is the mailbox, not the archive. What arrives there must be downloaded and put in the file; otherwise the proof lives on a server that isn't yours."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key Takeaways from This Chapter",
+   "puncte": [
+    "The document that counts is not the declaration, but the receipt — the confirmation that it was received.",
+    "An unfiled declaration is penalized as such, however correct it may be; one filed with an error is corrected.",
+    "Filing has four possible outcomes, and the dangerous one is the absence of any response: it looks almost like a success.",
+    "\"Could not verify\" does not mean \"it's fine\" — not for a person, and not for a program.",
+    "The digital certificate belongs to a person, not to the company; the power of attorney and the certificate expire on different dates.",
+    "Acts communicated through the Virtual Private Space are considered communicated, and deadlines run even if no one opened the message.",
+    "The Virtual Private Space is the mailbox, not the archive: what arrives there must be downloaded and kept by you."
+   ]
+  }
+ ]
+}

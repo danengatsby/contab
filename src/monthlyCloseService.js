@@ -9,16 +9,24 @@
 //
 // Autorizare dublata, ca la celelalte servicii: `reqFirma` (firma explicita si existenta — fara
 // fallback pe firmaActiva), `reqPerioadaValida`, plus regula proprie fluxului: inchiderea peste
-// blocaje deschise e ADMIN + motiv obligatoriu. Erorile de business poarta `err.status`.
+// blocaje deschise cere `control.override` (administrator) + motiv. Erorile poarta `err.status`.
 
 const db = require('./db');
 const mc = require('./monthlyClose');
 const decl = require('./declarations');
 const declCheck = require('./declarationCheck');
+const permissions = require('./permissions');
 const { reqFirma } = require('./stocksService');
 const { capList } = require('./paginate');
+const { period: periodOf } = require('./util');
+const crypto = require('crypto');
 
-function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
+function fail(status, message, code, details) {
+  const e = new Error(message); e.status = status;
+  if (code) e.code = code;
+  if (details) e.details = details;
+  throw e;
+}
 
 function reqPeriod(period) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(period || ''))) fail(400, 'Perioada trebuie să fie o lună (YYYY-MM).');
@@ -61,8 +69,9 @@ function firmUsers(fid) {
 }
 
 /** Aloca un pas: responsabil (cont din firma), termen si nota. Campurile absente raman neatinse. */
-function setStep(fid, period, step, b) {
+function setStep(fid, period, step, b, user) {
   fid = reqFirma(fid); period = reqPeriod(period); step = reqStep(step);
+  if (user) permissions.assert(user, fid, 'write', db.getFirma(fid));
   b = b || {};
   const rec = ensureRecord(fid, period);
   const cur = rec.steps[step] || {};
@@ -83,9 +92,92 @@ function setStep(fid, period, step, b) {
     const n = String(b.nota == null ? '' : b.nota).slice(0, 300);
     if (n) cur.nota = n; else delete cur.nota;
   }
+  if (user) {
+    cur.updatedBy = user.id == null ? null : user.id;
+    cur.updatedByName = String(user.username || '').slice(0, 80);
+    cur.updatedAt = new Date().toISOString();
+  }
   if (Object.keys(cur).length) rec.steps[step] = cur; else delete rec.steps[step];
   db.save();
   return state(fid, period);
+}
+
+/** Urmele de pregatire ale utilizatorului in luna pe care ar urma sa o aprobe. Nu deducem
+ * contributia din rol, ci din dovezile persistente: articole, banca, pasi, validari si XML-uri. */
+function monthContributions(fid, period, user) {
+  fid = reqFirma(fid); period = reqPeriod(period);
+  const uid = Number(user && user.id); const username = String(user && user.username || '');
+  if (!Number.isFinite(uid) || uid <= 0) return [];
+  const d = db.get(); const out = [];
+  const add = (kind, id, label) => out.push({ kind, id, label });
+  for (const e of (d.entries || [])) {
+    if (Number(e.firmaId) === Number(fid) && String(e.period || periodOf(e.data)) === period
+        && Number(e.createdBy) === uid) add('entry', e.id, e.document || e.tipNume || e.tip || ('Articol ' + e.id));
+  }
+  for (const tx of (d.bankTransactions || [])) {
+    if (Number(tx.firmaId) !== Number(fid) || String(tx.bookingDate || '').slice(0, 7) !== period) continue;
+    if ((tx.statusHistory || []).some((h) => Number(h.by) === uid)) add('bank', tx.id, tx.externalId || tx.description || ('Tranzactie ' + tx.id));
+  }
+  const rec = mc.findRecord(d, fid, period);
+  if (rec) {
+    for (const [key, step] of Object.entries(rec.steps || {})) {
+      if (Number(step.updatedBy) === uid) add('step', key, 'Pas cockpit: ' + key);
+    }
+    for (const [tip, val] of Object.entries(rec.validari || {})) {
+      if (Number(val.by) === uid) add('validation', tip, 'Validare ' + tip.toUpperCase());
+    }
+    for (const [key, val] of Object.entries(rec.operationalEvidence || {})) {
+      if (Number(val.by) === uid) add('evidence', key, 'Dovada operationala: ' + key);
+    }
+  }
+  for (const row of (d.declarations || [])) {
+    if (Number(row.firmaId) === Number(fid) && String(row.period) === period
+        && username && String(row.updatedBy || '') === username) add('declaration', row.id || row.tip, 'Declaratie ' + String(row.tip || '').toUpperCase());
+  }
+  // Raspunsul HTTP ramane marginit; numarul total nu influenteaza verdictul (orice urma ajunge).
+  return out.slice(0, 50);
+}
+
+/** Aplica maker-checker pe aprobarea lunii si intoarce metadatele derogarii, daca exista. */
+function approvalException(fid, period, user, options) {
+  options = options || {};
+  const contributii = monthContributions(fid, period, user);
+  if (!contributii.length) {
+    if (options.override) fail(400, 'Override-ul nu este necesar: nu exista contributii proprii detectate in aceasta luna.');
+    return null;
+  }
+  if (!options.override) {
+    fail(409, 'Nu iti poti aproba propria luna: exista operatiuni pregatite sau validate de tine. Aprobarea trebuie data de alta persoana.',
+      'SELF_APPROVAL_REQUIRED', { contributions: contributii });
+  }
+  permissions.assert(user, fid, 'control.override', db.getFirma(fid));
+  const motiv = String(options.motiv || '').trim();
+  if (motiv.length < 10) fail(400, 'Exceptia de la separarea atributiilor cere un motiv scris de minimum 10 caractere.');
+  return { type: 'self_approval', motiv: motiv.slice(0, 500), by: user.id, username: user.username || '',
+    at: new Date().toISOString(), contributions: contributii };
+}
+
+/** Dovada operationala pentru un calcul executat corect, dar fara nota (de ex. reevaluare cu
+ * diferenta zero). Este legata de amprenta perioadei; orice modificare contabila o invalideaza. */
+function recordOperationalEvidence(fid, period, step, payload, user) {
+  fid = reqFirma(fid); period = reqPeriod(period); step = reqStep(step);
+  if (user) permissions.assert(user, fid, 'entry.validate', db.getFirma(fid));
+  if (step !== 'reevaluare_valutara') fail(400, 'Acest pas nu acceptă dovadă operațională fără articol.');
+  const body = payload || {};
+  const payloadHash = crypto.createHash('sha256').update(JSON.stringify(body)).digest('hex');
+  const currentHash = mc.periodFingerprint(db.scoped(fid), period);
+  let rec = mc.findRecord(db.get(), fid, period);
+  const old = rec && rec.operationalEvidence && rec.operationalEvidence[step];
+  if (old && old.sourceHash === currentHash && old.payloadHash === payloadHash) return { evidence: old, idempotent: true };
+  db.assertPeriodOpen(fid, period, 'Consemnarea dovezii operaționale pentru ' + step);
+  rec = rec || ensureRecord(fid, period);
+  rec.operationalEvidence = rec.operationalEvidence || {};
+  rec.operationalEvidence[step] = {
+    kind: 'diferenta_zero', at: new Date().toISOString(), by: user ? user.id : null,
+    username: user ? user.username : '', sourceHash: currentHash, payloadHash,
+  };
+  db.save();
+  return { evidence: rec.operationalEvidence[step], idempotent: false };
 }
 
 /**
@@ -95,6 +187,7 @@ function setStep(fid, period, step, b) {
  */
 function validateDeclaration(fid, period, tip, user) {
   fid = reqFirma(fid); period = reqPeriod(period);
+  if (user) permissions.assert(user, fid, 'entry.validate', db.getFirma(fid));
   if (!declCheck.TYPES.includes(String(tip))) fail(400, 'Tip de declarație necunoscut: ' + tip + '.');
   const v = db.scoped(fid);
   const rezultat = declCheck.validateFor(v, String(tip), { period, year: period.slice(0, 4) });
@@ -115,14 +208,21 @@ function validateDeclaration(fid, period, tip, user) {
 }
 
 /** Aprobarea lunii: asumare explicita, cu numele si momentul. Refuzata cat timp mai sunt blocaje. */
-function approve(fid, period, user, nota) {
+function approve(fid, period, user, nota, options) {
   fid = reqFirma(fid); period = reqPeriod(period);
+  if (user) permissions.assert(user, fid, 'close.approve', db.getFirma(fid));
+  if (nota && typeof nota === 'object') { options = nota; nota = options.nota; }
+  options = options || {};
   const st = state(fid, period);
   const inaintea = st.steps.filter((s) => !['aprobare', 'blocare'].includes(s.key) && s.stare !== 'gata' && s.stare !== 'nuseaplica');
   if (inaintea.length) {
     fail(400, 'Nu poți aproba luna cât timp sunt pași nerezolvați: ' + inaintea.map((s) => s.nume).join(', ') + '.');
   }
   const rec = ensureRecord(fid, period);
+  const contentHash = mc.approvalFingerprint(db.get(), db.scoped(fid), period);
+  // Retry-ul aceleiasi aprobari este idempotent: nu fabrica un nou eveniment istoric.
+  if (rec.aprobare && rec.aprobare.contentHash === contentHash) return state(fid, period);
+  const exceptie = approvalException(fid, period, user, options);
   if (rec.aprobare) {
     rec.aprobariAnterioare = Array.isArray(rec.aprobariAnterioare) ? rec.aprobariAnterioare : [];
     rec.aprobariAnterioare.push(Object.assign({}, rec.aprobare, { inlocuitaLa: new Date().toISOString() }));
@@ -132,15 +232,17 @@ function approve(fid, period, user, nota) {
     username: user ? user.username : '',
     at: new Date().toISOString(),
     nota: String(nota == null ? '' : nota).slice(0, 300),
-    contentHash: mc.approvalFingerprint(db.get(), db.scoped(fid), period),
+    contentHash,
+    exceptie,
   };
   db.save();
   return state(fid, period);
 }
 
 /** Retragerea aprobarii (cat timp luna NU e inca blocata) — o luna blocata se redeschide din Setari. */
-function unapprove(fid, period) {
+function unapprove(fid, period, user) {
   fid = reqFirma(fid); period = reqPeriod(period);
+  if (user) permissions.assert(user, fid, 'close.approve', db.getFirma(fid));
   const rec = mc.findRecord(db.get(), fid, period);
   if (!rec || !rec.aprobare) fail(400, 'Luna nu e aprobată.');
   const st = state(fid, period);
@@ -152,26 +254,24 @@ function unapprove(fid, period) {
 
 /**
  * INCHIDEREA: blocheaza perioada (read-only) si dateaza dosarul lunii.
- * Cu blocaje deschise se refuza — si doar un ADMIN o poate forta, obligatoriu cu motiv, care
+ * Cu blocaje deschise se refuza — si doar administratorul o poate forta, obligatoriu cu motiv,
  * ramane pe dosarul lunii (si in audit, prin ruta). Fortarea e o exceptie explicabila, nu o
  * portita tacuta: fara motiv scris nu se intampla.
  */
 function close(fid, period, user, b) {
   fid = reqFirma(fid); period = reqPeriod(period);
+  if (user) permissions.assert(user, fid, 'close.manage', db.getFirma(fid));
   b = b || {};
   const st = state(fid, period);
-  // Doar o luna deja FINALIZATA prin flux se respinge. O luna doar `inchisa` (blocata) poate ajunge
-  // asa si pe scurtatura veche — marcarea unei declaratii ca depusa blocheaza automat perioada —
-  // caz in care inchiderea de aici nu mai are ce bloca, dar tot trebuie sa consemneze dosarul
-  // (cine a inchis, cand, si daca a fost fortata). Gardele de mai jos raman aceleasi.
-  if (st.finalizata) fail(400, 'Luna ' + period + ' este deja închisă.');
+  // Retry-ul ultimei actiuni este succes idempotent, nu eroare si nu un al doilea audit.
+  if (st.finalizata) return { state: st, fortata: !!st.fortata, lockedUntil: st.lockedUntil, idempotent: true };
   const force = !!b.force;
   if (!st.sePoateInchide) {
     if (!force) {
       fail(400, 'Luna nu poate fi închisă: ' + st.blocante.map((x) => x.nume).join(', ')
-        + '. Rezolvă pașii sau cere unui administrator să forțeze închiderea cu motiv.');
+        + '. Rezolva pasii sau cere administratorului sa forteze inchiderea cu motiv.');
     }
-    if (!user || user.role !== 'admin') fail(403, 'Doar un administrator poate forța închiderea peste pași nerezolvați.');
+    permissions.assert(user, fid, 'control.override', db.getFirma(fid));
     const motiv = String(b.motiv || '').trim();
     if (motiv.length < 10) fail(400, 'Forțarea închiderii cere un motiv scris (minim 10 caractere) — rămâne pe dosarul lunii.');
   }
@@ -185,15 +285,18 @@ function close(fid, period, user, b) {
     ? { motiv: String(b.motiv || '').trim().slice(0, 500), by: user ? user.id : null, username: user ? user.username : '', at: new Date().toISOString(), blocante: st.blocante.map((x) => x.nume) }
     : null;
   db.save();
-  return { state: state(fid, period), fortata: !!rec.fortata, lockedUntil: firma.lockedUntil };
+  return { state: state(fid, period), fortata: !!rec.fortata, lockedUntil: firma.lockedUntil, idempotent: false };
 }
 
 /** Declaratiile asteptate ale lunii care se pot valida (pentru butoanele din cockpit). */
 function validatableTypes(fid, period) {
   fid = reqFirma(fid); period = reqPeriod(period);
+  const anuale = new Set(['d101', 'd107', 'd205', 'bilant']);
   return decl.expectedForFirma(db.scoped(fid), period)
+    .filter((e) => !anuale.has(e.tip))
     .filter((e) => declCheck.TYPES.includes(e.tip))
     .map((e) => ({ tip: e.tip, nume: e.nume, due: e.due }));
 }
 
-module.exports = { state, setStep, validateDeclaration, approve, unapprove, close, firmUsers, validatableTypes };
+module.exports = { state, setStep, recordOperationalEvidence, validateDeclaration, approve, unapprove, close,
+  firmUsers, validatableTypes, monthContributions, approvalException };

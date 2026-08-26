@@ -31,6 +31,9 @@ cd "$(dirname "$0")/.."
 RADACINA=$(pwd)
 IESIRE="$RADACINA/public/descarcari"
 
+# Un artefact nu poate certifica HEAD si sa contina in realitate alte fisiere de pe disc.
+sh "$RADACINA/scripts/verifica-worktree.sh"
+
 for u in rsync tar sha256sum; do
   command -v "$u" >/dev/null 2>&1 || { echo "NEVERIFICAT: lipseste \`$u\`." >&2; exit 2; }
 done

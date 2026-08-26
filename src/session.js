@@ -35,9 +35,15 @@ function currentUser(req) {
   // Impersonare: doar un admin, prin marcaj pe propria sesiune, devine efectiv utilizatorul-tinta.
   // Toate rutele opereaza apoi ca acel utilizator; rutele requireAdmin raman blocate (sandbox).
   if (sess && sess.impersonating != null && u.role === 'admin') {
-    const target = d.users.find((x) => x.id === sess.impersonating);
-    if (target && target.role !== 'admin') { req.impersonating = true; return target; }
+    const context = typeof sess.impersonating === 'object'
+      ? sess.impersonating : { userId: sess.impersonating, expiresAt: null }; // compatibilitate legacy
+    const expired = context.expiresAt && Date.parse(context.expiresAt) <= Date.now();
+    const target = !expired && d.users.find((x) => x.id === Number(context.userId));
+    if (target && target.role !== 'admin') {
+      req.impersonating = true; req.impersonationContext = context; return target;
+    }
     delete sess.impersonating; // tinta a disparut/nevalida -> curata
+    db.save();
   }
   return u;
 }
@@ -62,7 +68,7 @@ function publicUser(u) {
   return {
     id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), tipCont: tipCont(u), firme: allowedFirme(u),
     drepturi: u.drepturi || {}, firmaRoluri: u.firmaRoluri || {},
-    mustChange: !!u.mustChange, twofa: !!u.twofa,
+    mustChange: !!u.mustChange, twofa: !!u.twofa, twofaRequired: u.role === 'admin' && !u.twofa,
     twofaRecoveryCount: u.twofa && Array.isArray(u.twofaRecoveryHashes) ? u.twofaRecoveryHashes.length : 0,
     profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
     // conditie ca sa poti inscrie firme proprii; interfata o anunta INAINTE de a incerca,

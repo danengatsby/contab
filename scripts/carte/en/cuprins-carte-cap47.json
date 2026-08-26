@@ -1,0 +1,284 @@
+{
+ "parte": "Part X · The financial statements · phase 12",
+ "nr": "47",
+ "titlu": "The Annexes",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The balance sheet and the income statement are the documents that get read. Alongside them, three more are filed — less well known — and one of them answers a question the first two never touch at all."
+  },
+  {
+   "tip": "p",
+   "text": "That question is the one a business owner asks most often, and the one the accountant finds hardest to answer: if I have profit, where is the money?"
+  },
+  {
+   "tip": "h",
+   "text": "The Cash Flow Statement"
+  },
+  {
+   "tip": "p",
+   "text": "The cash flow statement tracks money exclusively: how much came in, how much went out, and from which activity. It has nothing to do with the moment the revenue or expense was recognized — here, only the timing of the actual cash movement matters."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Three Activities",
+   "cap": [
+    "Activity",
+    "What It Includes",
+    "What It Shows"
+   ],
+   "randuri": [
+    [
+     "Operating",
+     "receipts from customers, payments to suppliers and employees, taxes",
+     "whether the business generates cash, not just profit"
+    ],
+    [
+     "Investing",
+     "purchases and sales of fixed assets",
+     "whether the company is growing or divesting"
+    ],
+    [
+     "Financing",
+     "loans drawn and repaid, capital contributions, dividends paid",
+     "who is financing the growth"
+    ]
+   ],
+   "nota": "The sum of the three must equal exactly the change in the cash balance between the beginning and the end of the year."
+  },
+  {
+   "tip": "p",
+   "text": "Here is the statement of the company from the previous chapters, generated from its own records."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cash Flow Statement for the Period",
+   "cap": [
+    "Item",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Cash at the beginning of the year",
+     "45.000,00"
+    ],
+    [
+     "Receipts from customers",
+     "16.940,00"
+    ],
+    [
+     "Payments to suppliers and employees",
+     "−15.025,00"
+    ],
+    [
+     "Operating cash flow",
+     "1.915,00"
+    ],
+    [
+     "Investing cash flow",
+     "0,00"
+    ],
+    [
+     "Financing cash flow",
+     "0,00"
+    ],
+    [
+     "Change in cash",
+     "1.915,00"
+    ],
+    [
+     "Cash at the end of the year",
+     "46.915,00"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "Verification: 45,000 + 1,915 = 46,915, and 46,915 must be exactly the balance of the cash accounts in the balance sheet."
+  },
+  {
+   "tip": "cheie",
+   "text": "Operating cash flow is the figure banks read before profit. A large profit with negative cash flow means the company is selling, but not collecting."
+  },
+  {
+   "tip": "p",
+   "text": "This statement finally explains the paradox every business owner runs into. The profit from Chapter 45 and the cash change here are different figures, and the difference between them always has a name: depreciation, inventory growth, uncollected receivables, paid-off liabilities."
+  },
+  {
+   "tip": "h",
+   "text": "The Statement of Changes in Equity"
+  },
+  {
+   "tip": "p",
+   "text": "The second annex is simpler and answers an owner's question: how did the shareholders' net worth evolve during the year."
+  },
+  {
+   "tip": "p",
+   "text": "It has one row for each equity item — share capital, reserves, retained earnings, the result for the period — and four columns: opening balance, increases, decreases, closing balance. The total closing balance must equal the equity shown in the balance sheet."
+  },
+  {
+   "tip": "p",
+   "text": "Its practical usefulness shows up at companies with capital movements: increases, distributions, loss coverage. At a company without such transactions, the only movement is the year's result — and the statement becomes a confirmation, not information."
+  },
+  {
+   "tip": "h",
+   "text": "The Explanatory Notes"
+  },
+  {
+   "tip": "p",
+   "text": "The third annex is the least read and the richest. The notes explain what lies behind the figures: the accounting policies chosen, the valuation methods, the breakdown of the main line items, the commitments that don't appear on the balance sheet."
+  },
+  {
+   "tip": "p",
+   "text": "This is where you write which inventory issuance method the company uses, which depreciation periods it chose, how it calculated receivable adjustments, what litigation is ongoing, what guarantees it has given. These are exactly the decisions that the previous chapters said, every time, must be documented."
+  },
+  {
+   "tip": "p",
+   "text": "For an outside reader, the notes are the only place where the figures become comparable. Two companies with the same profit, one of which depreciates on an accelerated basis and the other on a straight-line basis, are not saying the same thing — and the difference is visible only here."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "The composition of the annual financial statements depends on the entity's category, according to the accounting regulations: microentities file an abbreviated balance sheet, an abbreviated income statement, and reduced explanatory notes; small entities add the full format of the income statement; and medium and large entities prepare the complete set, including the cash flow statement and the statement of changes in equity. Four observations. First: for entities not required to prepare them, the cash flow statement and the statement of changes in equity remain extremely useful management tools — the absence of a legal obligation is not an argument against preparing them internally. Second: the cash flow statement can be prepared using the direct method, based on actual receipts and payments, or the indirect method, starting from the result and eliminating non-cash items; the choice must be disclosed in the notes and kept consistent from one year to the next, in accordance with the principle of consistency of methods. Third: the notes are not a form to be filled in but a text to be drafted — the information explicitly required by the regulations is a minimum, not a limit, and omitting a material piece of information affects the fair presentation, even if all the figures are exact. Fourth: the financial statements are filed together with the written statement of the person responsible for the entity's administration, assuming responsibility for their preparation, as well as the administrators' report and, where applicable, the audit report — a set filed without these documents is incomplete, regardless of how correct the figures are."
+  },
+  {
+   "tip": "h",
+   "text": "What Comes Next"
+  },
+  {
+   "tip": "p",
+   "text": "The five documents are ready. Before signing, one more operation remains, which takes ten minutes and catches most serious errors: checking the consistency between them."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 47.1 — Big Profit, Little Cash",
+   "enunt": [
+    "The company reported a net profit of 90,000 lei. Cash increased in the same year by only 5,000.",
+    "Explain the difference, knowing that: depreciation for the year was 30,000; inventory increased by 50,000; receivables increased by 40,000; payables to suppliers increased by 15,000; a loan of 40,000 was repaid."
+   ],
+   "rezolvare": [
+    "We start from profit and eliminate what is non-cash or not from operations:",
+    "90,000 profit + 30,000 depreciation (an expense that was not paid) = 120,000.",
+    "− 50,000 increase in inventory (cash tied up in goods) − 40,000 increase in receivables (invoiced, not collected) + 15,000 increase in payables (received, not paid) = 45,000 operating cash flow.",
+    "− 40,000 loan repayment (financing cash flow) = 5,000 increase in cash. It checks out.",
+    "What the calculation shows: of the 90,000 lei in profit, 90,000 are real — but 90,000 lei are tied up in inventory and receivables, while 40,000 went to the bank. The company did not fabricate the profit; it tied it up.",
+    "That's why banks read operating cash flow before profit: 45,000 shows how much the business generates in CASH, while 90,000 shows how much it generates in value."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The Two Methods of Cash Flow"
+  },
+  {
+   "tip": "p",
+   "text": "Operating cash flow can be built in two ways, and the result is identical — only the starting point changes, and with it, what you see along the way."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Direct or Indirect",
+   "cap": [
+    "Method",
+    "Starts From",
+    "What It Additionally Shows",
+    "What It Requires"
+   ],
+   "randuri": [
+    [
+     "direct",
+     "actual receipts and payments",
+     "who the money comes from and who it goes to",
+     "records of payments by category"
+    ],
+    [
+     "indirect",
+     "the result for the period",
+     "why profit differs from cash",
+     "only the balance sheet and the income statement"
+    ]
+   ],
+   "nota": "The method chosen must be disclosed in the notes and kept consistent from one year to the next — otherwise the two periods are no longer comparable."
+  },
+  {
+   "tip": "p",
+   "text": "The indirect method is the one that clarifies the \"I have profit, I have no money\" paradox, because it lists the very causes: depreciation, which reduced profit without taking out cash; inventory and receivables, which tied up cash without touching profit; liabilities, which brought in cash without generating revenue."
+  },
+  {
+   "tip": "h",
+   "text": "The Statement of Equity: What It's Actually For"
+  },
+  {
+   "tip": "p",
+   "text": "At a company with no capital movements, the statement of changes in equity looks like a formality — a single line moving, the year's result. This is exactly the case of the company in our example."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Equity for the Period",
+   "cap": [
+    "",
+    "Opening Balance",
+    "Increases",
+    "Decreases",
+    "Closing Balance"
+   ],
+   "randuri": [
+    [
+     "Subscribed Capital",
+     "30.000,00",
+     "0,00",
+     "0,00",
+     "30.000,00"
+    ],
+    [
+     "Retained Earnings",
+     "35.833,32",
+     "0,00",
+     "0,00",
+     "35.833,32"
+    ],
+    [
+     "Result for the Period",
+     "0,00",
+     "420,83",
+     "0,00",
+     "420,83"
+    ],
+    [
+     "Total",
+     "65.833,32",
+     "420,83",
+     "0,00",
+     "66.254,15"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5
+   ],
+   "total": true,
+   "nota": "The total closing balance, 66,254.15, must equal exactly the equity in the balance sheet. This is the fifth consistency check from Chapter 48."
+  },
+  {
+   "tip": "p",
+   "text": "The value of the statement shows up at companies with movements: a capital increase, a dividend distribution, a loss coverage, a revaluation. There, it answers a question the balance sheet doesn't touch — not how much the shareholders' wealth is, but WHAT it changed FROM during the year."
+  },
+  {
+   "tip": "p",
+   "text": "And the difference between these two questions is exactly the difference between a photograph and a film, which this part began with: the balance sheet shows where things ended up, the statement of equity shows by what path."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key Takeaways From This Chapter",
+   "puncte": [
+    "The cash flow statement tracks money exclusively, across three activities: operating, investing, financing.",
+    "The sum of the three must equal exactly the change in the cash balance between the beginning and end of the year.",
+    "Operating cash flow is the figure banks read before profit.",
+    "The statement of changes in equity shows the evolution of the shareholders' net worth; its total must equal the equity in the balance sheet.",
+    "The explanatory notes contain the decisions — methods, periods, adjustments, litigation — and are the only place that makes two companies comparable.",
+    "The set is filed together with the statement of assumption of responsibility; without it, the set is incomplete, no matter how exact the figures are."
+   ]
+  }
+ ]
+}

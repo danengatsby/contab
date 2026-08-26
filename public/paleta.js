@@ -21,7 +21,7 @@ const fold = (s) => String(s == null ? '' : s).toLowerCase().normalize('NFD').re
 function destinatii() {
   // doar butoanele CHIAR vizibile (offsetParent) — in modul simplu intrarile tehnice lipsesc,
   // iar un rezultat catre un tab ascuns ar fi o promisiune pe care meniul n-o tine
-  return $$('#tabs button[data-tab], #sideTools button[data-tab]').filter((b) => b.offsetParent !== null).map((b) => {
+  return $$('#tabs button[data-tab]').filter((b) => b.offsetParent !== null).map((b) => {
     const grup = b.closest('.navgroup');
     const eticheta = grup ? (grup.querySelector('.navlabel') || {}).textContent : '';
     return { fel: 'nav', text: b.textContent.trim(), sub: (eticheta || '').trim(), tab: b.dataset.tab };

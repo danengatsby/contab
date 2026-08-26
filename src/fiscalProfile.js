@@ -6,19 +6,150 @@
 // citite ad-hoc prin cod. Toate campurile au implicite compatibile cu firmele existente:
 // un profil construit dintr-o firma veche (fara campurile noi) da exact comportamentul de dinainte.
 
-const { round2 } = require('./util');
+const crypto = require('crypto');
+const { round2, validIsoDate } = require('./util');
 
 const REGIMURI = ['micro', 'profit', 'pfa'];  // impozit pe venit/profit
 const CADENTE = ['L', 'T', 'A'];              // cadenta de raportare (lunar/trimestrial/anual)
 const TRIM_END = [3, 6, 9, 12];               // lunile de sfarsit de trimestru
+const HISTORIC_FIELDS = [
+  'tipEntitate', 'tvaPlatitor', 'tvaArt317', 'tvaLaIncasare', 'tvaCodAnulat',
+  'dataAnulareTva', 'motivAnulareTva', 'dataReinregistrareTva', 'perioadaTva',
+  'regimImpozit', 'd406Cadenta', 'intrastatObligat', 'scutiri', 'sistemProfit',
+  'anticipatProfitContabil',
+];
+const FIELD_DEFAULTS = {
+  tipEntitate: null, tvaPlatitor: false, tvaArt317: false, tvaLaIncasare: false,
+  tvaCodAnulat: false, dataAnulareTva: '', motivAnulareTva: 'oficiu', dataReinregistrareTva: '',
+  perioadaTva: null, regimImpozit: null, d406Cadenta: null, intrastatObligat: false,
+  scutiri: {}, sistemProfit: null, anticipatProfitContabil: false,
+};
 
 function endOfQuarter(period) { return TRIM_END.includes(Number(String(period).slice(5, 7))); }
+
+/** Data de referinta canonica: o luna/an inseamna ultima zi a perioadei. */
+function asOfDate(value) {
+  const raw = String(value || '');
+  if (validIsoDate(raw)) return raw;
+  if (/^\d{4}-\d{2}$/.test(raw)) {
+    const d = new Date(raw + '-01T00:00:00Z');
+    d.setUTCMonth(d.getUTCMonth() + 1, 0);
+    return d.toISOString().slice(0, 10);
+  }
+  if (/^\d{4}$/.test(raw)) return raw + '-12-31';
+  return new Date().toISOString().slice(0, 10);
+}
+
+function snapshot(company) {
+  const c = company || {}; const out = {};
+  for (const key of HISTORIC_FIELDS) {
+    const value = Object.prototype.hasOwnProperty.call(c, key) ? c[key] : FIELD_DEFAULTS[key];
+    out[key] = key === 'scutiri' ? Object.assign({}, value && typeof value === 'object' ? value : {}) : value;
+  }
+  return out;
+}
+
+/** Momentul tranzacțional al registrului fiscal: CÂND a fost consemnată versiunea în sistem,
+ * distinct de `validFrom`/`validTo`, care spun PENTRU CE interval produce efecte. */
+function recordedAtOf(row) {
+  const raw = row && (row.recordedAt || row.createdAt);
+  if (!raw) return null;
+  const time = Date.parse(String(raw));
+  return Number.isFinite(time) ? new Date(time).toISOString() : null;
+}
+
+/** Normalizează registrul și închide mecanic intervalele. `validTo` este exclusiv; ultima
+ *  versiune rămâne deschisă (`null`). Valorile fiscale nu sunt rescrise niciodată. */
+function withIntervals(rows) {
+  const out = (Array.isArray(rows) ? rows : [])
+    .filter((r) => r && !r.revoked && validIsoDate(r.validFrom) && r.values && typeof r.values === 'object')
+    .map((r) => {
+      const recordedAt = recordedAtOf(r);
+      return Object.assign({}, r, {
+        values: snapshot(r.values), recordedAt,
+        // Alias read-only pentru clienții vechi. Scrierile noi folosesc `recordedAt` drept nume
+        // canonic; nu pierdem însă integrațiile care încă afișează `createdAt`.
+        createdAt: r.createdAt || recordedAt,
+      });
+    })
+    .sort((a, b) => a.validFrom.localeCompare(b.validFrom) || String(a.recordedAt || '').localeCompare(String(b.recordedAt || ''))
+      || String(a.id || '').localeCompare(String(b.id || '')));
+  return out.map((r, i) => Object.assign({}, r, { validTo: out[i + 1] ? out[i + 1].validFrom : null }));
+}
+
+/** Extrage istoricul fie din tabelul rădăcină `fiscal_profile_history`, fie dintr-o vedere
+ *  scoped. `company.fiscalHistory` rămâne doar adaptor de citire pentru backup-urile vechi. */
+function historyFor(source, firmaId) {
+  source = source || {};
+  const company = source.company && typeof source.company === 'object' ? source.company : source;
+  const fid = Number(firmaId != null ? firmaId : (source.firmaId != null ? source.firmaId : company.id));
+  let rows = source.fiscalProfileHistory || source.fiscal_profile_history;
+  if (Array.isArray(rows) && Number.isFinite(fid)) rows = rows.filter((r) => Number(r.firmaId) === fid);
+  if (!Array.isArray(rows)) rows = company.fiscalHistory;
+  return withIntervals(rows);
+}
+
+/** Firma vazuta la data/perioada ceruta. Reviziile sunt fotografii COMPLETE, nu patch-uri:
+ *  astfel o setare curenta nu se poate scurge retroactiv intr-o declaratie veche. */
+function resolve(company, asOf, explicitHistory) {
+  company = company || {};
+  const history = withIntervals(Array.isArray(explicitHistory) ? explicitHistory : company.fiscalHistory);
+  if (!history.length) return Object.assign({}, company);
+  const date = asOfDate(asOf);
+  const rev = history.filter((r) => r.validFrom <= date && (!r.validTo || date < r.validTo)).pop()
+    || history.filter((r) => r.validFrom <= date).pop();
+  if (!rev) return Object.assign({}, company);
+  return Object.assign({}, company, snapshot(rev.values), {
+    fiscalRevisionId: rev.id || null,
+    fiscalValidFrom: rev.validFrom,
+    fiscalValidTo: rev.validTo || null,
+    fiscalRecordedAt: rev.recordedAt || null,
+    fiscalRecordedBy: rev.createdBy == null ? null : rev.createdBy,
+  });
+}
+
+/** Adauga append-only o revizie. La prima folosire se creeaza o fotografie de baza 1900-01-01,
+ *  ca perioadele anterioare noii schimbari sa nu citeasca valorile viitoare din campurile plate. */
+function addRevision(company, validFrom, changes, meta) {
+  company = company || {}; meta = meta || {};
+  validFrom = String(validFrom || '');
+  if (!validIsoDate(validFrom)) { const e = new Error('Data de intrare in vigoare trebuie sa fie valida (YYYY-MM-DD).'); e.status = 400; throw e; }
+  const suppliedMoment = meta.recordedAt || meta.now;
+  const recordedAt = recordedAtOf({ recordedAt: suppliedMoment || new Date().toISOString() });
+  if (!recordedAt) { const e = new Error('Momentul înregistrării reviziei fiscale este invalid.'); e.status = 400; throw e; }
+  const unknown = Object.keys(changes || {}).filter((k) => !HISTORIC_FIELDS.includes(k));
+  if (unknown.length) { const e = new Error('Campuri fiscale necunoscute: ' + unknown.join(', ') + '.'); e.status = 400; throw e; }
+  let history = withIntervals(Array.isArray(meta.history) ? meta.history : company.fiscalHistory);
+  if (!history.length) {
+    history.push({ id: meta.baselineId || 'fpr-baseline', validFrom: '1900-01-01', values: snapshot(company),
+      validTo: null, firmaId: meta.firmaId != null ? meta.firmaId : company.id,
+      note: 'Fotografie initiala creata automat', recordedAt, createdAt: recordedAt,
+      recordedAtSource: 'baseline-on-first-revision', createdBy: meta.userId || null });
+  }
+  const values = snapshot(Object.assign({}, resolve(company, validFrom, history), changes || {}));
+  const revision = { id: meta.id || ('fpr-' + Date.now()), validFrom, values,
+    validTo: null, firmaId: meta.firmaId != null ? meta.firmaId : company.id,
+    note: String(meta.note || '').slice(0, 300), recordedAt, createdAt: recordedAt,
+    recordedAtSource: 'application', createdBy: meta.userId || null };
+  history.push(revision);
+  // Sunt permise mai multe revizii in aceeasi zi: ultima este corectia valabila, iar cele
+  // anterioare raman in istoric. Altfel o eroare observata in ziua configurarii ar putea fi
+  // reparata numai mintind data de intrare in vigoare.
+  history = withIntervals(history);
+  const savedRevision = history.find((r) => String(r.id) === String(revision.id)) || revision;
+  const current = resolve(company, meta.today || new Date().toISOString().slice(0, 10), history);
+  return { history, revision: savedRevision, currentValues: snapshot(current) };
+}
 
 /** Construieste profilul fiscal normalizat al firmei. `ctx.angajati` (optional) deriva
  *  `areAngajati`; in lipsa lui se foloseste flagul `company.areAngajati`. */
 function build(company, ctx) {
-  company = company || {};
   ctx = ctx || {};
+  const source = company || {};
+  const isView = source.company && typeof source.company === 'object';
+  company = isView ? source.company : source;
+  const history = Array.isArray(ctx.history) ? ctx.history : historyFor(source, ctx.firmaId);
+  company = resolve(company, ctx.asOf || ctx.period || ctx.year, history);
   const pfa = company.tipEntitate === 'pfa';
   // Codul ANULAT nu transforma firma intr-o neplatitoare obisnuita: ramane obligata sa colecteze
   // taxa, dar prin D311 si 446, fara drept de deducere. Pentru restul motorului, codul anulat
@@ -79,7 +210,61 @@ function build(company, ctx) {
     saftLunar: d406 === 'L',
     intrastat: !!company.intrastatObligat,  // obligatie declarativa Intrastat (peste prag INS)
     scutiri,                           // { <tip>: true } — declaratii pe care firma NU le datoreaza
+    fiscalRevisionId: company.fiscalRevisionId || null,
+    fiscalValidFrom: company.fiscalValidFrom || null,
+    fiscalValidTo: company.fiscalValidTo || null,
+    fiscalRecordedAt: company.fiscalRecordedAt || null,
+    fiscalRecordedBy: company.fiscalRecordedBy == null ? null : company.fiscalRecordedBy,
   };
+}
+
+/** API explicit pentru orice calcul istoric. Acceptă fie firma, fie vederea scoped care conține
+ *  `company` + rândurile sale din `fiscal_profile_history`. */
+function profileAt(source, when, ctx) {
+  return build(source, Object.assign({}, ctx || {}, { asOf: when }));
+}
+
+/** Obiectul firmei cu atributele fiscale valabile la reper; identitatea și celelalte setări
+ *  rămân cele ale firmei. Este forma transmisă generatoarelor XML care citesc câmpuri brute. */
+function companyAt(source, when) {
+  source = source || {};
+  const company = source.company && typeof source.company === 'object' ? source.company : source;
+  return resolve(company, when, historyFor(source, source.firmaId));
+}
+
+/** Clonă superficială a vederii scoped, cu `company` rezolvat temporal. */
+function viewAt(source, when) {
+  if (!source || !source.company) return companyAt(source, when);
+  return Object.assign({}, source, { company: companyAt(source, when) });
+}
+
+/** Fotografia imuabilă legată de artefactul și depunerea unei declarații. Hash-ul acoperă profilul
+ *  normalizat, revizia și data efectivă — nu obiectul mutabil al firmei. */
+function declarationSnapshot(source, period, ctx) {
+  const profile = profileAt(source, period, ctx);
+  const values = {
+    tipEntitate: profile.tipEntitate, pfa: profile.pfa, tvaPlatitor: profile.tvaPlatitor,
+    tvaCodAnulat: profile.tvaCodAnulat, tvaArt317: profile.tvaArt317,
+    perioadaTva: profile.perioadaTva, tvaLaIncasare: profile.tvaLaIncasare,
+    regim: profile.regim, sistemProfit: profile.sistemProfit,
+    anticipatProfitContabil: profile.anticipatProfitContabil, areAngajati: profile.areAngajati,
+    d406: profile.d406, intrastat: profile.intrastat, scutiri: Object.assign({}, profile.scutiri || {}),
+  };
+  const body = {
+    schemaVersion: 1, asOf: asOfDate(period), revisionId: profile.fiscalRevisionId || null,
+    validFrom: profile.fiscalValidFrom || null, validTo: profile.fiscalValidTo || null,
+    recordedAt: profile.fiscalRecordedAt || null, recordedBy: profile.fiscalRecordedBy == null ? null : profile.fiscalRecordedBy,
+    values,
+  };
+  // `validTo` se închide abia când apare următoarea revizie; dacă ar intra în hash, simpla
+  // programare a unei schimbări viitoare ar altera amprenta aceleiași perioade istorice.
+  const semantic = { schemaVersion: body.schemaVersion, asOf: body.asOf, values: body.values };
+  const provenance = { schemaVersion: body.schemaVersion, revisionId: body.revisionId,
+    validFrom: body.validFrom, recordedAt: body.recordedAt, recordedBy: body.recordedBy, values: body.values };
+  return Object.assign(body, {
+    hash: crypto.createHash('sha256').update(JSON.stringify(semantic)).digest('hex'),
+    provenanceHash: crypto.createHash('sha256').update(JSON.stringify(provenance)).digest('hex'),
+  });
 }
 
 /** Declaratiile ASTEPTATE (lista de `tip`) derivate din profil pentru luna `period` (YYYY-MM).
@@ -221,4 +406,5 @@ function entryGuard(profile, entry) {
   return null;
 }
 
-module.exports = { build, expected, vatPeriod, endOfQuarter, entryGuard, REGIMURI, CADENTE };
+module.exports = { build, profileAt, companyAt, viewAt, resolve, snapshot, declarationSnapshot, historyFor, withIntervals, addRevision, recordedAtOf, asOfDate, expected, vatPeriod, endOfQuarter, entryGuard,
+  REGIMURI, CADENTE, HISTORIC_FIELDS };

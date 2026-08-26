@@ -11,11 +11,12 @@
 //
 //  Mecanismul aprobarii:
 //    - fiecare caz are `intrare`, `asteptat` (cifrele) si `temei` (baza legala);
-//    - cand un specialist confirma cazul, se completeaza `aprobare` cu cine/cand
-//      si cu `semnatura` = amprenta SHA-256 a tripletei (temei, intrare, asteptat);
-//    - daca cineva modifica ulterior un caz APROBAT (alta intrare, alta cifra,
-//      alt temei), amprenta nu mai corespunde si suita PICA cu „re-supune la
-//      revizie". Aprobarea nu poate fi mostenita tacit de alte cifre.
+//    - cand un specialist confirma cazul, aprobarea se consemneaza in
+//      src/fiscalReviewApprovals.json cu cine/cand/temei/dosar si semnatura Ed25519 verificabila;
+//    - identitatea/calitatea si cheia publica sunt autorizate separat in fiscalReviewTrust.json;
+//    - daca se modifica ulterior un caz APROBAT, o regula, codul ori configuratia fiscala activa,
+//      manifestul nu mai corespunde si suita PICA cu „re-supune la revizie". Aprobarea nu poate fi
+//      mostenita tacit de alte cifre sau de o cheie necunoscuta.
 //
 //  Consecinte pe stari:
 //    calculat != asteptat            -> EROARE (regresie sau cifra gresita)
@@ -24,7 +25,7 @@
 //
 //  Utilizare:
 //    node test/cazuri-aprobate.js                 ruleaza corpusul
-//    node test/cazuri-aprobate.js --semnatura ID  tipareste amprenta de lipit in `aprobare`
+//    npm run revizie-fiscala -- --hash ID          hash-ul complet de semnat
 //    node test/cazuri-aprobate.js --md            tabelul pentru dosarul de revizie
 //    node test/cazuri-aprobate.js --dosar         documentul de LUCRU al revizorului (de trimis)
 //
@@ -56,6 +57,7 @@ const cfg = require('../src/fiscalConfig');
 const { statePlata } = require('../src/payroll');
 const deduct = require('../src/deductibilitate');
 const assets = require('../src/assets');
+const fiscalReview = require('../src/fiscalReview');
 
 /** Istoric de state postate (pentru mediile de concediu): `luni` luni cu acelasi brut. */
 function istoric(id, luni, brut) {
@@ -71,7 +73,7 @@ function istoric(id, luni, brut) {
 //  `asteptat`  — cifrele supuse aprobarii
 //  `calc`      — apelul real din cod care trebuie sa produca `asteptat`
 //  `observatii`— abaterile CUNOSCUTE / intrebarile deschise pentru revizor
-//  `aprobare`  — null pana la semnatura; apoi { de, la, nota, semnatura }
+//  aprobarea   — sta separat in src/fiscalReviewApprovals.json; cazul ramane calcul pur
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CAZURI = [
@@ -83,7 +85,6 @@ const CAZURI = [
     intrare: { an: cfg.AN },
     asteptat: { cas: 25, cass: 10, impozitVenit: 10, cam: 2.25 },
     calc: () => ({ cas: fiscal.FISCAL.cas, cass: fiscal.FISCAL.cass, impozitVenit: fiscal.FISCAL.impozitVenit, cam: fiscal.FISCAL.cam }),
-    aprobare: null,
   },
   {
     id: 'COT-02', arie: 'Cote si praguri',
@@ -96,7 +97,6 @@ const CAZURI = [
       neimpozabilS1: fiscal.neimpozabilLa('2026-03'), neimpozabilS2: fiscal.neimpozabilLa('2026-08'),
     }),
     observatii: 'Trecerea S1 -> S2 e fixata la 1 iulie. De confirmat data intrarii in vigoare a HG pentru anul revizuit.',
-    aprobare: null,
   },
   {
     id: 'COT-03', arie: 'Cote si praguri',
@@ -108,7 +108,6 @@ const CAZURI = [
       tvaStandard: fiscal.FISCAL.tvaStandard, tvaRedus: fiscal.FISCAL.tvaRedus,
       plafonScutireTvaLei: fiscal.FISCAL.plafonScutireTvaLei, deductibilitateTvaAutoLimitat: fiscal.FISCAL.deductibilitateTvaAutoLimitat,
     }),
-    aprobare: null,
   },
   {
     id: 'COT-04', arie: 'Cote si praguri',
@@ -122,7 +121,6 @@ const CAZURI = [
     }),
     observatii: 'Cursul folosit la plafonul micro (`cursPlafonMicro`) e o valoare orientativa in cod; legal e cursul de la '
       + 'inchiderea exercitiului precedent. De decis daca ramane parametru sau se preia automat.',
-    aprobare: null,
   },
 
   // ─── Salarii: cazul de baza ───────────────────────────────────────────────
@@ -136,7 +134,6 @@ const CAZURI = [
       const p = fiscal.payroll(i.brut, i.deducere);
       return { cas: p.cas, cass: p.cass, baza: p.baza, impozit: p.impozit, cam: p.cam, net: p.net, costTotal: p.costTotal };
     },
-    aprobare: null,
   },
   {
     id: 'SAL-06', arie: 'Salarii',
@@ -155,7 +152,6 @@ const CAZURI = [
       + 'atunci CAS = 1.012,50, CASS = 405 si CAM = 91,13, iar netul scade la 2.369,25 + 30 = 2.399,25. '
       + 'Conditiile de acordare (salariul de baza = salariul minim; brutul lunii <= minim + suma) sunt in '
       + '`fiscal.neimpozabilMinim`; peste plafon facilitatea cade INTEGRAL, nu proportional.',
-    aprobare: null,
   },
   {
     id: 'SAL-02', arie: 'Salarii',
@@ -169,7 +165,6 @@ const CAZURI = [
     },
     observatii: 'CAM se calculeaza NUMAI pe salariul brut (112,50 = 2,25% x 5.000), tichetele fiind excluse din baza CAM. '
       + 'De confirmat tratamentul. Netul in numerar nu include tichetele (se acorda ca valoare).',
-    aprobare: null,
   },
   {
     id: 'SAL-03', arie: 'Salarii',
@@ -182,7 +177,6 @@ const CAZURI = [
       return { cas: p.cas, cass: p.cass, baza: p.baza, impozit: p.impozit, cam: p.cam, net: p.net };
     },
     observatii: 'Netul in numerar (2.510) scade cu contributiile aferente avantajului, avantajul nefiind platit in bani.',
-    aprobare: null,
   },
   {
     id: 'SAL-03b', arie: 'Salarii',
@@ -209,7 +203,6 @@ const CAZURI = [
       + 'decide CARE categorie ramane neimpozabila — de confirmat ca implicita e acceptabila. '
       + 'Plafoanele anuale in EUR (400/400/100) se convertesc la un curs configurat (implicit 5,0 lei/EUR), '
       + 'nu la cursul din ultima zi a lunii — de confirmat toleranta. Cuantumurile care alimenteaza limitele (tichet de masa 45 lei/zi — Legea 201/2025; castig salarial mediu brut 9.192 lei — legea BASS 2026; diurna legala 23 lei/zi — HG 714/2018 actualizata prin HG 1235/2023) stau in RATES si sunt suprascriabile din Setari.',
-    aprobare: null,
   },
   {
     id: 'SAL-04', arie: 'Salarii',
@@ -223,7 +216,6 @@ const CAZURI = [
     },
     observatii: 'Diferenta pana la minim NU se retine din netul angajatului. Exceptiile legale (elevi/studenti, pensionari, '
       + 'ucenici, dizabilitate, cumul de norma intreaga) se bifeaza manual pe angajat — de confirmat ca lista e completa.',
-    aprobare: null,
   },
 
   // ─── Deducerea personala ──────────────────────────────────────────────────
@@ -238,7 +230,6 @@ const CAZURI = [
       pers2: fiscal.deducerePersonala(i.brut, 2, { period: i.perioada }).total,
     }),
     observatii: 'Rezultatul se rotunjeste la 10 lei IN FAVOAREA angajatului (1.215 -> 1.220). De confirmat regula de rotunjire.',
-    aprobare: null,
   },
   {
     id: 'DED-02', arie: 'Deducerea personala',
@@ -255,7 +246,6 @@ const CAZURI = [
     }),
     observatii: 'Implementarea urmeaza tabelul art. 77 alin. (4): 40 de transe de cate 50 lei, '
       + 'cu reducerea procentului cu 0,5 puncte pe transa si rotunjire la 10 lei in favoarea angajatului.',
-    aprobare: null,
   },
   {
     id: 'DED-03', arie: 'Deducerea personala',
@@ -267,7 +257,6 @@ const CAZURI = [
       const d = fiscal.deducerePersonala(i.brut, 0, { period: i.perioada, sub26: true });
       return { baza: d.baza, suplimentara: d.suplimentara, total: d.total };
     },
-    aprobare: null,
   },
 
   // ─── Concedii (zona marcata „simplificat" in cod) ─────────────────────────
@@ -297,7 +286,6 @@ const CAZURI = [
     },
     observatii: 'Fara istoric, previzualizarea cade pe brutul curent si este marcata ca aproximata; postarea este blocata. Firma migrata '
       + 'trebuie sa introduca statele istorice inainte de validarea calculului. Procentul se copiaza de pe certificat.',
-    aprobare: null,
   },
   {
     id: 'CM-02', arie: 'Concedii medicale',
@@ -321,7 +309,6 @@ const CAZURI = [
     observatii: 'Media se ia din statele POSTATE; pentru instantaneele vechi, numarul de zile se '
       + 'reconstituie din calendarul legal standard si se marcheaza ca aproximat. Stagiul minim de '
       + 'asigurare si programele de lucru speciale necesita in continuare verificarea operatorului.',
-    aprobare: null,
   },
   {
     id: 'CO-01', arie: 'Concedii de odihna',
@@ -339,7 +326,6 @@ const CAZURI = [
     },
     observatii: 'Indemnizatia de CO suporta integral CAS + CASS + impozit + CAM (spre deosebire de cea de CM). '
       + 'Baza legala e media pe ultimele 3 luni; codul o ia din statele postate, cu fallback pe brutul curent.',
-    aprobare: null,
   },
 
   // ─── PFA / Declaratia Unica ───────────────────────────────────────────────
@@ -354,7 +340,6 @@ const CAZURI = [
       return { plafon6: t.plafon6, plafon12: t.plafon12, bazaCas: t.bazaCas, cas: t.cas, bazaCass: t.bazaCass, cass: t.cass, impozit: t.impozit, total: t.total };
     },
     observatii: 'CAS sub 12 SM e OPTIONALA; aplicatia o considera 0 (neoptata). Impozitul se aplica dupa scaderea CAS si CASS.',
-    aprobare: null,
   },
   {
     id: 'PFA-02', arie: 'PFA — Declaratia Unica',
@@ -366,7 +351,6 @@ const CAZURI = [
       const t = fiscal.taxePfa(i.venitNet, { salariuMinim: i.salariuMinim });
       return { bazaCas: t.bazaCas, cas: t.cas, bazaCass: t.bazaCass, cass: t.cass, impozit: t.impozit, total: t.total };
     },
-    aprobare: null,
   },
   {
     id: 'PFA-03', arie: 'PFA — Declaratia Unica',
@@ -380,7 +364,6 @@ const CAZURI = [
     },
     observatii: 'Rezultatul e marcat „estimare" in interfata si in PDF. De confirmat ca plafonarea CASS la 60 SM '
       + 'ramane valabila pentru anul revizuit.',
-    aprobare: null,
   },
 
   // ─── Plafoane de deductibilitate la impozitul pe profit ───────────────────
@@ -400,7 +383,6 @@ const CAZURI = [
     observatii: 'PUNCTUL DE CONFIRMAT: baza include cheltuiala de protocol INSASI si impozitul pe profit. '
       + 'Daca revizorul considera ca baza e alta (ex. doar profitul contabil), plafonul devine 2.000 '
       + 'si nedeductibilul 3.000 — deci cifra se schimba.',
-    aprobare: null,
   },
   {
     id: 'PLF-02', arie: 'Plafoane de deductibilitate (impozit pe profit)',
@@ -416,7 +398,6 @@ const CAZURI = [
     },
     observatii: 'Baza e rulajul contului 641. De confirmat daca in fondul de salarii intra si alte conturi '
       + '(ex. 642/643/644) pentru firmele care le folosesc.',
-    aprobare: null,
   },
   {
     id: 'PLF-03', arie: 'Plafoane de deductibilitate (impozit pe profit)',
@@ -438,7 +419,6 @@ const CAZURI = [
       + 'aplicatia nu modeleaza P42, deci azi coincid. (2) Reportul creditului neutilizat pe '
       + cfg.RATES.sponsorizareReportAni + ' ani: de confirmat ca regimul de report e cel in vigoare pentru anul '
       + 'revizuit (regulile de report/redirectionare s-au schimbat in ultimii ani).',
-    aprobare: null,
   },
   {
     id: 'PLF-04', arie: 'Plafoane de deductibilitate (impozit pe profit)',
@@ -453,7 +433,6 @@ const CAZURI = [
     },
     observatii: 'Baza vine din articolele bifate „auto 50%" la inregistrare. Limitarea e DISTINCTA de cea '
       + 'de TVA (art. 298), care se aplica deja la inregistrare — de confirmat ca nu se considera dubla limitare.',
-    aprobare: null,
   },
   {
     id: 'PLF-05', arie: 'Plafoane de deductibilitate (impozit pe profit)',
@@ -483,7 +462,6 @@ const CAZURI = [
       + 'ALTE DOUA LIMITE CUNOSCUTE: baza de calcul foloseste amortizarea fiscala (separata de cea contabila '
       + 'din 2026-07-28, dar egale implicit), iar diferentele de curs aferente imprumuturilor NU sunt incluse '
       + 'in costul excedentar, desi legea le mentioneaza.',
-    aprobare: null,
   },
   {
     id: 'PLF-06', arie: 'Plafoane de deductibilitate (impozit pe profit)',
@@ -516,7 +494,6 @@ const CAZURI = [
       + 'a ajustarii vine din rulajul REAL al contului 6811, nu din plan, deci o amortizare '
       + 'neinregistrata sau inregistrata gresit se vede ca diferenta fiscala; (3) aplicatia nu trateaza '
       + 'inca regimul fiscal special la casare/cedare inainte de amortizarea integrala.',
-    aprobare: null,
   },
 ];
 
@@ -567,27 +544,35 @@ function ruleaza() {
   const ids = new Set();
   let aprobate = 0; const neaprobate = []; let ultimaRevizie = '';
 
+  const reviewStatus = fiscalReview.status();
+  const reviewById = new Map(reviewStatus.cases.map((c) => [c.id, c]));
+  const contractById = new Map(fiscalReview.CASES.map((c) => [c.id, c]));
   let arieCurenta = '';
   for (const c of CAZURI) {
     if (ids.has(c.id)) eroare('id duplicat in corpus: ' + c.id);
     ids.add(c.id);
     if (c.arie !== arieCurenta) { arieCurenta = c.arie; console.log('── ' + arieCurenta); }
 
+    const contract = contractById.get(c.id);
+    if (!contract) eroare(c.id + ': lipseste din contractul runtime src/fiscalReviewCases.js.');
+    else if (contract.definitionHash !== semnatura(c)) {
+      eroare(c.id + ': definitia cazului s-a schimbat (' + contract.definitionHash + ' != ' + semnatura(c)
+        + '). Actualizeaza contractul runtime; aprobarea externa va fi invalidata automat.');
+    } else pass++;
     const okCalc = verifica(c);
-    const ap = c.aprobare;
+    const ext = reviewById.get(c.id) || { status: 'invalid', reason: 'Caz absent din statusul runtime.' };
+    const ap = ext.approval;
     let stare;
-    if (!ap) {
+    if (ext.status === 'pending') {
       neaprobate.push(c.id);
       stare = 'NEREVIZUIT';
-    } else if (ap.semnatura !== semnatura(c)) {
-      // Cazul a fost modificat DUPA aprobare: aprobarea nu mai acopera cifrele curente.
-      eroare(c.id + ': caz APROBAT dar modificat ulterior (amprenta ' + ap.semnatura + ' != ' + semnatura(c) + '). '
-        + 'Re-supune-l la revizie si actualizeaza `aprobare`.');
+    } else if (ext.status === 'invalid') {
+      eroare(c.id + ': aprobare externa invalida — ' + ext.reason + ' Re-supune cazul la revizie.');
       stare = 'APROBARE INVALIDA';
     } else {
       aprobate++;
-      if (String(ap.la) > ultimaRevizie) ultimaRevizie = String(ap.la);
-      stare = 'aprobat ' + ap.la + ' — ' + ap.de;
+      if (String(ap.reviewedAt) > ultimaRevizie) ultimaRevizie = String(ap.reviewedAt);
+      stare = 'aprobat ' + ap.reviewedAt + ' — ' + ap.reviewer;
     }
     console.log('   ' + (okCalc ? '✓' : '✗') + ' ' + c.id + '  ' + c.titlu + '\n       [' + stare + ']');
   }
@@ -627,8 +612,9 @@ function dosar() {
   };
   const tabel = (o) => Object.keys(o).map((k) => '| `' + k + '` | ' + val(k, o[k]) + ' |').join('\n');
   console.log('# Cazuri fiscale supuse aprobării — document de lucru\n');
+  const reviewStatus = fiscalReview.status();
   console.log('Set fiscal **' + cfg.AN + '** (actualizat ' + cfg.DATA_ACTUALIZARE + '). '
-    + CAZURI.length + ' cazuri, ' + CAZURI.filter((c) => c.aprobare).length + ' aprobate.\n');
+    + CAZURI.length + ' cazuri, ' + reviewStatus.approved + ' aprobate valid.\n');
   console.log('Pentru fiecare caz: **temeiul** pe care se verifică, **intrarea** și **cifrele** '
     + 'propuse. Marcați fiecare caz cu ✔ (corect) sau ✘ + valoarea corectă și temeiul. '
     + 'Punctele „De decis" sunt cele unde implementarea e simplificată deliberat.\n');
@@ -651,6 +637,7 @@ function dosar() {
 
 /** `--md`: tabelul de cazuri pentru dosarul trimis revizorului. */
 function tabelMd() {
+  const byId = new Map(fiscalReview.status().cases.map((c) => [c.id, c]));
   let arie = '';
   for (const c of CAZURI) {
     if (c.arie !== arie) {
@@ -659,23 +646,26 @@ function tabelMd() {
       console.log('| Caz | Ce se verifică | Temei | Aprobare |');
       console.log('|---|---|---|---|');
     }
-    const ap = c.aprobare ? (c.aprobare.de + ', ' + c.aprobare.la) : '— (nerevizuit)';
+    const st = byId.get(c.id); const ap = st && st.status === 'approved'
+      ? (st.approval.reviewer + ', ' + st.approval.reviewedAt) : '— (' + (st ? st.status : 'absent') + ')';
     console.log('| `' + c.id + '` | ' + c.titlu + ' | ' + c.temei.replace(/\n\s*/g, ' ') + ' | ' + ap + ' |');
   }
   console.log('');
 }
 
-const arg = process.argv[2];
-if (arg === '--semnatura') {
-  const c = CAZURI.find((x) => x.id === process.argv[3]);
-  if (!c) { console.error('Caz inexistent: ' + process.argv[3] + '. Cazuri: ' + CAZURI.map((x) => x.id).join(', ')); process.exit(1); }
-  console.log(semnatura(c));
-} else if (arg === '--md') {
-  tabelMd();
-} else if (arg === '--dosar') {
-  dosar();
-} else {
-  process.exit(ruleaza());
+if (require.main === module) {
+  const arg = process.argv[2];
+  if (arg === '--semnatura') {
+    const c = CAZURI.find((x) => x.id === process.argv[3]);
+    if (!c) { console.error('Caz inexistent: ' + process.argv[3] + '. Cazuri: ' + CAZURI.map((x) => x.id).join(', ')); process.exit(1); }
+    console.log(fiscalReview.currentHash(c.id));
+  } else if (arg === '--md') {
+    tabelMd();
+  } else if (arg === '--dosar') {
+    dosar();
+  } else {
+    process.exit(ruleaza());
+  }
 }
 
 module.exports = { CAZURI, semnatura };

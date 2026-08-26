@@ -37,7 +37,7 @@ function report(db, year) {
       for (const l of e.lines) if (/^6/.test(String(l.debit))) brut = round2(brut + l.suma);
     }
     if (impozit === 0 && brut === 0) continue;
-    const baza = fiscal.retinereLaSursa(FEL[e.tip], brut).baza;
+    const baza = fiscal.retinereLaSursa(FEL[e.tip], brut, null, { period: e.data || e.period }).baza;
     const cnp = String(e.partenerCui || '').replace(/\s/g, '').toUpperCase();
     const key = tip + '|' + (cnp || e.partener || '-');
     const r = map.get(key) || { tipVenit: tip, beneficiar: e.partener || '', cnp,

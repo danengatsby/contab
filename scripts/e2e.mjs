@@ -29,10 +29,34 @@ ok('prezentarea are link de confidentialitate', (await pg.locator('a[href="/conf
 await pg.goto(BASE + '/?register=1', { waitUntil: 'networkidle' });
 await pg.waitForTimeout(1200);
 ok('/?register=1 deschide panoul de inscriere', await pg.locator('#registerOverlay').isVisible());
+ok('înscriere: TVA nu este preselectat, emailul este obligatoriu și listarea contabilului este opt-in',
+  (await pg.locator('#registerForm [name="tvaPlatitor"]:checked').count()) === 0
+  && await pg.locator('#registerForm [name="email"]').getAttribute('required') !== null
+  && !(await pg.locator('#registerForm [name="disponibilContabil"]').isChecked()));
+ok('înscriere: județul se alege după nume', await pg.locator('#registerForm select[name="judet"] option').count() === 43);
 
 // 2b. intrebarile frecvente publice pe pagina de login
 await pg.goto(BASE + '/', { waitUntil: 'networkidle' });
 await pg.waitForTimeout(800);
+ok('titlul panoului public păstrează contrastul alb', await pg.evaluate(() =>
+  getComputedStyle(document.querySelector('#loginOverlay .ah-title')).color === 'rgb(255, 255, 255)'));
+await pg.locator('#loginOverlay .language-switch').selectOption('en');
+ok('selectorul RO/EN traduce autentificarea și setează limba documentului',
+  (await pg.locator('#loginOverlay .auth-title').textContent()).trim() === 'Sign in to your account'
+  && await pg.getAttribute('html', 'lang') === 'en');
+await pg.reload({ waitUntil: 'networkidle' });
+ok('limba engleză rămâne memorată după reîncărcare',
+  await pg.locator('#loginOverlay .language-switch').inputValue() === 'en'
+  && (await pg.locator('#loginOverlay .auth-title').textContent()).trim() === 'Sign in to your account');
+await pg.click('#forgotLink');
+ok('selectorul de limbă rămâne disponibil și când formularul de login este înlocuit',
+  await pg.locator('#loginOverlay .language-switch').isVisible()
+  && /Password recovery/.test(await pg.locator('#loginForm').textContent()));
+await pg.reload({ waitUntil: 'networkidle' });
+await pg.locator('#loginOverlay .language-switch').selectOption('ro');
+ok('revenirea la română restaurează textele-sursă',
+  (await pg.locator('#loginOverlay .auth-title').textContent()).trim() === 'Intră în contul tău'
+  && await pg.getAttribute('html', 'lang') === 'ro');
 await pg.click('#showFaqLogin');
 ok('FAQ-ul public se deschide pe login', await pg.locator('#faqOverlay').isVisible());
 await pg.fill('#faqSearch', 'dividende');
@@ -49,24 +73,59 @@ await pg.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((
 ok('login demo functioneaza (badge cu tipul)', /demo/.test(await pg.locator('#userBadge').textContent()));
 ok('panourile au explicatii (ⓘ injectate)', (await pg.locator('.cinfo').count()) > 50);
 ok('dashboardul are banda de alerte', (await pg.locator('#dashAlerts .alert').count()) > 0);
+await pg.locator('#tabs > .nav-language .language-switch').selectOption('en');
+ok('selectorul din navigator traduce shell-ul autentificat și lunile calendaristice', await pg.evaluate(() => {
+  const nav = document.querySelector('#tabs');
+  const period = document.querySelector('#currentPeriod');
+  return document.documentElement.lang === 'en'
+    && nav.querySelector('[data-tab="dashboard"]').textContent.trim() === 'Home'
+    && nav.querySelector('#toolGhid').textContent.trim() === 'Guide'
+    && document.querySelector('#appContextTitle').textContent.trim() === 'Home'
+    && /January|February|March|April|May|June|July|August|September|October|November|December/.test(period.textContent);
+}));
+await pg.evaluate(() => goTab('documente'));
+await pg.waitForTimeout(350);
+ok('localizarea urmărește și conținutul paginilor create dinamic',
+  /Upload the received document/.test(await pg.locator('#tab-documente').textContent())
+  && (await pg.locator('#appContextTitle').textContent()).trim() === 'Add received document');
+await pg.evaluate(() => goTab('dashboard'));
+await pg.waitForTimeout(250);
+await pg.locator('#tabs > .nav-language .language-switch').selectOption('ro');
+ok('selectorul din navigator revine complet la română', await pg.evaluate(() =>
+  document.documentElement.lang === 'ro'
+  && document.querySelector('#tabs [data-tab="dashboard"]').textContent.trim() === 'Acasă'
+  && document.querySelector('#toolGhid').textContent.trim() === 'Ghid'));
 ok('alertele au o singură pictogramă semantică, fără dublare după destinație', await pg.evaluate(() =>
   [...document.querySelectorAll('#dashAlerts .alert')].every((el) =>
     !el.querySelector(':scope > .app-icon') && !!el.querySelector(':scope > .al-ic .app-icon'))));
-ok('desktop: toate uneltele sunt vizibile direct în antet',
-  (await pg.locator('#sideTools').isVisible()) && (await pg.locator('#sideTools .btn').count()) === 9);
-ok('Ghid, Cartea și Mesaje au plecat din meniul lateral',
-  (await pg.locator('#tabs [data-tab="ghid"], #tabs [data-tab="mesaje"], #tabs a[href="/carte/"]').count()) === 0
-  && (await pg.locator('#toolGhid, #toolCartea, #toolMesaje').count()) === 3);
+ok('desktop: panoul Unelte a dispărut, iar Portofoliu nu mai este în navigator',
+  !(await pg.locator('#appContext #sideTools').count())
+  && !(await pg.locator('#tabs [data-tab="portofoliu"]').count()));
+ok('desktop: Ghid, Caută, Temă, Expert și Dicționar urmează direct după Acasă', await pg.evaluate(() => {
+  const ids = [...document.querySelector('#tabs').children].filter((el) => el.tagName === 'BUTTON')
+    .slice(0, 7).map((el) => el.id || el.dataset.tab);
+  return ids.join(',') === 'dashboard,toolGhid,paletaBtn,themeBtn,uiModeBtn,glossaryBtn,notificari'
+    && ['toolGhid', 'paletaBtn', 'themeBtn', 'uiModeBtn', 'glossaryBtn']
+      .every((id) => document.querySelector('#' + id).offsetParent !== null)
+    && document.querySelectorAll('#sideTools > button, #sideTools > a').length === 4;
+}));
 await pg.click('#toolGhid');
-ok('Ghid din antet deschide pagina și actualizează titlul',
+ok('Ghid din navigator deschide pagina și actualizează titlul',
   await pg.locator('#tab-ghid').isVisible() && (await pg.locator('#appContextTitle').textContent()).trim() === 'Ghid');
+await pg.click('#navgrupUnelte > .navlabel');
 await pg.click('#toolMesaje');
-ok('Mesaje din antet deschide pagina și păstrează badge-ul',
+ok('Mesaje din navigator deschide pagina și păstrează badge-ul',
   await pg.locator('#tab-mesaje').isVisible() && (await pg.locator('#toolMesaje #msgBadge').count()) === 1);
 await pg.evaluate(() => goTab('dashboard'));
-const clickTool = async (selector) => pg.click(selector);
+await pg.click('#qaWizard');
+ok('selectorul ghidat nu arată „Înapoi” la primul nivel', !(await pg.locator('#opwBack').isVisible()));
+await pg.click('#opwClose');
+const clickTool = async (selector) => {
+  if (!(await pg.locator(selector).isVisible())) await pg.click('#navgrupUnelte > .navlabel');
+  await pg.click(selector);
+};
 
-// 3b. contrastul comenzilor utilitare din antet. Poarta traieste AICI, nu in npm test:
+// 3b. contrastul comenzilor utilitare directe și din dropdown. Poarta traieste AICI, nu in npm test:
 // depinde de cascada reala + compunerea alpha, deci cere un browser. A prins o regresie reala —
 // `body:not(.dark) .btn{background:#efebe1}` lua fundalul inchis al butoanelor, dar lasa
 // `color:#fff` de la regula veche din u.css: alb pe crem, 1,19:1, exact pe Dictionar si pe
@@ -77,11 +136,11 @@ for (const tema of ['light', 'dark']) {
   const masuri = await pg.evaluate(() => {
     const relLum = (r, g, b) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const nums = (s) => (s.match(/[\d.]+/g) || []).map(Number);
-    const tb = nums(getComputedStyle(document.querySelector('.app-context')).backgroundColor).slice(0, 3);
+    const tb = nums(getComputedStyle(document.querySelector('.topbar')).backgroundColor).slice(0, 3);
     // Butoanele se DERIVA din DOM, nu dintr-o lista scrisa de mana: altfel fiecare comanda noua
-    // adaugata in bara (cautarea, turul) ar fi ramas neacoperita tacit, iar poarta ar fi raportat
+    // adaugata in meniu (cautarea, turul) ar fi ramas neacoperita tacit, iar poarta ar fi raportat
     // verde pentru un set tot mai mic din ce se vede pe ecran.
-    const sels = [...document.querySelectorAll('.side-tools .btn'), document.querySelector('#logoutBtn')]
+    const sels = [...document.querySelectorAll('#toolGhid, #tabs > .nav-action, #sideTools > button, #sideTools > a'), document.querySelector('#logoutBtn')]
       .filter(Boolean).map((el) => '#' + el.id).filter((x) => x !== '#');
     return sels.map((sel) => {
       const s = getComputedStyle(document.querySelector(sel));
@@ -121,6 +180,16 @@ if (!(await pg.evaluate(() => document.body.classList.contains('simple-ui')))) a
 await pg.evaluate(() => goTab('dashboard'));
 await pg.waitForTimeout(1000);
 ok('rezumatul executiv e vizibil in modul simplu', await pg.locator('#rezumatCard').isVisible());
+await pg.evaluate(() => goTab('documente'));
+await pg.click('#manualBtn');
+await pg.selectOption('#tipSelect', 'factura_servicii_primita');
+await pg.waitForTimeout(300);
+ok('modul simplu ascunde selectorul de cont și pliază situațiile fiscale rare',
+  !(await pg.locator('#fld_contChelt').isVisible())
+  && await pg.locator('#dynFields .special-fields').isVisible()
+  && !(await pg.locator('#dynFields .special-fields').getAttribute('open')));
+await pg.evaluate(() => document.querySelector('#cancelEntry')?.click());
+await pg.evaluate(() => goTab('dashboard'));
 
 // Modul simplu a fost multa vreme doar un filtru de MENIU: ascundea intrari, dar paginile ramase
 // isi pastrau tot vocabularul contabil (coloana „Formula" 6811=281, „TVA colectata (4427)",
@@ -187,6 +256,10 @@ ok('pagina de introducere este clasificată compact în bara contextuală',
   /înregistrare/i.test(await pg.locator('.app-context-kicker').textContent()));
 await pg.click('#manualBtn');
 await pg.waitForTimeout(1000);
+ok('formularul manual folosește lățimea completă, nu o coloană îngustă în dreapta', await pg.evaluate(() => {
+  const grid = document.querySelector('#tab-documente .grid2.pas12');
+  return grid && getComputedStyle(grid).gridTemplateColumns.split(' ').length === 1;
+}));
 await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
 await pg.waitForTimeout(700);
 await pg.fill('#fld_baza', '1000');
@@ -292,8 +365,15 @@ ok('mobil: dashboardul și contextul paginii se randează', (await pm.locator('#
   && (await pm.locator('.app-context-kicker').isVisible()));
 ok('mobil: există o singură navigație, strânsă inițial', (await pm.locator('#bottomnav,#moreSheet').count()) === 0 && !(await pm.locator('#tabs').isVisible()));
 ok('mobil: dashboardul FARA scroll orizontal', await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+ok('mobil: nu mai există un panou Unelte în afara navigatorului',
+  !(await pm.locator('#appContext #sideTools').count()) && !(await pm.locator('#sideTools').isVisible()));
 await pm.click('#navToggleBtn');
 ok('mobil: butonul Meniu deschide arborele desktop real', await pm.locator('#tabs').isVisible());
+await pm.click('#navgrupUnelte > .navlabel');
+ok('mobil: cele cinci comenzi sunt directe, iar restul rămân în Unelte, fără Portofoliu',
+  (await pm.locator('#toolGhid:visible, #tabs > .nav-action:visible').count()) === 5
+  && (await pm.locator('#sideTools > button:visible, #sideTools > a:visible').count()) === 4
+  && !(await pm.locator('#tabs [data-tab="portofoliu"]').count()));
 await pm.click('#tabs .navgroup:has(button[data-tab="tva"]) > .navlabel');
 await pm.click('#tabs button[data-tab="tva"]');
 await pm.waitForTimeout(1200);

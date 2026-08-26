@@ -516,7 +516,7 @@ function createInventory(fid, operator, b) {
   const g = v.gestiuni.find((x) => x.id === b.gestiuneId);
   if (!g) fail(400, 'Gestiune inexistenta.');
   const data = reqDate(b.data, 'Data inventarului');
-  const tvaRate = (fiscal.FISCAL && fiscal.FISCAL.tvaStandard) || 21;
+  const tvaRate = fiscal.rulesAt(data).rates.tvaStandard;
   db.assertPeriodOpen(fid, data, 'Inventarierea'); // reglarile de stoc + notele nu ating o luna inchisa
   const doc = 'Inventar ' + g.cod + ' ' + data;
   const result = { plusuri: [], minusuri: [], imputari: [] };

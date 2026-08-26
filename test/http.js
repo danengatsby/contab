@@ -44,6 +44,10 @@ let BASE = '';   // req()/waitUp() capteaza variabila, nu valoarea — vad reasi
 const DBF = path.join(os.tmpdir(), 'contab-http-' + process.pid + '.json');
 // data/ temporar al serverului de test: backup-urile si uploads NU ating data/ real
 const DATA_TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'contab-http-data-'));
+const REVIEWF = path.join(os.tmpdir(), 'contab-http-review-' + process.pid + '.json');
+const REVIEW_TRUSTF = path.join(os.tmpdir(), 'contab-http-review-trust-' + process.pid + '.json');
+const fiscalReviewFixture = require('./run/fiscalReviewFixture');
+const APPROVED_REVIEW = fiscalReviewFixture.writeApproved(REVIEWF, REVIEW_TRUSTF);
 
 let pass = 0; let fail = 0;
 function eq(name, got, exp) {
@@ -55,20 +59,40 @@ function ok(name, cond) { if (cond) pass += 1; else { fail += 1; console.error('
 // adminul de test are o parola NON-implicita: nu declanseaza schimbarea fortata (mustChange),
 // ca sa exercite fluxul normal de admin. mustChange e testat separat, pe un cont dedicat.
 const ADMIN_PW = 'admin-real-pw';
+const ADMIN_TOTP_SECRET = 'JBSWY3DPEHPK3PXP';
+function adminTotpCode() { return totp.codeForCounter(ADMIN_TOTP_SECRET, Math.floor(Date.now() / 1000 / 30)); }
+function impersonationBody(userId, over) {
+  return Object.assign({ userId, reason: 'Diagnostic solicitat de client', ticket: 'SUP-1842',
+    password: ADMIN_PW, code: adminTotpCode(), durationMinutes: 15 }, over || {});
+}
+function completeInventoryControl(year) {
+  const keys = ['stocuri_gestiuni', 'mijloace_fixe', 'casa_banci', 'clienti_furnizori',
+    'taxe_salarii', 'imprumuturi_contracte', 'litigii_provizioane_confirmari'];
+  return {
+    categories: Object.fromEntries(keys.map((key) => [key,
+      { status: 'confirmat', evidence: 'Dosar ' + year + ' / ' + key, note: '' }])),
+    reconciliation: { differenceAmount: 0, evidence: 'Centralizator inventar–contabilitate ' + year,
+      note: '', adjustmentEntryIds: [] },
+    governance: { committee: ['Ana Pop', 'Ion Ionescu'], minutesRef: 'PV-INV-' + year,
+      minutesDate: String(Number(year) + 1) + '-01-10', signedBy: ['Ana Pop', 'Ion Ionescu'],
+      signatureEvidence: 'Proces-verbal semnat / dosar ' + year },
+  };
+}
 function buildDb() {
   const a = auth.hashPassword(ADMIN_PW);
   const u = auth.hashPassword('parola1');
   const def = auth.hashPassword('admin'); // parola implicita — migrarea trebuie sa forteze schimbarea
   return {
     firme: [
-      { id: 1, nume: 'UNU SRL', cui: '11', tvaPlatitor: true },
-      { id: 2, nume: 'DOI SRL', cui: '22', tvaPlatitor: true },
+      { id: 1, nume: 'UNU SRL', cui: '11', tvaPlatitor: true, dataMode: 'test' },
+      { id: 2, nume: 'DOI SRL', cui: '22', tvaPlatitor: true, dataMode: 'test' },
       // firma cu proba EXPIRATA (billing per-firma) — pentru testele „expirat"
-      { id: 3, nume: 'EXPIRAT SRL', cui: '33', tvaPlatitor: true, subscription: { plan: 'trial', trialStartedAt: '2026-01-01T00:00:00Z', trialEndsAt: '2026-02-01T00:00:00Z' } },
+      { id: 3, nume: 'EXPIRAT SRL', cui: '33', tvaPlatitor: true, dataMode: 'test', subscription: { plan: 'trial', trialStartedAt: '2026-01-01T00:00:00Z', trialEndsAt: '2026-02-01T00:00:00Z' } },
     ],
     firmaActiva: 1,
     users: [
-      { id: 1, username: 'admin', salt: a.salt, hash: a.hash, role: 'admin', firme: [] },
+      { id: 1, username: 'admin', salt: a.salt, hash: a.hash, role: 'admin', firme: [],
+        twofa: true, totpSecret: ADMIN_TOTP_SECRET },
       { id: 2, username: 'user1', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
       { id: 3, username: 'expirat', salt: u.salt, hash: u.hash, role: 'user', firme: [3], firmaActiva: 3 },
       // cont cu parola IMPLICITA „admin", FARA flagul mustChange — migrarea trebuie sa-l re-armeze
@@ -80,7 +104,8 @@ function buildDb() {
       // cont dedicat fluxului 2FA (setup -> enable -> login in doi pasi -> disable)
       { id: 7, username: 'doifa', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
       // al doilea admin: tinta interzisa pentru impersonare
-      { id: 8, username: 'admin2', salt: a.salt, hash: a.hash, role: 'admin', firme: [] },
+      { id: 8, username: 'admin2', salt: a.salt, hash: a.hash, role: 'admin', firme: [],
+        twofa: true, totpSecret: ADMIN_TOTP_SECRET },
       // cont dedicat testelor de plafon upload/export (bucket-urile sunt per utilizator —
       // un cont separat nu consuma plafonul conturilor folosite de restul suitei)
       { id: 9, username: 'uploader', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
@@ -90,6 +115,17 @@ function buildDb() {
       // cont separat pentru doua schimbari de parola CONCURENTE; nu poate lasa restul suitei
       // fara credentialele pe care le asteapta.
       { id: 11, username: 'racepw', salt: u.salt, hash: u.hash, role: 'user', firme: [1], firmaActiva: 1 },
+      // contabilul care confirma incadrarea anuala; proprietarul poate vedea calculul, dar nu
+      // poate fabrica semnatura profesionala ceruta de poarta bilanțului.
+      { id: 12, username: 'expertbilant', salt: u.salt, hash: u.hash, role: 'user', tipCont: 'contabil',
+        firme: [1], firmaActiva: 1, firmaRoluri: { 1: 'aprobator' } },
+      // operator explicit pentru verificarea end-to-end a separarii atributiilor
+      { id: 13, username: 'operator-sod', salt: u.salt, hash: u.hash, role: 'user', tipCont: 'contabil',
+        firme: [1], firmaActiva: 1, firmaRoluri: { 1: 'operator' } },
+      // cont separat pentru dovezile multipart ale depunerilor; ține testul independent de
+      // plafonul upload consumat de arhiva D300 de mai jos.
+      { id: 14, username: 'filingproof', salt: u.salt, hash: u.hash, role: 'user', tipCont: 'contabil',
+        firme: [1], firmaActiva: 1, firmaRoluri: { 1: 'aprobator' } },
     ],
     documents: [{ id: 'docA', firmaId: 2, fileName: 'secret.pdf', storedName: 'nu-exista-pe-disc.pdf', uploadedAt: 'x', text: '' }],
     settings: { authSecret: 'x'.repeat(64) },
@@ -114,6 +150,8 @@ async function req(method, p, opts) {
   const o = opts || {};
   const headers = Object.assign({}, o.headers);
   let body = o.body;
+  if (p === '/api/login' && body && typeof body === 'object' && body.username === 'admin'
+      && !body.code && !o.noAdmin2faAuto) body = Object.assign({}, body, { code: adminTotpCode() });
   if (body && typeof body === 'object' && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
     body = JSON.stringify(body);
@@ -232,10 +270,10 @@ async function main() {
     // real la fiecare upload (esua pe un .txt trimis ca PDF si cadea pe reguli locale, deci
     // aserttiile treceau — din motivul gresit, cu latenta si cost pe deasupra). `loadDotEnv` nu
     // suprascrie o variabila deja prezenta, nici goala, deci sirul gol o neutralizeaza.
-    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_ANAF_REGISTRU_URL: 'http://127.0.0.1:' + PORT_AREG + '/tva', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', STRIPE_SECRET_KEY: '', ANTHROPIC_API_KEY: '', OPENAI_API_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7', CONTAB_MESSAGES_MAX: '5' }),
+    env: Object.assign({}, process.env, { PORT: String(PORT), CONTAB_BNR_URL_ZI: 'http://127.0.0.1:' + PORT_BNR + '/zi', CONTAB_BNR_URL_AN: 'http://127.0.0.1:' + PORT_BNR + '/an{AN}', CONTAB_BNR_RETRIES: '0', CONTAB_ANAF_REGISTRU_URL: 'http://127.0.0.1:' + PORT_AREG + '/tva', CONTAB_DB_DRIVER: process.env.CONTAB_TEST_DRIVER || 'sqlite', CONTAB_DB_FILE: DBF, CONTAB_DATA_DIR: DATA_TMP, CONTAB_JSON_MIRROR: '0', CONTAB_FISCAL_REVIEW_FILE: REVIEWF, CONTAB_FISCAL_REVIEW_TRUST_FILE: REVIEW_TRUSTF, STRIPE_SECRET_KEY: '', ANTHROPIC_API_KEY: '', OPENAI_API_KEY: '', CONTAB_RATE_UPLOAD: '8', CONTAB_RATE_EXPORT: '5', CONTAB_RATE_API: '100000', CONTAB_HIBP: '0', CONTAB_DEV: '1', CONTAB_RATE_IMPORT: '7', CONTAB_MESSAGES_MAX: '5' }),
     stdio: 'ignore',
   });
-  const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
+  const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.unlinkSync(REVIEWF); } catch (_) { /* */ } try { fs.unlinkSync(REVIEW_TRUSTF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
   const guard = setTimeout(() => { console.error('  ✗ timeout global teste HTTP'); killAll(); process.exit(1); }, 45000);
 
   try {
@@ -263,10 +301,11 @@ async function main() {
 
     // public + autentificare
     const h = await req('GET', '/api/health');
-    ok('health public: ok', h.status === 200 && h.json && h.json.ok === true && typeof h.json.uptimeSec === 'number' && typeof h.json.firme === 'number');
+    ok('health public: ok', h.status === 200 && h.json && h.json.ok === true && typeof h.json.uptimeSec === 'number');
     // health e PUBLIC: nu are voie sa scurga detalii de proces/infrastructura (fingerprinting)
     ok('health public NU expune diagnostice (nodeVersion/pid/memorie/driver/users)',
-      !('nodeVersion' in h.json) && !('pid' in h.json) && !('memoryRssMb' in h.json) && !('driver' in h.json) && !('users' in h.json));
+      !('nodeVersion' in h.json) && !('pid' in h.json) && !('memoryRssMb' in h.json) && !('driver' in h.json)
+        && !('users' in h.json) && !('firme' in h.json));
     // logging structurat: fiecare raspuns poarta un identificator de cerere (corelare eroare<->cerere)
     ok('X-Request-Id prezent pe raspuns', /^[0-9a-f]{8}$/.test(h.reqId || ''));
     // anteturi de securitate (helmet, cu CSP calibrat): paritate cu configuratia precedenta
@@ -313,8 +352,25 @@ async function main() {
     const l1 = await req('POST', '/api/login', { body: { username: 'user1', password: 'parola1' } });
     ok('login user1 reusit + cookie', l1.status === 200 && /^sid=/.test(l1.cookie));
     const c1 = l1.cookie;
+    const cExpertBilant = (await req('POST', '/api/login', { body: { username: 'expertbilant', password: 'parola1' } })).cookie;
+    const cOperatorSod = (await req('POST', '/api/login', { body: { username: 'operator-sod', password: 'parola1' } })).cookie;
     const me = await req('GET', '/api/me', { cookie: c1 });
     ok('/api/me: identitate si tip', me.json && me.json.username === 'user1' && me.json.tip === 'tester');
+
+    // Poarta fiscală externă e FAIL-CLOSED în produs. Suita folosește un dosar semnat TEST ca să
+    // poată exercita restul fluxurilor, dar îl scoate temporar și verifică ambele blocaje reale.
+    {
+      const ready = await req('GET', '/api/fiscal-review', { cookie: c1 });
+      ok('revizie fiscală: dosarul TEST complet este vizibil', ready.status === 200 && ready.json.ready && ready.json.approved === ready.json.total);
+      fs.writeFileSync(REVIEWF, JSON.stringify({ schemaVersion: 2, approvals: {} }));
+      const blockedStatus = await req('GET', '/api/fiscal-review', { cookie: c1 });
+      ok('revizie fiscală: 0/25 este raportat explicit', blockedStatus.status === 200 && !blockedStatus.json.ready && blockedStatus.json.approved === 0 && blockedStatus.json.total === 25);
+      const blockedXml = await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
+      ok('revizie fiscală: artefactul de depunere este blocat cu 409', blockedXml.status === 409 && /0\/25|0 din 25|0 din total/i.test(blockedXml.text));
+      const blockedClose = await req('POST', '/api/close-year?year=2026', { cookie: c1 });
+      ok('revizie fiscală: închiderea anuală este blocată cu 409', blockedClose.status === 409 && blockedClose.json && /revizia fiscal/i.test(blockedClose.json.error));
+      fs.writeFileSync(REVIEWF, JSON.stringify(APPROVED_REVIEW));
+    }
 
     // politica de parole: inscrierea respinge o parola prea scurta (respingerea nu creeaza nimic)
     const regWeak = await req('POST', '/api/register', { body: { nume: 'Firma Noua SRL', username: 'noureg', password: 'scurt' } });
@@ -326,6 +382,13 @@ async function main() {
     ok('register: nume cu caracter invizibil -> 400', regInv.status === 400 && /invizibile|control/i.test((regInv.json || {}).error || ''));
     const regScurt = await req('POST', '/api/register', { body: { nume: 'F SRL', username: ' ab ', password: 'ParolaBunaDeTot9' } });
     ok('register: nume prea scurt dupa trim -> 400', regScurt.status === 400 && /prea scurt/i.test((regScurt.json || {}).error || ''));
+    const regFaraEmail = await req('POST', '/api/register', { body: { nume: 'F SRL', username: 'faraemail-t', password: 'ParolaBunaDeTot9', tvaPlatitor: false } });
+    ok('register: emailul de recuperare este obligatoriu', regFaraEmail.status === 400 && /email/i.test((regFaraEmail.json || {}).error || ''));
+    const regFaraTva = await req('POST', '/api/register', { body: { nume: 'F SRL', username: 'faratva-t', password: 'ParolaBunaDeTot9', email: 'faratva-t@example.test' } });
+    ok('register: regimul TVA trebuie ales explicit', regFaraTva.status === 400 && /TVA/i.test((regFaraTva.json || {}).error || ''));
+    const regFaraAcord = await req('POST', '/api/register', { body: { nume: 'F SRL', username: 'faraacord-t', password: 'ParolaBunaDeTot9', email: 'faraacord-t@example.test', tvaPlatitor: false } });
+    ok('register: fara acceptarea explicita juridica -> 400 + cod stabil',
+      regFaraAcord.status === 400 && regFaraAcord.json.code === 'LEGAL_ACCEPTANCE_REQUIRED');
     // ── FIRMA DEMO: pentru cine are portofoliul GOL ──
     // Un contabil se inscrie fara nicio firma (firmele vin de la clienti), deci pana preia primul
     // client deschide o aplicatie goala si n-are ce evalua. NU se foloseste inscrierea publica in
@@ -474,12 +537,16 @@ async function main() {
       ok('raport: fara AI, corectiile apar pe grupa „reguli locale" (nu pe „—")',
         rap.corectiiPeModel.some((m) => m.cheie === 'reguli locale' && m.interventii >= 1));
 
-      // A doua salvare din ACELASI document nu dubleaza interventia (consemnarea e idempotenta)
+      // A doua salvare din ACELASI fisier este oprita de SHA-256 in poarta centrala si, evident,
+      // nu dubleaza nici interventia (consemnarea ramane idempotenta).
       const inainte = (await req('GET', '/api/extract-quality?days=30', { cookie: c1 })).json.interventii;
-      await req('POST', '/api/entries', { cookie: c1, body: {
+      const sameSource = await req('POST', '/api/entries', { cookie: c1, body: {
         tip: 'factura_cumparare_marfuri', fileId: u1.json.documentId,
         fields: { data: '2026-06-10', document: 'F-779', partener: 'ALPHA SRL', cuiPartener: 'RO4242', baza: 10, tva: 2.1, cota: 21, suma: 12.1 },
       } });
+      ok('acelasi fisier nu poate produce al doilea articol cu alt numar/suma', sameSource.status === 409
+        && sameSource.json.code === 'DUPLICATE_ENTRY'
+        && (sameSource.json.duplicateKeys || []).some((key) => key.startsWith('fisier-sha256:')));
       eq('interventia se consemneaza o singura data per document',
         (await req('GET', '/api/extract-quality?days=30', { cookie: c1 })).json.interventii, inainte);
 
@@ -507,6 +574,8 @@ async function main() {
       if (bundleJson != null) z.addFile('firma.json', Buffer.from(bundleJson));
       for (const [nume, cont] of files || []) z.addFile(nume, Buffer.from(cont));
       const fd = new FormData();
+      fd.append('dataMode', 'test');
+      fd.append('confirmFictitious', 'true');
       fd.append('file', new Blob([z.toBuffer()], { type: 'application/zip' }), 'firma.zip');
       return fd;
     };
@@ -575,6 +644,13 @@ async function main() {
     const saft = reg.json && reg.json.rows.find((r) => r.tip === 'saft');
     ok('registru: D300 din iunie muta termenul de sambata in luni', d300 && d300.due === '2026-07-27');
     ok('registru: saft lunar cu termen sfarsit de luna', saft && saft.due === '2026-07-31');
+    ok('registru: fiecare obligatie are din start un dosar unic determinist', d300
+      && /^dd_[0-9a-f]{64}$/.test(d300.dossier.id) && d300.dossier.key.endsWith('|d300|2026-06'));
+    const reservedDossierId = d300.dossier.id;
+    const reservedDossier = await req('GET', '/api/declarations/dosar?tip=d300&period=2026-06', { cookie: c1 });
+    ok('dosar: identitatea exista inaintea primei generari, fara a inventa un istoric persistent', reservedDossier.status === 200
+      && reservedDossier.json.id === reservedDossierId && reservedDossier.json.persisted === false
+      && reservedDossier.json.status === 'nedepusa');
     // Randul din registru poarta si fisierul: ecranul „De depus" e lista de sarcini a firmei, iar
     // fara link te trimitea sa cauti XML-ul in catalogul de 25 de randuri. Interfata depinde acum
     // de campul asta, deci e contract de API, nu detaliu de randare — si linkul TREBUIE sa poarte
@@ -588,32 +664,195 @@ async function main() {
     ok('registru: linkul de XML chiar raspunde', dl.status === 200);
     const generatD300 = (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd300');
     ok('registru: artefactul generat are amprenta SHA-256 si dimensiune', /^[0-9a-f]{64}$/.test(generatD300.artifactHash || '') && generatD300.artifactBytes > 100);
-    const trimis = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-06', status: 'transmisa' } });
-    ok('registru: transmis este distinct de depus', trimis.status === 200 && trimis.json.rows.find((r) => r.tip === 'd300').status === 'transmisa');
-    eq('registru: depusa fara recipisa este refuzata', (await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-06', status: 'depusa' } })).status, 400);
-    const set = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-06', status: 'depusa', recipisa: 'R1' } });
+    ok('dosar: prima generare materializeaza exact identitatea rezervata', generatD300.dossier.persisted === true
+      && generatD300.dossier.id === reservedDossierId);
+    const wrongDossier = await req('POST', '/api/declarations/set', { cookie: c1,
+      body: { tip: 'd300', period: '2026-06', dossierId: 'dd_' + '0'.repeat(64), status: 'transmisa' } });
+    ok('dosar: o referinta apartinand altei identitati este refuzata', wrongDossier.status === 409
+      && wrongDossier.json.code === 'FILING_DOSSIER_REFERENCE_MISMATCH');
+    const transmitUnapproved = await req('POST', '/api/declarations/set', { cookie: c1, body: {
+      tip: 'd300', period: '2026-06', dossierId: reservedDossierId, status: 'transmisa' } });
+    ok('registru: transmiterea documentului neaprobat este blocată', transmitUnapproved.status === 409
+      && transmitUnapproved.json.code === 'FILING_EVIDENCE_APPROVAL_REQUIRED');
+    const staleApproval = await req('POST', '/api/declarations/approve', { cookie: c1, body: {
+      tip: 'd300', period: '2026-06', dossierId: reservedDossierId, artifactHash: '0'.repeat(64) } });
+    ok('registru: aprobarea unui hash diferit de documentul curent este refuzată', staleApproval.status === 409
+      && staleApproval.json.code === 'FILING_APPROVAL_ARTIFACT_MISMATCH');
+    const approvedD300 = await req('POST', '/api/declarations/approve', { cookie: c1, body: {
+      tip: 'd300', period: '2026-06', dossierId: reservedDossierId,
+      artifactHash: generatD300.artifactHash, note: 'Verificat cu validatorul și cu sumele de control.' } });
+    ok('registru: aprobarea este legată de SHA-256 exact, actor, moment și dovada proprie',
+      approvedD300.status === 200 && approvedD300.json.created === true
+      && approvedD300.json.dossier.status === 'aprobata'
+      && approvedD300.json.approval.artifactHash === generatD300.artifactHash
+      && approvedD300.json.approval.approvedBy.username === 'user1'
+      && /^[0-9a-f]{64}$/.test(approvedD300.json.approval.approvalHash || ''));
+    const approvedRetry = await req('POST', '/api/declarations/approve', { cookie: c1, body: {
+      tip: 'd300', period: '2026-06', dossierId: reservedDossierId, artifactHash: generatD300.artifactHash } });
+    ok('registru: retry-ul aceleiași aprobări nu dublează istoricul', approvedRetry.status === 200
+      && approvedRetry.json.created === false
+      && approvedRetry.json.approval.approvalHash === approvedD300.json.approval.approvalHash);
+    const directApprovedState = await req('POST', '/api/declarations/set', { cookie: c1, body: {
+      tip: 'd300', period: '2026-06', dossierId: reservedDossierId, status: 'aprobata' } });
+    ok('registru: starea aprobată nu poate fi bifată fără endpointul de hash', directApprovedState.status === 409
+      && directApprovedState.json.endpoint === '/api/declarations/approve');
+    const trimis = await req('POST', '/api/declarations/set', { cookie: c1, body: {
+      tip: 'd300', period: '2026-06', dossierId: reservedDossierId, status: 'transmisa' } });
+    const transmittedD300 = trimis.json && trimis.json.rows.find((r) => r.tip === 'd300');
+    ok('registru: transmis este distinct de depus și sigilează artefactul aprobat', trimis.status === 200
+      && transmittedD300.status === 'transmisa'
+      && transmittedD300.transmittedArtifactHash === approvedD300.json.approval.artifactHash
+      && transmittedD300.transmittedApprovalHash === approvedD300.json.approval.approvalHash);
+    eq('registru: depusa fara fisierul recipisei este refuzata', (await req('POST', '/api/declarations/set', { cookie: c1,
+      body: { tip: 'd300', period: '2026-06', status: 'depusa', recipisa: 'R1' } })).status, 409);
+    // Cont separat: plafonul de upload este per utilizator, iar această probă nu trebuie să
+    // consume bugetul documentelor/importurilor pe care le verifică restul suitei.
+    const archiveUploader = (await req('POST', '/api/login', { body: { username: 'expertbilant', password: 'parola1' } })).cookie;
+    const filingProofUploader = (await req('POST', '/api/login', { body: { username: 'filingproof', password: 'parola1' } })).cookie;
+    const filedReceiptText = '<?xml version="1.0"?><recipisa id="R1"/>';
+    const filedForm = new FormData(); filedForm.append('tip', 'd300'); filedForm.append('period', '2026-06');
+    filedForm.append('dossierId', reservedDossierId); filedForm.append('recipisa', 'R1');
+    filedForm.append('file', new Blob([filedReceiptText], { type: 'application/xml' }), 'recipisa-R1.xml');
+    const set = await req('POST', '/api/declarations/confirm-filed', { cookie: filingProofUploader, body: filedForm });
     const d300v2 = set.json && set.json.rows.find((r) => r.tip === 'd300');
-    ok('registru: marcare depusa cu recipisa', d300v2 && d300v2.status === 'depusa' && d300v2.recipisa === 'R1');
-    eq('marcarea depusa a blocat automat luna', set.json.locked, '2026-06');
+    ok('registru: marcare depusa atomic cu numar si fisier de recipisa', set.status === 200
+      && d300v2 && d300v2.status === 'depusa' && d300v2.recipisa === 'R1'
+      && set.json.depunere.submittedArtifactHash === approvedD300.json.approval.artifactHash
+      && /^ds_[0-9a-f]{64}$/.test(set.json.depunere.submissionId || '')
+      && /^[0-9a-f]{64}$/.test(set.json.depunere.submissionHash || '')
+      && set.json.depunere.receipts[0].contentStored === true
+      && set.json.depunere.receipts[0].filingBinding.submissionHash === set.json.depunere.submissionHash
+      && /^[0-9a-f]{64}$/.test(set.json.depunere.receipts[0].receiptBindingHash || ''));
+    eq('marcarea depusa nu blocheaza luna (blocarea ramane ultimul pas din cockpit)', set.json.locked, null);
+    ok('registru: API-ul confirmă păstrarea binarului fără să expună base64',
+      d300v2.artifacts.some((a) => a.sha256 === d300v2.artifactHash && a.contentStored === true && a.contentBase64 == null));
+    const original = new FormData();
+    original.append('tip', 'd300'); original.append('period', '2026-06'); original.append('ordinal', '1');
+    original.append('dossierId', reservedDossierId);
+    original.append('file', new Blob([dl.text], { type: 'application/xml' }), 'd300-original.xml');
+    const originalOk = await req('POST', '/api/declarations/artifact-file', { cookie: archiveUploader, body: original });
+    ok('artefact depus: reatașarea aceluiași SHA este idempotentă', originalOk.status === 200
+      && originalOk.json.stored === false && originalOk.json.artifacts.every((a) => a.contentBase64 == null));
+    const wrongOriginal = new FormData();
+    wrongOriginal.append('tip', 'd300'); wrongOriginal.append('period', '2026-06'); wrongOriginal.append('ordinal', '1');
+    wrongOriginal.append('file', new Blob(['<declaratie>alta</declaratie>'], { type: 'application/xml' }), 'd300-gresit.xml');
+    const originalBad = await req('POST', '/api/declarations/artifact-file', { cookie: archiveUploader, body: wrongOriginal });
+    ok('artefact depus: un fișier cu alt SHA nu poate rescrie istoria', originalBad.status === 409
+      && /^[0-9a-f]{64}$/.test(originalBad.json.expectedSha256 || ''));
+    const correctedOriginal = new FormData();
+    correctedOriginal.append('tip', 'd300'); correctedOriginal.append('period', '2026-06'); correctedOriginal.append('ordinal', '1');
+    correctedOriginal.append('reason', 'validatorul extern a produs binarul efectiv transmis');
+    correctedOriginal.append('file', new Blob(['<declaratie>alta</declaratie>'], { type: 'application/xml' }), 'd300-semnat.xml');
+    const correctedOk = await req('POST', '/api/declarations/artifact-file', { cookie: archiveUploader, body: correctedOriginal });
+    ok('artefact depus: binarul extern diferit se păstrează distinct numai cu motiv', correctedOk.status === 200
+      && correctedOk.json.submittedArtifactHash === originalBad.json.actualSha256);
+    const afterCorrection = (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd300');
+    ok('depunerea separă hash-ul generat de hash-ul efectiv transmis și păstrează corecția',
+      afterCorrection.depuneri[0].generatedArtifactHash === afterCorrection.depuneri[0].artifactHash
+      && afterCorrection.depuneri[0].submittedArtifactHash === originalBad.json.actualSha256
+      && afterCorrection.depuneri[0].submittedArtifactHistory.length === 1
+      && afterCorrection.depuneri[0].submissionHash !== set.json.depunere.submissionHash
+      && afterCorrection.depuneri[0].submissionBindingHistory.length === 1
+      && afterCorrection.depuneri[0].receipts[0].filingBinding.submittedArtifactHash === originalBad.json.actualSha256
+      && afterCorrection.depuneri[0].receipts[0].filingBindingHistory.length === 1);
+    const receipt = new FormData();
+    receipt.append('tip', 'd300'); receipt.append('period', '2026-06'); receipt.append('ordinal', '1');
+    receipt.append('dossierId', reservedDossierId);
+    receipt.append('file', new Blob([filedReceiptText], { type: 'application/xml' }), 'recipisa-R1.xml');
+    const receiptOk = await req('POST', '/api/declarations/recipisa-file', { cookie: archiveUploader, body: receipt });
+    ok('recipisa: fișierul exact este păstrat cu SHA-256, fără base64 în răspuns', receiptOk.status === 200
+      && receiptOk.json.created === false && receiptOk.json.receipts.length === 1
+      && receiptOk.json.submissionHash === afterCorrection.depuneri[0].submissionHash
+      && receiptOk.json.receipts[0].contentStored === true && receiptOk.json.receipts[0].contentBase64 == null
+      && receiptOk.json.receipts[0].filingBinding.submissionHash === receiptOk.json.submissionHash
+      && /^[0-9a-f]{64}$/.test(receiptOk.json.receipts[0].sha256 || '')
+      && /^[0-9a-f]{64}$/.test(receiptOk.json.receipts[0].receiptBindingHash || ''));
+    const exactQuery = 'tip=d300&period=2026-06&dossierId=' + encodeURIComponent(reservedDossierId) + '&ordinal=1';
+    const submittedDownload = await req('GET', '/api/declarations/artifact-file?' + exactQuery + '&variant=submitted', { cookie: c1 });
+    ok('arhivă depuneri: se descarcă exact binarul efectiv transmis, după corecția motivată',
+      submittedDownload.status === 200 && submittedDownload.text === '<declaratie>alta</declaratie>'
+      && /attachment/.test(submittedDownload.headers.get('content-disposition') || '')
+      && submittedDownload.headers.get('etag') === '"sha256-' + correctedOk.json.submittedArtifactHash + '"'
+      && /^[a-f0-9]{64}$/.test(submittedDownload.headers.get('x-contab-integrity-root') || ''));
+    const generatedDownload = await req('GET', '/api/declarations/artifact-file?' + exactQuery + '&variant=generated', { cookie: c1 });
+    ok('arhivă depuneri: varianta generată rămâne recuperabilă separat',
+      generatedDownload.status === 200 && generatedDownload.text === dl.text);
+    const receiptDownload = await req('GET', '/api/declarations/recipisa-file?' + exactQuery
+      + '&sha256=' + receiptOk.json.receipts[0].sha256, { cookie: c1 });
+    ok('arhivă depuneri: recipisa se descarcă byte-identic și poartă ETag-ul SHA-256',
+      receiptDownload.status === 200 && receiptDownload.text === '<?xml version="1.0"?><recipisa id="R1"/>'
+      && receiptDownload.headers.get('etag') === '"sha256-' + receiptOk.json.receipts[0].sha256 + '"');
+    eq('arhivă depuneri: un hash de recipisă străin depunerii nu este servit',
+      (await req('GET', '/api/declarations/recipisa-file?' + exactQuery + '&sha256=' + '0'.repeat(64), { cookie: c1 })).status, 404);
+    eq('arhivă depuneri: operatorul fără drept de export nu poate descărca originalele',
+      (await req('GET', '/api/declarations/artifact-file?' + exactQuery, { cookie: cOperatorSod })).status, 403);
+    const unsupportedReceipt = new FormData();
+    unsupportedReceipt.append('tip', 'd300'); unsupportedReceipt.append('period', '2026-06'); unsupportedReceipt.append('ordinal', '1');
+    unsupportedReceipt.append('file', new Blob(['notă'], { type: 'text/plain' }), 'nota.txt');
+    eq('arhivă depuneri: tipurile de fișiere din afara XML/ZIP/PDF sunt refuzate',
+      (await req('POST', '/api/declarations/recipisa-file', { cookie: archiveUploader, body: unsupportedReceipt })).status, 400);
+    const completeDossier = await req('GET', '/api/declarations/dosar?tip=d300&period=2026-06', { cookie: c1 });
+    ok('dosar: profilul, tranzitiile, artefactele, depunerea si recipisa sunt reunite sub aceeasi identitate',
+      completeDossier.status === 200 && completeDossier.json.id === reservedDossierId
+      && completeDossier.json.profileHash === d300v2.profileHash
+      && completeDossier.json.statusHistory.length >= 2 && completeDossier.json.artifacts.length >= 2
+      && completeDossier.json.submissions.length === 1 && completeDossier.json.integrity.complete === true
+      && completeDossier.json.stateEvents.length >= 5
+      && completeDossier.json.stateChainHash === completeDossier.json.stateEvents.at(-1).hash
+      && completeDossier.json.artifacts.every((a) => a.contentBase64 == null));
+    const forecast13 = await req('GET', '/api/cash-forecast/13-weeks?start=2026-08-24&scenario=prudent', { cookie: c1 });
+    ok('cash-flow 13 săptămâni: API-ul întoarce săptămâni, ipoteze și SHA al bazei', forecast13.status === 200
+      && forecast13.json.rows.length === 13 && forecast13.json.assumptions.scenario === 'prudent'
+      && /^[0-9a-f]{64}$/.test(forecast13.json.basisHash || ''));
+    const snapForecast = await req('POST', '/api/cash-forecast/13-weeks/snapshot', { cookie: c1,
+      body: { startDate: '2026-08-24', scenario: 'prudent' } });
+    ok('cash-flow: fotografia imuabilă este salvată pentru backtesting', snapForecast.status === 200
+      && snapForecast.json.created === true && snapForecast.json.snapshot.verified === true);
+    const snapRetry = await req('POST', '/api/cash-forecast/13-weeks/snapshot', { cookie: c1,
+      body: { startDate: '2026-08-24', scenario: 'prudent' } });
+    ok('cash-flow: retry identic este idempotent', snapRetry.status === 200 && snapRetry.json.created === false
+      && snapRetry.json.snapshot.id === snapForecast.json.snapshot.id);
+    const forecastPdf = await req('GET', '/pdf/cash-forecast-13-weeks?snapshot=' + encodeURIComponent(snapForecast.json.snapshot.id), { cookie: c1 });
+    ok('cash-flow: fotografia persistentă se descarcă drept PDF verificat', forecastPdf.status === 200
+      && forecastPdf.text.startsWith('%PDF-') && /cash-flow-13-saptamani\.pdf/.test(forecastPdf.headers.get('content-disposition') || ''));
+    const forecastHistory = await req('GET', '/api/cash-forecast/13-weeks?start=2026-08-24&scenario=prudent', { cookie: c1 });
+    ok('cash-flow: istoricul raportează totalul persistent și ultima fotografie', forecastHistory.status === 200
+      && forecastHistory.json.snapshotCount >= 1 && forecastHistory.json.snapshots.some((x) => x.id === snapForecast.json.snapshot.id));
     // ── Declaratii rectificative ──────────────────────────────────────────
-    // Perioada e ACUM inchisa (marcarea „depusa" de mai sus a blocat-o automat) — exact contextul
-    // in care se depune o rectificativa in practica.
-    const rectFaraMotiv = await req('POST', '/api/declarations/rectificativa', { cookie: c1, body: { tip: 'd300', period: '2026-06' } });
+    // Pentru scenariul rectificativei blocam EXPLICIT perioada, independent de depunere.
+    const laRect = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+    ok('blocarea explicita a perioadei dupa depunere reuseste',
+      (await req('POST', '/api/period-lock', { cookie: laRect.cookie, body: { lockedUntil: '2026-06' } })).status === 200);
+    const rectNoReasonForm = new FormData(); rectNoReasonForm.append('tip', 'd300'); rectNoReasonForm.append('period', '2026-06');
+    rectNoReasonForm.append('recipisa', 'R-D300-X');
+    rectNoReasonForm.append('file', new Blob(['<recipisa id="R-D300-X"/>'], { type: 'application/xml' }), 'recipisa-rect-x.xml');
+    const rectFaraMotiv = await req('POST', '/api/declarations/rectificativa', { cookie: filingProofUploader, body: rectNoReasonForm });
     eq('rectificativa pe perioada inchisa FARA motiv -> 400', rectFaraMotiv.status, 400);
     ok('mesajul explica ca rectificativa e permisa, dar cere motiv',
       /motiv/i.test((rectFaraMotiv.json || {}).error || ''));
-    const rectOk = await req('POST', '/api/declarations/rectificativa', { cookie: c1, body: { tip: 'd300', period: '2026-06', motiv: 'factura de la furnizor primita dupa depunere', recipisa: 'R-D300-2' } });
+    const rectForm = new FormData(); rectForm.append('tip', 'd300'); rectForm.append('period', '2026-06');
+    rectForm.append('motiv', 'factura de la furnizor primita dupa depunere'); rectForm.append('recipisa', 'R-D300-2');
+    rectForm.append('file', new Blob(['<recipisa id="R-D300-2"/>'], { type: 'application/xml' }), 'recipisa-R-D300-2.xml');
+    const rectOk = await req('POST', '/api/declarations/rectificativa', { cookie: filingProofUploader, body: rectForm });
     eq('rectificativa cu motiv scris -> 200', rectOk.status, 200);
     eq('e a doua depunere pe perioada', rectOk.json.depunere.ordinal, 2);
     ok('depunerea e marcata rectificativa', rectOk.json.depunere.rectificativa === true);
     ok('D300 nu poarta steag in XML (redepunere)', rectOk.json.semnalizataInXml === false);
     // Pe un tip fara depunere anterioara nu exista „rectificativa" — e o depunere normala.
-    const rectFaraBaza = await req('POST', '/api/declarations/rectificativa', { cookie: c1, body: { tip: 'd390', period: '2026-06', motiv: 'oarecare' } });
+    const rectNoBaseForm = new FormData(); rectNoBaseForm.append('tip', 'd390'); rectNoBaseForm.append('period', '2026-06');
+    rectNoBaseForm.append('motiv', 'oarecare'); rectNoBaseForm.append('recipisa', 'R-D390-X');
+    rectNoBaseForm.append('file', new Blob(['<recipisa id="R-D390-X"/>'], { type: 'application/xml' }), 'recipisa-d390.xml');
+    const rectFaraBaza = await req('POST', '/api/declarations/rectificativa', { cookie: filingProofUploader, body: rectNoBaseForm });
     eq('rectificativa fara depunere anterioara -> 400', rectFaraBaza.status, 400);
     // Istoricul e vizibil si nu se pierde
     const ist = await req('GET', '/api/declarations/istoric?tip=d300&period=2026-06', { cookie: c1 });
     eq('istoricul are ambele depuneri', ist.json.depuneri.length, 2);
     ok('istoricul pastreaza motivul', /furnizor/.test(ist.json.depuneri[1].motiv));
+    const dosarRect = await req('GET', '/api/declarations/dosar?tip=d300&period=2026-06', { cookie: c1 });
+    const rectInTimeline = (dosarRect.json.timeline || []).find((item) => item.eventType === 'submission.amended');
+    ok('cronologia API arată rectificativa distinct, cu ordinal, motiv și ancora depunerii',
+      dosarRect.status === 200 && rectInTimeline && rectInTimeline.ordinal === 2
+        && /furnizor/.test(rectInTimeline.reason) && /^[0-9a-f]{64}$/.test(rectInTimeline.submissionHash || ''));
     // Auditul consemneaza rectificativa (altfel corectia peste o luna raportata ar fi invizibila)
     const auditRect = await req('GET', '/api/audit', { cookie: c1 });
     const listaAudit = Array.isArray(auditRect.json) ? auditRect.json : (auditRect.json.items || []);
@@ -766,7 +1005,8 @@ async function main() {
 
     // deblocam (admin) — fluxul de test completeaza intentionat date in iunie in continuare
     const laLock = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
-    ok('deblocarea perioadei (admin) reuseste', (await req('POST', '/api/period-lock', { cookie: laLock.cookie, body: { lockedUntil: null } })).status === 200);
+    ok('deblocarea perioadei (admin) reuseste numai cu motiv', (await req('POST', '/api/period-lock', {
+      cookie: laLock.cookie, body: { lockedUntil: null, motiv: 'Continuarea controlată a suitei de test' } })).status === 200);
     const porto = await req('GET', '/api/portfolio?period=2026-06', { cookie: c1 });
     ok('portofoliu: doar firmele utilizatorului', porto.json && porto.json.firms.length === 1 && porto.json.firms[0].firmaId === 1);
     ok('portofoliu: fiecare firma are forma juridica + starea abonamentului',
@@ -887,7 +1127,8 @@ async function main() {
       eq('checkout-guest cu plan VALID -> 503 (incasare oprita)', cgValid.status, 503);
       ok('...cu motivul si marcajul pentru interfata', cgValid.json.platiSuspendate === true && /nu [îi]ncas[ăa]m/i.test(cgValid.json.error || ''));
       eq('subscription/checkout -> 503 (incasare oprita)', (await req('POST', '/api/subscription/checkout', { cookie: c1, body: { plan: 'pro' } })).status, 503);
-      ok('/api/plans anunta suspendarea', plansPub.json.platiSuspendate === true);
+      ok('/api/plans anunta suspendarea si motivul public', plansPub.json.platiSuspendate === true
+        && /nu [îi]ncas[ăa]m/i.test(plansPub.json.motivPlatiSuspendate || ''));
       ok('/api/subscription anunta suspendarea + motivul', subInfo.json.platiSuspendate === true
         && typeof subInfo.json.motivPlatiSuspendate === 'string' && subInfo.json.motivPlatiSuspendate.length > 40);
       // Anularea NU are voie sa fie prinsa in suspendare: un client trebuie sa poata pleca oricand.
@@ -917,6 +1158,59 @@ async function main() {
     eq('preview nu consuma id-uri: articolele salvate raman consecutive', idNum(saved2.json.entry.id), idNum(saved.json.entry.id) + 1);
     const seqAfter = (await req('GET', '/api/entries', { cookie: c1 })).json.length;
     eq('preview nu creeaza inregistrari (doar cele 2 salvate explicit)', seqAfter - seqBefore, 2);
+
+    // ── ANTI-DUPLICAT CENTRAL: cheia comerciala nu depinde de tip sau suma, iar singura iesire
+    // este o derogare de administrator cu motiv, conflict exact si audit durabil.
+    {
+      const originalFields = { data: '2026-06-12', partener: 'Furnizor Duplicat SRL',
+        cuiPartener: 'RO998877', document: 'DC-00017', baza: 100, tva: 21, cota: 21 };
+      const original = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'factura_utilitati', fields: originalFields,
+      } });
+      eq('anti-duplicat central: prima factura este acceptata', original.status, 200);
+      const changed = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'factura_servicii_primita', fields: Object.assign({}, originalFields, {
+          document: 'dc / 17', baza: 900, tva: 189,
+        }),
+      } });
+      ok('anti-duplicat central: alt tip/suma si numar reformatat sunt tot acelasi document',
+        changed.status === 409 && changed.json.code === 'DUPLICATE_ENTRY'
+          && changed.json.duplicateId === original.json.entry.id && changed.json.duplicateKeys.length === 1);
+
+      const noRight = await req('POST', '/api/entries', { cookie: c1, body: {
+        tip: 'factura_servicii_primita', fields: Object.assign({}, originalFields, { document: 'DC 17', baza: 900, tva: 189 }),
+        duplicateOverride: { duplicateId: original.json.entry.id, reason: 'Document distinct confirmat contractual.' },
+      } });
+      eq('anti-duplicat central: aprobatorul obisnuit nu poate acorda derogarea', noRight.status, 403);
+
+      const cAdminDup = (await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } })).cookie;
+      const shortReason = await req('POST', '/api/entries', { cookie: cAdminDup, body: {
+        tip: 'factura_servicii_primita', fields: Object.assign({}, originalFields, { document: 'DC 17', baza: 900, tva: 189 }),
+        duplicateOverride: { duplicateId: original.json.entry.id, reason: 'dublu' },
+      } });
+      ok('anti-duplicat central: motivul formal/scurt este refuzat',
+        shortReason.status === 400 && shortReason.json.code === 'DUPLICATE_OVERRIDE_REASON_REQUIRED');
+
+      const reason = 'Furnizorul a reutilizat seria; contractele si livrarile sunt distincte.';
+      const allowed = await req('POST', '/api/entries', { cookie: cAdminDup, body: {
+        tip: 'factura_servicii_primita', fields: Object.assign({}, originalFields, { document: 'DC 17', baza: 900, tva: 189 }),
+        duplicateOverride: { duplicateId: original.json.entry.id, reason },
+      } });
+      ok('anti-duplicat central: administratorul poate salva numai derogarea completa',
+        allowed.status === 200 && allowed.json.entry.duplicateOverride
+          && allowed.json.entry.duplicateOverride.duplicateId === original.json.entry.id
+          && allowed.json.entry.duplicateOverride.reason === reason);
+      const duplicateAudit = await req('GET', '/api/audit?limit=100', { cookie: cAdminDup });
+      const duplicateEvents = duplicateAudit.json.items || duplicateAudit.json || [];
+      ok('anti-duplicat central: motivul si ambele articole raman in audit', duplicateEvents.some((a) => {
+        if (a.action !== 'entry.duplicate.override') return false;
+        try {
+          const detail = JSON.parse(a.detail);
+          return detail.entryId === allowed.json.entry.id && detail.duplicateId === original.json.entry.id
+            && detail.reason === reason && Array.isArray(detail.keys) && detail.keys.length === 1;
+        } catch (_) { return false; }
+      }));
+    }
     // ── COERENTA DOCUMENTULUI: doua intrari care produceau TACUT contabilitate gresita ──
     // Amandoua treceau pana la 2026-08-09, fiindca articolul iesea ECHILIBRAT — deci pe langa
     // orice control de echilibru. Se verifica pe CALEA REALA (preview = ce se va salva).
@@ -982,6 +1276,27 @@ async function main() {
     eq('efactura/parse: XML invalid -> 400', (await req('POST', '/api/efactura/parse', { cookie: c1, body: { xml: '<nu>e ubl</nu>' } })).status, 400);
     const imp = await req('POST', '/api/efactura/import', { cookie: c1, body: { xml: ubl, cont: '371' } });
     ok('efactura/import: creeaza inregistrare de cumparare', imp.json && imp.json.ok && imp.json.entry && imp.json.entry.tip.indexOf('cumparare') >= 0);
+    ok('efactura/import: scadenta UBL ajunge in registrul documentelor deschise',
+      imp.json.entry.openItem && imp.json.entry.openItem.dueDate === parse.json.invoice.scadenta);
+    const oiList = await req('GET', '/api/open-items', { cookie: c1 });
+    ok('registrul documentelor deschise expune factura importata cu sold rezidual', oiList.json
+      && oiList.json.documents.some((d) => d.id === imp.json.entry.id && d.residual === 1210));
+    const oiPatch = await req('PATCH', '/api/open-items/' + imp.json.entry.id, { cookie: c1, body: {
+      dueDate: '2026-07-15', contractualTermDays: 30, affiliated: false, guaranteed: false, dispute: false, reason: 'Contract verificat',
+    } });
+    ok('metadatele creantei/datoriei se actualizeaza versionat', oiPatch.json && oiPatch.json.ok
+      && oiPatch.json.openItem.dueDate === '2026-07-15' && oiPatch.json.openItem.affiliated === false
+      && oiPatch.json.openItem.contractualTermDays === 30);
+    const oiPatchPartial = await req('PATCH', '/api/open-items/' + imp.json.entry.id, { cookie: c1, body: {
+      dueDate: '2026-07-16', reason: 'Act aditional verificat',
+    } });
+    ok('PATCH partial pastreaza termenul contractual existent', oiPatchPartial.json && oiPatchPartial.json.ok
+      && oiPatchPartial.json.openItem.contractualTermDays === 30);
+    const oiHistory = await req('GET', '/api/open-items/' + imp.json.entry.id + '/history', { cookie: c1 });
+    ok('istoricul scadentei pastreaza versiunile si motivul', oiHistory.json && oiHistory.json.versions.length === 2
+      && /Act aditional/.test(oiHistory.json.versions[0].reason));
+    const oiCtl = await req('GET', '/api/open-items/reconciliation', { cookie: c1 });
+    ok('controlul open-items reconciliaza cu cartea mare', oiCtl.json && oiCtl.json.ok && oiCtl.json.rows.length === 13);
 
     // ── ANAF SPV: config + degradarea curata cand nu e conectat ──
     const acfg = await req('GET', '/api/anaf/config', { cookie: c1 });
@@ -1036,7 +1351,8 @@ async function main() {
     ok('asset schedule: 24 rate liniare de 250', sch.json && sch.json.schedule.length === 24 && sch.json.schedule[0].amount === 250);
     const dep = await req('POST', '/api/assets/depreciation?period=2026-06', { cookie: c1 });
     ok('amortizare iunie: inregistrata (6811=2813)', dep.json && dep.json.ok && dep.json.result && dep.json.result.lines.length === 1);
-    eq('amortizare iunie a doua oara -> 400 (deja inregistrata)', (await req('POST', '/api/assets/depreciation?period=2026-06', { cookie: c1 })).status, 400);
+    const depRetry = await req('POST', '/api/assets/depreciation?period=2026-06', { cookie: c1 });
+    ok('amortizare iunie a doua oara -> succes idempotent', depRetry.status === 200 && depRetry.json.idempotent === true);
     eq('asset cu amortizare postata nu se sterge din registru', (await req('DELETE', '/api/assets/' + aid, { cookie: c1 })).status, 409);
     eq('casare retroactiva inaintea unei amortizari postate -> 409',
       (await req('POST', '/api/assets/' + aid + '/scrap', { cookie: c1, body: { dataCasare: '2026-05-31' } })).status, 409);
@@ -1291,7 +1607,7 @@ async function main() {
       return p && p.payrollEntryId === post.json.entry.id;
     })());
     eq('a doua plata integrala a aceleiasi luni este refuzata',
-      (await req('POST', '/api/stat-plata/pay?period=2026-06&cont=5311', { cookie: c1 })).status, 400);
+      (await req('POST', '/api/stat-plata/pay?period=2026-06&cont=5311', { cookie: c1 })).status, 409);
     ok('API stat marcheaza luna drept platita',
       (await req('GET', '/api/stat-plata?period=2026-06', { cookie: c1 })).json.platit === true);
     const propSalPlatit = await req('GET', '/api/plati/propuneri?tip=salarii&period=2026-06', { cookie: c1 });
@@ -1442,8 +1758,15 @@ async function main() {
     eq('D710 fara D100 depusa anterior -> 400', (await req('GET', '/xml/d710?period=2026-06', { cookie: c1 })).status, 400);
     // Prima depunere pastreaza fotografia D100. Dupa o corectie contabila, D710 trebuie sa arate
     // suma initiala SI suma recalculata, nu doar delta si nu doua copii ale valorii curente.
-    const d100Dep = await req('POST', '/api/declarations/set', { cookie: c1,
-      body: { tip: 'd100', period: '2026-06', status: 'depusa', recipisa: 'R-D100-1' } });
+    const d100Generated = (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100');
+    eq('D100 este aprobat pe hash-ul exact înainte de transmitere', (await req('POST', '/api/declarations/approve', { cookie: c1,
+      body: { tip: 'd100', period: '2026-06', artifactHash: d100Generated.artifactHash } })).status, 200);
+    eq('D100 trece mai întâi prin starea transmisă', (await req('POST', '/api/declarations/set', { cookie: c1,
+      body: { tip: 'd100', period: '2026-06', status: 'transmisa' } })).status, 200);
+    const d100Filed = new FormData(); d100Filed.append('tip', 'd100'); d100Filed.append('period', '2026-06');
+    d100Filed.append('recipisa', 'R-D100-1');
+    d100Filed.append('file', new Blob(['<recipisa id="R-D100-1"/>'], { type: 'application/xml' }), 'recipisa-d100-1.xml');
+    const d100Dep = await req('POST', '/api/declarations/confirm-filed', { cookie: filingProofUploader, body: d100Filed });
     eq('D100 marcata depusa pentru baza D710', d100Dep.status, 200);
     const regD710 = await req('GET', '/api/declarations?period=2026-06', { cookie: c1 });
     ok('dupa depunerea D100, registrul ofera D710', regD710.json.rows.find((r) => r.tip === 'd100').links
@@ -1462,8 +1785,13 @@ async function main() {
       const i = x710.text.match(/suma_dat_I="(\d+)"/); const c = x710.text.match(/suma_dat_C="(\d+)"/);
       return i && c && Number(c[1]) > Number(i[1]);
     })());
-    const d710Marcat = await req('POST', '/api/declarations/rectificativa', { cookie: c1,
-      body: { tip: 'd100', period: '2026-06', motiv: 'venit omis inclus prin D710', recipisa: 'R-D710-2' } });
+    const d710Generated = (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100');
+    eq('rectificativa D710 primește propria aprobare pe noul hash', (await req('POST', '/api/declarations/approve', { cookie: c1,
+      body: { tip: 'd100', period: '2026-06', artifactHash: d710Generated.artifactHash } })).status, 200);
+    const d710Filed = new FormData(); d710Filed.append('tip', 'd100'); d710Filed.append('period', '2026-06');
+    d710Filed.append('motiv', 'venit omis inclus prin D710'); d710Filed.append('recipisa', 'R-D710-2');
+    d710Filed.append('file', new Blob(['<recipisa id="R-D710-2"/>'], { type: 'application/xml' }), 'recipisa-d710-2.xml');
+    const d710Marcat = await req('POST', '/api/declarations/rectificativa', { cookie: filingProofUploader, body: d710Filed });
     eq('rectificarea D100 poate fi marcata depusa in istoric', d710Marcat.status, 200);
     const x710Arhiva = await req('GET', '/xml/d710?period=2026-06', { cookie: c1 });
     eq('D710 depusa poate fi redescărcata din ultimele doua fotografii', x710Arhiva.status, 200);
@@ -1525,14 +1853,37 @@ async function main() {
     ok('lockedUntil NU s-a setat prin profil', mDupa.lockedUntil !== '2030-01');
     await req('POST', '/api/company', { cookie: c1, body: { nume: numeInit } }); // restaureaza
 
+    // Folosim aprobatorul deja autentificat: are firma 1 activa si un bucket de upload separat.
+    // Astfel, cele trei probe bancare nu consuma plafonul utilizatorilor verificati mai jos.
+    const bankUploader = cExpertBilant;
+    const uploadBankCsv = async (name, row) => {
+      const csv = 'Data;Descriere;Debit;Credit;Sold;IBAN;Moneda;ID tranzactie\n' + row + '\n';
+      const fd = new FormData(); fd.append('file', new Blob([csv], { type: 'text/csv' }), name);
+      const parsed = await req('POST', '/api/bank/parse', { cookie: bankUploader, body: fd });
+      ok('extras bancar ' + name + ': upload si registru create', parsed.status === 200 && parsed.json.statements.length === 1);
+      return parsed.json.statements[0];
+    };
+    let manualBankPack = null;
+
     // ── Import extras bancar: legatura de decontare persistata (punctaj) + validare id-uri ──
     {
       const invR = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-06-24', partener: 'Client Punctaj SRL', cuiPartener: 'RO7788', document: 'PJ-1', baza: 1000, tva: 210, cota: 21 } } });
       const invId = invR.json.entry && invR.json.entry.id;
       ok('factura de decontat inregistrata', invR.json.ok && invId);
       // import incasare legata de factura (stinge) + un id STRAIN care trebuie filtrat la persistare
-      const imp = await req('POST', '/api/bank/import', { cookie: c1, body: { transactions: [
-        { tip: 'incasare_client', fields: { data: '2026-06-25', partener: 'Client Punctaj SRL', cuiPartener: 'RO7788', suma: 1210, cont: '5121' }, stinge: [invId, 'e-strain-9999'] },
+      const pack = await uploadBankCsv('punctaj.csv',
+        '25.06.2026;Client Punctaj SRL;;1210,00;1210,00;RO49AAAA1B31007593840000;RON;BANK-PJ-1\n'
+        + '27.06.2026;Client Manual SRL;;1210,00;2420,00;RO49AAAA1B31007593840000;RON;BANK-MAN-1');
+      manualBankPack = pack;
+      const duplicateCsv = 'Data;Descriere;Debit;Credit;Sold;IBAN;Moneda;ID tranzactie\n'
+        + '25.06.2026;Client Punctaj SRL;;1210,00;1210,00;RO49AAAA1B31007593840000;RON;BANK-PJ-1\n'
+        + '27.06.2026;Client Manual SRL;;1210,00;2420,00;RO49AAAA1B31007593840000;RON;BANK-MAN-1\n';
+      const fdDup = new FormData(); fdDup.append('file', new Blob([duplicateCsv], { type: 'text/csv' }), 'acelasi-extras-redenumit.csv');
+      eq('acelasi fisier bancar reimportat este refuzat dupa SHA-256',
+        (await req('POST', '/api/bank/parse', { cookie: bankUploader, body: fdDup })).status, 409);
+      const tx = pack.transactions[0];
+      const imp = await req('POST', '/api/bank/import', { cookie: c1, body: { statementId: pack.statement.id, transactions: [
+        { id: tx.id, tip: 'incasare_client', fields: { partener: 'Client Punctaj SRL', cuiPartener: 'RO7788', document: 'PJ-1' }, stinge: [invId, 'e-strain-9999'] },
       ] } });
       eq('import bancar cu legatura -> 1 articol creat', imp.json.created, 1);
       const plataEntry = (await req('GET', '/api/entries?firma=1', { cookie: c1 })).json.find((e) => e.tip === 'incasare_client' && e.partener === 'Client Punctaj SRL');
@@ -1550,7 +1901,11 @@ async function main() {
       const inv = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-06-26', partener: 'Client Manual SRL', cuiPartener: 'RO9001', document: 'MAN-1', baza: 1000, tva: 210, cota: 21 } } });
       const invId = inv.json.entry.id;
       // plata NElegata la creare (import fara stinge) — la reconciliere ar cadea pe euristica
-      await req('POST', '/api/bank/import', { cookie: c1, body: { transactions: [{ tip: 'incasare_client', fields: { data: '2026-06-27', partener: 'Client Manual SRL', cuiPartener: 'RO9001', suma: 1210, cont: '5121' } }] } });
+      const pack = manualBankPack;
+      const tx = pack.transactions.find((x) => x.externalId === 'BANK-MAN-1');
+      await req('POST', '/api/bank/import', { cookie: c1, body: { statementId: pack.statement.id, transactions: [
+        { id: tx.id, tip: 'incasare_client', fields: { partener: 'Client Manual SRL', cuiPartener: 'RO9001', document: 'MAN-1' }, stinge: [] },
+      ] } });
       const payId = (await req('GET', '/api/entries?firma=1', { cookie: c1 })).json.find((e) => e.tip === 'incasare_client' && e.partener === 'Client Manual SRL').id;
       eq('link: plata inexistenta -> 404', (await req('POST', '/api/reconcile/link', { cookie: c1, body: { paymentId: 'e-nu-exista', invoiceIds: [invId] } })).status, 404);
       // legare manuala, cu un id STRAIN care trebuie filtrat
@@ -1563,6 +1918,11 @@ async function main() {
       ok('unlink: dezlegare reusita (stinge gol)', ul.json.ok && ul.json.stinge.length === 0);
       const pmU = (await req('GET', '/api/reconcile', { cookie: c1 })).json.partners.find((p) => p.den === 'Client Manual SRL' && p.cont === '4111');
       ok('unlink: fara legatura, nu mai e `legata` (revine pe euristica)', pmU && !pmU.perechi.some((pr) => pr.tip === 'legata'));
+      const bankDone = await req('GET', '/api/bank/statements/' + pack.statement.id, { cookie: c1 });
+      ok('extrasul ramane identitate distincta si ajunge postat cu diferenta zero', bankDone.json.reconciliation.status === 'postata'
+        && bankDone.json.reconciliation.difference === 0 && bankDone.json.transactions.every((x) => x.status === 'postata'));
+      eq('identitatea unui extras postat nu poate fi rescrisa', (await req('PATCH', '/api/bank/statements/' + pack.statement.id, {
+        cookie: c1, body: { currency: 'EUR', reason: 'Corectie test identitate' } })).status, 409);
     }
 
     // ── Compensarea stinge CONTURILE REALE (404 = 418), nu reclasifica fortat in 401 = 4111 ──
@@ -1595,10 +1955,20 @@ async function main() {
         + '</Stmt></BkToCstmrStmt></Document>';
       const fdC = new FormData();
       fdC.append('file', new Blob([camtXml], { type: 'application/xml' }), 'extras.camt.xml');
-      const rc = await req('POST', '/api/bank/parse', { cookie: c1, body: fdC });
+      const rc = await req('POST', '/api/bank/parse', { cookie: bankUploader, body: fdC });
       eq('CAMT upload: parsare reusita (200)', rc.status, 200);
       eq('CAMT upload: 1 tranzactie citita', rc.json.count, 1);
-      ok('CAMT upload: data/sens/suma corecte', rc.json.transactions[0].data === '2026-06-28' && rc.json.transactions[0].sens === 'in' && rc.json.transactions[0].suma === 2380);
+      ok('CAMT upload: data/sens/suma corecte', rc.json.transactions[0].bookingDate === '2026-06-28' && rc.json.transactions[0].direction === 'in' && rc.json.transactions[0].amount === 2380);
+      const oldBankKey = rc.json.transactions[0].uniqueKey;
+      const bankIdentity = await req('PATCH', '/api/bank/statements/' + rc.json.statementId, { cookie: c1, body: {
+        iban: 'RO49AAAA1B31007593840000', reason: 'IBAN confirmat din banca',
+      } });
+      const bankIdentityRead = await req('GET', '/api/bank/statements/' + rc.json.statementId, { cookie: c1 });
+      ok('corectarea IBAN recalculeaza cheia anti-reimport a tranzactiei', bankIdentity.status === 200
+        && bankIdentityRead.json.transactions[0].uniqueKey !== oldBankKey);
+      eq('CAMT fara solduri nu poate fi postat pana la completarea extrasului',
+        (await req('POST', '/api/bank/import', { cookie: c1, body: { statementId: rc.json.statementId,
+          transactions: [{ id: rc.json.transactions[0].id, tip: rc.json.transactions[0].proposal.tip, fields: rc.json.transactions[0].proposal.fields }] } })).status, 400);
     }
 
     // ── TVA trimestrial: vizualizarea urmeaza perioada TVA (agrega trimestrul) ──
@@ -1615,36 +1985,82 @@ async function main() {
       && typeof rec.json.colectata === 'number' && typeof rec.json.deductibila === 'number' && Array.isArray(rec.json.findings)
       && Array.isArray(rec.json.coteAnormale) && Array.isArray(rec.json.netrimise) && typeof rec.json.ok === 'boolean');
 
-    // ── DOSAR ANUAL: arhiva imutabila (ZIP) + manifest cu amprente SHA-256 ──
+    // ── DOSAR ANUAL: descărcarea nu mai regenerează datele curente ──
     eq('dosar-anual: fara sesiune -> 401 (sub garda de auth /api)', (await req('GET', '/api/dosar-anual?year=2026')).status, 401);
-    { // fetch binar direct (req() decodeaza text si ar corupe zip-ul)
-      const AdmZip = require('adm-zip');
-      const rz = await fetch(BASE + '/api/dosar-anual?year=2026', { headers: { Cookie: c1 } });
-      ok('dosar-anual: 200 + application/zip + attachment', rz.status === 200
-        && /application\/zip/.test(rz.headers.get('content-type') || '') && /attachment/.test(rz.headers.get('content-disposition') || ''));
-      const buf = Buffer.from(await rz.arrayBuffer());
-      const zip = new AdmZip(buf);
-      const man = JSON.parse(zip.getEntry('manifest.json').getData().toString('utf8'));
-      ok('dosar-anual: manifest cu firma/an/fisiere + registre si situatii', man.an === '2026' && Array.isArray(man.fisiere) && man.fisiere.length >= 5
-        && man.fisiere.some((f) => f.cale === 'registre/registru-jurnal.pdf') && man.fisiere.some((f) => /situatii\/bilant\.pdf/.test(f.cale)));
-      // integritate: recalculeaza amprentele fisierelor si verifica hashDosar (tamper-evidence)
-      const rec2 = zip.getEntries().filter((e) => e.entryName !== 'manifest.json' && e.entryName !== 'README.txt')
-        .map((e) => e.entryName + ':' + crypto.createHash('sha256').update(e.getData()).digest('hex')).sort();
-      const h = crypto.createHash('sha256').update(Buffer.from(rec2.join('\n'), 'utf8')).digest('hex');
-      ok('dosar-anual: hashDosar verificabil = amprenta combinata a fisierelor', h === man.hashDosar);
-      // fiecare amprenta de fisier din manifest se potriveste cu continutul real
-      ok('dosar-anual: amprenta fiecarui fisier corecta', man.fisiere.every((f) => {
-        const e = zip.getEntry(f.cale); return e && crypto.createHash('sha256').update(e.getData()).digest('hex') === f.sha256;
-      }));
-      // an garbage: sanitizat global la gol -> cade pe anul curent, nu strica ruta (200)
-      const rgar = await fetch(BASE + '/api/dosar-anual?year=abcd', { headers: { Cookie: c1 } });
-      ok('dosar-anual: an garbage sanitizat -> tot 200 (anul curent)', rgar.status === 200);
-    }
+    const archiveStatus = await req('GET', '/api/dosar-anual/status?year=2026', { cookie: c1 });
+    ok('dosar-anual: statusul separă anul deschis de versiunile sigilate', archiveStatus.status === 200
+      && archiveStatus.json.closed === false && archiveStatus.json.versions.length === 0);
+    eq('dosar-anual: anul deschis nu poate fi generat la cerere', (await req('GET', '/api/dosar-anual?year=2026', { cookie: c1 })).status, 409);
+    eq('dosar-anual: an invalid sanitizat nu ocolește condiția de închidere', (await req('GET', '/api/dosar-anual?year=abcd', { cookie: c1 })).status, 409);
 
     // ── MOTOR DE PROFIL FISCAL: sursa unica pentru declaratii/alerte/controale ──
     {
       const fp0 = await req('GET', '/api/fiscal-profile', { cookie: c1 });
       ok('fiscal-profile: profil coerent pentru firma platitoare de TVA', fp0.status === 200 && fp0.json.tvaPlatitor === true && fp0.json.perioadaTva === 'L' && fp0.json.d406 === 'L');
+      const pmx = await req('GET', '/api/permissions/matrix', { cookie: c1 });
+      ok('matrice permisiuni: contract complet servit din backend', pmx.status === 200
+        && pmx.json.roles.some((r) => r.role === 'operator')
+        && pmx.json.actions.some((a) => a.key === 'annual.manage')
+        && pmx.json.actions.some((a) => a.key === 'treasury.approve')
+        && pmx.json.actions.some((a) => a.key === 'declaration.submit')
+        && pmx.json.actions.some((a) => a.key === 'data.export'));
+      eq('SoD HTTP: operatorul poate citi trezoreria', (await req('GET', '/api/bank/statements', { cookie: cOperatorSod })).status, 200);
+      eq('SoD HTTP: operatorul nu poate posta extrasul', (await req('POST', '/api/bank/import', {
+        cookie: cOperatorSod, body: { statementId: 'x', transactions: [] } })).status, 403);
+      eq('SoD HTTP: operatorul nu isi poate aproba luna', (await req('POST', '/api/monthly-close/approve', {
+        cookie: cOperatorSod, body: { period: '2026-06' } })).status, 403);
+      eq('SoD HTTP: operatorul nu poate confirma depunerea', (await req('POST', '/api/declarations/set', {
+        cookie: cOperatorSod, body: { tip: 'd300', period: '2026-06', status: 'depusa', recipisa: 'R-SOD' } })).status, 403);
+      eq('SoD HTTP: operatorul nu poate administra profilul fiscal', (await req('POST', '/api/fiscal-profile/history', {
+        cookie: cOperatorSod, body: { validFrom: '2036-01-01', changes: { regimImpozit: 'profit' } } })).status, 403);
+      eq('SoD HTTP: operatorul nu poate exporta registrul', (await req('GET', '/csv/journal?period=2026-06', {
+        cookie: cOperatorSod })).status, 403);
+      const calendarIstoricInainte = await req('GET', '/api/declarations?period=2026-06', { cookie: c1 });
+      const xmlIstoricInainte = await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
+      const hashIstoricInainte = crypto.createHash('sha256').update(xmlIstoricInainte.text).digest('hex');
+      // Revizie VIITOARE: apare in istoric si in profilul cerut explicit la acea data, fara sa
+      // schimbe profilul curent sau calendarele 2025-2027 folosite de restul suitei.
+      const fpr = await req('POST', '/api/fiscal-profile/history', { cookie: c1, body: {
+        validFrom: '2035-01-01', recordedAt: '1999-01-01T00:00:00.000Z',
+        note: 'test schimbare viitoare', changes: { regimImpozit: 'profit' },
+      } });
+      ok('istoric fiscal: revizia datata este salvata si auditabila', fpr.status === 200
+        && fpr.json.revision.validFrom === '2035-01-01' && fpr.json.revision.values.regimImpozit === 'profit'
+        && /^\d{4}-\d{2}-\d{2}T/.test(fpr.json.revision.recordedAt)
+        && fpr.json.revision.recordedAt !== '1999-01-01T00:00:00.000Z'
+        && fpr.json.history.some((x) => x.validFrom === '1900-01-01' && x.validTo === '2035-01-01'));
+      const calendarIstoricDupa = await req('GET', '/api/declarations?period=2026-06', { cookie: c1 });
+      const xmlIstoricDupa = await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
+      const hashIstoricDupa = crypto.createHash('sha256').update(xmlIstoricDupa.text).digest('hex');
+      ok('istoric fiscal HTTP: schimbarea viitoare nu modifica XML/hash/calendarul perioadei vechi',
+        xmlIstoricDupa.text === xmlIstoricInainte.text && hashIstoricDupa === hashIstoricInainte
+        && JSON.stringify((calendarIstoricDupa.json.rows || []).map((x) => [x.tip, x.due]))
+          === JSON.stringify((calendarIstoricInainte.json.rows || []).map((x) => [x.tip, x.due])));
+      const d300Istoric = (calendarIstoricDupa.json.rows || []).find((x) => x.tip === 'd300');
+      ok('istoric fiscal HTTP: artefactul declaratiei poarta snapshot si hash de profil',
+        !!(d300Istoric && d300Istoric.profileSnapshot && /^[0-9a-f]{64}$/.test(d300Istoric.profileHash)
+          && /^[0-9a-f]{64}$/.test(d300Istoric.profileSnapshot.provenanceHash)
+          && d300Istoric.profileSnapshot.values.regim === 'micro'));
+      const profileInTimeline = (d300Istoric.timeline || []).filter((item) => item.kind === 'fiscal-profile');
+      ok('cronologia din registru include schimbările de profil cu timpul efectiv separat de recordedAt',
+        profileInTimeline.some((item) => item.effectiveAt === '1900-01-01' && item.appliesToPeriod === true)
+          && profileInTimeline.some((item) => item.effectiveAt === '2035-01-01'
+            && item.occurredAt === fpr.json.revision.recordedAt && item.appliesToPeriod === false));
+      const fpFuture = await req('GET', '/api/fiscal-profile?asOf=2035-06', { cookie: c1 });
+      ok('istoric fiscal: profilul as-of foloseste revizia viitoare și expune momentul înregistrării',
+        fpFuture.status === 200 && fpFuture.json.profit === true && fpFuture.json.fiscalValidFrom === '2035-01-01'
+          && fpFuture.json.fiscalRecordedAt === fpr.json.revision.recordedAt);
+      const fpStill = await req('GET', '/api/fiscal-profile', { cookie: c1 });
+      ok('istoric fiscal: profilul curent nu este schimbat de revizia viitoare', fpStill.json.micro === true);
+      const fph = await req('GET', '/api/fiscal-profile/history', { cookie: c1 });
+      ok('istoric fiscal: registrul expune fotografia completa', fph.status === 200
+        && fph.json.history.some((x) => x.validFrom === '2035-01-01' && x.values.tvaPlatitor === true
+          && x.recordedAt === fpr.json.revision.recordedAt));
+      const acp = await req('GET', '/api/annual-close?year=2026', { cookie: c1 });
+      ok('cockpit anual: ruta expune progres, pasi si dreptul curent', acp.status === 200
+        && acp.json.steps.length === 11 && acp.json.adjustmentPeriod.period === '2026-13'
+        && typeof acp.json.progres.procent === 'number'
+        && acp.json.steps.every((s) => Array.isArray(s.temei)) && acp.json.permission.ok === true);
       // setarea campurilor de profil prin /api/company (allowlist) se reflecta in profil
       await req('POST', '/api/company', { cookie: c1, body: { regimImpozit: 'profit', d406Cadenta: 'T', intrastatObligat: true, scutiri: { d394: true } } });
       const fp1 = (await req('GET', '/api/fiscal-profile', { cookie: c1 })).json;
@@ -1743,22 +2159,38 @@ async function main() {
       ok('nomenclatorul pastreaza codurile istorice (Calarasi 51)',
         nomB.json.judete.some((j) => j.cod === '51' && j.iso === 'RO-CL'));
 
-      // Fara datele de antet, generarea e REFUZATA si spune ce lipseste (nu produce un formular inventat)
+      // Categoria contabila nu se deduce din regimul fiscal micro/profit si nu se poate folosi
+      // intr-un XML pana la confirmarea ANUALA a indicatorilor.
       const bLipsa = await req('GET', '/xml/bilant?year=2025', { cookie: c1 });
-      ok('xml/bilant fara antet -> 400 cu lista campurilor lipsa',
-        bLipsa.status === 400 && /forma de propriet/i.test(bLipsa.text) && /administrator/i.test(bLipsa.text));
+      ok('xml/bilant fara confirmare anuala -> 409 si ramane blocat',
+        bLipsa.status === 409 && /categoria contabil/i.test(bLipsa.text) && /confirm/i.test(bLipsa.text));
 
       // Campurile de antet se salveaza prin /api/company (sunt in allowlist-ul de firma)
       const savedB = await req('POST', '/api/company', { cookie: c1, body: {
         judet: 'RO-B', adresa: 'Str. Exemplu nr. 1', caen: '1071',
+        categorieRaportare: 'micro',
         formaProprietate: '35', administrator: 'Popescu Ion', telefon: '0211234567',
         intocmitNume: 'Ionescu Maria', intocmitCalitate: '21', intocmitNr: '12345', auditStatut: '3',
       } });
       ok('/api/company accepta campurile de antet ale bilantului',
-        savedB.status === 200 && savedB.json.company.formaProprietate === '35'
+        savedB.status === 200 && savedB.json.company.categorieRaportare === 'micro'
+        && savedB.json.company.formaProprietate === '35'
         && savedB.json.company.administrator === 'Popescu Ion');
 
-      const xb = await req('GET', '/xml/bilant?year=2025&categorie=micro', { cookie: c1 });
+      const calcB = await req('GET', '/api/balance-category?year=2025', { cookie: c1 });
+      ok('categoria bilantului se calculeaza din cei trei indicatori, pe doua exercitii', calcB.status === 200
+        && calcB.json.assessment.currentIndicators.totalActive != null
+        && calcB.json.assessment.currentIndicators.cifraAfaceri != null
+        && calcB.json.assessment.currentIndicators.numarMediuSalariati != null
+        && calcB.json.assessment.recommendedCategory === 'micro');
+      const confB = await req('POST', '/api/balance-category/confirm', { cookie: cExpertBilant, body: {
+        year: 2025, category: 'micro', justification: '',
+      } });
+      ok('contabilul confirma explicit categoria pe an, cu hash-ul indicatorilor', confB.status === 200
+        && confB.json.confirmation.year === '2025' && confB.json.confirmation.category === 'micro'
+        && /^[a-f0-9]{64}$/.test(confB.json.confirmation.inputHash));
+
+      const xb = await req('GET', '/xml/bilant?year=2025', { cookie: c1 });
       ok('xml/bilant (micro): S1120 bine-format, cu F10 si F20',
         xb.status === 200 && /<Bilant1120 /.test(xb.text)
         && /xmlns="mfp:anaf:dgti:s1120:declaratie:v3"/.test(xb.text)
@@ -1766,8 +2198,19 @@ async function main() {
       ok('xml/bilant: sume in lei INTREGI (validatorul respinge zecimalele)',
         !/F10_\d{4}="-?\d+\.\d/.test(xb.text));
       ok('xml/bilant: niciun atribut gol (validatorul le respinge)', !/="\s*"/.test(xb.text));
-      const xb1121 = await req('GET', '/xml/bilant?year=2025&categorie=mic', { cookie: c1 });
-      ok('xml/bilant (mic): S1121 cu F20 complet (88 de randuri)',
+      await req('POST', '/api/company', { cookie: c1, body: { categorieRaportare: 'mic' } });
+      const faraJustificare = await req('POST', '/api/balance-category/confirm', { cookie: cExpertBilant, body: {
+        year: 2025, category: 'mic', justification: '',
+      } });
+      ok('alegerea manuala ce contrazice calculul este blocata fara justificare',
+        faraJustificare.status === 400 && /justificare/i.test(faraJustificare.text));
+      const confMic = await req('POST', '/api/balance-category/confirm', { cookie: cExpertBilant, body: {
+        year: 2025, category: 'mic', justification: 'Decizie profesională documentată în dosarul anual.',
+      } });
+      ok('abaterea justificata se pastreaza ca revizie anuala, cu actor', confMic.status === 200
+        && confMic.json.confirmation.category === 'mic' && confMic.json.confirmation.confirmedBy != null);
+      const xb1121 = await req('GET', '/xml/bilant?year=2025&categorie=micro', { cookie: c1 });
+      ok('xml/bilant foloseste confirmarea anuala (mic), nu query-ul ad-hoc: S1121 cu F20 complet',
         xb1121.status === 200 && /<Bilant1121 /.test(xb1121.text)
         && (xb1121.text.match(/F20_\d{4}="/g) || []).length === 176);
       // controale de coerenta derivate din profil (al treilea pilon)
@@ -1880,6 +2323,18 @@ async function main() {
       } }); // restaurez regimul TVA
       // dupa restaurare, D300 se genereaza din nou
       eq('dupa restaurare platitor: /xml/d300 -> 200', (await req('GET', '/xml/d300?period=2026-06', { cookie: c1 })).status, 200);
+
+      // Poarta centrala prinde retry-ul exact indiferent de ruta; dupa storno, corectia este
+      // permisa si pastreaza jurnalul append-only.
+      const dupBody = { tip: 'factura_vanzare_servicii', fields: { data: '2034-01-10', partener: 'Duplicat Central SRL',
+        cuiPartener: 'RO12345674', document: 'DUP-CENTRAL-1', baza: 100, tva: 21, cota: 21 } };
+      const dup1 = await req('POST', '/api/entries', { cookie: c1, body: dupBody });
+      ok('anti-duplicat central: primul document se posteaza', dup1.status === 200 && dup1.json.entry);
+      const dup2 = await req('POST', '/api/entries', { cookie: c1, body: dupBody });
+      ok('anti-duplicat central: retry-ul exact primeste 409 si id-ul existent in mesaj', dup2.status === 409
+        && new RegExp(dup1.json.entry.id).test((dup2.json || {}).error || ''));
+      await req('POST', '/api/entries/' + dup1.json.entry.id + '/storno', { cookie: c1, body: { data: '2034-01-11' } });
+      eq('anti-duplicat central: dupa storno documentul poate fi corectat', (await req('POST', '/api/entries', { cookie: c1, body: dupBody })).status, 200);
     }
 
     // ── Pro-rata TVA (art. 300): split automat al TVA-ului pe achizitiile mixte ──
@@ -1913,7 +2368,8 @@ async function main() {
     ok('cod art. 331 valid (22) -> acceptat si memorat pe articol',
       cod22.json && cod22.json.ok && cod22.json.entry.codCategorie331 === 22);
     // fara cod articolul se salveaza (se poate completa mai tarziu), dar D394 nu e depozabil
-    const fara = await req('POST', '/api/entries', { cookie: c1, body: ti331(null) });
+    const faraBody = ti331(null); faraBody.fields.document = 'TI-331-FARA-COD';
+    const fara = await req('POST', '/api/entries', { cookie: c1, body: faraBody });
     ok('fara cod: articolul se salveaza, fara camp inventat',
       fara.json && fara.json.ok && !fara.json.entry.codCategorie331);
     const vD394 = (await req('GET', '/api/validate/d394?period=2026-06', { cookie: c1 })).json;
@@ -2081,17 +2537,18 @@ async function main() {
     const og = await req('GET', '/api/opening', { cookie: c1 });
     ok('GET /api/opening: soldurile salvate (pentru editorul din Setari)', og.json && og.json['5121'] && og.json['5121'].d === 1000 && og.json['1012'].c === 1000);
 
-    // ── Gestiunea lunilor: inchidere TVA lunara (validare + blocare + avans) ──
+    // ── Regularizarea TVA: posteaza nota, dar blocarea lunii ramane in cockpit ──
+    const laMonth = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+    await req('POST', '/api/period-lock', { cookie: laMonth.cookie, body: { lockedUntil: null } });
     await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2025-09-10', partener: 'LunaTest', cuiPartener: 'RO7', document: 'FL9', baza: 1000, tva: 210, cota: 21 } } });
     eq('close-vat fara luna (an) respins -> 400', (await req('POST', '/api/close-vat?period=2025', { cookie: c1 })).status, 400);
     eq('close-vat cu perioada invalida respins -> 400', (await req('POST', '/api/close-vat?period=garbage', { cookie: c1 })).status, 400);
     const cv = await req('POST', '/api/close-vat?period=2025-09', { cookie: c1 });
-    ok('close-vat pe luna valida: inchide TVA + blocheaza perioada', cv.json.ok && cv.json.lockedUntil === '2025-09');
-    eq('inregistrare in luna inchisa (blocata) -> 400', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2025-09-15', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 400);
+    ok('close-vat pe luna valida: regularizeaza fara blocare', cv.json.ok && cv.json.lockedUntil === null);
+    ok('re-regularizarea aceleiasi luni e idempotenta (fara dublura)', (await req('POST', '/api/close-vat?period=2025-09', { cookie: c1 })).json.ok === true);
+    eq('o nota ulterioara in aceeasi luna este permisa', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', fields: { data: '2025-09-15', explicatie: 'Dupa regularizarea TVA', debit: '5311', credit: '5121', suma: 1 } } })).status, 200);
     eq('inregistrare in luna urmatoare (nedublocata) merge', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_marfuri', fields: { data: '2025-10-05', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 200);
-    ok('re-inchiderea aceleiasi luni e idempotenta (fara dublura)', (await req('POST', '/api/close-vat?period=2025-09', { cookie: c1 })).json.ok === true);
-    const laMonth = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
-    await req('POST', '/api/period-lock', { cookie: laMonth.cookie, body: { lockedUntil: null } }); // deblochez pentru restul testelor
+    await req('POST', '/api/period-lock', { cookie: laMonth.cookie, body: { lockedUntil: null } }); // pastrez restul suitei explicit deschis
 
     // ── INCHIDEREA LUNARA ca flux unic (cockpit): pasi derivati, alocare, dovada, aprobare, blocare ──
     {
@@ -2100,11 +2557,12 @@ async function main() {
       const pas = (st, k) => st.steps.find((s) => s.key === k);
 
       const st0 = await mc();
-      eq('flux: pasii vin in ordinea ceruta', st0.steps.map((s) => s.key).join('>'), 'documente>banca>tva>declaratii>aprobare>blocare');
+      eq('flux: pasii vin in ordinea ceruta', st0.steps.map((s) => s.key).join('>'),
+        'documente>banca>amortizare_lunara>reevaluare_valutara>ajustari_inventar>tva>declaratii>aprobare>blocare');
       ok('flux: fiecare pas are termen', st0.steps.every((s) => /^\d{4}-\d{2}-\d{2}$/.test(s.due)));
-      // primii patru pasi se rezolva pe alt ecran (au `tab`); aprobarea si blocarea, in cockpit
+      // pasii operationali se rezolva pe ecranele lor; aprobarea si blocarea, in cockpit
       ok('flux: pasii care se rezolva in alta parte trimit acolo',
-        st0.steps.filter((s) => ['documente', 'banca', 'tva', 'declaratii'].includes(s.key)).every((s) => !!s.tab && !!s.eticheta)
+        st0.steps.filter((s) => !['aprobare', 'blocare'].includes(s.key)).every((s) => !!s.tab && !!s.eticheta)
         && st0.steps.filter((s) => ['aprobare', 'blocare'].includes(s.key)).every((s) => !s.tab));
       ok('flux: responsabilii posibili sunt conturile firmei', Array.isArray(st0.responsabili) && st0.responsabili.some((u) => u.username === 'user1'));
       eq('flux: perioada invalida -> 400', (await req('GET', '/api/monthly-close?period=2025', { cookie: c1 })).status, 400);
@@ -2159,18 +2617,35 @@ async function main() {
         /portalul ANAF/.test(f3.json.state.fortata.motiv) && f3.json.state.fortata.blocante.length > 0 && f3.json.state.fortata.username === 'admin');
       ok('dupa fortare luna e finalizata si read-only', f3.json.state.finalizata === true && f3.json.state.inchisa === true);
       eq('scrierea in luna inchisa e refuzata', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', fields: { data: PER + '-10', explicatie: 'dupa inchidere', debit: '5311', credit: '5121', suma: 10 } } })).status, 400);
-      eq('a doua inchidere a aceleiasi luni -> 400', (await req('POST', '/api/monthly-close/close', { cookie: laF.cookie, body: { period: PER } })).status, 400);
+      const inchRetry = await req('POST', '/api/monthly-close/close', { cookie: laF.cookie, body: { period: PER } });
+      ok('a doua inchidere a aceleiasi luni -> succes idempotent', inchRetry.status === 200 && inchRetry.json.idempotent === true);
       // auditul consemneaza fortarea distinct de o inchidere normala
       ok('auditul consemneaza inchiderea FORTATA', (await req('GET', '/api/audit', { cookie: laF.cookie })).json.some((a) => a.action === 'inchidere.fortata' && /portalul ANAF/.test(a.detail || '')));
-      await req('POST', '/api/period-lock', { cookie: laF.cookie, body: { lockedUntil: null } }); // deblochez pentru restul suitei
+      await req('POST', '/api/period-lock', { cookie: laF.cookie,
+        body: { lockedUntil: null, motiv: 'Deblocare controlată pentru continuarea testelor' } });
     }
 
     // ── Inchideri: ordinea impozit-profit vs inchidere anuala e irelevanta ──
     // pregatim un an cu profit: o vanzare de servicii + inregistrarea ei
     const vz = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2025-03-10', partener: 'X', cuiPartener: 'RO9', document: 'FS1', baza: 10000, tva: 2100, cota: 21 } } });
     ok('vanzare 2025 inregistrata (venit 704)', vz.json && vz.json.ok);
+    const laAnnual = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
+    ok('decembrie 2025 este blocat inaintea perioadei tehnice 13',
+      (await req('POST', '/api/period-lock', { cookie: laAnnual.cookie, body: { lockedUntil: '2025-12' } })).status === 200);
+    const closeFaraMatrice = await req('POST', '/api/close-year?year=2025', { cookie: c1 });
+    ok('închiderea anuală este refuzată fără matricea completă',
+      closeFaraMatrice.status === 409 && /Inventarierea generală este incompletă/i.test(closeFaraMatrice.json.error || ''));
+    const savedMatrix = await req('POST', '/api/annual-inventory-control', { cookie: c1,
+      body: { year: '2025', control: completeInventoryControl('2025') } });
+    ok('matricea salvată nu este încă aprobată', savedMatrix.status === 200
+      && savedMatrix.json.inventoryMatrix.complete === false
+      && savedMatrix.json.inventoryMatrix.blockers.some((x) => x.key === 'guvernanta'));
+    const approvedMatrix = await req('POST', '/api/annual-inventory-control/approve', { cookie: c1, body: { year: '2025' } });
+    ok('matricea completă, semnată și aprobată deblochează inventarierea',
+      approvedMatrix.status === 200 && approvedMatrix.json.inventoryMatrix.complete === true);
     // 1) inchidere anuala INTAI (691 nu exista inca)
-    await req('POST', '/api/close-year?year=2025', { cookie: c1 });
+    ok('închiderea anuală trece numai după matrice',
+      (await req('POST', '/api/close-year?year=2025', { cookie: c1 })).status === 200);
     // 2) apoi impozitul pe profit -> trebuie sa inchida si 691 in 121
     const pt = await req('POST', '/api/close-profit-tax?year=2025', { cookie: c1 });
     ok('impozit pe profit dupa inchidere: articol cu 691=4411 + 121=691', pt.json && pt.json.ok);
@@ -2179,6 +2654,17 @@ async function main() {
     const r691 = tb.rows.find((r) => r.cod === '691');
     ok('691 inchis complet dupa impozit (sold final 0)', !r691 || (r691.sfD === 0 && r691.sfC === 0));
     ok('balanta 2025 se inchide dupa ambele inchideri', tb.balanced === true);
+    eq('repartizarea rezultatului la 31 decembrie in acelasi an -> 400',
+      (await req('POST', '/api/distribute-result?year=2025', { cookie: c1,
+        body: { data: '2025-12-31', aga: { numar: '1/2026', data: '2025-12-31' } } })).status, 400);
+    const dr = await req('POST', '/api/distribute-result?year=2025', { cookie: c1,
+      body: { data: '2026-03-15', aga: { numar: '2/2026', data: '2026-03-15' } } });
+    ok('repartizarea rezultatului se posteaza la data aleasa din anul urmator',
+      dr.status === 200 && dr.json.ok && dr.json.data === '2026-03-15'
+      && (await req('GET', '/api/journal?period=2026-03', { cookie: c1 })).json.rows.some((r) => /Repartizarea|Reportarea/.test(r.explicatie || '')));
+    const drRetry = await req('POST', '/api/distribute-result?year=2025', { cookie: c1,
+      body: { data: '2026-04-01', aga: { numar: '3/2026', data: '2026-04-01' } } });
+    ok('dublarea repartizarii aceluiasi rezultat -> succes idempotent', drRetry.status === 200 && drRetry.json.idempotent === true);
     // pas 5 (citiri SQL pt firme mari): sub prag (seed mic) -> calea RAM implicita; header de diagnostic.
     // CI ruleaza suita si cu CONTAB_SQL_READ_THRESHOLD=0 -> calea SQL, cu ACELEASI aserttii de balanta.
     {
@@ -2202,9 +2688,24 @@ async function main() {
     }
 
     // admin
+    const adminNeedsCode = await req('POST', '/api/login', {
+      noAdmin2faAuto: true, body: { username: 'admin', password: ADMIN_PW },
+    });
+    ok('administratorul cu 2FA nu primește sesiune numai cu parola',
+      adminNeedsCode.status === 200 && adminNeedsCode.json.twofa === true && !adminNeedsCode.cookie);
     const la = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const users = await req('GET', '/api/users', { cookie: la.cookie });
-    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length === 12 && users.json.every((u) => u.tip));
+    ok('admin: lista utilizatorilor cu tip', users.json && users.json.length >= 12 && users.json.every((u) => u.tip));
+    eq('administratorul nu își poate dezactiva 2FA obligatorie',
+      (await req('POST', '/api/2fa/disable', { cookie: la.cookie, body: { code: adminTotpCode() } })).status, 403);
+    await req('POST', '/api/users', { cookie: la.cookie,
+      body: { username: 'admin-fara-2fa', password: 'ParolaAdminNou2026', role: 'admin', firme: [] } });
+    const no2faAdmin = await req('POST', '/api/login', { body: { username: 'admin-fara-2fa', password: 'ParolaAdminNou2026' } });
+    const no2faMe = await req('GET', '/api/me', { cookie: no2faAdmin.cookie });
+    ok('administratorul fără 2FA vede obligația și poate accesa numai configurarea',
+      no2faMe.status === 200 && no2faMe.json.twofaRequired === true
+        && (await req('GET', '/api/users', { cookie: no2faAdmin.cookie })).status === 428
+        && (await req('POST', '/api/2fa/setup', { cookie: no2faAdmin.cookie })).status === 200);
     eq('non-admin la ruta de admin -> 403', (await req('GET', '/api/users', { cookie: c1 })).status, 403);
     // ── /api/settings: allowlist strict (fix escaladare la admin prin authSecret) ──
     eq('non-admin nu poate scrie authSecret -> 403', (await req('POST', '/api/settings', { cookie: c1, body: { authSecret: 'forjat' } })).status, 403);
@@ -2450,18 +2951,30 @@ async function main() {
     eq('toate scrierile s-au persistat (niciuna suprascrisa)', (await req('GET', '/api/entries?period=2026-09', { cookie: c1 })).json.length - concBase, CONC);
     eq('dupa ridicare: scrierea functioneaza din nou', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO77', den: 'Deblocat SRL' } })).status, 200);
 
-    // ── Registrul de incasari si plati + auto-blocarea perioadei la "depusa" ──
+    // ── Registrul de incasari si plati + depunerea separata de blocarea perioadei ──
     const ripH = (await req('GET', '/api/registru-incasari-plati?period=2026-06', { cookie: c1 })).json;
     ok('registru incasari-plati: randuri si venit net pe incasari', Array.isArray(ripH.rows) && typeof ripH.venitNetIncasat === 'number');
     eq('registru incasari-plati PDF', (await req('GET', '/pdf/registru-incasari-plati?period=2026-06', { cookie: c1 })).status, 200);
     ok('DU include varianta pe incasat/platit', typeof (await req('GET', '/api/declaratia-unica?year=2026', { cookie: c1 })).json.incasat.venitNet === 'number');
     await req('GET', '/xml/d300?period=2026-01', { cookie: c1 });
-    const setDep = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-01', status: 'depusa', recipisa: 'R1' } });
-    eq('marcarea "depusa" blocheaza automat perioada', setDep.json.locked, '2026-01');
-    eq('inregistrare in luna blocata -> respinsa (400)', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-01-10', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 400);
+    const janD300Generated = (await req('GET', '/api/declarations?period=2026-01', { cookie: c1 })).json.rows.find((r) => r.tip === 'd300');
+    await req('POST', '/api/declarations/approve', { cookie: c1,
+      body: { tip: 'd300', period: '2026-01', artifactHash: janD300Generated.artifactHash } });
+    await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-01', status: 'transmisa' } });
+    const janD300 = new FormData(); janD300.append('tip', 'd300'); janD300.append('period', '2026-01'); janD300.append('recipisa', 'R1');
+    janD300.append('file', new Blob(['<recipisa id="R1-2026-01"/>'], { type: 'application/xml' }), 'recipisa-d300-2026-01.xml');
+    const setDep = await req('POST', '/api/declarations/confirm-filed', { cookie: filingProofUploader, body: janD300 });
+    eq('marcarea "depusa" nu blocheaza automat perioada', setDep.json.locked, null);
+    eq('luna ramane editabila pana la ultima actiune a cockpitului', (await req('POST', '/api/entries', { cookie: c1, body: { tip: 'factura_vanzare_servicii', fields: { data: '2026-01-10', partener: 'X', baza: 100, tva: 21, cota: 21 } } })).status, 200);
     await req('GET', '/xml/d394?period=2026-01', { cookie: c1 });
-    const setDep2 = await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd394', period: '2026-01', status: 'depusa', recipisa: 'R-D394-1' } });
-    ok('a doua declaratie depusa pe aceeasi luna nu re-blocheaza', setDep2.json.ok === true && setDep2.json.locked == null);
+    const janD394Generated = (await req('GET', '/api/declarations?period=2026-01', { cookie: c1 })).json.rows.find((r) => r.tip === 'd394');
+    await req('POST', '/api/declarations/approve', { cookie: c1,
+      body: { tip: 'd394', period: '2026-01', artifactHash: janD394Generated.artifactHash } });
+    await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd394', period: '2026-01', status: 'transmisa' } });
+    const janD394 = new FormData(); janD394.append('tip', 'd394'); janD394.append('period', '2026-01'); janD394.append('recipisa', 'R-D394-1');
+    janD394.append('file', new Blob(['<recipisa id="R-D394-1"/>'], { type: 'application/xml' }), 'recipisa-d394-2026-01.xml');
+    const setDep2 = await req('POST', '/api/declarations/confirm-filed', { cookie: filingProofUploader, body: janD394 });
+    ok('nici a doua declaratie depusa nu blocheaza luna', setDep2.json.ok === true && setDep2.json.locked == null);
 
     // ── CONTRACTE DE LEASING: contractul alimenteaza factura de rata ──
     // Graficul era un calculator fara stare, deci `factura_leasing` cerea principalul si dobanda
@@ -2558,12 +3071,13 @@ async function main() {
     ok('users: nume cu caracter invizibil -> 400', uInv.status === 400 && /invizibile|control/i.test((uInv.json || {}).error || ''));
     const uNorm = await req('POST', '/api/users', { cookie: la.cookie, body: { username: '  Ana   Maria  ', password: 'ParolaBunaDeTot9' } });
     ok('users: numele se stocheaza normalizat', uNorm.status === 200 && uNorm.json.user.username === 'Ana Maria');
-    await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'izolat', password: 'parola2', firme: [2] } });
+    await req('POST', '/api/users', { cookie: la.cookie,
+      body: { username: 'izolat', password: 'parola2', firme: [2], firmaRoluri: { 2: 'vizualizare' } } });
     const c2 = (await req('POST', '/api/login', { body: { username: 'izolat', password: 'parola2' } })).cookie;
     const deny = (r) => [400, 402, 403, 404].includes(r.status);
-    eq('nota contabila straina: refuzata', (await req('GET', '/pdf/note/' + isoE.id, { cookie: c2 })).status, 404);
-    eq('factura PDF straina: refuzata', (await req('GET', '/pdf/factura/' + isoE.id, { cookie: c2 })).status, 404);
-    eq('e-Factura straina: refuzata', (await req('GET', '/xml/efactura/' + isoE.id, { cookie: c2 })).status, 404);
+    eq('rolul de vizualizare refuză exportul notei străine înainte de lookup', (await req('GET', '/pdf/note/' + isoE.id, { cookie: c2 })).status, 403);
+    eq('rolul de vizualizare refuză exportul facturii străine înainte de lookup', (await req('GET', '/pdf/factura/' + isoE.id, { cookie: c2 })).status, 403);
+    eq('rolul de vizualizare refuză generarea e-Factura străine înainte de lookup', (await req('GET', '/xml/efactura/' + isoE.id, { cookie: c2 })).status, 403);
     ok('stergerea inregistrarii straine: refuzata', deny(await req('DELETE', '/api/entries/' + isoE.id, { cookie: c2 })));
     ok('stergerea produsului strain: refuzata', deny(await req('DELETE', '/api/products/' + isoP.id, { cookie: c2 })));
     ok('stergerea gestiunii straine: refuzata', deny(await req('DELETE', '/api/gestiuni/' + isoG.id, { cookie: c2 })));
@@ -2728,7 +3242,8 @@ async function main() {
         an: '2026', cont: '371', valoareInventar: 1 } })).status, 400);
       eq('registrul de mijloace fixe nu accepta PIF intr-o luna inchisa', (await req('POST', '/api/assets', { cookie: c1, body: {
         denumire: 'MF blocat', cont: '2131', cost: 1000, durataLuni: 12, dataPif: per + '-15' } })).status, 400);
-      await req('POST', '/api/period-lock', { cookie: la.cookie, body: { lockedUntil: null } }); // deblochez pentru restul suitei
+      await req('POST', '/api/period-lock', { cookie: la.cookie,
+        body: { lockedUntil: null, motiv: 'Deblocare controlată după testarea gărzilor' } });
       // storno pe articol strain (flux de stare) ramane blocat de guardul de firma
       ok('schimbarea de stare a unui articol strain: refuzata', deny(await req('POST', '/api/entries/' + drE.id + '/status', { cookie: c2, body: { status: 'ciorna' } })));
       // audit: tranzitiile de stare sunt inregistrate
@@ -2752,10 +3267,17 @@ async function main() {
     const bundle = (await req('GET', '/api/firme/1/export', { cookie: c1 })).json;
     ok('exportul contine firma, entries si parteneri', bundle && bundle.firma && Array.isArray(bundle.entries) && bundle.partners);
     // 3) restaurare ca firma NOUA — fidelitatea copiei
-    const impBkp = await req('POST', '/api/firme/import', { cookie: c1, body: bundle });
+    const impNeclasificat = await req('POST', '/api/firme/import', { cookie: c1, body: bundle });
+    ok('importul unei firme noi fara regim declarat este fail-closed',
+      impNeclasificat.status === 428 && impNeclasificat.json.code === 'DATA_MODE_UNCLASSIFIED');
+    const impBkp = await req('POST', '/api/firme/import', { cookie: c1,
+      body: { bundle, dataMode: 'test', confirmFictitious: true } });
     ok('restaurare ca firma noua reusita', impBkp.json && impBkp.json.ok && impBkp.json.firmaId && !impBkp.json.replaced);
     const newFid = impBkp.json.firmaId;
     const restEntries = (await req('GET', '/api/entries?firma=' + newFid, { cookie: c1 })).json;
+    const importedLegal = await req('GET', '/api/legal', { cookie: c1 });
+    ok('firma importata este operationala numai dupa declaratia fictiva explicita',
+      importedLegal.status === 200 && importedLegal.json.firm.mode === 'test' && importedLegal.json.firm.operational);
     ok('firma restaurata: acelasi numar de inregistrari', restEntries.length === nrEntriesF1);
     ok('firma restaurata: factura BKP-DOC prezenta cu aceeasi baza', restEntries.some((e) => e.document === 'BKP-DOC' && e.lines.some((l) => l.suma === 1234)));
     ok('firma restaurata: partenerul RO4242 recuperat', (await req('GET', '/api/partners?firma=' + newFid, { cookie: c1 })).json['4242']);
@@ -2773,13 +3295,13 @@ async function main() {
 
     // ── MULTI-FIRMA pentru un user obisnuit: adauga si comuta intre firme (ca la admin) ──
     const firmeInainte = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.length;
-    // Firmele proprii se inscriu pe o PERSOANA identificata: fara CNP in profil, cererea e refuzata.
-    const faraCnp = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'A Doua Firma PFA', cui: '7777' } });
-    eq('fara CNP in profil, nu poti inscrie o firma -> 400', faraCnp.status, 400);
-    ok('mesajul spune ca lipseste CNP-ul', /CNP/.test(faraCnp.json.error));
-    // marcaj STABIL pentru interfata (care sare la campul CNP). Textul se rescrie oricand — o
-    // potrivire pe el ar pica tacut la prima reformulare, si saltul ar disparea fara sa se vada.
-    eq('raspunsul poarta codul pe care il foloseste interfata', faraCnp.json.code, 'CNP_LIPSA');
+    // Etapa de test interzice datele personale reale, deci inscrierea unei firme fictive nu poate
+    // cere contradictoriu CNP-ul real al patronului. Declaratia fictiva ramane obligatorie.
+    const faraDeclaratieInitiala = await req('POST', '/api/firme', { cookie: c1,
+      body: { nume: 'A Doua Firma PFA', cui: '7777' } });
+    eq('fara declaratia de test, nu poti inscrie firma -> 400', faraDeclaratieInitiala.status, 400);
+    eq('cod stabil pentru declaratia de test lipsa',
+      faraDeclaratieInitiala.json.code, 'TEST_DATA_DECLARATION_REQUIRED');
     ok('starea „am CNP" ajunge la client, ca sa avertizeze INAINTE de incercare',
       (await req('GET', '/api/me', { cookie: c1 })).json.cnpSetat === false);
     eq('CNP invalid (cifra de control) e respins', (await req('POST', '/api/profile', { cookie: c1, body: { profil: { cnp: '1900101415239' } } })).status, 400);
@@ -2788,7 +3310,8 @@ async function main() {
     ok('...iar dupa completare, starea din /api/me se schimba', (await req('GET', '/api/me', { cookie: c1 })).json.cnpSetat === true);
     const cuiRau = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Cu CUI gresit', cui: '7778' } });
     eq('CUI cu cifra de control gresita e respins -> 400', cuiRau.status, 400);
-    const nouaFirma = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'A Doua Firma PFA', cui: 'RO7777', tipEntitate: 'pfa', tvaPlatitor: false } });
+    const nouaFirma = await req('POST', '/api/firme', { cookie: c1,
+      body: { nume: 'A Doua Firma PFA', cui: 'RO7777', tipEntitate: 'pfa', tvaPlatitor: false, confirmFictitious: true } });
     ok('user obisnuit: creeaza o firma noua, devine activa', nouaFirma.json && nouaFirma.json.ok && nouaFirma.json.firmaActiva === nouaFirma.json.firma.id);
     const f2 = nouaFirma.json.firma.id;
     ok('firma noua pastreaza forma juridica si statutul TVA', nouaFirma.json.firma.tipEntitate === 'pfa' && nouaFirma.json.firma.tvaPlatitor === false);
@@ -2829,7 +3352,8 @@ async function main() {
     ok('user fara firme: lista lui de firme e goala', (await req('GET', '/api/firme', { cookie: cNo })).json.firme.length === 0);
 
     // ── CONTUL DEMO: nu adauga si nu gestioneaza firme (doar lucreaza pe firma demo) ──
-    await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'demo', password: 'parola-demo', firme: [1] } });
+    await req('POST', '/api/users', { cookie: la.cookie,
+      body: { username: 'demo', password: 'parola-demo', firme: [1], firmaRoluri: { 1: 'aprobator' } } });
     const cDemo = (await req('POST', '/api/demo-login', {})).cookie;
     ok('demo: vede firma lui', (await req('GET', '/api/firme', { cookie: cDemo })).json.firme.length === 1);
     eq('demo: NU poate adauga firma -> 403', (await req('POST', '/api/firme', { cookie: cDemo, body: { nume: 'Firma Demo Noua' } })).status, 403);
@@ -2845,7 +3369,8 @@ async function main() {
     eq('user normal: profilul ramane editabil', (await req('POST', '/api/profile', { cookie: c1, body: { notifyDeadlines: true } })).status, 200);
 
     // ── COLABORARE DEMO: perechea demo (patron) <-> demo-contabil, ambele opereaza pe firma ──
-    await req('POST', '/api/users', { cookie: la.cookie, body: { username: 'demo-contabil', password: 'parola-democ', firme: [1] } });
+    await req('POST', '/api/users', { cookie: la.cookie,
+      body: { username: 'demo-contabil', password: 'parola-democ', firme: [1], firmaRoluri: { 1: 'aprobator' } } });
     const cDemoC = (await req('POST', '/api/demo-login', { body: { as: 'contabil' } })).cookie;
     ok('demo-login as=contabil -> intra pe contul demo-contabil', (await req('GET', '/api/me', { cookie: cDemoC })).json.username === 'demo-contabil');
     eq('demo-contabil: opereaza pe firma (dashboard 200)', (await req('GET', '/api/dashboard', { cookie: cDemoC })).status, 200);
@@ -2853,14 +3378,17 @@ async function main() {
     ok('demo GET colaboratori: demo=true + ambele conturi listate', colDemo.demo === true && colDemo.colaboratori.some((c) => c.username === 'demo') && colDemo.colaboratori.some((c) => c.username === 'demo-contabil'));
     const dcId = (colDemo.colaboratori.find((c) => c.username === 'demo-contabil') || {}).id;
     eq('demo (patron): scoate contul pereche demo-contabil -> 200', (await req('DELETE', '/api/colaboratori/' + dcId, { cookie: cDemo })).status, 200);
-    eq('demo (patron): re-adauga contul pereche -> 200', (await req('POST', '/api/colaboratori', { cookie: cDemo, body: { mod: 'existing', username: 'demo-contabil' } })).status, 200);
+    eq('demo (patron): re-adauga contul pereche -> 200', (await req('POST', '/api/colaboratori', { cookie: cDemo,
+      body: { mod: 'existing', username: 'demo-contabil', rol: 'aprobator' } })).status, 200);
     eq('demo-contabil (invers): scoate patronul demo -> 200', (await req('DELETE', '/api/colaboratori/' + (await req('GET', '/api/colaboratori', { cookie: cDemoC })).json.colaboratori.find((c) => c.username === 'demo').id, { cookie: cDemoC })).status, 200);
-    eq('demo-contabil (invers): re-adauga demo -> 200', (await req('POST', '/api/colaboratori', { cookie: cDemoC, body: { mod: 'existing', username: 'demo' } })).status, 200);
+    eq('demo-contabil (invers): re-adauga demo -> 200', (await req('POST', '/api/colaboratori', { cookie: cDemoC,
+      body: { mod: 'existing', username: 'demo', rol: 'aprobator' } })).status, 200);
     eq('demo: invitatie noua blocata -> 403', (await req('POST', '/api/colaboratori', { cookie: cDemo, body: { mod: 'invite', username: 'strain-nou' } })).status, 403);
     eq('demo: adaugare cont arbitrar (non-pereche) blocata -> 403', (await req('POST', '/api/colaboratori', { cookie: cDemo, body: { mod: 'existing', username: 'admin2' } })).status, 403);
 
     // ── BILLING STRICT PER-FIRMA: firma noua porneste cu proba de 30 zile, apoi abonament ──
-    const tfR = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'Firma Proba SRL', cui: 'RO12340' } });
+    const tfR = await req('POST', '/api/firme', { cookie: c1,
+      body: { nume: 'Firma Proba SRL', cui: 'RO12340', confirmFictitious: true } });
     ok('firma noua porneste cu abonament de proba (30 zile)', tfR.json.ok && tfR.json.firma.subscription && tfR.json.firma.subscription.plan === 'trial' && !!tfR.json.firma.subscription.trialEndsAt);
     const tf = tfR.json.firma.id;
     const tfInfo = (await req('GET', '/api/firme', { cookie: c1 })).json.firme.find((f) => f.id === tf);
@@ -2902,10 +3430,17 @@ async function main() {
     // ecranul devine un mod de a afla ce firme sunt in sistem, incercand CUI-uri), si decide
     // PROPRIETARUL, nu oricine are acces (un colaborator n-are voie sa dea mai departe accesul).
     {
-      const patron = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL', cui: 'RO5550005', username: 'patron-t', password: 'ParolaBuna2026' } });
+      const patron = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL', cui: 'RO5550005', tvaPlatitor: false, username: 'patron-t', password: 'ParolaBuna2026', email: 'patron-t@example.test', acceptLegal: true } });
       ok('patron: firma inscrisa', patron.status === 200 && patron.json.ok);
       const fidP = patron.json.firma.id;
-      const contabil = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'BIROU CONTABIL SRL', cui: 'RO5550013', username: 'contabil-t', password: 'ParolaBuna2026' } });
+      const legalPatron = await req('GET', '/api/legal', { cookie: patron.cookie });
+      ok('regim juridic: firma noua porneste explicit pe date fictive, gestionata de proprietar',
+        legalPatron.status === 200 && legalPatron.json.firm.mode === 'test' && legalPatron.json.firm.canManage);
+      const realBlocat = await req('POST', '/api/legal/mode', { cookie: patron.cookie,
+        body: { mode: 'real', acceptTerms: true, acceptPrivacy: true, acceptDpa: true } });
+      ok('regim juridic: datele reale raman fail-closed fara identitate/dosar GDPR',
+        realBlocat.status === 503 && realBlocat.json.code === 'LEGAL_READINESS_INCOMPLETE');
+      const contabil = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'BIROU CONTABIL SRL', cui: 'RO5550013', tvaPlatitor: true, username: 'contabil-t', password: 'ParolaBuna2026', email: 'contabil-t@example.test', acceptLegal: true } });
       ok('contabil: cont propriu', contabil.status === 200);
 
       // raspuns IDENTIC pentru firma care exista si pentru una inventata
@@ -2938,7 +3473,7 @@ async function main() {
       // Cazul care da sens cerintei „numai cu acordul patronului": contabilul are ACUM acces la
       // firma, dar tot NU poate aproba cererea altcuiva. Altfel accesul s-ar propaga singur —
       // primul invitat ar putea invita mai departe, iar patronul ar pierde controlul.
-      const c3 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'AL TREILEA SRL', cui: 'RO5550030', username: 'contabil3-t', password: 'ParolaBuna2026' } });
+      const c3 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'AL TREILEA SRL', cui: 'RO5550030', tvaPlatitor: false, username: 'contabil3-t', password: 'ParolaBuna2026', email: 'contabil3-t@example.test', acceptLegal: true } });
       await req('POST', '/api/firme/cerere-acces', { cookie: c3.cookie, body: { cui: 'RO5550005' } });
       const cerT = (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri;
       ok('patronul vede cererea a treia', cerT.length === 1);
@@ -2949,7 +3484,7 @@ async function main() {
       await req('POST', '/api/firme/cereri/' + cerT[0].id, { cookie: patron.cookie, body: { aprob: false } }); // curatenie
 
       // respingerea NU da acces
-      const c2 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'ALT BIROU SRL', cui: 'RO5550021', username: 'contabil2-t', password: 'ParolaBuna2026' } });
+      const c2 = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'ALT BIROU SRL', cui: 'RO5550021', tvaPlatitor: false, username: 'contabil2-t', password: 'ParolaBuna2026', email: 'contabil2-t@example.test', acceptLegal: true } });
       await req('POST', '/api/firme/cerere-acces', { cookie: c2.cookie, body: { cui: 'RO5550005' } });
       const cer2 = (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri;
       await req('POST', '/api/firme/cereri/' + cer2[0].id, { cookie: patron.cookie, body: { aprob: false } });
@@ -2961,13 +3496,13 @@ async function main() {
       // ── O FIRMA, O SINGURA EVIDENTA: poarta pe CUI ──
       // Fara ea, „cere acces" ramane o sugestie: cine nu vrea sa astepte aprobarea isi inregistreaza
       // firma inca o data si lucreaza pe o evidenta paralela, cu aceleasi declaratii de depus.
-      const dubluReg = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL (copie)', cui: 'RO5550005', username: 'dublura-t', password: 'ParolaBuna2026' } });
+      const dubluReg = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL (copie)', cui: 'RO5550005', tvaPlatitor: false, username: 'dublura-t', password: 'ParolaBuna2026', email: 'dublura-t@example.test' } });
       eq('inscriere cu CUI-ul unei firme existente -> 409', dubluReg.status, 409);
       ok('...si mesajul trimite spre cererea de acces', /cere acces/i.test(dubluReg.json.error));
       eq('inscriere cu CUI invalid (cifra de control) -> 400',
-        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'CU CUI RAU SRL', cui: 'RO5550006', username: 'cuirau-t', password: 'ParolaBuna2026' } })).status, 400);
+        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'CU CUI RAU SRL', cui: 'RO5550006', tvaPlatitor: false, username: 'cuirau-t', password: 'ParolaBuna2026', email: 'cuirau-t@example.test' } })).status, 400);
       ok('inscrierea FARA CUI ramane permisa (nu rupem intrarea in aplicatie)',
-        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FARA CUI SRL', username: 'faracui-t', password: 'ParolaBuna2026' } })).status === 200);
+        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FARA CUI SRL', tvaPlatitor: false, username: 'faracui-t', password: 'ParolaBuna2026', email: 'faracui-t@example.test', acceptLegal: true } })).status === 200);
       // aceeasi poarta pe calea din aplicatie, nu doar la inscriere
       const dubluCreate = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'COPIE PRIN APLICATIE SRL', cui: 'RO5550005' } });
       eq('inscrierea unei firme cu CUI deja folosit, din aplicatie -> 409', dubluCreate.status, 409);
@@ -2982,7 +3517,7 @@ async function main() {
       // Aserțiunea il face explicit: daca cineva mai adauga o inscriere in suita, pica AICI, cu
       // motivul la vedere, in loc sa strice tacut un test de mai jos printr-un 429 neasteptat.
       eq('a sasea inscriere de pe acelasi IP e refuzata (plafon 5/ora)',
-        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'A SASEA SRL', cui: '5550048', username: 'asasea-t', password: 'ParolaBuna2026' } })).status, 429);
+        (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'A SASEA SRL', cui: '5550048', tvaPlatitor: false, username: 'asasea-t', password: 'ParolaBuna2026', email: 'asasea-t@example.test' } })).status, 429);
 
       // ── ANGAJAREA UNUI CONTABIL: patron -> contabil (sensul invers) ──
       // Simetria cu cererea de acces: cine primeste cererea decide. Aici decide CONTABILUL.
@@ -3024,13 +3559,13 @@ async function main() {
         ok('contabilul refuza', cs2.status === 200 && cs2.json.status === 'refuzata');
         eq('cererea rezolvata nu se mai poate decide', (await req('POST', '/api/firme/servicii/' + srvId, { cookie: cCon, body: { accept: true } })).status, 404);
 
-        // acceptarea da accesul — pe o firma la care contabilul NU avea acces
-        // contul creat prin inscriere nu are CNP: firmele PROPRII cer o persoana identificata
-        eq('fara CNP, patronul nu-si mai poate inscrie o firma -> 400',
-          (await req('POST', '/api/firme', { cookie: cPat, body: { nume: 'A DOUA A PATRONULUI SRL', cui: '5550048' } })).status, 400);
-        await req('POST', '/api/profile', { cookie: cPat, body: { profil: { cnp: '2900202526344' } } });
-        const f2Pat = (await req('POST', '/api/firme', { cookie: cPat, body: { nume: 'A DOUA A PATRONULUI SRL', cui: '5550048' } }));
-        ok('cu CNP completat, patronul isi mai inscrie o firma', f2Pat.status === 200);
+        // acceptarea da accesul — pe o firma la care contabilul NU avea acces. In etapa de test,
+        // contul nu este obligat sa divulge un CNP real ca sa creeze o firma fictiva.
+        ok('patronul ramane fara CNP real in profil in etapa de test',
+          (await req('GET', '/api/me', { cookie: cPat })).json.cnpSetat === false);
+        const f2Pat = (await req('POST', '/api/firme', { cookie: cPat,
+          body: { nume: 'A DOUA A PATRONULUI SRL', cui: '5550048', confirmFictitious: true } }));
+        ok('fara CNP real, patronul poate inscrie o firma declarata fictiva', f2Pat.status === 200);
         const fid2 = f2Pat.json.firma.id;
         const cs3 = await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fid2, contabilId: conId } });
         eq('cerere pe a doua firma', cs3.status, 200);
@@ -3066,7 +3601,7 @@ async function main() {
       // Patronul vine cu firma lui; contabilul vine sa tina contabilitatea altora, deci n-are ce
       // firma sa inscrie. A-l obliga sa inventeze una ar fi produs exact dublurile impotriva
       // carora e construita poarta pe CUI.
-      const conNou = await req('POST', '/api/register', { headers: { Origin: BASE, 'X-Forwarded-For': '10.0.0.11', 'X-Forwarded-Proto': 'https' }, body: { tipCont: 'contabil', username: 'contabil-fara-t', password: 'ParolaBuna2026' } });
+      const conNou = await req('POST', '/api/register', { headers: { Origin: BASE, 'X-Forwarded-For': '10.0.0.11', 'X-Forwarded-Proto': 'https' }, body: { tipCont: 'contabil', disponibilContabil: true, username: 'contabil-fara-t', password: 'ParolaBuna2026', email: 'contabil-fara-t@example.test', acceptLegal: true } });
       eq('contabilul se inscrie FARA denumire de firma -> 200', conNou.status, 200);
       ok('raspunsul spune ca nu s-a creat nicio firma', conNou.json.firma === null && conNou.json.faraFirma === true);
       ok('contul chiar nu are firme', (conNou.json.user.firme || []).length === 0);
@@ -3090,7 +3625,7 @@ async function main() {
       ok('...iar contul fara firma nu mosteneste abonamentul altcuiva',
         meCon.firmaSub && meCon.firmaSub.status === 'none' && !meCon.firmaSub.plan);
       // bifa se poate refuza explicit la inscriere
-      const conAscuns = await req('POST', '/api/register', { headers: { Origin: BASE, 'X-Forwarded-For': '10.0.0.12', 'X-Forwarded-Proto': 'https' }, body: { tipCont: 'contabil', disponibilContabil: false, username: 'contabil-ascuns-t', password: 'ParolaBuna2026' } });
+      const conAscuns = await req('POST', '/api/register', { headers: { Origin: BASE, 'X-Forwarded-For': '10.0.0.12', 'X-Forwarded-Proto': 'https' }, body: { tipCont: 'contabil', disponibilContabil: false, username: 'contabil-ascuns-t', password: 'ParolaBuna2026', email: 'contabil-ascuns-t@example.test', acceptLegal: true } });
       eq('al doilea cont de contabil se creeaza', conAscuns.status, 200);
       ok('cine refuza bifa NU apare in lista',
         !(await req('GET', '/api/firme/contabili', { cookie: patron.cookie })).json.contabili.some((c) => c.username === 'contabil-ascuns-t'));
@@ -3153,13 +3688,24 @@ async function main() {
     // ── IMPERSONARE (admin intra pe cont de user; sesiune de admin dedicata) ──
     const cImp = (await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } })).cookie;
     eq('impersonare: non-admin -> 403', (await req('POST', '/api/impersonate', { cookie: c1, body: { userId: 3 } })).status, 403);
-    eq('impersonare: tinta inexistenta -> 404', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 999 } })).status, 404);
-    eq('impersonare: propriul cont -> 400', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 1 } })).status, 400);
-    eq('impersonare: alt admin -> 400', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 8 } })).status, 400);
-    const impR = await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 2 } });
-    ok('impersonare pornita: raspunde cu userul tinta', impR.status === 200 && impR.json.user.username === 'user1');
+    eq('impersonare: motivul este obligatoriu', (await req('POST', '/api/impersonate', { cookie: cImp,
+      body: impersonationBody(2, { reason: '' }) })).status, 400);
+    eq('impersonare: tichetul este obligatoriu', (await req('POST', '/api/impersonate', { cookie: cImp,
+      body: impersonationBody(2, { ticket: '' }) })).status, 400);
+    eq('impersonare: reautentificarea cu parola este obligatorie', (await req('POST', '/api/impersonate', { cookie: cImp,
+      body: impersonationBody(2, { password: 'gresita' }) })).status, 401);
+    eq('impersonare: codul TOTP recent este obligatoriu', (await req('POST', '/api/impersonate', { cookie: cImp,
+      body: impersonationBody(2, { code: '000000' }) })).status, 401);
+    eq('impersonare: tinta inexistenta -> 404', (await req('POST', '/api/impersonate', { cookie: cImp, body: impersonationBody(999) })).status, 404);
+    eq('impersonare: propriul cont -> 400', (await req('POST', '/api/impersonate', { cookie: cImp, body: impersonationBody(1) })).status, 400);
+    eq('impersonare: alt admin -> 400', (await req('POST', '/api/impersonate', { cookie: cImp, body: impersonationBody(8) })).status, 400);
+    const impR = await req('POST', '/api/impersonate', { cookie: cImp, body: impersonationBody(2) });
+    ok('impersonare pornita: ținta și expirarea sunt explicite', impR.status === 200
+      && impR.json.user.username === 'user1' && Date.parse(impR.json.expiresAt) > Date.now());
     const meImp = await req('GET', '/api/me', { cookie: cImp });
-    ok('/api/me sub impersonare: identitatea tintei + insigna adminului real', meImp.json.username === 'user1' && meImp.json.impersonating && meImp.json.impersonating.adminName === 'admin');
+    ok('/api/me sub impersonare: identitatea țintei + admin, tichet și expirare', meImp.json.username === 'user1'
+      && meImp.json.impersonating && meImp.json.impersonating.adminName === 'admin'
+      && meImp.json.impersonating.ticket === 'SUP-1842' && Date.parse(meImp.json.impersonating.expiresAt) > Date.now());
     eq('sub impersonare: rutele de admin raman blocate (403)', (await req('GET', '/api/users', { cookie: cImp })).status, 403);
     eq('sub impersonare: sesiunile personale ale tintei raman inaccesibile (403)',
       (await req('GET', '/api/sessions', { cookie: cImp })).status, 403);
@@ -3170,12 +3716,15 @@ async function main() {
     eq('sub impersonare: adminul nu poate schimba parola identitatii tintei (403)',
       (await req('POST', '/api/change-password', { cookie: cImp,
         body: { oldPassword: 'parola1', newPassword: 'ParolaNouaTinta2026' } })).status, 403);
-    eq('comutare directa pe alta tinta (adminul real detine sesiunea)', (await req('POST', '/api/impersonate', { cookie: cImp, body: { userId: 3 } })).status, 200);
+    eq('comutare directă pe altă țintă cere din nou reautentificarea',
+      (await req('POST', '/api/impersonate', { cookie: cImp, body: impersonationBody(3) })).status, 200);
     // regresie: userId 3 are firma EXPIRATA — paywall-ul (402) nu are voie sa blocheze iesirea
     const stop = await req('POST', '/api/impersonate/stop', { cookie: cImp });
     ok('oprire impersonare (chiar de pe firma expirata): revii adminul', stop.status === 200 && stop.json.user.username === 'admin');
     eq('oprire fara impersonare activa -> 400', (await req('POST', '/api/impersonate/stop', { cookie: cImp })).status, 400);
-    ok('auditul de sistem consemneaza impersonarea', (await req('GET', '/api/audit/system', { cookie: cImp })).json.some((a) => a.action === 'impersonate.start'));
+    ok('auditul de sistem consemnează motivul și tichetul impersonării',
+      (await req('GET', '/api/audit/system', { cookie: cImp })).json.some((a) => a.action === 'impersonate.start'
+        && /SUP-1842/.test(a.detail || '') && /Diagnostic solicitat/.test(a.detail || '')));
 
     // ── „Cine acceseaza aplicatia" (admin): sesiuni active + autentificari, cu IP si locatie ──
     // Testat AICI, nu in test/run.js: `raport()` e async, iar suita aceea e sincrona — o aserttiune
@@ -3325,14 +3874,17 @@ async function main() {
     // marker "inainte": intra in snapshot si trebuie sa supravietuiasca restaurarii
     await req('POST', '/api/partners', { cookie: cAdm, body: { cui: 'RO-SNAP-1', den: 'Inainte de snapshot' } });
     const bk = await req('POST', '/api/backup', { cookie: cAdm });
-    ok('backup: creat, nume datat db-*.json', bk.json && bk.json.ok && /^db-.*\.json$/.test(bk.json.file));
+    ok('backup: creat, nume datat db-*.json și rădăcină globală', bk.json && bk.json.ok
+      && /^db-.*\.json$/.test(bk.json.file) && /^[a-f0-9]{64}$/.test(bk.json.integrityRoot || ''));
     const bkList = await req('GET', '/api/backups', { cookie: cAdm });
     ok('backup: apare in lista + lastAt setat', bkList.json && bkList.json.lastAt && bkList.json.list.some((b) => b.name === bk.json.file));
     const auto0 = await req('POST', '/api/backups/auto', { cookie: cAdm, body: { auto: false } });
     ok('backup auto: comutat pe oprit', auto0.json.ok && (await req('GET', '/api/backups', { cookie: cAdm })).json.auto === false);
     await req('POST', '/api/backups/auto', { cookie: cAdm, body: { auto: true } }); // curatenie: la loc
     const snap = await req('GET', '/api/backup/file/' + bk.json.file, { cookie: cAdm });
-    ok('backup: fisierul se descarca si e un JSON de baza valid', snap.status === 200 && (() => { try { const j = JSON.parse(snap.text); return Array.isArray(j.firme) && Array.isArray(j.users); } catch (_) { return false; } })());
+    ok('backup: fisierul se descarca numai verificat și poartă rădăcina', snap.status === 200
+      && /^[a-f0-9]{64}$/.test(snap.headers.get('x-contab-integrity-root') || '')
+      && (() => { try { const j = JSON.parse(snap.text); return Array.isArray(j.firme) && Array.isArray(j.users); } catch (_) { return false; } })());
     eq('backup: traversarea de cale respinsa (404)', (await req('GET', '/api/backup/file/..%2F..%2Fdb.json', { cookie: cAdm })).status, 404);
     eq('backup: nume in afara tiparului db-*.json respins (404)', (await req('GET', '/api/backup/file/evil.txt', { cookie: cAdm })).status, 404);
 
@@ -3354,10 +3906,10 @@ async function main() {
     // drept verificare trecuta, exact tiparul de monitorizare oarba de care s-a mai lovit proiectul.
     ok('drill nativ PG: pe sqlite nu e marcat „neverificabil"', !pgd.json.neverificabil);
     ok('drill nativ PG: spune pe ce arhiva a lucrat', /^full-.*\.zip$/.test(pgd.json.arhiva || ''));
-    // `firmaId: null` in logAudit NU produce o intrare de sistem cand exista `req` (helperul cade
-    // pe firma activa a celui autentificat) — la fel ca restul operatiunilor de backup.
+    // Drill-ul este o operațiune globală: `firmaId: null` trebuie păstrat explicit și evenimentul
+    // trebuie să apară în jurnalul de sistem, nu sub firma activă a administratorului.
     ok('drill nativ PG: consemnat in audit, cu rezultatul',
-      (await req('GET', '/api/audit', { cookie: cAdm })).json.some((a) => a.action === 'backup.pg-drill' && /SARIT|OK|ESUAT/.test(a.detail || '')));
+      (await req('GET', '/api/audit/system', { cookie: cAdm })).json.some((a) => a.action === 'backup.pg-drill' && /SARIT|OK|ESUAT/.test(a.detail || '')));
 
     // Lansarea de procese externe a trecut de la spawnSync la execFile (bucla nu mai asteapta
     // subprocesul — drill-ul e declansabil dintr-o ruta de admin). Drumul de mai sus se opreste
@@ -3482,6 +4034,15 @@ async function main() {
     const fdNotDb = new FormData();
     fdNotDb.append('file', new Blob([JSON.stringify({ altceva: 1 })], { type: 'application/json' }), 'altceva.json');
     eq('restore: JSON care nu e baza Contabo -> 400', (await req('POST', '/api/restore', { cookie: cAdm, body: fdNotDb })).status, 400);
+    const chainTampered = JSON.parse(snap.text);
+    const receiptToAlter = (chainTampered.declarations || []).flatMap((row) => row.depuneri || [])
+      .flatMap((submission) => submission.receipts || [])[0];
+    if (receiptToAlter) receiptToAlter.contentBase64 = Buffer.from('<recipisa alterata la restore/>').toString('base64');
+    const fdBrokenChain = new FormData();
+    fdBrokenChain.append('file', new Blob([JSON.stringify(chainTampered)], { type: 'application/json' }), 'lant-alterat.json');
+    const brokenRestore = await req('POST', '/api/restore', { cookie: cAdm, body: fdBrokenChain });
+    ok('restore: o recipisă alterată oprește înlocuirea prin verificatorul global',
+      !!receiptToAlter && brokenRestore.status === 409 && /globală a lanțului/.test(brokenRestore.json.error || ''));
     // partenerii sunt un obiect indexat pe CUI, nu un array
     const dens = async () => Object.values((await req('GET', '/api/partners', { cookie: cAdm })).json || {}).map((p) => p.den);
     ok('restore respins: baza e neatinsa (markerul exista)', (await dens()).includes('Inainte de snapshot'));
@@ -3532,7 +4093,15 @@ async function main() {
     eq('/csv/audit/system: admin -> 200 CSV', (await req('GET', '/csv/audit/system', { cookie: cAdm })).status, 200);
     const auditVerificat = await req('GET', '/api/audit/durable/verify', { cookie: cAdm });
     ok('jurnalul durabil are lant SHA-256 valid', auditVerificat.status === 200 && auditVerificat.json.ok
-      && auditVerificat.json.chained > 0 && /^[a-f0-9]{64}$/.test(auditVerificat.json.head));
+      && auditVerificat.json.chained > 0 && /^[a-f0-9]{64}$/.test(auditVerificat.json.head)
+      && /^[a-f0-9]{64}$/.test(auditVerificat.json.globalRootHash));
+    const globalIntegrity = await req('GET', '/api/integrity/global', { cookie: cAdm });
+    ok('audit global: adminul primește verdictul, componentele și aceeași rădăcină',
+      globalIntegrity.status === 200 && globalIntegrity.json.ok
+        && globalIntegrity.json.rootHash === auditVerificat.json.globalRootHash
+        && globalIntegrity.json.counts.filingDossiers > 0);
+    eq('audit global: non-admin -> 403',
+      (await req('GET', '/api/integrity/global', { cookie: c1 })).status, 403);
     // exporturile XML fiscale lasa urma in audit (cine a descarcat ce); PDF/CSV nu (doar log)
     await req('GET', '/xml/d300?period=2026-06', { cookie: c1 });
     await req('GET', '/pdf/balance?period=2026-06', { cookie: c1 });
@@ -3599,7 +4168,8 @@ async function main() {
         (await req('POST', '/api/migrare/preview', { cookie: c1, body: fdStrain })).status, 404);
       // Importul se face intr-o firma PROPRIE: preluarea rescrie soldurile, iar restul suitei
       // lucreaza pe firma existenta. Testeaza in acelasi timp garda de firma explicita.
-      const fNoua = await req('POST', '/api/firme', { cookie: laM.cookie, body: { nume: 'PRELUATA SRL', cui: '300008' } });
+      const fNoua = await req('POST', '/api/firme', { cookie: laM.cookie,
+        body: { nume: 'PRELUATA SRL', cui: '300008', confirmFictitious: true } });
       const fidNou = fNoua.json && (fNoua.json.firma ? fNoua.json.firma.id : fNoua.json.id);
       ok('firma-tinta pentru preluare a fost creata', !!fidNou);
       const obInainte = (await req('GET', '/api/opening?firma=' + fidNou, { cookie: laM.cookie })).json;
@@ -3639,7 +4209,7 @@ async function main() {
       // se scrie o singura data. Folosim alta firma goala ca sa putem dovedi inclusiv lipsa
       // efectelor partiale dupa o eroare din ultima componenta.
       const fCompleta = await req('POST', '/api/firme', { cookie: laM.cookie,
-        body: { nume: 'MIGRARE COMPLETA SRL', cui: '300009' } });
+        body: { nume: 'MIGRARE COMPLETA SRL', cui: '300009', confirmFictitious: true } });
       const fidComplet = fCompleta.json && fCompleta.json.firma && fCompleta.json.firma.id;
       ok('firma-tinta pentru migrarea completa a fost creata si activata', !!fidComplet
         && fCompleta.json.firmaActiva === fidComplet);

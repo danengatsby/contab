@@ -48,8 +48,8 @@ de operare comune, toate întâlnite pe viu, sunt:
 - prima autentificare pe o bază proaspătă cere **schimbarea parolei** — se face înainte de filmare;
 - selectorul de firmă e `#firmaSelect`, iar firma activă după creări e **ultima** creată (goală):
   se comută explicit pe firma cu date, altfel decontul iese cu toate zerourile;
-- marcarea unei declarații ca „depusă" **blochează perioada** și apare banda de lună închisă peste
-  jumătate de ecran — se filmează secvența declarațiilor **la final**, sau se deblochează perioada;
+- marcarea unei declarații ca „depusă" actualizează registrul și recipisa, dar **nu blochează
+  perioada**; blocarea și banda de lună închisă apar numai la ultima acțiune din cockpit;
 - grupurile din meniu sunt **pliate** implicit; se deschid pe cameră, nu înainte.
 
 ### 1.2 Setări de ecran
@@ -110,7 +110,7 @@ Durata totală a vocii: **24:31**.
 
 **Se vede:** Secțiunea de prețuri de pe aceeași pagină (Probă / Start / Pro), apoi „Ce face aplicația — și ce rămâne la tine".
 
-> Întâi prețurile, ca să știi de la început. Ai treizeci de zile de probă, fără card bancar. Apoi, nouăzeci și nouă de lei pe lună pentru planul Start și o sută nouăzeci și nouă pentru Pro. Toate funcțiile sunt incluse în fiecare plan: stocurile, salariile, declarațiile. Planurile se deosebesc prin preț, nu prin funcții.
+> Întâi prețurile, ca să știi de la început. Ai treizeci de zile de probă, fără card bancar. Apoi, fiecare firmă costă nouăzeci și nouă de lei pe lună, fie că alegi Start, fie Pro. Ambele includ toate funcțiile: Start pornește în modul Simplu pentru antreprenori, iar Pro în modul Expert pentru contabili.
 
 ### 03 · `s03-cont` — 0:49 · voce 13 s
 
@@ -663,7 +663,7 @@ eșecuri **tăcute**, toate raportând „reușit" la fiecare pas:
 ## 9. Verificări înainte de publicare
 
 - [ ] Toate cifrele rostite s-au reverificat în ziua montajului: numărul de verificări din suită,
-      tipurile de operațiuni, prețurile (99 lei Start, 199 lei Pro, probă 30 de zile fără card).
+      tipurile de operațiuni, prețul (99 lei/lună/firmă în Start și Pro, probă 30 de zile fără card).
 - [ ] Niciun CUI, nume sau adresă reală de client în cadru; doar firma-exemplu din seed.
 - [ ] Nicio secvență filmată pe demoul public (datele lui se schimbă zilnic, de la vizitatori).
 - [ ] Cartușul de limite (capitolul 4) e prezent în varianta principală — în filmul înregistrat e

@@ -258,8 +258,11 @@ function partyXml(tag, idTag, accountId, list, db) {
   return out.join('\n');
 }
 
-function taxTable() {
-  const f = fiscal.FISCAL || {};
+function taxTable(year) {
+  const raw = String(year || ''); const q = raw.match(/^(\d{4})-Q([1-4])$/);
+  const when = /^\d{4}$/.test(raw) ? raw + '-12'
+    : q ? q[1] + '-' + String(Number(q[2]) * 3).padStart(2, '0') : raw;
+  const f = fiscal.rulesAt(when).rates;
   const std = f.tvaStandard || 21;
   const red = f.tvaRedus || 11;
   const rates = [
@@ -432,7 +435,7 @@ function masterFiles(db, year) {
     generalLedgerAccounts(db, year),
     lunar ? partyXml('Customer', 'CustomerID', '4111', roles.customers, db) : '    <Customers/>',
     lunar ? partyXml('Supplier', 'SupplierID', '401', roles.suppliers, db) : '    <Suppliers/>',
-    lunar ? taxTable() : '    <TaxTable/>',
+    lunar ? taxTable(year) : '    <TaxTable/>',
     lunar ? uomTable(db) : '    <UOMTable/>',
     '    <AnalysisTypeTable/>',
     movementTypeTable(),

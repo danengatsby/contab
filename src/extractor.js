@@ -124,15 +124,16 @@ function extractCUIs(text) {
   return [...set];
 }
 
-function guessCota(text) {
+function guessCota(text, data) {
   // lista acopera si cotele istorice: pe document poate scrie o cota veche (factura din alt an)
   const m = text.match(/(?:T\.?V\.?A\.?|cot[aă])[^0-9%]{0,6}(\d{1,2})\s*%/i) || text.match(/(\d{1,2})\s*%/);
   if (m) {
     const v = parseInt(m[1], 10);
     if ([5, 9, 11, 19, 21].includes(v)) return v;
   }
-  // fara cota pe document: cota standard CURENTA din config (nu hardcodata — se schimba prin lege)
-  return fiscal.FISCAL.tvaStandard;
+  // Fara cota pe document: regula datei documentului. O data neacoperita ramane 0 si cere
+  // confirmarea operatorului; nu preia niciodata ultima fotografie cunoscuta.
+  try { return fiscal.rulesAt(data).rates.tvaStandard; } catch (_) { return 0; }
 }
 
 /**
@@ -192,7 +193,8 @@ function extractNumber(text) {
 function extractFromText(text, ownCui) {
   const flat = String(text || '').replace(/ /g, ' ');
 
-  const cota = guessCota(flat);
+  const dataDocument = extractDate(flat);
+  const cota = guessCota(flat, dataDocument);
   let total = findAmountAfter(flat, ['total\\s+de\\s+plat[aă]', 'total\\s+general', 'total\\s+factur[aă]', 'total(?!\\s*(?:f[aă]r[aă]|t\\.?v\\.?a\\.?|net))']);
   let tva = findAmountAfter(flat, ['total\\s+t\\.?v\\.?a\\.?', 'valoare\\s+t\\.?v\\.?a\\.?', 't\\.?v\\.?a\\.?']);
   let baza = findAmountAfter(flat, ['total\\s+f[aă]r[aă]\\s+t\\.?v\\.?a\\.?', 'valoare\\s+f[aă]r[aă]\\s+t\\.?v\\.?a\\.?', 'baz[aă]\\s+impozabil', 'subtotal']);
@@ -211,7 +213,7 @@ function extractFromText(text, ownCui) {
 
   // fields pre-completate (cheile acopera mai multe tipuri de document)
   const fields = {
-    data: extractDate(flat),
+    data: dataDocument,
     document: extractNumber(flat),
     partener: '',
     baza: baza != null ? round2(baza) : null,

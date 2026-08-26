@@ -6,6 +6,18 @@
 > `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`). Pe instanțele de
 > dezvoltare și în teste, marchează-le explicit cu `CONTAB_DEV=1` — atunci pornește cu valori de
 > rezervă, avertizând la fiecare pornire. Flagul nu se pune niciodată pe instalarea reală.
+> `CONTAB_ARCHIVE_SIGNING_KEY` poate separa explicit cheia manifestelor dosarelor anuale; dacă
+> lipsește, aplicația derivă o subcheie HMAC din `CONTAB_AUTH_SECRET`. Cheia trebuie păstrată în
+> afara bazei și restaurată împreună cu configurația, altfel arhivele rămân intacte dar semnătura
+> lor nu mai poate fi verificată.
+
+> **Date reale: poartă fail-closed.** O instalare nouă rulează exclusiv cu date fictive. Identitatea
+> juridică, DPA-ul, registrul prelucrărilor, procedurile de incidente/drepturi, DPIA, lista
+> subîmputerniciților și transferurile sunt condiții tehnice pentru date reale și plăți, nu doar
+> un checklist extern. Procedura completă și variabilele sunt în
+> [`docs/protectia-datelor-operational.md`](protectia-datelor-operational.md); verificarea curentă:
+> `GET /api/legal-status`. `CONTAB_REAL_DATA_ENABLED=1` se setează ultimul și nu poate deschide
+> singur poarta.
 
 ## Rulare
 
@@ -23,7 +35,9 @@ Navigarea e organizată pe grupuri, iar **ordinea lor e chiar ciclul contabil**,
 `📒 Registre contabile`, `🔒 Închideri`, `🧾 Taxe & declarații`, `📊 Rapoarte & analize` —
 înregistrezi, urmărești banii, treci prin ce mișcă lunar, verifici registrele, închizi luna, depui
 declarațiile, citești rapoartele. Jos rămân lucrurile din afara ciclului: `📁 Date firmă`
-(nomenclatoare) și `⚙️ Setări`. (Numele grupurilor sunt verificate față de `public/index.html`, iar
+(nomenclatoare), `⚙️ Setări` și `🧰 Unelte`. Portofoliul multi-firmă se deschide contextual din
+`Setări → Cine are acces → Firmele mele`, nu ocupă un loc permanent în navigator. (Numele
+grupurilor sunt verificate față de `public/index.html`, iar
 ordinea lor față de `CYCLE` din `public/app.js` — vezi porțile de drift din `test/run.js`.)
 
 Aplicația diferențiază **SRL vs PFA** (formă juridică pe firmă — taxe, calendar de declarații și
@@ -218,6 +232,14 @@ peste plafon se folosesc regulile locale, cu avertisment în formular.
 Avantajul față de regulile locale: citește facturi în orice format, inclusiv
 **PDF-uri scanate** (prin viziune). Poți activa/dezactiva din Setări. Modelul se
 poate schimba cu `CONTAB_AI_MODEL=...`.
+
+Traducerea surselor cărții folosește aceeași cheie Anthropic prin
+`npm run traduce-carte-en`. Modelul poate fi ales separat cu
+`CONTAB_BOOK_TRANSLATION_MODEL=...`; dacă lipsește, se folosește `CONTAB_AI_MODEL`.
+Comanda de traducere se rulează numai după modificarea surselor RO și salvează sursele EN în
+`scripts/carte/en/`. Pentru publicare, `npm run cuprins-carte` generează ambele limbi: site-urile
+`/carte/` și `/carte/en/`, plus PDF, DOCX și HTML offline. Directoarele generate din `public/`
+sunt ignorate de git, deci comanda de generare face parte din deploy-ul cărții.
 
 Pentru a încărca exemplul integrat din ghid (luna iunie, S.C. EXEMPLU PROD S.R.L.):
 
@@ -597,3 +619,27 @@ sudo -u contab pm2 restart contab --update-env
 - Extragerea din PDF funcționează pe documente cu **text** (PDF-uri generate de programe
   de facturare). Pentru PDF-uri scanate (imagine) datele se pot introduce manual —
   câmpurile rămân editabile, iar documentul se atașează ca justificativ.
+
+# Revizia fiscală externă
+
+Înainte de a permite artefactele XML de depunere și operațiunile de închidere anuală, aplicația
+cere acoperire externă completă pe versiunea fiscală curentă. Registrul implicit este
+`src/fiscalReviewApprovals.json`; pentru un volum separat, protejat operațional, setează
+`CONTAB_FISCAL_REVIEW_FILE=/cale/absoluta/fiscal-review-approvals.json`. Registrul separat al
+cheilor publice autorizate este `src/fiscalReviewTrust.json`; în producție setează și
+`CONTAB_FISCAL_REVIEW_TRUST_FILE=/cale/protejata/fiscal-review-trust.json`.
+
+```bash
+npm run revizie-fiscala
+npm run revizie-fiscala -- --hash PLF-05
+npm run revizie-fiscala -- --template PLF-05
+npm run revizie-fiscala -- --key-id public.pem
+npm run revizie-fiscala -- --payload PLF-05 aprobare-PLF-05.json
+```
+
+Comanda de status iese cu cod `2` cât timp dosarul este incomplet. Utilitarul nu scrie aprobări;
+înregistrarea cu revizor, calitate, dată, temei, amprenta dosarului, semnătură criptografică și hash
+se copiază numai după primirea dosarului extern semnat. Poarta cere 25/25 semnături valide.
+Schimbarea oricărui fișier din manifestul fiscal, a unui caz, a versiunii fiscale sau a cotelor
+active din Setări schimbă automat hash-ul și blochează din nou poarta. Detalii și fluxul de
+înrolare/semnare: `docs/dosar-revizie-fiscala.md` §5.

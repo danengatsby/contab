@@ -1,0 +1,311 @@
+{
+ "parte": "Part VI · What doesn't come from a document · phase 7",
+ "nr": "29",
+ "titlu": "You reverse it, you don't delete it",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "All the chapters so far have assumed that the entry is correct. This chapter is about what happens when it isn't — and it is, probably, the most important principle of discipline in the whole book."
+  },
+  {
+   "tip": "p",
+   "text": "The rule fits in one sentence: an accounting entry is never deleted and never modified. It is corrected through another entry, which remains linked to the incorrect one."
+  },
+  {
+   "tip": "h",
+   "text": "Why it isn't deleted"
+  },
+  {
+   "tip": "p",
+   "text": "The reason isn't bureaucratic. Accounting in which entries can be modified after they've been made no longer proves anything — because any figure in it could have been written retroactively, and no one could tell which."
+  },
+  {
+   "tip": "p",
+   "text": "The evidentiary value of accounting lies precisely in the fact that the past is closed. A ledger that can be revised isn't a ledger at all: it's a permanent draft. That's why the law requires that errors be corrected through new entries, and the trace of the error must remain."
+  },
+  {
+   "tip": "cheie",
+   "text": "The trace of the mistake is part of the evidence. Accounting with no visible errors isn't clean accounting — it's accounting in which nothing can be verified anymore."
+  },
+  {
+   "tip": "p",
+   "text": "The practical consequence is that a serious accounting program refuses to delete an entry that has already been posted. Not as a precaution, but as a property: if deletion were possible, all the other guarantees would be decorative."
+  },
+  {
+   "tip": "h",
+   "text": "Draft and posted entry"
+  },
+  {
+   "tip": "p",
+   "text": "The rule, however, doesn't apply from the very first moment. Between the moment an entry is composed and the moment it actually enters the accounting records, there is an intermediate state in which it can be freely corrected or deleted."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What can be done with an entry",
+   "cap": [
+    "State",
+    "Can it be modified?",
+    "Can it be deleted?",
+    "How is it corrected"
+   ],
+   "randuri": [
+    [
+     "draft",
+     "yes",
+     "yes",
+     "directly — it hasn't entered the records"
+    ],
+    [
+     "validated / approved",
+     "yes",
+     "yes",
+     "directly — it doesn't yet produce effects"
+    ],
+    [
+     "posted",
+     "NO",
+     "NO",
+     "through a reversal (storno)"
+    ]
+   ],
+   "nota": "Posting is the boundary. Before it, the entry is an intention; after it, it's a statement about the past."
+  },
+  {
+   "tip": "p",
+   "text": "This boundary is useful for another reason too: it separates the place where work is done from the place where responsibility is taken. An operator can freely correct a draft; posting is the act by which someone takes ownership of the figure."
+  },
+  {
+   "tip": "h",
+   "text": "What a reversal (storno) looks like"
+  },
+  {
+   "tip": "p",
+   "text": "The reversal entry uses the same accounts and the same amounts as the incorrect entry, with the sign changed. The effect is that the two cancel each other out, and the correct entry is made separately."
+  },
+  {
+   "tip": "p",
+   "text": "It is not dated in the period of the incorrect entry, but in an open period — usually the current one. The reason is the same as at the beginning of the chapter: a closed month has already been reported, and rewriting it would contradict declarations already filed."
+  },
+  {
+   "tip": "h",
+   "text": "In red or in black: two conventions, only one correct"
+  },
+  {
+   "tip": "p",
+   "text": "There are two ways to accounting-wise cancel an entry, and the difference between them seems purely aesthetic. It isn't."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "A sales invoice of 10,000 lei, canceled",
+   "cap": [
+    "Convention",
+    "The reversal entry",
+    "Balance of 707",
+    "Turnover on 707"
+   ],
+   "randuri": [
+    [
+     "in red",
+     "4111 = 707 with −10,000",
+     "0 — correct",
+     "credit 0 — correct"
+    ],
+    [
+     "in black",
+     "707 = 4111 with +10,000",
+     "0 — correct",
+     "credit 10,000 and debit 10,000"
+    ]
+   ],
+   "numerice": [],
+   "nota": "Both leave the balance correct. Only the first also leaves the turnover figures correct."
+  },
+  {
+   "tip": "p",
+   "text": "Reversing \"in black\" — swapping debit for credit — gives the right balance, but inflates the turnover: the revenue account reports 10,000 lei of activity on the credit side and another 10,000 on the debit side, that is, activity that never existed."
+  },
+  {
+   "tip": "p",
+   "text": "Turnover and profit come out correct, because they're read as a difference. But the turnover columns in the trial balance and the total of the journal register lie — and it's those that the accountant reads, not the calculator. In a company with many corrections, the trial balance ends up showing double the actual volume of activity."
+  },
+  {
+   "tip": "p",
+   "text": "That's why the correct convention is the \"in red\" reversal: the same accounts, in the same direction, with the amount negated. The name comes from the era of handwritten ledgers, when amounts to be canceled were written in red ink and subtracted, not added."
+  },
+  {
+   "tip": "h",
+   "text": "What a reversal doesn't solve"
+  },
+  {
+   "tip": "p",
+   "text": "The reversal corrects the accounting records. It doesn't correct documents that have already left the company, and this is where the most costly confusion arises."
+  },
+  {
+   "tip": "p",
+   "text": "If the incorrect invoice was sent to the customer and reported in the VAT return, canceling it internally changes nothing for the customer or for ANAF. A correction invoice — a credit note — is needed, issued, transmitted, and reported in its own right."
+  },
+  {
+   "tip": "p",
+   "text": "The rule, in short: the reversal fixes what was written; the correction document fixes what was communicated. An error that has left the company needs both."
+  },
+  {
+   "tip": "h",
+   "text": "Corrections that aren't made through a generic reversal"
+  },
+  {
+   "tip": "p",
+   "text": "There is a category of entries where the accounting reversal alone does more harm than good: those that also moved something besides accounts."
+  },
+  {
+   "tip": "p",
+   "text": "A sale of goods also decreased the quantity in the warehouse record. A reversal that touches only the accounts leaves the accounting correct and the inventory records wrong — and the two will diverge silently, until the inventory count puts them face to face, months later."
+  },
+  {
+   "tip": "p",
+   "text": "In such cases, the correction must be made at the level of the document that produced both effects, not at the level of the resulting accounting entry. It's the same idea as in Chapter 11: don't improvise with the general tool when there's a suitable one."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The requirement comes from the Accounting Law and from the rules on financial-accounting documents: errors are corrected through new entries, and erasures, scraping, or similar procedures are not allowed in supporting or accounting documents; correction is done by crossing out the incorrect text with a single line, so that it remains legible, followed by confirmation through signature. Four practical clarifications. First: for documents attesting cash or valuables movements — receipts, fiscal receipts, cheque leaves — correction isn't allowed at all; the document is voided and another is issued. Second: correction of errors relating to the current financial year is made through the revenue and expense accounts of that year, whereas significant errors relating to prior financial years are corrected through retained earnings, in account 1174 — the distinction is essential, since running a prior-year error through the income statement distorts the current result and, through it, the tax base. Third: correcting an error that affected a filed declaration triggers the obligation to file an amending declaration, with its own regime of deadlines and, as applicable, accessory charges; an accounting correction without the fiscal one leaves the two records diverging. Fourth: the reversal entry is dated in the period in which it is made, not the corrected one, and the link to the original entry is kept explicit — without it, the two entries remain two independent operations, and reconstructing the reasoning becomes impossible."
+  },
+  {
+   "tip": "h",
+   "text": "What's next"
+  },
+  {
+   "tip": "p",
+   "text": "This chapter concludes Part Six, and with it, all the entries. The company's accounting now contains everything that happened, including what happened wrongly and how it was corrected."
+  },
+  {
+   "tip": "p",
+   "text": "Next comes the part where the same operations are viewed from a different angle: the registers. The same figures, once in chronological order and once grouped by account — and the tool that says whether everything balances."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 29.1 — the correction, step by step",
+   "enunt": [
+    "On March 12, a sales invoice of 10,000 lei base + 2,100 VAT was posted. On April 20, after the March VAT return was filed, it is discovered that the invoice had been issued twice, by mistake.",
+    "What is done, in order?"
+   ],
+   "rezolvare": [
+    "Nothing is deleted. March is a closed and reported month; deletion would contradict a declaration already filed.",
+    "A correction invoice (credit note) is issued to the customer, referencing the canceled invoice, and transmitted. A document that left the company needs a document to cancel it.",
+    "The reversal is recorded IN APRIL, in red: the same accounts, negated amounts — 4111 = 707 with −10,000 and 4111 = 4427 with −2,100. Not the debit/credit swap, which would leave the balances correct but would inflate the turnover.",
+    "It is reflected in the April VAT return, as a reduction of the base and the output tax. The March return is not amended: there, the operation really was recorded, and the correction has its own date.",
+    "What remains visible, and it's good that it does: in March you see the duplicate invoice, in April you see the cancellation. Anyone reading both months sees both the mistake and the correction — which is more than they would have seen if the figure had simply been changed."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Six situations, six treatments"
+  },
+  {
+   "tip": "p",
+   "text": "\"You reverse it, you don't delete it\" is the rule. Its application, however, differs depending on how far the error has traveled — and the distance is measured by three thresholds: posting, month closing, and declaration filing."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What is done, depending on how far the error has traveled",
+   "cap": [
+    "Situation",
+    "What is done",
+    "What else is needed"
+   ],
+   "randuri": [
+    [
+     "draft, not posted",
+     "corrected directly",
+     "nothing"
+    ],
+    [
+     "posted, month open",
+     "reversal + the correct entry",
+     "nothing"
+    ],
+    [
+     "posted, month closed",
+     "reversal in an open month",
+     "—"
+    ],
+    [
+     "…and the declaration was filed",
+     "same, plus assessing an amending declaration",
+     "amending declaration, if it changes the declared amounts"
+    ],
+    [
+     "…and the document went to the customer",
+     "same, plus a correction invoice",
+     "the credit note, transmitted and reported"
+    ],
+    [
+     "significant error, from the previous year",
+     "correction through retained earnings (1174)",
+     "amending declaration for the corrected year"
+    ]
+   ],
+   "nota": "The middle column shows that the accounting treatment is the same from row three onward. What's added is an obligation toward someone else: the state, the customer, or both."
+  },
+  {
+   "tip": "p",
+   "text": "The observation that orders the table: the error doesn't become harder to correct in accounting terms, it becomes harder to correct COMPLETELY. The reversal always resolves one's own records; the rest of the third column are things that have left the company and can't be withdrawn through a single entry."
+  },
+  {
+   "tip": "h",
+   "text": "What isn't reversed"
+  },
+  {
+   "tip": "p",
+   "text": "There are operations where the accounting reversal alone does more harm than good — and they all have in common the fact that they moved something besides accounts."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cases with dedicated treatment",
+   "cap": [
+    "Operation",
+    "Why not the usual reversal",
+    "What is done"
+   ],
+   "randuri": [
+    [
+     "sale with inventory discharge",
+     "would leave the warehouse record uncorrected",
+     "the inventory document is reversed"
+    ],
+    [
+     "stock receipt",
+     "same, in the other direction",
+     "same"
+    ],
+    [
+     "a reversal entry",
+     "a reversal would be reversed, endlessly",
+     "the correct operation is recorded, separately"
+    ],
+    [
+     "a month's depreciation",
+     "it is recalculated from the asset register",
+     "the asset is corrected, then it is regenerated"
+    ]
+   ],
+   "nota": "The third row is a guardrail, not a subtlety: without it, a chain of mutual reversals makes the history illegible."
+  },
+  {
+   "tip": "cheie",
+   "text": "The reversal corrects ACCOUNTS. When the operation also moved a quantity, a register, or a calculation, the correction must be made where the movement occurred — otherwise the two records diverge silently."
+  },
+  {
+   "tip": "recap",
+   "titlu": "To remember from this chapter",
+   "puncte": [
+    "A posted entry is never deleted and never modified — it is corrected through a reversal entry linked to it.",
+    "The trace of the error is part of the evidence; accounting that can be revised no longer proves anything.",
+    "The boundary is posting: before it, the entry is an intention; after it, a statement about the past.",
+    "The reversal is dated in an OPEN period, not in the corrected month, which has already been reported.",
+    "Reversing \"in red\" (same accounts, negated amount) is correct; reversing \"in black\" leaves the balance right but doubles the turnover.",
+    "The reversal fixes what was written; an invoice that left the company also needs a credit note.",
+    "Significant errors from previous financial years are corrected through retained earnings, not through the income statement."
+   ]
+  }
+ ]
+}

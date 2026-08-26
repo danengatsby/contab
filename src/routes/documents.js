@@ -8,10 +8,12 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const db = require('../db');
 const ai = require('../aiExtractor');
 const log = require('../log');
 const metrics = require('../metrics');
+const legal = require('../legalCompliance');
 const { extractFromPdf } = require('../extractor');
 const extractQuality = require('../extractQuality');
 const entriesService = require('../entriesService');
@@ -47,13 +49,17 @@ module.exports = function register(app, ctx) {
     const d = db.get();
     const ownCui = (db.getFirma(activeId(req)) || {}).cui;
     const buf = fs.readFileSync(req.file.path);
+    const fileSha256 = crypto.createHash('sha256').update(buf).digest('hex');
 
     let extracted;
     let source = 'heuristic';
     let warning = null;
     let extra = {};
-    const aiWanted = ai.aiAvailable() && d.settings.useAI !== false;
+    const firma = db.getFirma(activeId(req));
+    const aiConfigured = ai.aiAvailable() && d.settings.useAI !== false;
+    const aiWanted = aiConfigured && legal.aiAllowed(firma);
     const useAI = aiWanted && aiQuotaLeft(req.user) > 0;
+    if (aiConfigured && !aiWanted) warning = 'Documentul nu a fost trimis către AI: opt-in-ul firmei lipsește sau nu mai corespunde documentelor juridice curente. S-au folosit regulile locale.';
     if (aiWanted && !useAI) warning = 'Limita zilnica de extrageri AI a fost atinsa — s-au folosit regulile locale.';
     if (useAI) {
       bumpAiUsage(req.user); // numara si incercarile esuate (apelul se factureaza oricum)
@@ -91,7 +97,9 @@ module.exports = function register(app, ctx) {
     const fid = activeId(req);
     const calitate = extractQuality.evalueaza(
       { fields: extracted.fields || {}, suggestedType: extracted.suggestedType, source, incredere: extra.incredere, fileName: req.file.originalname },
-      { v: S(req), firma: db.getFirma(fid) || {}, standardCota: fiscal.FISCAL.tvaStandard }
+      { v: S(req), firma: db.getFirma(fid) || {}, standardCota: (() => {
+        try { return fiscal.rulesAt((extracted.fields || {}).data).rates.tvaStandard; } catch (_) { return 0; }
+      })() }
     );
     extracted.fields = calitate.fields;
     if (calitate.avertismente.length) extra.checkWarnings = calitate.avertismente;
@@ -105,6 +113,7 @@ module.exports = function register(app, ctx) {
       fileName: req.file.originalname,
       storedName: req.file.filename,
       uploadedAt: new Date().toISOString(),
+      sha256: fileSha256,
       text: (extracted.text || '').slice(0, 20000),
       // Ce a CITIT masina, pastrat ca atare. E referinta fata de care se masoara interventia
       // operatorului la salvare (vezi entriesService.createEntry): fara ea, „ce a corectat omul"
@@ -232,9 +241,10 @@ module.exports = function register(app, ctx) {
     if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
     const d = db.get();
     const docId = db.nextId('doc');
+    const fileSha256 = crypto.createHash('sha256').update(fs.readFileSync(req.file.path)).digest('hex');
     d.documents.push({
       id: docId, firmaId: activeId(req), fileName: req.file.originalname, storedName: req.file.filename,
-      uploadedAt: new Date().toISOString(), text: '',
+      uploadedAt: new Date().toISOString(), text: '', sha256: fileSha256,
     });
     logAudit('document.upload', uploadDetail(req.file) + ', fara extragere', { req });
     db.save();

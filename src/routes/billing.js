@@ -24,6 +24,7 @@ module.exports = function register(app, ctx) {
 
   app.get('/api/plans', (req, res) => res.json({
     plans: plans.PLANS, trialDays: plans.TRIAL_DAYS, platiSuspendate: plans.PLATI_SUSPENDATE,
+    motivPlatiSuspendate: plans.MOTIV_PLATI_SUSPENDATE,
   }));
   // Checkout „guest" (plata înainte de înscriere). Fără Stripe configurat → semnalează degradarea.
   app.post('/api/checkout-guest', async (req, res) => {

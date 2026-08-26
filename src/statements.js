@@ -111,6 +111,22 @@ function balanceSheetF10(db, asOf) {
   const R = {}; // randuri -> suma
   const add = (row, val) => { R[row] = round2((R[row] || 0) + val); };
   const starts = (c, ...p) => p.some((x) => String(c).startsWith(x));
+  const year = Number(String(asOf || '').slice(0, 4));
+  const mappings = (db.balanceSheetMappings || db.balance_sheet_mappings || [])
+    .filter((x) => String(x.year) === String(year))
+    .slice().sort((a, b) => String(a.recordedAt || '').localeCompare(String(b.recordedAt || '')));
+  const meta = new Map(mappings.map((x) => [String(x.account), x]));
+  const unmapped = [];
+  const maturity = (m, total) => {
+    if (!m) return null;
+    if (m.currentPortion != null) {
+      const current = round2(Number(m.currentPortion));
+      return current >= 0 && current <= total + 0.005 ? { current, noncurrent: round2(total - current) } : null;
+    }
+    if (m.dueDate) return String(m.dueDate) <= String(year + 1) + '-12-31'
+      ? { current: total, noncurrent: 0 } : { current: 0, noncurrent: total };
+    return null;
+  };
 
   for (const cod of Object.keys(net)) {
     const v = net[cod]; // pozitiv = sold debitor
@@ -127,7 +143,11 @@ function balanceSheetF10(db, asOf) {
     // ── STOCURI (clasa 3), net de ajustari 39x
     if (cl === 3) { add('B_stocuri', v); continue; }
     // ── Cheltuieli in avans
-    if (starts(cod, '471')) { add('C_cheltAvans', v); continue; }
+    if (starts(cod, '471')) {
+      const split = maturity(meta.get(cod), Math.abs(v));
+      if (!split) { unmapped.push({ account: cod, value: v, reason: 'Scadență/porțiune curentă lipsă pentru 471.' }); continue; }
+      add('C_cheltAvans', split.current); add('C_cheltAvansLT', split.noncurrent); continue;
+    }
     // ── Venituri in avans
     if (starts(cod, '472', '475')) { add('I_venitAvans', -v); continue; }
     // ── Capitaluri proprii (capital, prime, rezerve, reportat, rezultat) — sold creditor.
@@ -138,7 +158,11 @@ function balanceSheetF10(db, asOf) {
     //    capitalurile umflate cu valoarea lor.
     if (cl === 1 && starts(cod, '101', '102', '103', '104', '105', '106', '108', '109', '117', '121', '129', '141', '149')) { add('J_capital', -v); continue; }
     // ── Datorii pe termen lung (>1 an): imprumuturi si datorii asimilate, leasing (clasa 1, grupa 16)
-    if (cl === 1 && starts(cod, '16')) { add('G_datoriiLT', -v); continue; }
+    if (cl === 1 && starts(cod, '16')) {
+      const split = v < 0 ? maturity(meta.get(cod), -v) : null;
+      if (!split) { unmapped.push({ account: cod, value: v, reason: 'Scadență/porțiune curentă lipsă pentru grupa 16.' }); continue; }
+      add('D_datorii', split.current); add('G_datoriiLT', split.noncurrent); continue;
+    }
     // ── Provizioane
     if (cl === 1 && starts(cod, '15')) { add('H_provizioane', -v); continue; }
     // ── AJUSTARILE PENTRU DEPRECIERE (49x, 59x) — RECTIFICATIVE de activ, nu datorii.
@@ -165,12 +189,13 @@ function balanceSheetF10(db, asOf) {
   const A = round2(g('A_necorp') + g('A_corp') + g('A_financ'));
   const B = round2(g('B_stocuri') + g('B_creante') + g('B_investTS') + g('B_casa'));
   const C = g('C_cheltAvans');
+  const CLT = g('C_cheltAvansLT');
   const D = g('D_datorii');
   const G = g('G_datoriiLT');
   const H = g('H_provizioane');
   const I = g('I_venitAvans');
   const J = g('J_capital');
-  const totalActiv = round2(A + B + C);
+  const totalActiv = round2(A + B + C + CLT);
   const totalPasiv = round2(J + D + G + H + I);
   const activeCircNete = round2(B + C - D - I); // E (oficial)
   return {
@@ -178,10 +203,10 @@ function balanceSheetF10(db, asOf) {
     randuri: {
       A_necorp: g('A_necorp'), A_corp: g('A_corp'), A_financ: g('A_financ'), A,
       B_stocuri: g('B_stocuri'), B_creante: g('B_creante'), B_investTS: g('B_investTS'), B_casa: g('B_casa'), B,
-      C_cheltAvans: C, D_datorii: D, E_activeCircNete: activeCircNete, F_totalMinusDat: round2(A + activeCircNete),
+      C_cheltAvans: C, C_cheltAvansLT: CLT, D_datorii: D, E_activeCircNete: activeCircNete, F_totalMinusDat: round2(A + CLT + activeCircNete),
       G_datoriiLT: G, H_provizioane: H, I_venitAvans: I, J_capital: J, rezultatCurent,
     },
-    totalActiv, totalPasiv, echilibrat: totalActiv === totalPasiv,
+    totalActiv, totalPasiv, echilibrat: totalActiv === totalPasiv, unmapped,
   };
 }
 

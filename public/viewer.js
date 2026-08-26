@@ -6,7 +6,7 @@
 // catre app.js — se activeaza doar prin import (efect secundar: inregistrarea handler-elor la
 // incarcare). Depinde doar de $ si toast din core.js.
 
-import { $, toast } from './core.js';
+import { $, toast, uiLocale } from './core.js';
 
 let VIEWER_TEXT = '';
 function openViewer(url, title) {
@@ -117,7 +117,7 @@ function renderEfactura(doc) {
   const esc = (s) => (s || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   // `cur` si `cota` vin din XML-ul FURNIZORULUI (cbc:DocumentCurrencyCode / cbc:Percent), la fel
   // ca denumirile — deci se escapeaza la fel. Suma trecuta prin Number() e deja inofensiva.
-  const money = (v) => v ? Number(v).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + esc(cur) : '';
+  const money = (v) => v ? Number(v).toLocaleString(uiLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + esc(cur) : '';
   const idDirect = (() => { for (const c of root.children) if (c.tagName === 'cbc:ID') return c.textContent.trim(); return ''; })();
   return `<div class="efact-doc">
     <div data-u="u191">

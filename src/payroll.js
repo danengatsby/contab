@@ -143,12 +143,13 @@ function primaZiLucratoare(dataStart) {
 
 function statePlata(angajati, period, history, options) {
   const opts = options || {};
+  const ruleSet = fiscal.rulesAt(period); const rates = ruleSet.rates;
   // O fotografie legata de un articol stornat nu mai poate alimenta medii CM/CO sau plafoane
   // anuale. Deducerea se face o singura data aici, inainte ca istoricul sa ajunga in calcule.
   history = payrollHistory.activeSnapshots(history, opts.entries);
   const dataCursBeneficii = ultimaZiDinLuna(period);
   const cursBeneficii = bnr.cursPlafon(opts.cursuriBnr || [], dataCursBeneficii,
-    fiscal.FISCAL.cursEurBeneficii);
+    rates.cursEurBeneficii);
   // Un curs dinaintea sfarsitului unei luni care nu s-a incheiat este doar provizoriu. Pentru o
   // luna inchisa, `exact:false` poate insemna legitim weekend/sarbatoare si nu este aproximare.
   const cursBeneficiiProvizoriu = !!(dataCursBeneficii
@@ -179,7 +180,8 @@ function statePlata(angajati, period, history, options) {
     // caz in care NU se acorda (al doilea loc de munca) se declara EXPLICIT, prin `functieBaza:false`,
     // nu prin uitarea unui camp.
     const hasDP = a.functieBaza !== false;
-    const dp = hasDP ? fiscal.deducerePersonala(brut, Number(a.persoane) || 0, { salariuMinim: fiscal.salariuMinimLa(period), sub26: a.sub26, copii: a.copii }).total : 0;
+    const dp = hasDP ? fiscal.deducerePersonala(brut, Number(a.persoane) || 0,
+      { period, rules: ruleSet, sub26: a.sub26, copii: a.copii }).total : 0;
     const deducere = round2(dp + neimpozabil); // total scazut din baza de impozit
     const tichete = round2(Number(a.tichete) || 0);
     const avantaje = round2(Number(a.avantaje) || 0); // avantaje in natura impozabile (auto, chirie...)
@@ -309,11 +311,11 @@ function statePlata(angajati, period, history, options) {
     // Norma partiala (OUG 16/2022): contributii cel putin la nivelul salariului minim, diferenta
     // in sarcina angajatorului; exceptii legale (elevi/studenti, pensionari, ucenici, dizabilitate,
     // cumul de norma intreaga la alt angajator) — bifate pe angajat.
-    const bazaMinima = (a.normaPartiala && !a.scutitNormaPartiala) ? fiscal.salariuMinimLa(period) : 0;
+    const bazaMinima = (a.normaPartiala && !a.scutitNormaPartiala) ? rates.salariuMinim : 0;
     // Suma neimpozabila din salariul minim (art. 76): derivata din salariul de BAZA contractual
     // (`a.salariuBrut`, fara spor) si din brutul efectiv al lunii. Nu e o deducere — iese din toate
     // bazele, deci se trimite separat de `deducere`.
-    const nm = fiscal.neimpozabilMinim(brutTaxabil, round2(Number(a.salariuBrut) || 0), period);
+    const nm = fiscal.neimpozabilMinim(brutTaxabil, round2(Number(a.salariuBrut) || 0), period, ruleSet);
     // Avantajele din plafonul de 33% (art. 76 alin. (4^1)). Plafonul se calculeaza pe salariul de
     // BAZA contractual (`a.salariuBrut`, fara spor si fara reducerea pentru zilele de concediu) —
     // vezi nota din src/beneficii.js. Plafoanele ANUALE (turism, pensii, sanatate, sport) au nevoie
@@ -322,6 +324,7 @@ function statePlata(angajati, period, history, options) {
     // asa calculeaza IDENTIC toate cele noua puncte care cheama statePlata (stat, PDF, D112,
     // plati), fara sa depinda de cine si-a amintit sa transmita optiunea.
     const bnf = fiscal.beneficii({
+      period, rules: ruleSet,
       salariuBaza: round2(Number(a.salariuBrut) || 0),
       acordate: a.beneficii || {},
       zile: {
@@ -332,14 +335,14 @@ function statePlata(angajati, period, history, options) {
       },
       copii: Number(a.copiiCresa) || 0,
       tichete,
-      salariuMinim: fiscal.salariuMinimLa(period),
+      salariuMinim: rates.salariuMinim,
       consumAnual: ben.consumAnual(history, a.id, period),
       ordine: a.ordineBeneficii,
       cursEur: cursBeneficii.curs,
     });
     const beneficiiCursNecesar = bnf.randuri.some((r) => BENEFICII_EUR.has(r.id));
     const beneficiiOrdineNecesara = bnf.randuri.some((r) => Number(r.pestePlafon) > 0);
-    const p = fiscal.payroll(brutTaxabil, deducere, { tichete, avantaje, sector,
+    const p = fiscal.payroll(brutTaxabil, deducere, { period, rules: ruleSet, tichete, avantaje, sector,
       cmAngajator: cmA, cmFnuass: cmF, cmCuCass, bazaMinima,
       neimpozabilMinim: nm.suma, beneficiiImpozabile: bnf.totalImpozabil });
     const restPlata = round2(p.net - avans - retineri);
@@ -410,7 +413,7 @@ function statePlata(angajati, period, history, options) {
     t.avans = round2(t.avans + avans); t.retineri = round2(t.retineri + retineri); t.restPlata = round2(t.restPlata + restPlata);
   }
   t.totalBuget = round2(t.cas + t.cass + t.impozit + t.cam + t.casAngajator + t.cassAngajator);
-  return { rows, totals: t };
+  return { rows, totals: t, ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash };
 }
 
 /** Sursa unica pentru o perioada de salarizare. Dupa postare, fotografia completa este imuabila:
@@ -423,6 +426,7 @@ function statPlataPerioada(view, period, preferaPostat = true) {
   if (h && h.formatVersion >= 2 && Array.isArray(h.rows) && h.totals) {
     return { rows: h.rows, totals: h.totals, postat: true, postedAt: h.ts,
       entryId: h.entryId || null, snapshotId: h.id || null,
+      ruleSetId: h.ruleSetId || null, fiscalRulesHash: h.fiscalRulesHash || null,
       platit: !!platit, paymentEntryId: platit ? platit.id : null };
   }
   return Object.assign(statePlata(view.angajati, period, view.payrollHistory,

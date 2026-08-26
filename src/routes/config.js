@@ -12,7 +12,11 @@ const pdf = require('../pdf');
 const fiscal = require('../fiscal');
 const bnr = require('../bnr');
 const fiscalProfile = require('../fiscalProfile');
+const balanceCategory = require('../balanceCategory');
+const bilant = require('../bilant');
 const fiscalControls = require('../fiscalControls');
+const fiscalReview = require('../fiscalReview');
+const permissions = require('../permissions');
 const svc = require('../configService');
 const log = require('../log');
 
@@ -28,7 +32,11 @@ module.exports = function register(app, ctx) {
   };
 
   app.post('/api/company', (req, res) => run(res, () => {
-    const r = svc.updateCompany(activeId(req), req.body);
+    const fid = activeId(req);
+    if (Object.keys(req.body || {}).some((key) => fiscalProfile.HISTORIC_FIELDS.includes(key))) {
+      permissions.assert(req.user, fid, 'fiscal.manage', db.getFirma(fid));
+    }
+    const r = svc.updateCompany(fid, req.body, req.user);
     return { ok: true, company: r.company };
   }));
 
@@ -36,8 +44,124 @@ module.exports = function register(app, ctx) {
   // alertele si controalele (consumat de UI si de restul aplicatiei, nu boolean-uri ad-hoc).
   app.get('/api/fiscal-profile', (req, res) => {
     const v = S(req);
-    res.json(fiscalProfile.build(v.company, { angajati: v.angajati }));
+    res.json(fiscalProfile.profileAt(v, req.query.asOf, { angajati: v.angajati }));
   });
+
+  app.get('/api/fiscal-profile/history', (req, res) => {
+    const history = fiscalProfile.historyFor(db.get(), activeId(req));
+    res.json({ fields: fiscalProfile.HISTORIC_FIELDS, history: history.slice()
+      .sort((a, b) => b.validFrom.localeCompare(a.validFrom)
+        || String(b.recordedAt || '').localeCompare(String(a.recordedAt || ''))) });
+  });
+
+  // Status READ-ONLY al reviziei de produs. Aprobarea nu se poate fabrica din interfață: registrul
+  // semnat și registrul separat al cheilor se gestionează controlat pe server; aici se vede verdictul.
+  app.get('/api/fiscal-review', (req, res) => res.json(fiscalReview.status()));
+
+  app.post('/api/fiscal-profile/history', (req, res) => run(res, () => {
+    const fid = activeId(req); const firma = db.getFirma(fid);
+    permissions.assert(req.user, fid, 'fiscal.manage', firma);
+    const r = svc.addFiscalRevision(fid, req.body, req.user);
+    logAudit('profil.fiscal.revizie', 'valabilă ' + r.revision.validFrom + ' · înregistrată '
+      + r.revision.recordedAt + (r.revision.note ? ': ' + r.revision.note : ''), { req });
+    return { ok: true, revision: r.revision, company: r.company, history: r.history };
+  }));
+
+  // Incadrarea CONTABILA anuala: indicatori calculati, regula celor doua exercitii si decizia
+  // confirmata. Nu foloseste si nu expune `regimImpozit` drept intrare in calcul.
+  app.get('/api/balance-category', (req, res) => run(res, () => {
+    const year = req.query.year || String(new Date().getFullYear() - 1);
+    const v = S(req);
+    const confirmation = balanceCategory.confirmationFor(v.balanceCategoryHistory, year);
+    const averageEmployees = Object.prototype.hasOwnProperty.call(req.query, 'numarMediuSalariati')
+      ? req.query.numarMediuSalariati
+      : confirmation && confirmation.indicatorOverrides && confirmation.indicatorOverrides.numarMediuSalariati;
+    const assessment = balanceCategory.assess(v, year, { averageEmployees });
+    return {
+      assessment,
+      confirmation,
+      confirmedAndCurrent: !!confirmation && confirmation.inputHash === assessment.inputHash,
+    };
+  }));
+
+  app.get('/api/balance-category/history', (req, res) => {
+    const rows = balanceCategory.activeRows(S(req).balanceCategoryHistory)
+      .sort((a, b) => Number(b.year) - Number(a.year) || String(b.confirmedAt || '').localeCompare(String(a.confirmedAt || '')));
+    res.json({ history: rows, labels: balanceCategory.LABELS });
+  });
+
+  app.post('/api/balance-category/confirm', (req, res) => run(res, () => {
+    const fid = activeId(req); const firma = db.getFirma(fid);
+    const verdict = permissions.assert(req.user, fid, 'balance.category.confirm', firma);
+    // Rolul operational `aprobator` spune CE poate face in firma; `tipCont` spune CINE este.
+    // Un patron poate consulta calculul, dar confirmarea profesionala ramane la contabil (adminul
+    // instalatiei este exceptia operationala, necesara migrarilor si remedierilor controlate).
+    const ownsFirma = req.user && (db.get().firme || []).some((x) => Number(x.ownerId) === Number(req.user.id));
+    // Aceeasi compatibilitate ca proiectia sesiunii: utilizatorii vechi nu aveau `tipCont`;
+    // daca nu sunt proprietari, sunt colaboratori contabili, nu patroni retroactiv inventati.
+    const accountingUser = req.user && (req.user.tipCont === 'contabil'
+      || (!req.user.tipCont && !ownsFirma));
+    if (req.user && req.user.role !== 'admin' && !accountingUser) {
+      const e = new Error('Confirmarea categoriei bilanțului trebuie făcută de un cont de contabil cu dreptul dedicat.');
+      e.status = 403; throw e;
+    }
+    const result = svc.confirmBalanceCategory(fid, req.body, req.user, verdict.role);
+    logAudit('bilant.categorie.confirmata', result.confirmation.year + ': '
+      + result.confirmation.category + (result.confirmation.justification ? ' — ' + result.confirmation.justification : ''), { req });
+    return Object.assign({ ok: true }, result);
+  }));
+
+  // Dosarul de mapare F10: metadatele sunt versionate append-only. O versiune noua nu rescrie
+  // aprobarea veche, iar hash-ul inlantuit face istoricul verificabil.
+  app.get('/api/balance-sheet-mappings', (req, res) => {
+    const year = String(req.query.year || (new Date().getFullYear() - 1));
+    const rows = (S(req).balanceSheetMappings || []).filter((x) => String(x.year) === year)
+      .slice().sort((a, b) => String(b.recordedAt || '').localeCompare(String(a.recordedAt || '')));
+    res.json({ year, rows });
+  });
+
+  app.post('/api/balance-sheet-mappings', (req, res) => run(res, () => {
+    const fid = activeId(req);
+    permissions.assert(req.user, fid, 'fiscal.manage', db.getFirma(fid));
+    const record = bilant.metadataRecord(S(req), fid, req.body, req.user, db.nextId('bsm'));
+    db.get().balance_sheet_mappings.push(record);
+    logAudit('bilant.mapare.metadata', record.year + ' · ' + record.account + ' · SHA-256 '
+      + record.hash.slice(0, 12) + ' · ' + record.reason, { req });
+    db.save();
+    return { ok: true, record };
+  }));
+
+  app.get('/api/balance-sheet-adjustments', (req, res) => {
+    const year = String(req.query.year || (new Date().getFullYear() - 1));
+    const rows = (S(req).balanceSheetAdjustments || []).filter((x) => String(x.year) === year)
+      .slice().sort((a, b) => String(b.approvedAt || '').localeCompare(String(a.approvedAt || '')));
+    res.json({ year, rows });
+  });
+
+  app.post('/api/balance-sheet-adjustments', (req, res) => run(res, () => {
+    const fid = activeId(req);
+    permissions.assert(req.user, fid, 'declaration.approve', db.getFirma(fid));
+    const record = bilant.adjustmentRecord(S(req), fid, req.body, req.user, db.nextId('bsa'));
+    db.get().balance_sheet_adjustments.push(record);
+    logAudit('bilant.ajustare.aprobata', record.year + ' · F10 ' + record.row + ' '
+      + (record.amount > 0 ? '+' : '') + record.amount + ' · aprobator ' + record.approvedBy.username
+      + ' · SHA-256 ' + record.hash, { req });
+    db.save();
+    return { ok: true, record };
+  }));
+
+  // Raportul reuneste conturile nemapate, metadatele lipsa, registrul ajustarilor si cele trei
+  // reconcilieri. Este aceeasi functie consumata de poarta XML, nu o verificare paralela.
+  app.get('/api/balance-sheet-controls', (req, res) => run(res, () => {
+    const year = String(req.query.year || (new Date().getFullYear() - 1));
+    const category = ['micro', 'mic', 'mare'].includes(String(req.query.category || ''))
+      ? String(req.query.category) : String((S(req).company || {}).categorieRaportare || 'micro');
+    const s = bilant.situatii(S(req), S(req).company, year, category);
+    return { year, category, ok: s.reconciliere.ok, blockers: s.blocaje,
+      sourceHashes: { curent: bilant.sourceHash(S(req), year),
+        precedent: bilant.sourceHash(S(req), Number(year) - 1) },
+      reconciliation: s.reconciliere, mappingReport: s.raportMapare };
+  }));
 
   // Controale de coerenta derivate din profil (al treilea pilon, langa declaratii si alerte):
   // semnaleaza date incompatibile cu regimul declarat (neplatitor care colecteaza TVA, micro peste
@@ -133,11 +257,22 @@ module.exports = function register(app, ctx) {
     }
   });
 
-  // Cote fiscale configurabile (admin): CAS/CASS/impozit/TVA/profit/salariu minim etc.
-  app.get('/api/fiscal-config', requireAdmin, (req, res) => res.json({ current: fiscal.FISCAL, defaults: fiscal.DEFAULTS, custom: db.get().settings.fiscal || {}, vechime: fiscal.fiscalStaleness(new Date().getFullYear()) }));
+  // Registru temporal fiscal: citire completa + publicare append-only cu surse si aprobare.
+  app.get('/api/fiscal-config', requireAdmin, (req, res) => {
+    const today = new Date().toISOString().slice(0, 10); let current = null;
+    try { current = fiscal.rulesAt(today); } catch (_) { /* lipsa acoperirii este raportata de vechime */ }
+    res.json({ current, defaults: fiscal.DEFAULTS, ruleSets: fiscal.allRuleSets(),
+      registryHash: fiscal.registryHash(), vechime: fiscal.fiscalStaleness(new Date().getFullYear()) });
+  });
+  app.get('/api/fiscal-rules-at', (req, res) => run(res, () => {
+    const r = fiscal.rulesAt(req.query.date);
+    return { ruleSetId: r.id, fiscalRulesHash: r.hash, validFrom: r.validFrom,
+      validTo: r.validTo, rates: r.rates };
+  }));
   app.post('/api/fiscal-config', requireAdmin, (req, res) => run(res, () => {
     const r = svc.setFiscalConfig(req.body);
-    logAudit('fiscal.config', r.reset ? 'reset la valori standard' : 'cote fiscale actualizate', { req, firmaId: null });
-    return { ok: true, current: r.current };
+    logAudit('fiscal.rules.publish', r.ruleSet.id + ' · ' + r.ruleSet.validFrom + '..'
+      + (r.ruleSet.validTo || '∞') + ' · ' + r.ruleSet.hash, { req, firmaId: null });
+    return { ok: true, ruleSet: r.ruleSet, registryHash: fiscal.registryHash() };
   }));
 };

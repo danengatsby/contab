@@ -1,0 +1,227 @@
+{
+ "parte": "Part II · Opening the financial year · phase 1",
+ "nr": "8",
+ "titlu": "The equality that must hold from day one",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The previous chapter said that an opening trial balance must balance and that, if it doesn't balance, the difference never disappears on its own. This chapter answers the question that naturally follows: why must it, in fact, balance? And, more practically, what to do when it doesn't."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth clarifying now, at the start of the cycle, since this is the last chance to examine the equality calmly. From here on, it will be assumed at every step."
+  },
+  {
+   "tip": "h",
+   "text": "It's not an imposed rule, it's a definition"
+  },
+  {
+   "tip": "p",
+   "text": "The equality in accounting isn't a requirement the legislator added to make life difficult. It's the consequence of how one of the terms is defined."
+  },
+  {
+   "tip": "p",
+   "text": "What the company owns is called assets. What it owes to others is called liabilities. And the difference between them — what would remain if all creditors were paid — is called equity. It's not a sum set aside somewhere, but a remainder: exactly what's left over after everyone takes what they're owed."
+  },
+  {
+   "tip": "cheie",
+   "text": "Assets = Liabilities + Equity. The equality holds because the last term is defined as the difference of the first two."
+  },
+  {
+   "tip": "p",
+   "text": "For the company from the previous chapters: it has 75,000 lei (cash and receivables), owes 5,000 to a supplier, so equity is 70,000 — the 30,000 contributed by the business owner plus the 40,000 earned. It couldn't be otherwise: if it collected everything and paid everything tomorrow, exactly 70,000 would remain in the company."
+  },
+  {
+   "tip": "p",
+   "text": "That's why a trial balance that doesn't close doesn't signal a \"calculation mismatch.\" It signals that somewhere something was written that can't be true about the world: either the company has an asset that comes from nowhere, or it owes someone something it never received."
+  },
+  {
+   "tip": "h",
+   "text": "The same equality, seen twice"
+  },
+  {
+   "tip": "p",
+   "text": "A beginner has the impression that these are two different checks: one at the balance sheet, where assets must equal liabilities plus equity, and another at the trial balance, where the debit total must equal the credit total. They are the same equality, viewed from two places."
+  },
+  {
+   "tip": "p",
+   "text": "The balance sheet shows it through balances, at a given date. The trial balance shows it through movements, over a period. The first follows from the second: if every transaction added equal amounts to both columns — chapter 2 — then the resulting balances will also be equal in total."
+  },
+  {
+   "tip": "h",
+   "text": "The trial balance's four equalities"
+  },
+  {
+   "tip": "p",
+   "text": "The Romanian trial balance doesn't check a single pair of totals, but four. It's not redundancy: each pair catches something different, and the point where the first equality breaks tells you where to look."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What each pair checks",
+   "cap": [
+    "Equality",
+    "Breaks when"
+   ],
+   "randuri": [
+    [
+     "Opening debit balances = credit balances",
+     "the carry-forward was unbalanced — the problem predates the period"
+    ],
+    [
+     "Debit turnover = credit turnover",
+     "a transaction during the period was recorded on only one side"
+    ],
+    [
+     "Total debit amounts = credit amounts",
+     "confirms the first two together — if they hold, this one holds too"
+    ],
+    [
+     "Closing debit balances = credit balances",
+     "the consequence of the above; it doesn't break on its own"
+    ]
+   ],
+   "nota": "The first equality cleanly separates the two worlds: if it doesn't hold, the mistake isn't from this month."
+  },
+  {
+   "tip": "p",
+   "text": "That's exactly the practical usefulness: before searching through three hundred transactions of the month, look at the first pair. If the opening balances don't reconcile, the current month is innocent."
+  },
+  {
+   "tip": "h",
+   "text": "When it doesn't close: how to search"
+  },
+  {
+   "tip": "p",
+   "text": "Here an old craft comes in, predating calculators, and still valid today. The size of the difference often tells you what kind of mistake was made — and shortens the search from hours to minutes."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What the difference tells you about the mistake",
+   "cap": [
+    "If the difference…",
+    "Look for…"
+   ],
+   "randuri": [
+    [
+     "is exactly divisible by 9",
+     "two transposed digits: 54 written as 45, 1,200 written as 2,100"
+    ],
+    [
+     "is exactly double a known amount",
+     "an amount recorded on the wrong side — divide it by two and search for that number"
+    ],
+    [
+     "equals a round amount from the documents",
+     "a transaction recorded on only one side"
+    ],
+    [
+     "is small and odd (a few lei)",
+     "a rounding from a calculation, not a missing entry"
+    ]
+   ],
+   "nota": "The first rule has a simple arithmetic explanation: transposing two adjacent digits always changes the number by a multiple of nine."
+  },
+  {
+   "tip": "p",
+   "text": "The double-amount rule is worth understanding, since it's the most commonly used. If an amount of 1,210 lei was recorded on the credit side instead of the debit side, the debit column loses 1,210 and the credit column gains 1,210: the difference isn't 1,210, but 2,420. So when you see an imbalance, divide it by two and look for that number among the period's transactions — most of the time you'll find it right away."
+  },
+  {
+   "tip": "h",
+   "text": "What the equality doesn't prove"
+  },
+  {
+   "tip": "p",
+   "text": "Chapter 2 already said this, but it must be repeated here, since we've just spent a page praising the equality: the fact that the trial balance closes doesn't mean the figures are correct. It only means they're symmetrical."
+  },
+  {
+   "tip": "p",
+   "text": "A wrong amount on both sides, a transaction recorded in the wrong account, a document forgotten entirely — none of these disturb the equality. The trial balance is a detector of asymmetry, not of truth, and chapter 33 shows what else must be checked."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The four equalities are not independent controls, but a single property manifested in four places: if double-entry bookkeeping was respected, all four hold, and if it was violated even once, those containing that period break together. This leads to a diagnostic consequence worth relying on: if only the first pair breaks, it points to a problem in the carried-forward balances or in the roll-forward, not in current transactions — in which case the correction is made against retained earnings, while respecting the inviolability of the opening balance sheet. A second tool, finer than the overall equality, is checking the subledger-to-ledger correlation for third-party and inventory accounts: it catches exactly the class of errors the equality is blind to, since an amount recorded against the wrong counterpart leaves the totals intact. Finally, watch out for dual-nature accounts when preparing the trial balance: 121 and 1171 can have a balance on either side, and forcing their presentation into a single column — a practice found in some data migrations — produces an artificial imbalance that has no cause in the actual entries."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "Phase one has ended. The company knows who it is, what tax regime it has, what figures it starts from, and those figures balance. Nothing that follows requires returning to these pages unless something real changes in the company."
+  },
+  {
+   "tip": "p",
+   "text": "From here begins the day-to-day work, and its first rule is also the strictest in the whole book: nothing enters accounting without a document. That's phase two, and the next part."
+  },
+  {
+   "tip": "h",
+   "text": "What \"doesn't close\" means on day one"
+  },
+  {
+   "tip": "p",
+   "text": "The equality must hold from day one, and the causes for it not holding at opening are few and identifiable. They're worth listing, since each has a different remedy."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Why an opening doesn't balance",
+   "cap": [
+    "Cause",
+    "How to recognize it",
+    "Remedy"
+   ],
+   "randuri": [
+    [
+     "A balance carried forward on the wrong side",
+     "the difference is double that balance",
+     "look for the amount equal to half the difference"
+    ],
+    [
+     "Digits transposed during entry",
+     "the difference is exactly divisible by 9",
+     "compare with the document, digit by digit"
+    ],
+    [
+     "An account forgotten entirely",
+     "the difference is exactly its balance",
+     "compare the chart of accounts with the submitted trial balance"
+    ],
+    [
+     "Accumulated roundings",
+     "the difference is a matter of a few lei",
+     "correct against the account with the highest value"
+    ]
+   ],
+   "nota": "The first two rules are a century old and shorten the search from hours to minutes. They're not superstitions: they follow from decimal arithmetic."
+  },
+  {
+   "tip": "p",
+   "text": "The rule of the difference divisible by nine is worth understanding, not memorizing. If you transpose two adjacent digits — writing 5,480 instead of 4,580 — the difference is 900, that is, 9 × 100. Any transposition produces a multiple of nine, regardless of the number's size. So a difference of 6,300 in a trial balance that doesn't close is, almost certainly, a pair of digits swapped with each other."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 8.1 — find the error from the difference",
+   "enunt": [
+    "An opening trial balance doesn't close: the debit total is 184,500, the credit total 189,000.",
+    "(a) What is the difference and what does it tell you? (b) What do you look for first?"
+   ],
+   "rezolvare": [
+    "(a) The difference is 4,500. It's exactly divisible by 9 (4,500 ÷ 9 = 500), so it's very likely a digit transposition.",
+    "(b) Look for a balance in which a pair of adjacent digits would produce a difference of 4,500. For example, 9,000 written as 4,500 gives 4,500; or 27,500 written as 23,000. It's most efficient to compare amounts with the source document, starting with the largest ones.",
+    "If the difference had instead been 4,500 and the trial balance had contained an account with a balance of exactly 2,250, the first hypothesis would have been different: a balance recorded on the wrong side — since moving an amount from one side to the other changes the total by double its value.",
+    "The method, in three steps, valid for any trial balance: divide the difference by 9; if it comes out exact, look for transpositions. Divide it by 2; if the result is an existing balance, you've found the wrong side. If neither, look for a missing account."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Assets = Liabilities + Equity. The equality holds because the third term is defined as the difference of the first two — it's a definition, not an imposed rule.",
+    "The equality in the balance sheet and the one in the trial balance are the same, viewed through balances versus through movements, respectively.",
+    "The trial balance has four equalities; the breaking of the first shows that the problem predates the current period.",
+    "The difference tells you what to look for: divisible by 9 — transposed digits; double an amount — wrong side; round amount — a missing entry.",
+    "The equality is a detector of asymmetry, not of truth."
+   ]
+  }
+ ]
+}

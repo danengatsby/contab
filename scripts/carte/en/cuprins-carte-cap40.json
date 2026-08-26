@@ -1,0 +1,259 @@
+{
+ "parte": "Part IX · Closing · phases 10–11",
+ "nr": "40",
+ "titlu": "Status is derived from data, not checked off",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "This chapter is about a design decision that looks technical but is, in fact, a matter of accounting truth. The question is how a system — or a person — knows that a closing step is finished."
+  },
+  {
+   "tip": "p",
+   "text": "There are two possible answers, and the difference between them is bigger than it seems."
+  },
+  {
+   "tip": "h",
+   "text": "The checkbox and derivation"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Two ways of knowing",
+   "cap": [
+    "Method",
+    "How it works",
+    "What happens when the data changes"
+   ],
+   "randuri": [
+    [
+     "Manual checkbox",
+     "someone declares the step finished",
+     "the checkbox stays checked — but it's no longer true"
+    ],
+    [
+     "Derived status",
+     "it's recalculated from the data every time it's viewed",
+     "the status changes along with the data"
+    ]
+   ],
+   "nota": "The first is more convenient and faster. The second is the only one that cannot lie."
+  },
+  {
+   "tip": "p",
+   "text": "A checkbox is a statement about a moment in the past: at that time, that thing was done. The problem is that the statement has no expiration date, while the reality underneath it keeps changing."
+  },
+  {
+   "tip": "cheie",
+   "text": "A manual checkbox remains true even after the data beneath it has become false. A closing workflow that lies is worse than having none at all."
+  },
+  {
+   "tip": "h",
+   "text": "What the lie looks like, concretely"
+  },
+  {
+   "tip": "p",
+   "text": "Three common situations, all encountered at any company."
+  },
+  {
+   "tip": "p",
+   "text": "The bank statement was reconciled on the 5th of the month and checked as finished. On the 7th, an old invoice arrives, gets recorded, and one of the payments already reconciled turns out to be for it. The reconciliation is no longer complete — but the checkbox is still there, green."
+  },
+  {
+   "tip": "p",
+   "text": "The tax return was filed and checked off. An error is then discovered, an amended return is filed, but someone forgets to update the status. The system shows \"filed\" — which is true, but is no longer the relevant information."
+  },
+  {
+   "tip": "p",
+   "text": "The documents were declared complete. A week later, three more invoices from the same month are recorded. The checkbox doesn't turn back on, because nothing is tracking it."
+  },
+  {
+   "tip": "h",
+   "text": "How derivation works instead"
+  },
+  {
+   "tip": "p",
+   "text": "A derived status is not remembered: it is calculated, every time it is viewed, from the data existing at that moment."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The same steps, asked differently",
+   "cap": [
+    "Step",
+    "The question posed to the data"
+   ],
+   "randuri": [
+    [
+     "Complete documents",
+     "are there still drafts or documents without a vendor for this month?"
+    ],
+    [
+     "Statement reconciled",
+     "are there still unmatched cash transactions?"
+    ],
+    [
+     "VAT settled",
+     "does the settlement entry exist and does it cover all of the month's transactions?"
+    ],
+    [
+     "Returns filed",
+     "does every expected return have proof of filing?"
+    ]
+   ],
+   "nota": "None of the questions refer to what someone did. All of them refer to what is now."
+  },
+  {
+   "tip": "p",
+   "text": "The practical advantage is that the status corrects itself. The three situations above — the late invoice, the amended return, the documents added later — automatically make the step open again, without anyone having to remember."
+  },
+  {
+   "tip": "h",
+   "text": "What is still persisted"
+  },
+  {
+   "tip": "p",
+   "text": "The principle doesn't mean nothing gets written down. It means that only what cannot be deduced gets written down — and those things are few and of a different nature."
+  },
+  {
+   "tip": "p",
+   "text": "Who is responsible for a step. Until when. What was observed along the way. Who approved the month and when. Whether closing was forced past an unfinished step, and for what reason. All of these are human decisions: they exist nowhere in the data, so they must be recorded."
+  },
+  {
+   "tip": "p",
+   "text": "The distinction is worth keeping in mind beyond accounting. In a well-built system, decisions are remembered and facts are recalculated. Whoever remembers the facts will sooner or later end up with two versions of the same truth."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The principle has a direct counterpart in the internal control requirements of accounting regulations: procedures must ensure that the reported information reflects the actual situation as of the reporting date, and key controls must be repeatable and documented. Three consequences. First: a manually completed checklist does not, in itself, constitute proof that the control was performed — the proof is the result of the control, i.e. the document or report showing what was compared and what the outcome was; the auditor asks for the latter, not the former. Second: for closings already approved, the ability to reconstruct the status as of the approval date is distinct from the current status, and the two must be able to coexist — a report recalculated today on data modified in the meantime does not prove what was approved then, which is why period locking, covered in the next chapter, is the necessary complement of derivation. Third: elements that cannot be deduced — responsibilities, internal deadlines, professional judgments, the reasons for overrides — are part of the closing documentation and belong in the period's file; their absence turns any later reconstruction into a reconstruction from memory."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "Derivation solves the problem of the status that lies. But it raises another one: if everything is always recalculated, what exactly makes a closed month stay closed? The answer is the next chapter."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 40.1 — the checkbox that lies",
+   "enunt": [
+    "On the 5th of the month, the bank reconciliation is finished and someone checks the step as done. On the 7th, an old invoice arrives from a vendor; it gets recorded, and one of the payments already reconciled turns out to be for it.",
+    "(a) What does the checkbox show? (b) What would a derived status show? (c) What would happen if no one notices?"
+   ],
+   "rezolvare": [
+    "(a) The checkbox still shows green. It was true on the 5th and has no way of knowing that the data beneath it has changed.",
+    "(b) A derived status recalculates, every time it is viewed, the answer to the question \"are there still unmatched cash transactions?\". On the 7th, the answer becomes yes, and the step reopens on its own.",
+    "(c) The month is closed with an incomplete reconciliation. The consequence isn't immediately visible: it shows up when the next month's reconciliation doesn't balance, or in the aging report, where the vendor appears with a liability already paid.",
+    "The principle, valid beyond accounting: remember DECISIONS (who is responsible, who approved, why it was forced) and recalculate FACTS. Whoever remembers the facts will sooner or later end up with two versions of the same truth."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "How to write a status that cannot lie"
+  },
+  {
+   "tip": "p",
+   "text": "The difference between a checkbox and a derived status is clearest in how each one is written. A checkbox is a stored value: \"step 2 = finished\". A derived status is a question posed to the data, every time."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The same information, two implementations",
+   "cap": [
+    "",
+    "Checkbox",
+    "Derived status"
+   ],
+   "randuri": [
+    [
+     "What is stored",
+     "\"finished\", with a date",
+     "nothing"
+    ],
+    [
+     "When it changes",
+     "when someone changes it",
+     "when the data changes"
+    ],
+    [
+     "The cost of a read",
+     "zero",
+     "a query"
+    ],
+    [
+     "What happens with a new document",
+     "nothing",
+     "the step reopens"
+    ],
+    [
+     "What happens when restoring a backup",
+     "stays as it was",
+     "recalculates correctly"
+    ]
+   ],
+   "nota": "The last row is the deciding one: after a restore, checkboxes describe a reality that no longer exists, while derived statuses fix themselves."
+  },
+  {
+   "tip": "p",
+   "text": "The price is a query on every read, and it does get paid: for a company with tens of thousands of records, the question \"are there still unrecorded documents this month?\" isn't free. The usual compromise is caching the result for a few seconds, not forever — a cache that expires on its own can't lag behind reality by more than its interval."
+  },
+  {
+   "tip": "h",
+   "text": "Where the rule applies, beyond closing"
+  },
+  {
+   "tip": "p",
+   "text": "Once stated, the rule is recognizable in many places, and accounting is full of them."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What is derived and what is persisted, in the application",
+   "cap": [
+    "Is DERIVED (facts)",
+    "Is PERSISTED (decisions)"
+   ],
+   "randuri": [
+    [
+     "the balance of an account",
+     "the choice of inventory valuation method"
+    ],
+    [
+     "whether a return is due",
+     "proof that it was filed (the receipt)"
+    ],
+    [
+     "whether a receivable is overdue",
+     "the determination that it is doubtful"
+    ],
+    [
+     "whether the month can be closed",
+     "the approval to close"
+    ],
+    [
+     "how much the month's depreciation is",
+     "the useful life chosen from the schedule"
+    ]
+   ],
+   "nota": "The column on the left is recalculated. The one on the right cannot be recalculated, because it doesn't follow from data — it follows from a person."
+  },
+  {
+   "tip": "cheie",
+   "text": "The test that separates them: if you delete the value and can rebuild it exactly from the data, it's a fact and must be derived. If you can't rebuild it, it's a decision and must be kept — along with who made it and when."
+  },
+  {
+   "tip": "p",
+   "text": "Applied to accounting, the test also explains why the month's file contains written notes, not just numbers: numbers can be recalculated anytime, judgments cannot. An allowance for receivables can be rebuilt from data; the reason the receivable was considered doubtful cannot."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "A checkbox is a statement about the past; the data beneath it keeps changing, and the checkbox never finds out.",
+    "Derived status is recalculated on every view, so it cannot lag behind reality.",
+    "Three common situations make any checkbox false: the late invoice, the amended return, documents added afterward.",
+    "A derived step reopens on its own, without anyone having to remember it.",
+    "Only human decisions are recorded: responsible party, deadline, note, approval, reason for the override.",
+    "The general rule: remember decisions, recalculate facts."
+   ]
+  }
+ ]
+}

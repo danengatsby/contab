@@ -6,9 +6,9 @@ cd /d "%~dp0"
 rem ─────────────────────────────────────────────────────────────────────────
 rem  Pornire locala, fara nicio instalare: Node vine in pachet (node.exe).
 rem
-rem  Se cheama DIRECT `node server.js`, nu `npm start`: `npm start` declanseaza
-rem  `prestart`, adica intreaga suita de teste la fiecare pornire. Corect pe
-rem  server, absurd pe calculatorul tau.
+rem  Se cheama DIRECT `node server.js`; garda de deploy din proces recunoaste
+rem  marcajul pozitiv al distributiei. `npm start` ar rula in plus verificarea
+rem  sintactica rapida, utila in depozit, dar inutila pentru arhiva deja probata.
 rem
 rem  Verificarile de mai jos exista fiindca prima varianta dadea un mesaj GRESIT:
 rem  cand `node.exe` lipsea, spunea "verifica drepturile de scriere" si trimitea

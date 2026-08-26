@@ -8,7 +8,14 @@ const migrations = require('./migrations');
 // Cerut SUS, nu in `save()`: e calea fierbinte a scrierii. Nu inchide ciclu — `metrics` nu cere
 // niciun modul al aplicatiei (doar `perf_hooks` si, in functie, `fs`/`path`).
 const metrics = require('./metrics');
+const duplicateGuard = require('./duplicateGuard');
+const permissions = require('./permissions');
+const fiscal = require('./fiscal');
 const { stringifyDb, naturalCompare, validIsoDate, validPeriod } = require('./util');
+
+// Capabilitate privata, imposibil de construit dintr-un body HTTP sau din alt modul. Doar
+// importFirma(), dupa validarea integrala a pachetului, poate reconstitui o derogare istorica.
+const RESTORE_DUPLICATE_OVERRIDE = Symbol('restore-validated-duplicate-override');
 
 // CONTAB_DATA_DIR: izolare pentru teste (backup/restore, uploads) — implicit data/ din repo.
 const DATA_DIR = process.env.CONTAB_DATA_DIR || path.join(__dirname, '..', 'data');
@@ -49,7 +56,7 @@ const FIRMA_EDITABLE = new Set([
   'accentColor', 'pdfLayout', 'pdfFooter', 'asociatiText',                          // prezentare facturi/PDF
   // Antetul situatiilor financiare anuale (S1120/S1121). Valorile admise sunt cele din
   // validatorul oficial — vezi src/bilantNomenclator.js; codul de judet se DEDUCE din `judet`.
-  'caenE', 'codTeritorial', 'formaProprietate', 'administrator',                    // identificare in bilant
+  'categorieRaportare', 'caenE', 'codTeritorial', 'formaProprietate', 'administrator', // identificare in bilant
   'intocmitNume', 'intocmitCalitate', 'intocmitNr',                                 // cine intocmeste (regula R26)
   'auditStatut', 'auditorNume', 'auditorNr', 'auditorCif',                          // statutul de audit
 ]);
@@ -70,6 +77,9 @@ function defaultFirma(id) {
     oras: 'Bucuresti',
     judet: 'RO-B',
     tvaPlatitor: true,
+    // Firmele noi pornesc exclusiv ca spatii de TEST. Trecerea la date reale nu este un camp
+    // editabil generic: se face numai prin /api/legal/mode, cu DPA versionat si poarta GDPR.
+    dataMode: 'test',
     // De cand exista firma IN APLICATIE. Calendarul fiscal se deriva din PROFIL, nu din date
     // (multe declaratii se depun „pe zero"), deci fara reperul asta o firma creata azi aparea
     // imediat cu restante pentru lunile dinaintea ei. Vezi declarations.primaLunaUrmarita.
@@ -78,6 +88,7 @@ function defaultFirma(id) {
     // Firmele dinaintea campului nu-l au: ele raman pe comportamentul vechi, ca sa nu ascundem
     // retroactiv restante adevarate.
     createdAt: new Date().toISOString(),
+    bankReconciliationFrom: new Date().toISOString().slice(0, 7),
   };
 }
 
@@ -98,13 +109,24 @@ const DEFAULT_DB = {
   partners: {},        // { [firmaId]: { [cui]: {...} } }
   openingBalances: {}, // { [firmaId]: { [cont]: { d, c } } }
   openingAnalytic: [], // { firmaId, cont, partener, cui, d, c }
+  openItemAllocations: [], // alocari append-only plata -> document, cu suma si stare activa/revocata
+  openItemReconciliations: [], // fotografii zilnice ale controlului registru documente deschise = carte mare
+  bankStatements: [],  // identitatea extrasului: fisier/hash, IBAN, moneda, interval si solduri
+  bankTransactions: [], // liniile extrasului cu stare propusa/punctata/postata/exclusa si articol legat
   audit: [],           // { id, ts, userId, username, firmaId, action, detail }
   messages: [],        // { id, userId, fromAdmin, text, author, createdAt, readByUser, readByAdmin } - suport user<->admin
   recurringInvoices: [], // { id, firmaId, tip, partener, cuiPartener, fields, frecventa, ziua, activ, startDate, lastGenerated } - facturi recurente
   cursuriBnr: [],      // { id: 'YYYY-MM-DD', cursuri: { EUR: 5.231, ... } } - curs oficial BNR, GLOBAL (nu per firma)
+  fiscalRuleSets: [],  // FiscalRuleSet-uri publicate ulterior, append-only; hash-ul se verifica la load
   recipes: [],         // { id, firmaId, nume, productId, gestiuneId, cantitateBaza, costUnitar, materiale:[{productId, gestiuneId, cantitate}] } - retete/BOM productie
   budgets: [],         // { id, firmaId, an, cont, suma } - buget anual per cont (clasa 6/7)
-  declarations: [],    // { id, firmaId, tip, period, status, generatedAt, submittedAt, recipisa, note } - registrul depunerilor
+  cashForecastSnapshots: [], // previziuni 13 săptămâni imuabile, baza backtestingului
+  declarations: [],    // dosar unic: profil, artefacte, aprobari pe hash, stari append-only, depuneri si recipise
+  annualArchives: [],  // ZIP-uri anuale sigilate, versionate, pastrate exact (base64 + manifest semnat)
+  fiscal_profile_history: [], // tabel temporal: { id, firmaId, validFrom, validTo, recordedAt, values, ... }
+  balance_category_history: [], // confirmari anuale versionate: indicatori, categorie, justificare, actor si hash
+  balance_sheet_mappings: [], // metadate anuale append-only: scadenta, portiune curenta, afiliere si linii F10/F20
+  balance_sheet_adjustments: [], // ajustari F10 separate de jurnal, aprobate si legate prin SHA-256 de sursa
   closings: [],        // { id, firmaId, period, steps, validari, aprobare, fortata, closedAt } - dosarul inchiderii lunare
   extractInterventions: [], // { id, firmaId, documentId, entryId, diff, controalePicate, partener, format } - corectiile operatorului peste extragere
   leasingContracts: [], // { id, firmaId, denumire, partener, cui, principal, months, dobandaAnuala, metoda, dataPrimeiRate, cotaTva } - contractele de leasing, sursa graficului de rate
@@ -219,9 +241,15 @@ function migrate(d) {
   if (!Array.isArray(d.messages)) d.messages = [];
   if (!Array.isArray(d.recipes)) d.recipes = [];
   if (!Array.isArray(d.budgets)) d.budgets = [];
+  if (!Array.isArray(d.cashForecastSnapshots)) d.cashForecastSnapshots = [];
   if (!Array.isArray(d.recurringInvoices)) d.recurringInvoices = [];
   if (!Array.isArray(d.cursuriBnr)) d.cursuriBnr = [];
   if (!Array.isArray(d.declarations)) d.declarations = [];
+  if (!Array.isArray(d.fiscal_profile_history)) d.fiscal_profile_history = [];
+  if (!Array.isArray(d.balance_category_history)) d.balance_category_history = [];
+  if (!Array.isArray(d.annualArchives)) d.annualArchives = [];
+  if (!Array.isArray(d.bankStatements)) d.bankStatements = [];
+  if (!Array.isArray(d.bankTransactions)) d.bankTransactions = [];
   if (!Array.isArray(d.closings)) d.closings = [];
   if (!Array.isArray(d.extractInterventions)) d.extractInterventions = [];
   if (!Array.isArray(d.leasingContracts)) d.leasingContracts = [];
@@ -239,10 +267,62 @@ function migrate(d) {
   if (!Array.isArray(d.inventories)) d.inventories = [];
   if (!Array.isArray(d.inventarAnual)) d.inventarAnual = [];
   if (!Array.isArray(d.users)) d.users = [];
+  // Formalizează registrul existent ca dosare unice. Identitatea este derivată din
+  // (firmă, declarație, perioadă), iar două rânduri pentru aceeași cheie opresc încărcarea în loc
+  // să lase `find()` să aleagă arbitrar unul dintre istorice.
+  const filingDossiers = require('./declarations');
+  filingDossiers.assertUniqueDossiers(d);
+  for (const rec of d.declarations) {
+    if (!rec.id) rec.id = 'dcl-legacy-' + filingDossiers.dossierIdentity(rec.firmaId, rec.tip, rec.period).id.slice(3, 27);
+    filingDossiers.ensureDossier(rec, rec.firmaId, rec.tip, rec.period);
+    filingDossiers.ensureStateLedger(rec, rec.firmaId, rec.tip, rec.period);
+  }
+  // Migrare din prima implementare (istoric înglobat în `firma`) către tabelul temporal separat.
+  // Idempotentă: un restart nu dublează reviziile, iar `validTo` este recalculat mecanic.
+  const fp = require('./fiscalProfile');
+  const fiscalProfileMigrationAt = new Date().toISOString();
+  for (const f of d.firme || []) {
+    // Perioadele istorice raman inchise dupa regulile sub care au fost lucrate. Din luna
+    // instalarii acestei versiuni, inchiderea cere insa extras complet si diferenta zero.
+    if (!/^\d{4}-\d{2}$/.test(String(f.bankReconciliationFrom || ''))) f.bankReconciliationFrom = new Date().toISOString().slice(0, 7);
+    const legacy = Array.isArray(f.fiscalHistory) ? f.fiscalHistory : [];
+    for (let i = 0; i < legacy.length; i += 1) {
+      const row = Object.assign({}, legacy[i], { firmaId: f.id });
+      if (!row.id) row.id = 'fpr-migrated-' + f.id + '-' + i;
+      if (!d.fiscal_profile_history.some((x) => Number(x.firmaId) === Number(f.id) && String(x.id) === String(row.id))) {
+        d.fiscal_profile_history.push(row);
+      }
+    }
+    delete f.fiscalHistory;
+  }
+  for (const f of d.firme || []) {
+    const other = d.fiscal_profile_history.filter((x) => Number(x.firmaId) !== Number(f.id));
+    const ownRaw = d.fiscal_profile_history.filter((x) => Number(x.firmaId) === Number(f.id)).map((row) => {
+      const explicit = fp.recordedAtOf({ recordedAt: row.recordedAt });
+      const legacyCreated = fp.recordedAtOf({ createdAt: row.createdAt });
+      const recordedAt = explicit || legacyCreated || fiscalProfileMigrationAt;
+      return Object.assign({}, row, {
+        recordedAt, createdAt: row.createdAt || recordedAt,
+        recordedAtSource: row.recordedAtSource || (explicit ? 'explicit'
+          : (legacyCreated ? 'legacy.createdAt' : 'database-migration')),
+      });
+    });
+    const own = fp.withIntervals(ownRaw);
+    d.fiscal_profile_history = other.concat(own);
+  }
   if (!d.users.length) {
-    const { salt, hash } = auth.hashPassword('admin');
+    const configured = process.env.CONTAB_INITIAL_ADMIN_PASSWORD;
+    if (configured) {
+      const invalid = auth.validatePassword(configured, { username: 'admin' });
+      if (invalid) throw new Error('CONTAB_INITIAL_ADMIN_PASSWORD este invalidă: ' + invalid);
+    }
+    // Nu exista credential implicit predictibil. Instalatorul poate furniza parola o singura
+    // data prin env; altfel se genereaza una aleatoare si se afiseaza numai la bootstrap.
+    const initialPassword = configured || crypto.randomBytes(24).toString('base64url');
+    const { salt, hash } = auth.hashPassword(initialPassword);
     d.users.push({ id: 1, username: 'admin', salt, hash, role: 'admin', firme: [], firmaActiva: d.firmaActiva, mustChange: true });
-    console.log('[contab] utilizator initial creat: admin / admin — schimba parola din Setari!');
+    if (configured) console.log('[contab] utilizator initial creat: admin (parola bootstrap din CONTAB_INITIAL_ADMIN_PASSWORD; schimbare obligatorie).');
+    else console.log('[contab] utilizator initial creat: admin / ' + initialPassword + ' — parola bootstrap aleatoare, schimbare obligatorie.');
   }
   // Securitate: orice cont care are INCA parola implicita „admin" este obligat sa o schimbe
   // (re-armeaza flagul chiar daca a fost stins candva fara schimbarea reala a parolei).
@@ -286,7 +366,7 @@ function loadJson() {
     try { db = migrate(applyDefaults(JSON.parse(fs.readFileSync(JSON_FILE, 'utf8')))); }
     catch (e) { db = JSON.parse(JSON.stringify(DEFAULT_DB)); }
   } else {
-    // fisier nou: migrate() creeaza utilizatorul initial admin/admin + authSecret
+    // fisier nou: migrate() creeaza administratorul cu parolă bootstrap aleatoare/configurată + authSecret
     // (fara el, prima pornire ramanea fara cont si fara semnarea sesiunilor)
     db = migrate(applyDefaults({}));
     writeJson(JSON_FILE, db);
@@ -341,7 +421,7 @@ function load() {
         console.log('[contab] Migrare unica db.json -> SQLite efectuata (copie de siguranta: data/db.pre-sqlite.json).');
       }
     } else {
-      // instalare noua / teste — migrate() creeaza utilizatorul initial admin/admin + authSecret
+      // instalare noua / teste — migrate() creeaza administratorul cu parolă bootstrap sigură + authSecret
       // (fara el, prima pornire pe SQLite gol ramanea fara niciun cont de autentificare)
       db = migrate(applyDefaults({}));
     }
@@ -404,8 +484,17 @@ function flushStore() {
 }
 
 // Restaurare dintr-un fisier JSON (folosita de ruta /api/restore): seteaza in memorie + persista in driver.
+function validateRestoreGraph(parsed) {
+  if (!parsed || !Array.isArray(parsed.firme) || !Array.isArray(parsed.users)) {
+    const e = new Error('Nu pare o bază de date Contabo validă (lipsesc firme/users).'); e.status = 400; throw e;
+  }
+  require('./globalChain').assertGraph(parsed);
+  return parsed;
+}
+
 function restoreFromJson(jsonPath) {
   const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+  validateRestoreGraph(parsed); // fail-closed înainte de revizie, RAM, backup sau persistare
   rev += 1; // baza e INLOCUITA integral — orice memo calculat pe cea veche devine invalid
   db = migrate(applyDefaults(parsed));
   if (DRIVER !== 'json') { store.resetDirty(); store.persist(db); }
@@ -489,10 +578,12 @@ function entryShapeProblem(entry) {
  * Adauga un articol contabil, dupa ce ii verifica CONTURILE fata de planul de conturi.
  * Eroarea poarta `status` (contractul stratului de servicii), deci rutele o traduc in 400.
  * @param {object} entry articolul complet (cu `lines`)
- * @param {object} [o] `{ context, allowClosedPeriod }` — exceptia de perioada este rezervata
- * restaurarii validate a unei firme; fluxurile operationale nu trebuie sa o foloseasca
+ * @param {object} [o] `{ context, allowClosedPeriod, actor, duplicateOverride,
+ * auditDuplicateOverride, restoreValidatedOverride }` — exceptiile de perioada/derogare
+ * istorica sunt rezervate restaurarii validate a unei firme; o derogare NOUA cere rol, motiv,
+ * conflictul exact si audit durabil
  */
-function pushEntry(entry, o) {
+function assertEntryBasics(entry, o) {
   const rele = conturiNecunoscute(entry);
   if (rele.length) {
     const unde = (o && o.context) ? ' (' + o.context + ')' : '';
@@ -514,8 +605,89 @@ function pushEntry(entry, o) {
   if (!(o && o.allowClosedPeriod)) {
     assertPeriodOpen(entry.firmaId, entry.data, (o && o.context) || 'Inregistrarea articolului contabil');
   }
+  return true;
+}
+
+function pushEntry(entry, o) {
+  assertEntryBasics(entry, o);
+  // Poarta centrala garanteaza provenienta temporala inclusiv pentru articolele de sistem care
+  // nu trec prin composeEntry. La storno, amprenta veche ramane ca sursa, iar articolul nou poarta
+  // regulile propriei date. Un an neacoperit este marcat explicit, niciodata completat cu 2026.
+  const temporalRef = fiscal.ruleReferenceAt(entry.data, { allowUncovered: true });
+  if (entry.ruleSetId && entry.fiscalRulesHash
+      && (entry.ruleSetId !== temporalRef.ruleSetId || entry.fiscalRulesHash !== temporalRef.fiscalRulesHash)) {
+    entry.sourceRuleSetId = entry.ruleSetId; entry.sourceFiscalRulesHash = entry.fiscalRulesHash;
+  }
+  entry.ruleSetId = temporalRef.ruleSetId; entry.fiscalRulesHash = temporalRef.fiscalRulesHash;
+  if (temporalRef.fiscalRulesCovered === false) entry.fiscalRulesCovered = false;
+  else delete entry.fiscalRulesCovered;
+  const found = duplicateGuard.conflict(get().entries, entry);
+  const override = o && o.duplicateOverride;
+  const restoredOverride = o && o.restoreValidatedOverride === RESTORE_DUPLICATE_OVERRIDE
+    ? entry.duplicateOverride : null;
+  if (found && !override && !restoredOverride) throw duplicateGuard.duplicateError(found, (o && o.context) || 'jurnal');
+  if (found && restoredOverride) {
+    // Nu este o derogare noua: reconstituim una deja persistata intr-un pachet verificat integral.
+    // Totusi poarta centrala reconfirma legatura, ca un apel intern sa nu poata folosi steagul de
+    // restaurare pentru un conflict arbitrar.
+    const reason = String(restoredOverride.reason || '').trim();
+    const keyOverlap = Array.isArray(restoredOverride.keys)
+      && found.keys.some((key) => restoredOverride.keys.includes(key));
+    if (reason.length < 10 || String(restoredOverride.duplicateId || '') !== String(found.duplicate.id)
+        || !keyOverlap) {
+      const err = new Error('Derogarea anti-duplicat istorica nu corespunde conflictului restaurat.');
+      err.status = 400; err.code = 'DUPLICATE_RESTORE_OVERRIDE_INVALID';
+      throw err;
+    }
+  }
+  if (!found && override) {
+    const err = new Error('Derogarea anti-duplicat nu mai corespunde unui conflict activ. Reia salvarea fara derogare.');
+    err.status = 409; err.code = 'DUPLICATE_OVERRIDE_STALE';
+    throw err;
+  }
+  if (found && override) {
+    // Poarta centrala nu accepta un simplu steag venit din client. Confirma atat dreptul rar de
+    // override, cat si ARTICOLUL vazut de aprobator; astfel un retry intarziat nu poate acoperi
+    // tacit un alt conflict aparut intre timp.
+    permissions.assert(o.actor, entry.firmaId, 'control.override', getFirma(entry.firmaId));
+    const reason = String(override.reason || override.motiv || '').trim();
+    if (reason.length < 10) {
+      const err = new Error('Derogarea anti-duplicat cere un motiv concret de cel putin 10 caractere.');
+      err.status = 400; err.code = 'DUPLICATE_OVERRIDE_REASON_REQUIRED';
+      throw err;
+    }
+    if (!override.duplicateId || String(override.duplicateId) !== String(found.duplicate.id)) {
+      const err = new Error('Conflictul anti-duplicat s-a schimbat. Reia verificarea articolului existent.');
+      err.status = 409; err.code = 'DUPLICATE_OVERRIDE_MISMATCH'; err.duplicateId = found.duplicate.id;
+      throw err;
+    }
+    if (typeof o.auditDuplicateOverride !== 'function') {
+      const err = new Error('Derogarea anti-duplicat nu poate fi aplicata fara jurnal de audit durabil.');
+      err.status = 500; err.code = 'DUPLICATE_OVERRIDE_AUDIT_REQUIRED';
+      throw err;
+    }
+    const at = new Date().toISOString();
+    const info = {
+      firmaId: entry.firmaId, entryId: entry.id, duplicateId: found.duplicate.id,
+      duplicateDocument: found.duplicate.document || '', keys: found.keys.slice(), reason: reason.slice(0, 500), at,
+    };
+    // Callback-ul este furnizat doar de ruta autorizata si scrie fail-closed in lantul NDJSON.
+    // Daca auditul nu se poate scrie, articolul NU ajunge in jurnal.
+    o.auditDuplicateOverride(info);
+    entry.duplicateOverride = {
+      duplicateId: info.duplicateId, keys: info.keys, reason: info.reason,
+      by: Number(o.actor && o.actor.id) || null,
+      username: String((o.actor && o.actor.username) || '').slice(0, 80) || null,
+      at,
+    };
+  }
   get().entries.push(entry);
   return entry;
+}
+
+/** Preflight pe aceeasi poarta anti-duplicat folosita obligatoriu de `pushEntry`. */
+function assertEntryUnique(entry, o) {
+  return duplicateGuard.assertUnique(get().entries, entry, (o && o.context) || 'jurnal');
 }
 
 // ───────────────────────── multi-firma ─────────────────────────
@@ -528,7 +700,7 @@ function getFirma(id) {
 
 // PERIOADA INCHISA — garda unica pentru TOATE serviciile de scriere datata (articole, stocuri,
 // inventare, amortizare, salarii). O luna raportata/inchisa (firma.lockedUntil, setata de admin
-// prin /api/period-lock sau la inchiderea de TVA) nu se mai modifica: corectiile se fac EXCLUSIV
+// prin /api/period-lock sau la finalul cockpitului lunar) nu se mai modifica: corectiile se fac EXCLUSIV
 // prin storno intr-o perioada deschisa. `dataOriPerioada` accepta 'YYYY-MM-DD' sau 'YYYY-MM'.
 function assertPeriodOpen(fid, dataOriPerioada, actiune) {
   const firma = getFirma(fid);
@@ -578,6 +750,10 @@ function scoped(firmaId) {
     assets: (d.assets || []).filter((a) => (a.firmaId == null ? d.firmaActiva : a.firmaId) === id),
     angajati: (d.angajati || []).filter((a) => (a.firmaId == null ? d.firmaActiva : a.firmaId) === id),
     payrollHistory: (d.payrollHistory || []).filter((h) => (h.firmaId == null ? d.firmaActiva : h.firmaId) === id),
+    fiscalProfileHistory: (d.fiscal_profile_history || []).filter((h) => Number(h.firmaId) === id),
+    balanceCategoryHistory: (d.balance_category_history || []).filter((h) => Number(h.firmaId) === id),
+    balanceSheetMappings: (d.balance_sheet_mappings || []).filter((h) => Number(h.firmaId) === id),
+    balanceSheetAdjustments: (d.balance_sheet_adjustments || []).filter((h) => Number(h.firmaId) === id),
     products: (d.products || []).filter((p) => (p.firmaId == null ? d.firmaActiva : p.firmaId) === id),
     gestiuni: (d.gestiuni || []).filter((g) => (g.firmaId == null ? d.firmaActiva : g.firmaId) === id),
     stockMovements: (d.stockMovements || []).filter((m) => (m.firmaId == null ? d.firmaActiva : m.firmaId) === id
@@ -587,6 +763,12 @@ function scoped(firmaId) {
     partners: d.partners[id] || {},
     openingBalances: d.openingBalances[id] || {},
     openingAnalytic: (d.openingAnalytic || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
+    openItemAllocations: (d.openItemAllocations || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
+    openItemReconciliations: (d.openItemReconciliations || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
+    bankStatements: (d.bankStatements || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
+    bankTransactions: (d.bankTransactions || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
+    cashForecastSnapshots: (d.cashForecastSnapshots || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
+    leasingContracts: (d.leasingContracts || []).filter((o) => (o.firmaId == null ? d.firmaActiva : o.firmaId) === id),
     // Cursurile BNR sunt globale, dar rapoartele/statul primesc numai vederea scoped. Expunerea
     // read-only aici evita revenirea la un curs fiscal fix in calculele care pornesc din `S(req)`.
     cursuriBnr: d.cursuriBnr || [],
@@ -611,6 +793,10 @@ function exportFirma(fid) {
     partners: d.partners[id] || {},
     openingBalances: d.openingBalances[id] || {},
     openingAnalytic: byFid(d.openingAnalytic),
+    openItemAllocations: byFid(d.openItemAllocations),
+    openItemReconciliations: byFid(d.openItemReconciliations),
+    bankStatements: byFid(d.bankStatements),
+    bankTransactions: byFid(d.bankTransactions),
     assets: byFid(d.assets),
     products: byFid(d.products),
     gestiuni: byFid(d.gestiuni),
@@ -619,10 +805,16 @@ function exportFirma(fid) {
     inventarAnual: byFid(d.inventarAnual),
     angajati: byFid(d.angajati),
     payrollHistory: byFid(d.payrollHistory),
+    fiscal_profile_history: byFid(d.fiscal_profile_history),
+    balance_category_history: byFid(d.balance_category_history),
+    balance_sheet_mappings: byFid(d.balance_sheet_mappings),
+    balance_sheet_adjustments: byFid(d.balance_sheet_adjustments),
     recurringInvoices: byFid(d.recurringInvoices),
     recipes: byFid(d.recipes),
     budgets: byFid(d.budgets),
+    cashForecastSnapshots: byFid(d.cashForecastSnapshots),
     declarations: byFid(d.declarations),
+    annualArchives: byFid(d.annualArchives),
     closings: byFid(d.closings),
     extractInterventions: byFid(d.extractInterventions),
     leasingContracts: byFid(d.leasingContracts),
@@ -632,7 +824,7 @@ function exportFirma(fid) {
 const FIRMA_IMPORT_COLLS = [
   'entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni',
   'stockMovements', 'inventories', 'inventarAnual', 'openingAnalytic', 'recurringInvoices',
-  'recipes', 'budgets', 'declarations', 'closings', 'extractInterventions', 'leasingContracts',
+  'openItemAllocations', 'openItemReconciliations', 'bankStatements', 'bankTransactions', 'recipes', 'budgets', 'cashForecastSnapshots', 'declarations', 'annualArchives', 'fiscal_profile_history', 'balance_category_history', 'balance_sheet_mappings', 'balance_sheet_adjustments', 'closings', 'extractInterventions', 'leasingContracts',
 ];
 const FIRMA_IMPORT_ID_COLLS = FIRMA_IMPORT_COLLS.filter((k) => k !== 'openingAnalytic');
 const FIRMA_IMPORT_MAX_ITEMS = 500000;
@@ -713,6 +905,15 @@ function validateFirmaBundle(input) {
     ref(e.stocMovementId, 'stockMovements', 'Miscarea de stoc canonica a articolului ' + e.id, false);
     ref(e.stornoOf, 'entries', 'Referinta storno a articolului ' + e.id, false);
     ref(e.stornoBy, 'entries', 'Nota storno a articolului ' + e.id, false);
+    ref(e.bankStatementId, 'bankStatements', 'Extrasul bancar al articolului ' + e.id, false);
+    ref(e.bankTransactionId, 'bankTransactions', 'Tranzactia bancara a articolului ' + e.id, false);
+    if (e.duplicateOverride != null) {
+      const ov = needObject(e.duplicateOverride, 'Derogarea anti-duplicat a articolului ' + e.id);
+      ref(ov.duplicateId, 'entries', 'Articolul original al derogarii ' + e.id, true);
+      if (String(ov.duplicateId) === String(e.id)) firmaImportError('Derogarea articolului ' + e.id + ' se refera la el insusi.');
+      if (String(ov.reason || '').trim().length < 10) firmaImportError('Derogarea articolului ' + e.id + ' nu are un motiv complet.');
+      if (!Array.isArray(ov.keys) || !ov.keys.length) firmaImportError('Derogarea articolului ' + e.id + ' nu pastreaza cheia conflictului.');
+    }
     for (const mid of needList(e.stocMovementIds, 'Miscarile de stoc ale articolului ' + e.id)) ref(mid, 'stockMovements', 'Miscarea de stoc a articolului ' + e.id, true);
     if (e.leasingRef != null) {
       const lr = needObject(e.leasingRef, 'Referinta de leasing a articolului ' + e.id);
@@ -720,6 +921,52 @@ function validateFirmaBundle(input) {
       ref(lr.contractId, 'leasingContracts', 'Contractul de leasing al articolului ' + e.id, true);
       if (!validPeriod(lr.period)) firmaImportError('Luna ratei de leasing din articolul ' + e.id + ' este invalida.');
     }
+  }
+  for (const a of b.openItemAllocations) {
+    ref(a.documentId, 'entries', 'Documentul alocarii ' + a.id, true);
+    ref(a.paymentId, 'entries', 'Plata alocarii ' + a.id, true);
+    if (!Number.isFinite(Number(a.amount)) || Number(a.amount) <= 0) firmaImportError('Alocarea ' + a.id + ' nu are o suma pozitiva.');
+  }
+  for (const s of b.bankStatements) ref(s.documentId, 'documents', 'Fisierul extrasului ' + s.id, false);
+  for (const t of b.bankTransactions) {
+    ref(t.statementId, 'bankStatements', 'Extrasul tranzactiei bancare ' + t.id, true);
+    ref(t.entryId, 'entries', 'Articolul tranzactiei bancare ' + t.id, false);
+    ref(t.linkedEntryId, 'entries', 'Articolul legat la tranzactia exclusa ' + t.id, false);
+    ref(t.duplicateOf, 'bankTransactions', 'Dublura tranzactiei bancare ' + t.id, false);
+    if (t.proposal && Array.isArray(t.proposal.stinge)) for (const id of t.proposal.stinge) ref(id, 'entries', 'Documentul punctat de tranzactia ' + t.id, true);
+  }
+  const annualIntegrity = require('./annualArchiveIntegrity');
+  for (const archive of b.annualArchives) {
+    const check = annualIntegrity.verifyStored(archive);
+    if (!check.ok) firmaImportError('Dosarul anual ' + String(archive.year || '?') + ' v'
+      + String(archive.version || '?') + ' este invalid: ' + check.reason + '.');
+    if (Number(archive.firmaId) !== Number(b.firma.id)) firmaImportError('Dosarul anual '
+      + String(archive.year || '?') + ' nu aparține identității firmei din pachet.');
+  }
+  const cash13 = require('./cashForecast13Weeks');
+  for (const snapshot of b.cashForecastSnapshots) if (!cash13.verifySnapshot(snapshot)) {
+    firmaImportError('Fotografia cash-flow ' + String(snapshot.id || '?') + ' este coruptă sau incompletă.');
+  }
+  const fiscalHistory = require('./fiscalProfile');
+  for (const revision of b.fiscal_profile_history) {
+    if (!validIsoDate(String(revision.validFrom || '')) || !revision.values
+        || typeof revision.values !== 'object' || Array.isArray(revision.values)) {
+      firmaImportError('Revizia profilului fiscal ' + String(revision.id || '?')
+        + ' nu are validFrom și fotografia completă valide.');
+    }
+    if (revision.recordedAt && !fiscalHistory.recordedAtOf({ recordedAt: revision.recordedAt })) {
+      firmaImportError('Revizia profilului fiscal ' + String(revision.id || '?')
+        + ' are un moment recordedAt invalid.');
+    }
+  }
+  const filingDossiers = require('./declarations');
+  try { filingDossiers.assertUniqueDossiers({ declarations: b.declarations }); } catch (e) {
+    firmaImportError('Dosarele de depunere sunt ambigue: ' + e.message);
+  }
+  for (const dossier of b.declarations) {
+    const check = filingDossiers.verifyDossier(dossier, dossier.firmaId, dossier.tip, dossier.period);
+    if (!check.valid) firmaImportError('Dosarul de depunere ' + String(dossier.tip || '?') + ' '
+      + String(dossier.period || '?') + ' este invalid: ' + check.issues.join('; ') + '.');
   }
   for (const mv of b.stockMovements) {
     ref(mv.productId, 'products', 'Produsul miscarii ' + mv.id, true);
@@ -800,24 +1047,108 @@ function importFirma(bundle, opts) {
   } else {
     newFid = nextFirmaId();
   }
+  if (b.annualArchives.length && Number(newFid) !== Number(b.firma.id)) {
+    firmaImportError('Dosarele anuale sunt imuabile și semnate pentru firma ' + b.firma.id
+      + '; pot fi restaurate numai peste aceeași identitate de firmă, nu clonate pe id-ul ' + newFid + '.');
+  }
 
   // Alocare LOCALA: seq si graful nu se ating pana cand TOATE obiectele sunt construite.
   let seqImport = Number(d.seq) || 1;
   const alloc = (prefix) => String(prefix || '') + seqImport++;
   const maps = {};
-  const prefixes = { products: 'prod', gestiuni: 'gest', assets: 'mf', angajati: 'ang', entries: 'e', stockMovements: 'sm', documents: 'doc', inventories: 'inv', inventarAnual: 'iva', payrollHistory: 'ph', recurringInvoices: 'rec', recipes: 'bom', budgets: 'bud', declarations: 'dcl', closings: 'cls', extractInterventions: 'ext', leasingContracts: 'lsg' };
+  const prefixes = { products: 'prod', gestiuni: 'gest', assets: 'mf', angajati: 'ang', entries: 'e', stockMovements: 'sm', documents: 'doc', inventories: 'inv', inventarAnual: 'iva', payrollHistory: 'ph', recurringInvoices: 'rec', openItemAllocations: 'oia', openItemReconciliations: 'oir', bankStatements: 'bst', bankTransactions: 'btx', recipes: 'bom', budgets: 'bud', cashForecastSnapshots: 'cfs', declarations: 'dcl', annualArchives: 'aar', fiscal_profile_history: 'fpr', balance_category_history: 'bch', balance_sheet_mappings: 'bsm', balance_sheet_adjustments: 'bsa', closings: 'cls', extractInterventions: 'ext', leasingContracts: 'lsg' };
   for (const k of FIRMA_IMPORT_ID_COLLS) {
     maps[k] = new Map();
-    for (const x of b[k]) maps[k].set(String(x.id), alloc(prefixes[k]));
+    // Un pachet mic poate veni cu e1/e2 exact când secvența locală ar genera tot e1/e2.
+    // Sărim peste TOATE id-urile sursă din colecție: importul produce o identitate nouă
+    // demonstrabilă, iar nicio referință externă rămasă din greșeală nu poate părea validă.
+    const sourceIds = new Set(b[k].map((x) => String(x.id)));
+    for (const x of b[k]) {
+      let fresh;
+      do { fresh = alloc(prefixes[k]); } while (sourceIds.has(fresh));
+      maps[k].set(String(x.id), fresh);
+    }
   }
   const mid = (coll, id) => (id == null || id === '') ? null : (maps[coll].get(String(id)) || null);
   const simple = (coll) => b[coll].map((x) => Object.assign({}, x, { id: mid(coll, x.id), firmaId: newFid }));
+  const filingImportAt = new Date().toISOString();
+  const importedDeclarations = simple('declarations').map((rec) => {
+    const sourceDossierId = rec.dossier && rec.dossier.id;
+    const sourceChainHash = rec.stateChainHash || '';
+    const sourceEvidence = sourceDossierId ? {
+      schemaVersion: 1,
+      dossier: JSON.parse(JSON.stringify(rec.dossier || null)),
+      status: rec.status || 'nedepusa',
+      statusHistory: JSON.parse(JSON.stringify(rec.statusHistory || [])),
+      stateEvents: JSON.parse(JSON.stringify(rec.stateEvents || [])),
+      stateChainHash: rec.stateChainHash || '',
+      documentApproval: JSON.parse(JSON.stringify(rec.documentApproval || null)),
+      documentApprovals: JSON.parse(JSON.stringify(rec.documentApprovals || [])),
+      transmittedArtifactHash: rec.transmittedArtifactHash || '',
+      transmittedApprovalHash: rec.transmittedApprovalHash || '',
+      transmittedAt: rec.transmittedAt || null,
+      submittedAt: rec.submittedAt || null,
+      recipisa: rec.recipisa || '',
+      submissions: JSON.parse(JSON.stringify(rec.depuneri || [])),
+      artifactHash: rec.artifactHash || '',
+      artifacts: (rec.artifacts || []).map((row) => ({ sha256: row.sha256, bytes: row.bytes,
+        filename: row.filename, mime: row.mime })),
+      profileHash: rec.profileHash || '', profileProvenanceHash: rec.profileProvenanceHash || '',
+    } : null;
+    delete rec.dossier; // firma/id-ul local se schimbă controlat; cheia dosarului trebuie relegată
+    // Evenimentele sunt semnate inclusiv cu identitatea dosarului. La import pe altă firmă nu le
+    // rescriem (ar falsifica lanțul): păstrăm hash-ul sursă ca dovadă într-un snapshot de import.
+    delete rec.stateEvents; delete rec.stateChainHash;
+    const filings = require('./declarations');
+    filings.ensureDossier(rec, newFid, rec.tip, rec.period, filingImportAt);
+    if (sourceDossierId && sourceDossierId !== rec.dossier.id) {
+      // O aprobare numește și semnează dosarul sursă. La clonare nu o „adaptăm” prin recalcularea
+      // hash-ului: ar părea o aprobare nouă. O păstrăm ca dovadă de import, dar nu ca aprobare activă.
+      sourceEvidence.evidenceHash = crypto.createHash('sha256')
+        .update(require('./globalChain').canonicalJson(sourceEvidence), 'utf8').digest('hex');
+      rec.importedSourceFilingEvidence = sourceEvidence;
+      rec.documentApprovals = []; delete rec.documentApproval;
+      rec.approvedAt = null; rec.approvedBy = '';
+      rec.depuneri = []; rec.statusHistory = [];
+      delete rec.transmittedArtifactHash; delete rec.transmittedApprovalHash;
+      delete rec.transmittedAt; delete rec.submittedAt; rec.recipisa = '';
+      rec.status = filings.exactArtifact(rec, rec.artifactHash) ? 'generata' : 'nedepusa';
+      if (rec.status === 'generata') rec.generatedAt = filingImportAt;
+      rec.dossier.createdAt = filingImportAt;
+    }
+    filings.ensureStateLedger(rec, newFid, rec.tip, rec.period);
+    if (sourceChainHash && rec.stateEvents[0]) {
+      rec.stateEvents[0].evidence.importedSourceChainHash = sourceChainHash;
+      rec.stateEvents[0].hash = filings.stateEventHash(rec.stateEvents[0]);
+      rec.stateChainHash = rec.stateEvents[0].hash;
+    }
+    return rec;
+  });
+  const fiscalImportAt = filingImportAt;
+  const fiscalProfiles = require('./fiscalProfile');
+  const importedFiscalProfileHistory = fiscalProfiles.withIntervals(simple('fiscal_profile_history').map((row) => {
+    const explicit = fiscalProfiles.recordedAtOf({ recordedAt: row.recordedAt });
+    const legacyCreated = fiscalProfiles.recordedAtOf({ createdAt: row.createdAt });
+    const recordedAt = explicit || legacyCreated || fiscalImportAt;
+    return Object.assign({}, row, {
+      recordedAt, createdAt: row.createdAt || recordedAt,
+      recordedAtSource: row.recordedAtSource || (explicit ? 'explicit'
+        : (legacyCreated ? 'legacy.createdAt' : 'firm-import')),
+    });
+  }));
   const stockLines = (lines) => (lines || []).map((l) => Object.assign({}, l, { productId: mid('products', l.productId), gestiuneId: mid('gestiuni', l.gestiuneId) }));
 
   const built = {
     products: simple('products'), gestiuni: simple('gestiuni'), assets: simple('assets'), angajati: simple('angajati'),
-    inventarAnual: simple('inventarAnual'), budgets: simple('budgets'), declarations: simple('declarations'),
+    inventarAnual: simple('inventarAnual'), budgets: simple('budgets'),
+    cashForecastSnapshots: simple('cashForecastSnapshots'), declarations: importedDeclarations,
+    annualArchives: simple('annualArchives'),
+    fiscal_profile_history: importedFiscalProfileHistory,
+    balance_category_history: simple('balance_category_history'),
+    balance_sheet_mappings: simple('balance_sheet_mappings'),
+    balance_sheet_adjustments: simple('balance_sheet_adjustments'),
     closings: simple('closings'), leasingContracts: simple('leasingContracts'),
+    openItemReconciliations: simple('openItemReconciliations'),
     openingAnalytic: b.openingAnalytic.map((x) => Object.assign({}, x, { firmaId: newFid })),
   };
   built.documents = b.documents.map((doc) => {
@@ -833,9 +1164,26 @@ function importFirma(bundle, opts) {
     fileId: mid('documents', e.fileId), movementId: mid('stockMovements', e.movementId),
     stocMovementId: mid('stockMovements', e.stocMovementId),
     stornoOf: mid('entries', e.stornoOf), stornoBy: mid('entries', e.stornoBy),
+    bankStatementId: mid('bankStatements', e.bankStatementId), bankTransactionId: mid('bankTransactions', e.bankTransactionId),
     stocMovementIds: (e.stocMovementIds || []).map((x) => mid('stockMovements', x)),
+    ...(e.duplicateOverride ? { duplicateOverride: Object.assign({}, e.duplicateOverride,
+      { duplicateId: mid('entries', e.duplicateOverride.duplicateId) }) } : {}),
     ...(e.leasingRef ? { leasingRef: Object.assign({}, e.leasingRef,
       { contractId: mid('leasingContracts', e.leasingRef.contractId) }) } : {}),
+  }));
+  built.openItemAllocations = b.openItemAllocations.map((a) => Object.assign({}, a, {
+    id: mid('openItemAllocations', a.id), firmaId: newFid,
+    documentId: mid('entries', a.documentId), paymentId: mid('entries', a.paymentId),
+  }));
+  built.bankStatements = b.bankStatements.map((s) => Object.assign({}, s, {
+    id: mid('bankStatements', s.id), firmaId: newFid, documentId: mid('documents', s.documentId),
+  }));
+  built.bankTransactions = b.bankTransactions.map((t) => Object.assign({}, t, {
+    id: mid('bankTransactions', t.id), firmaId: newFid,
+    statementId: mid('bankStatements', t.statementId), entryId: mid('entries', t.entryId),
+    linkedEntryId: mid('entries', t.linkedEntryId), duplicateOf: mid('bankTransactions', t.duplicateOf),
+    ...(t.proposal ? { proposal: Object.assign({}, t.proposal,
+      { stinge: (t.proposal.stinge || []).map((id) => mid('entries', id)).filter(Boolean) }) } : {}),
   }));
   built.stockMovements = b.stockMovements.map((mv) => Object.assign({}, mv, {
     id: mid('stockMovements', mv.id), firmaId: newFid,
@@ -871,6 +1219,24 @@ function importFirma(bundle, opts) {
     documentId: mid('documents', x.documentId), entryId: mid('entries', x.entryId),
   }));
 
+  // Preflight anti-duplicat INAINTE de prima mutatie. Restaurarea poate contine derogari istorice
+  // legitime, dar fiecare trebuie sa indice exact articolul si cheia cu care a intrat initial.
+  // Fara aceasta simulare, primul duplicat nejustificat ar fi aruncat abia in bucla de commit si
+  // ar fi lasat o firma importata partial in memorie.
+  const importedEntries = [];
+  for (const e of built.entries) {
+    const found = duplicateGuard.conflict(importedEntries, e);
+    if (found) {
+      const ov = e.duplicateOverride;
+      const valid = ov && String(ov.reason || '').trim().length >= 10
+        && String(ov.duplicateId || '') === String(found.duplicate.id)
+        && Array.isArray(ov.keys) && found.keys.some((key) => ov.keys.includes(key));
+      if (!valid) firmaImportError('Postare duplicata in pachet: articolul ' + e.id
+        + ' coincide cu ' + found.duplicate.id + ' fara o derogare istorica valida.');
+    }
+    importedEntries.push(e);
+  }
+
   // COMMIT in RAM: de aici inainte nu mai exista validari care pot arunca. La replace, campurile
   // privilegiate ale tintei (ownerId/subscription/lockedUntil/anaf/test/demo) raman NEATINSE.
   if (o.targetFid) {
@@ -880,6 +1246,9 @@ function importFirma(bundle, opts) {
   } else {
     const f = Object.assign(defaultFirma(newFid), pickFirmaFields(b.firma), { id: newFid });
     f.nume = (f.nume || 'Firma') + ' (import)';
+    // Un pachet extern poate contine date reale. Nu mostenim si nu presupunem un consimtamant;
+    // proprietarul trebuie sa clasifice explicit firma dupa import.
+    f.dataMode = 'unclassified';
     d.firme.push(f);
   }
   d.partners[newFid] = b.partners;
@@ -888,7 +1257,10 @@ function importFirma(bundle, opts) {
     const rows = built[k] || [];
     // Restaurarea este singura exceptie intentionata: pachetul a fost validat integral mai sus,
     // iar istoricul sau trebuie reconstituit chiar daca firma-tinta are perioade blocate.
-    if (k === 'entries') for (const e of rows) pushEntry(e, { context: 'import firma', allowClosedPeriod: true });
+    if (k === 'entries') for (const e of rows) pushEntry(e, {
+      context: 'import firma', allowClosedPeriod: true,
+      restoreValidatedOverride: e.duplicateOverride ? RESTORE_DUPLICATE_OVERRIDE : null,
+    });
     else d[k].push(...rows);
   }
   d.seq = seqImport;
@@ -1046,8 +1418,8 @@ async function trialFisaContSql(fid, cont, period) {
 }
 
 module.exports = {
-  get, save, load, migrate, nextId, pushEntry, conturiNecunoscute, entryShapeProblem, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
-  getUser, getUserByName, nextUserId, exportFirma, importFirma, validateFirmaBundle, restoreFromJson, flushMirror, flushStore,
+  get, save, load, migrate, nextId, pushEntry, assertEntryBasics, assertEntryUnique, conturiNecunoscute, entryShapeProblem, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
+  getUser, getUserByName, nextUserId, exportFirma, importFirma, validateFirmaBundle, validateRestoreGraph, restoreFromJson, flushMirror, flushStore,
   canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, persistStats, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

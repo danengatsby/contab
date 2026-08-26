@@ -13,9 +13,9 @@
 //   2. `public/` E PUBLICAT INSTANT. Fisierele statice se servesc din arborele de lucru, deci un
 //      fisier salvat acolo e live imediat, fara restart si fara commit.
 //
-// Garda NU blocheaza pornirea, deliberat. Un server de contabilitate care refuza sa porneasca
-// fiindca arborele e murdar ar fi exact opusul a ce vrei intr-o urgenta, cand tocmai ai pus o
-// corectie pe disc si ai nevoie de proces sus. Semnaleaza, nu opreste.
+// Garda blocheaza pornirea dintr-un depozit murdar. `npm start` nu este o limita de securitate:
+// pm2 si operatorul pot chema direct `node server.js`, asa ca decizia trebuie sa stea in ciclul
+// de viata al procesului, inainte de listen(). Dezvoltarea se declara explicit cu CONTAB_DEV=1.
 
 const { execFile } = require('child_process');
 const path = require('path');
@@ -134,4 +134,19 @@ function avertisment(v) {
     + (v.nrModificate ? ' — ' + v.modificate.slice(0, 8).join(', ') : '') + '.';
 }
 
-module.exports = { verdict, read, last, avertisment, RAMURA_DEPLOY, TTL_MS, _resetCache };
+/** Verdict pur pentru poarta de pornire. Distribuitiile construite nu contin `.git`; ele poarta
+ * marcajul pozitiv scris de impachetator. Marcajul nu este acceptat intr-un depozit git: altfel
+ * un fisier uitat dintr-o arhiva dezambalata peste productie ar dezarma tocmai garda de worktree. */
+function pornirePermisa(v, opts) {
+  const o = opts || {};
+  if (o.dev === true) return { ok: true, motiv: 'dezvoltare explicita' };
+  if (v && v.cunoscut) {
+    return v.curat
+      ? { ok: true, motiv: null }
+      : { ok: false, motiv: v.motiv || 'arborele de deploy nu este curat' };
+  }
+  if (o.distributie === true && o.inDepozit !== true) return { ok: true, motiv: 'distributie construita' };
+  return { ok: false, motiv: (v && v.motiv) || 'starea codului nu se poate verifica' };
+}
+
+module.exports = { verdict, read, last, avertisment, pornirePermisa, RAMURA_DEPLOY, TTL_MS, _resetCache };

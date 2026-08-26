@@ -102,6 +102,7 @@ function enable2fa(u, code) {
 
 function disable2fa(u, code) {
   reqNotDemo(u);
+  if (u && u.role === 'admin') fail(403, '2FA este obligatorie pentru conturile de administrator și nu poate fi dezactivată.');
   if (!u.twofa) fail(400, '2FA nu este activat.');
   if (!verifySecondFactor(u, code).ok) fail(400, 'Cod TOTP sau cod de rezerva gresit.');
   u.twofa = false; delete u.totpSecret; delete u.pending2fa;
@@ -207,8 +208,8 @@ function updateProfile(u, b) {
     for (const k of ['numeComplet', 'telefon', 'adresa', 'oras', 'judet', 'autorizatie', 'descriere']) {
       if (b.profil[k] != null) p[k] = String(b.profil[k]).slice(0, 400).trim();
     }
-    // CNP: identitatea persoanei care detine firmele. Se valideaza (cifra de control) pentru ca o
-    // greseala de tastare aici nu se mai vede niciodata — campul se afiseaza mascat dupa salvare.
+    // CNP: disponibil pentru scenarii de test, dar nu este cerut pentru detinerea unei firme in
+    // etapa fail-closed. Se valideaza fiindca dupa salvare campul se afiseaza numai mascat.
     // Sirul mascat trimis inapoi de formular NU rescrie valoarea (ar distruge-o la prima salvare
     // a altui camp): se ignora orice valoare care nu e un CNP intreg.
     if (b.profil.cnp != null) {

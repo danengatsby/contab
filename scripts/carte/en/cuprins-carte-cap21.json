@@ -1,0 +1,320 @@
+{
+ "parte": "Part V · What you have, what you produce, who works · phases 4–6",
+ "nr": "21",
+ "titlu": "The Payroll",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Payroll is the most regulated monthly operation in accounting and, for a business owner, the most counterintuitive. The reason is simple: between what an employee costs the company and what they receive in hand lies a gap that no one intuits correctly the first time."
+  },
+  {
+   "tip": "p",
+   "text": "This chapter traces the path from gross to net and, more importantly, shows where the difference goes — because part of it isn't subtracted from the salary, but added on top of it, as a burden on the company."
+  },
+  {
+   "tip": "h",
+   "text": "The path from gross to net"
+  },
+  {
+   "tip": "p",
+   "text": "Gross salary is the starting point. From it, the employee's contributions and tax are withheld, in this order — the order matters, because tax is calculated on what remains after contributions, not on the gross amount."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "A gross salary of 5,000 lei, step by step",
+   "cap": [
+    "Step",
+    "Rate",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Gross salary",
+     "",
+     "5.000"
+    ],
+    [
+     "minus CAS (pension)",
+     "25%",
+     "1.250"
+    ],
+    [
+     "minus CASS (health)",
+     "10%",
+     "500"
+    ],
+    [
+     "minus personal deduction",
+     "",
+     "430"
+    ],
+    [
+     "= taxable base",
+     "",
+     "2.820"
+    ],
+    [
+     "minus income tax",
+     "10%",
+     "282"
+    ],
+    [
+     "= net salary",
+     "",
+     "2.968"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "The personal deduction is not an amount received, but a portion of income that isn't taxed. It reduces the tax by 10% of its value."
+  },
+  {
+   "tip": "p",
+   "text": "Out of a gross 5,000 lei, the employee receives 2,968. The difference of 2,032 doesn't stay with the company: 1,750 are the employee's contributions, remitted to the state, and 282 is the tax. The company gains nothing from the withholding — it's merely the intermediary obligated to remit it."
+  },
+  {
+   "tip": "h",
+   "text": "What the employee actually costs"
+  },
+  {
+   "tip": "p",
+   "text": "This is where business owners most commonly miscalculate. The cost isn't the gross salary, because the company also owes its own contribution on top of it."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Total cost to the company",
+   "cap": [
+    "Item",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Gross salary",
+     "5.000"
+    ],
+    [
+     "Labor insurance contribution (2.25%)",
+     "112,50"
+    ],
+    [
+     "Total cost",
+     "5.112,50"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "The ratio that's easy to remember: for a net of approximately 2,968 lei, the company pays 5,112.50 — roughly 1.7 times more."
+  },
+  {
+   "tip": "cheie",
+   "text": "Gross isn't the cost, and net isn't gross. Three different figures, which a business owner confuses until they see them laid out side by side."
+  },
+  {
+   "tip": "h",
+   "text": "The two entries of the month"
+  },
+  {
+   "tip": "p",
+   "text": "In accounting terms, payroll produces two distinct operations, at different moments: recording the entitlements due, at the end of the month, and their actual payment, usually the following month."
+  },
+  {
+   "tip": "p",
+   "text": "This distinction echoes the idea from chapter 15: the expense is recorded when the obligation arises, not when the money leaves. December's salary is December's expense, even if paid in January — otherwise the year's result would be off by an entire month's worth of salaries."
+  },
+  {
+   "tip": "h",
+   "text": "Why payroll isn't calculated by hand"
+  },
+  {
+   "tip": "p",
+   "text": "The example above is the simplest case possible: a full salary, a full month, no absences. Reality brings paid leave calculated on the average of the last few months, sick leave partly covered by the company and partly by the fund, part-time schedules with their own rules, allowances, deductions, advances, meal vouchers."
+  },
+  {
+   "tip": "p",
+   "text": "Each of these has its own formula and interacts with the others. That's why payroll is the place in accounting where manual calculation is riskiest and automation most valuable — with one condition: the rates and thresholds must come from a dated source, not be hardcoded, because they change often."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The applicable rates are CAS 25% and CASS 10% borne by the employee, income tax of 10% applied to the base resulting after deducting mandatory contributions and the personal deduction, and CAM 2.25% borne by the employer (art. 138, 156, 78 and 220^3 of the Fiscal Code). Three areas produce most corrections. First: the calculation bases don't coincide — the non-taxable amount from the minimum wage, under art. 76, is exempt from both tax and contributions, so it reduces all bases, while the personal deduction reduces only the taxable base; treating them the same produces errors in both directions. Second: for part-time schedules below the minimum wage, contributions are calculated at the level of the minimum wage, with the difference borne by the employer, subject to the exceptions expressly provided — the employee's net doesn't decrease, but the company's cost increases. Third: sick leave allowance enters the CAS base, but has its own regime for CASS and CAM, and the portion covered by FNUASS is recovered, not recorded as a final expense. Finally, D112 is prepared on individual data, and the correlation between its totals and accounts 641, 421, 43x in the trial balance must be verified before submission, not after."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "A correctly calculated payroll is a necessary condition. It isn't, however, sufficient: some of the employee's entitlements aren't granted automatically, only if someone requests them. That's the next chapter, and it's the most expensive chapter of this part."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 21.1 — what a raise actually costs",
+   "enunt": [
+    "An employee earning 5,000 lei gross asks for a 500 lei net raise. The company wants to know what it will cost.",
+    "Calculate, approximately, the necessary gross amount and the total cost, using the rates from the chapter and ignoring the personal deduction."
+   ],
+   "rezolvare": [
+    "From the gross, 25% CAS and 10% CASS are withheld, so 65% remains. From that 65%, 10% tax is subtracted, so the net is 65% × 90% = 58.5% of the gross.",
+    "For the net to increase by 500 lei, the gross must increase by 500 ÷ 0.585 ≈ 855 lei. New gross: approximately 5,855 lei.",
+    "The company's cost increases by the gross amount plus the insurance contribution: 855 × 1.0225 ≈ 874 lei per month, i.e., over 10,400 lei per year.",
+    "The ratio to remember: for every extra leu in the employee's hand, the company pays approximately 1.75 lei. That's the figure salary discussions revolve around, and it's the only one that matters for both sides — the rest is the state's arithmetic."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Paid leave: the same money, a different label"
+  },
+  {
+   "tip": "p",
+   "text": "Vacation days aren't paid with the salary, but with an allowance calculated on the daily average of gross amounts from the last three months. And from this follows something surprising: with a constant salary, the month with leave looks identical to one without."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The same month, with and without leave (5,000 lei gross, 21 working days)",
+   "cap": [
+    "Situation",
+    "Salary for days worked",
+    "Paid leave allowance",
+    "Taxable gross",
+    "Net",
+    "Company cost"
+   ],
+   "randuri": [
+    [
+     "Full month",
+     "5.000,00",
+     "—",
+     "5.000,00",
+     "2.968,00",
+     "5.112,50"
+    ],
+    [
+     "5 days of leave",
+     "3.809,52",
+     "1.190,48",
+     "5.000,00",
+     "2.968,00",
+     "5.112,50"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "nota": "The salary is reduced proportionally to the days not worked, and the allowance exactly fills the gap. The net and the cost remain unchanged."
+  },
+  {
+   "tip": "p",
+   "text": "This equality holds only for a constant salary, though. If in the last three months the employee had allowances or overtime, the average is higher than the base salary — and the month with leave costs the company more than a regular one. This is why the allowance is calculated on the average and not on the current salary: the law protects the employee's usual income, not that of the month in which they go on leave."
+  },
+  {
+   "tip": "h",
+   "text": "Sick leave: who pays the first days"
+  },
+  {
+   "tip": "p",
+   "text": "For sick leave, the mechanism is different and splits the cost in two. The first five working days are borne by the employer; the rest is covered by the health social insurance fund and recovered."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Sick leave, at the same 5,000 lei gross",
+   "cap": [
+    "Situation",
+    "Taxable gross",
+    "Borne by the company",
+    "From FNUASS",
+    "Net",
+    "Company cost"
+   ],
+   "randuri": [
+    [
+     "5 days of sick leave",
+     "3.809,52",
+     "892,85",
+     "0,00",
+     "2.874,25",
+     "4.808,17"
+    ],
+    [
+     "10 days of sick leave",
+     "2.619,05",
+     "892,85",
+     "892,85",
+     "2.780,49",
+     "3.590,92"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "nota": "In both cases the company bears exactly 892.85 lei — the five days. Whatever goes beyond that is recovered, no matter how long the leave lasts."
+  },
+  {
+   "tip": "p",
+   "text": "The figures also show why sick leave reduces the employee's income: the allowance is 75% of the daily average, not 100%. For five days, the net drops from 2,968 to 2,874.25 lei — nearly 94 lei less for a week of illness."
+  },
+  {
+   "tip": "cheie",
+   "text": "The number of days borne by the company is counted in WORKING days out of the first five CALENDAR days of the leave. A leave that starts on a Thursday has a different cost for the company than one that starts on a Monday."
+  },
+  {
+   "tip": "p",
+   "text": "The observation in the box above is the one that produces the most recalculations, and the difference can be shown on the same leave, of the same duration."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Five days of sick leave, two starting days",
+   "cap": [
+    "Starts",
+    "Working days borne by the company",
+    "Borne by the company",
+    "From FNUASS"
+   ],
+   "randuri": [
+    [
+     "Monday, June 8",
+     "5",
+     "892,85",
+     "0,00"
+    ],
+    [
+     "Thursday, June 11",
+     "3",
+     "535,71",
+     "357,14"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4
+   ],
+   "nota": "Five calendar days starting Thursday also include Saturday and Sunday, so only three working days. The difference of 357.14 lei is recovered from the fund — or lost, if someone counts five working days out of habit."
+  },
+  {
+   "tip": "p",
+   "text": "It's a small amount on a single leave and a considerable one over a year with many employees. More importantly, it's an error that goes unnoticed: the payroll balances out, the employee's net is correct, and the only consequence is an underreported recoverable amount in D112."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Tax is calculated after subtracting contributions and the deduction, not on the gross amount.",
+    "Gross, net, and the company's cost are three different figures: 5,000, 2,968, and 5,112.50 in this example.",
+    "The company gains nothing from payroll withholdings — it's merely the intermediary obligated to remit them.",
+    "The month's salary is the month's expense, even if paid the following month.",
+    "Rates and thresholds must come from a single, dated source: they change often, and an outdated rate tucked away in the code is discovered too late."
+   ]
+  }
+ ]
+}

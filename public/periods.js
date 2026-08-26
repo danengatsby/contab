@@ -3,12 +3,14 @@
 // „Luna de lucru” + filtrele Luna/An ale tabelelor — extrase din app.js. applyWorkMonth
 // reincarca ecranul curent prin dependinte injectate (setPeriodsDeps), ca modulul sa nu
 // depinda de onTab/renderEntryLists din app.js.
-import { $, $$, META, toast } from './core.js';
+import { $, $$, META, toast, uiLanguage } from './core.js';
 
 const D = { renderEntryLists: null, onTab: null };
 function setPeriodsDeps(d) { Object.assign(D, d); }
 
 const LUNI = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie', 'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
+const LUNI_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function luniUi() { return uiLanguage() === 'en' ? LUNI_EN : LUNI; }
 // Compune perioada dintr-o pereche Lună+An: "YYYY-MM" daca e luna, "YYYY" daca e tot anul, "" daca nimic
 function pget(prefix) {
   const a = $('#' + prefix + 'An'); const l = $('#' + prefix + 'Luna');
@@ -76,7 +78,7 @@ function shiftMonth(m, delta) {
 }
 function nextMonth(m) { return shiftMonth(m, 1); }
 function prevMonth(m) { return shiftMonth(m, -1); }
-function lunaLabel(m) { const [y, mo] = m.split('-').map(Number); return LUNI[mo - 1] + ' ' + y; }
+function lunaLabel(m) { const [y, mo] = m.split('-').map(Number); return luniUi()[mo - 1] + ' ' + y; }
 // Vizualizatorul de documente in aplicatie (PDF/CSV/XML/e-Factura) a fost extras in public/viewer.js (Etapa 8).
 // Afiseaza luna de lucru in bara de sus (langa firma)
 function setCurrentPeriod() {
@@ -90,9 +92,13 @@ function setCurrentPeriod() {
     const v = poateInainte(m);
     nx.disabled = !v.ok;
     nx.setAttribute('aria-disabled', String(!v.ok));
-    nx.title = v.ok ? 'Luna următoare (' + lunaLabel(nextMonth(m)) + ')'
-      : v.motiv === 'viitor' ? 'Ești pe luna curentă — nu se poate lucra în viitor'
-        : 'Închide mai întâi ' + lunaLabel(m) + ' (Închideri → Închiderea lunii) ca să treci la ' + lunaLabel(nextMonth(m));
+    nx.title = uiLanguage() === 'en'
+      ? (v.ok ? 'Next month (' + lunaLabel(nextMonth(m)) + ')'
+        : v.motiv === 'viitor' ? 'You are in the current month — future work is not available'
+          : 'First close ' + lunaLabel(m) + ' (Closing → Month-end closing) to continue to ' + lunaLabel(nextMonth(m)))
+      : (v.ok ? 'Luna următoare (' + lunaLabel(nextMonth(m)) + ')'
+        : v.motiv === 'viitor' ? 'Ești pe luna curentă — nu se poate lucra în viitor'
+          : 'Închide mai întâi ' + lunaLabel(m) + ' (Închideri → Închiderea lunii) ca să treci la ' + lunaLabel(nextMonth(m)));
   }
   // Banda de „luna inchisa" + marcajul pe <body> care stinge caile de CREARE (vezi styles.css)
   const inchisa = esteInchisa(m);
@@ -102,7 +108,7 @@ function setCurrentPeriod() {
     bar.classList.toggle('hidden', !inchisa);
     // textul se scrie DOAR cand banda se arata: altfel ramane in DOM o afirmatie falsa
     // („Iunie e închisă") care ar deveni vizibila daca cineva ascunde banda altfel decat prin aici
-    const t = $('#lunaInchisaText'); if (t) t.textContent = inchisa ? lunaLabel(m) + ' este închisă' : '';
+    const t = $('#lunaInchisaText'); if (t) t.textContent = inchisa ? lunaLabel(m) + (uiLanguage() === 'en' ? ' is closed' : ' este închisă') : '';
   }
 }
 // Aplica luna de lucru pe toate filtrele de tabel si reincarca ecranul curent
@@ -115,7 +121,7 @@ function applyWorkMonth() {
   // câmpurile native de lună rămase (dacă există) urmează luna de lucru
   $$('input[type="month"].period').forEach((el) => { el.value = m; });
   if (D.renderEntryLists) D.renderEntryLists();
-  const active = document.querySelector('#tabs button[data-tab].active, #sideTools button[data-tab].active');
+  const active = document.querySelector('#tabs button[data-tab].active');
   if (active && D.onTab) D.onTab(active.dataset.tab);
 }
 setCurrentPeriod();
@@ -127,7 +133,9 @@ $('#prevMonth') && $('#prevMonth').addEventListener('click', () => goWorkMonth(p
 $('#nextMonth') && $('#nextMonth').addEventListener('click', () => {
   const m = workMonth(); const v = poateInainte(m);
   if (v.ok) return goWorkMonth(nextMonth(m));
-  if (v.motiv === 'neinchisa') toast('Închide mai întâi ' + lunaLabel(m) + ' — Închideri → Închiderea lunii.', true);
+  if (v.motiv === 'neinchisa') toast(uiLanguage() === 'en'
+    ? 'First close ' + lunaLabel(m) + ' — Closing → Month-end closing.'
+    : 'Închide mai întâi ' + lunaLabel(m) + ' — Închideri → Închiderea lunii.', true);
 });
 // Banda de luna inchisa: duce la prima luna DESCHISA (imediat dupa ultima inchisa), plafonata la
 // luna curenta — daca sunt inchise toate lunile pana azi, ramai unde esti.
@@ -159,8 +167,8 @@ function fillPeriods() {
   const wm = workMonth(); const wmM = wm.slice(5); const wmY = wm.slice(0, 4);
   years.add(wmY);
   const yearOpts = [...years].sort().reverse().map((y) => `<option value="${y}">${y}</option>`).join('');
-  const monthOpts = LUNI.map((n, i) => `<option value="${String(i + 1).padStart(2, '0')}">${n}</option>`).join('');
-  const lunaOpts = '<option value="">Toate lunile</option>' + monthOpts;
+  const monthOpts = luniUi().map((n, i) => `<option value="${String(i + 1).padStart(2, '0')}">${n}</option>`).join('');
+  const lunaOpts = '<option value="">' + (uiLanguage() === 'en' ? 'All months' : 'Toate lunile') + '</option>' + monthOpts;
   // implicit, toate filtrele pornesc pe LUNA DE LUCRU (poti alege „Toate lunile” oricand)
   $$('select.an').forEach((s) => { const keep = s.value; s.innerHTML = yearOpts; s.value = keep || wmY; });
   $$('select.luna').forEach((s) => { const keep = s.value; s.innerHTML = lunaOpts; s.value = keep || wmM; });
@@ -173,6 +181,10 @@ function fillPeriods() {
   setCurrentPeriod();
 }
 
-export { LUNI, pget, workMonth, setWorkMonth, nextMonth, prevMonth, lunaLabel, applyWorkMonth, onPeriodChange, fillPeriods, setPeriodsDeps };
+// Comutarea limbii nu reîncarcă pagina și nu pierde formularele începute. Sunt refăcute doar
+// etichetele calendarelor și textele barei de perioadă, păstrând aceleași valori selectate.
+document.addEventListener('contab:language', () => fillPeriods());
+
+export { LUNI, LUNI_EN, pget, workMonth, setWorkMonth, nextMonth, prevMonth, lunaLabel, applyWorkMonth, onPeriodChange, fillPeriods, setPeriodsDeps };
 // Exportate pentru testele unitare de frontend (plafonul lunii de lucru): test/frontend.mjs
 export { capMonth, currentMonth, esteInchisa, poateInainte };

@@ -18,11 +18,14 @@ export function render2FA() {
   if (!status) return;
   status.className = 'status' + (on ? ' ok' : '');
   const recoveryCount = Number(USER && USER.twofaRecoveryCount) || 0;
-  status.textContent = on ? ('✔ 2FA este activat pe contul tău. Coduri de rezervă disponibile: ' + recoveryCount + '.') : '2FA este dezactivat.';
+  status.textContent = on ? ('✔ 2FA este activat pe contul tău. Coduri de rezervă disponibile: ' + recoveryCount + '.')
+    : (USER && USER.twofaRequired
+      ? '2FA este obligatorie pentru contul de administrator. Restul aplicației rămâne blocat până la activare.'
+      : '2FA este dezactivat.');
   const start = $('#twofaStart'); const setup = $('#twofaSetup'); const disable = $('#twofaDisableWrap'); const recoveryManage = $('#twofaRecoveryManage');
   if (start) start.classList.toggle('hidden', on);
   if (on && setup) setup.classList.add('hidden');
-  if (disable) disable.classList.toggle('hidden', !on);
+  if (disable) disable.classList.toggle('hidden', !on || (USER && USER.role === 'admin'));
   if (recoveryManage) recoveryManage.classList.toggle('hidden', !on);
 }
 
@@ -191,9 +194,7 @@ $('#profileForm').addEventListener('submit', async (e) => {
   formFlowSaved(f);
   toast('Profil salvat');
   renderProfile(); // reafiseaza CNP-ul mascat si reincarca lista de contabili daca s-a schimbat optiunea
-  // USER vine din /api/meta si poarta `cnpSetat`, de care depinde avertismentul din „Firmele mele".
-  // Fara reincarcare, cine tocmai si-a completat CNP-ul ramanea cu avertismentul pe ecran — adica
-  // exact cu impresia ca n-a mers.
+  // Reincarcam meta dupa profil pentru ca mastile si indicatorii derivati sa ramana sincronizati.
   if (deps.init) await deps.init();
 });
 registerFormFlow({
@@ -274,7 +275,7 @@ $('#smtpForm').addEventListener('submit', async (e) => {
   await api('/api/smtp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   f.pass.value = ''; renderSmtp(); toast('Setări SMTP salvate');
 });
-// ── Cote fiscale configurabile (admin) ──
+// ── FiscalRuleSet-uri append-only (admin) ──
 export async function renderFiscal() {
   if (!USER || USER.role !== 'admin') return;
   $('#fiscalCard').classList.remove('hidden');
@@ -283,45 +284,46 @@ export async function renderFiscal() {
   // trebuie fixate în ciornă înainte ca răspunsul serverului să repopuleze controalele.
   formFlowFlush(f);
   let c; try { c = await api('/api/fiscal-config'); } catch (e) { return; }
-  Object.keys(c.current || {}).forEach((k) => { if (f[k]) f[k].value = c.current[k]; });
+  const active = c.current || {}; const rates = active.rates || {};
+  if (f.baseRuleSetId) {
+    f.baseRuleSetId.innerHTML = (c.ruleSets || []).slice().reverse().map((r) =>
+      `<option value="${H(r.id)}">${H(r.id)} · ${H(r.validFrom)}…${H(r.validTo || '∞')} · ${H(String(r.hash || '').slice(0, 12))}</option>`).join('');
+    if (active.id) f.baseRuleSetId.value = active.id;
+  }
+  // Valorile de bază se arată ca placeholder, nu ca valori trimise: corpul publicării conține
+  // numai diferențele asumate de administrator.
+  Object.keys(rates).forEach((k) => { if (f[k]) { f[k].value = ''; f[k].placeholder = String(rates[k]); } });
   formFlowLoaded(f, 'config:fiscal');
   // Semnal de vechime: cotele implicite sunt fixate pentru un an fiscal si trebuie revizuite la lege.
   const vn = $('#fiscalVechime');
   if (vn) {
     const v = c.vechime || {};
     vn.innerHTML = v.stale
-      ? `<div class="notice warning"><span class="notice-icon">⚠️</span><div>Cotele sunt configurate pentru anul <b>${v.an}</b>, dar anul curent este <b>${v.anCurent}</b>. Verifică modificările legislative și actualizează cotele afectate — calculele folosesc valorile de mai jos ca atare.</div></div>`
-      : (v.an ? `<p class="muted">Cote de referință: anul fiscal <b>${v.an}</b>.</p>` : '');
+      ? `<div class="notice warning"><span class="notice-icon">⚠️</span><div>Registrul acoperă până în <b>${v.coveredUntil || v.an}</b>, iar anul curent este <b>${v.anCurent}</b>. Calculele din afara acoperirii sunt oprite.</div></div>`
+      : (v.an ? `<p class="muted">Registru acoperit până în <b>${v.an}</b>. Hash: <code>${H(String(c.registryHash || '').slice(0, 16))}</code>.</p>` : '');
   }
 }
 $('#fiscalForm') && $('#fiscalForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  const body = {};
-  [...f.elements].forEach((el) => { if (el.name && el.value !== '') body[el.name] = el.value; });
+  const body = { baseRuleSetId: f.baseRuleSetId.value, validFrom: f.validFrom.value,
+    validTo: f.validTo.value || null, approvalId: f.approvalId.value,
+    legalSources: [{ title: f.legalSourceTitle.value, url: f.legalSourceUrl.value }], rates: {} };
+  [...f.elements].forEach((el) => {
+    if (el.name && !(new Set(['baseRuleSetId', 'validFrom', 'validTo', 'approvalId', 'legalSourceTitle', 'legalSourceUrl'])).has(el.name)
+        && el.value !== '') body.rates[el.name] = Number(el.value);
+  });
   try {
     await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     formFlowSaved(f);
-    $('#fiscalStatus').className = 'status ok'; $('#fiscalStatus').textContent = 'Cote salvate — calculele folosesc noile valori.';
-    setMeta(await api('/api/meta')); toast('Cote fiscale actualizate');
+    $('#fiscalStatus').className = 'status ok'; $('#fiscalStatus').textContent = 'Versiune publicată și sigilată cu hash.';
+    f.reset(); await renderFiscal(); setMeta(await api('/api/meta')); toast('Versiune fiscală publicată');
   }
   catch (err) { $('#fiscalStatus').className = 'status err'; $('#fiscalStatus').textContent = err.message; }
 });
-$('#fiscalReset') && $('#fiscalReset').addEventListener('click', async () => {
-  if (!await confirmAction('Valorile configurate manual vor fi înlocuite cu setul standard livrat de aplicație.', {
-    title: 'Resetezi cotele fiscale?', confirmLabel: 'Revino la standard', danger: true,
-  })) return;
-  try {
-    await api('/api/fiscal-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reset: true }) });
-    formFlowSaved($('#fiscalForm'));
-    await renderFiscal(); setMeta(await api('/api/meta')); toast('Cote resetate la valori standard');
-  }
-  catch (e) { toast(e.message, true); }
-});
-
 registerFormFlow({
   form: '#fiscalForm',
-  title: 'Configurația fiscală globală',
+  title: 'Publicare versiune fiscală',
   firstStepTitle: 'Contribuții și impozit pe venit',
   companyKey: () => 'global',
   entityKey: 'config:fiscal',

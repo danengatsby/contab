@@ -33,6 +33,24 @@ jobs:
         env:
           CONTAB_SQL_READ_THRESHOLD: '0'
         run: node test/http.js
+      - name: Acelasi SHA, worktree curat dupa teste
+        run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
+
+  # Continutul comercial are propriul verdict. O captura veche blocheaza publicarea materialelor,
+  # dar nu mai este executata de `prestart` si nu poate opri serviciul contabil.
+  marketing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Pagina publica, capturi si manifest anti-drift
+        run: npm run test:marketing
+      - name: Acelasi SHA, worktree curat dupa marketing
+        run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
 
   # ANALIZA STATICA (ESLint). Job SEPARAT, nu parte din `npm test`: `npm test` ruleaza la
   # `prestart`, adica pe serverul de PRODUCTIE la fiecare pornire, iar ESLint e o dependinta de
@@ -49,6 +67,8 @@ jobs:
       - run: npm ci
       - name: ESLint
         run: npm run lint
+      - name: Acelasi SHA, worktree curat dupa lint
+        run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
 
   # Audit de securitate al dependentelor: pica pe vulnerabilitati HIGH/CRITICAL (moderate/low
   # sunt doar raportate, nu blocheaza). Ruleaza pe fiecare push/PR ca un pachet vulnerabil sa fie
@@ -65,6 +85,8 @@ jobs:
       - run: npm ci
       - name: npm audit (high/critical)
         run: npm audit --audit-level=high
+      - name: Acelasi SHA, worktree curat dupa audit
+        run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
 
   # Suita HTTP pe driverul PostgreSQL (paritate cu productia).
   test-postgres:
@@ -99,6 +121,8 @@ jobs:
         env:
           CONTAB_PG_URL: postgres://contab:contab@localhost:5432/contab_test
         run: npm run test-pg
+      - name: Acelasi SHA, worktree curat dupa PostgreSQL
+        run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
 
   # ── POARTA FISCALA: conditie de RELEASE, pe FIECARE push/PR care atinge module fiscale ──
   # Diviziunea muncii cu `validare-anaf` de mai jos:
@@ -132,13 +156,14 @@ jobs:
       # efemera, deci o variabila cu o CALE n-ar indica nimic aici. Vezi schemas/eTransport/README.md.
       - name: Poarta fiscala (validatoare oficiale ANAF)
         run: sh scripts/poarta-fiscala.sh origin/main
+      - name: Acelasi SHA, worktree curat dupa poarta fiscala
+        run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
 
   # Validarea OFICIALA ANAF (DUKIntegrator) pe fisierele de referinta generate din seed.
   # Rol distinct fata de poarta: prinde driftul de schema ANAF, adica exact cazul in care codul
   # nostru NU s-a schimbat (deci poarta nu se aplica), dar validatorul da.
   validare-anaf:
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -156,3 +181,17 @@ jobs:
           key: dukintegrator-dist-v1
       - name: Genereaza + valideaza referintele cu validatoarele oficiale ANAF
         run: sh scripts/valideaza-referinte.sh
+      - name: Acelasi SHA, worktree curat dupa DUK/XSD
+        run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
+
+  # Singurul verdict care poate fi folosit pentru deploy. `needs` leaga explicit testele,
+  # marketingul, lintul, auditul, PostgreSQL si DUK/XSD de acelasi SHA al workflow-ului.
+  release-candidate:
+    runs-on: ubuntu-latest
+    needs: [test, marketing, lint, audit, test-postgres, poarta-fiscala, validare-anaf]
+    steps:
+      - uses: actions/checkout@v7
+      - name: SHA certificat si worktree curat
+        run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
+      - name: Verdict release
+        run: echo "Release permis numai pentru $GITHUB_SHA; toate portile obligatorii au trecut."

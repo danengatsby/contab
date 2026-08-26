@@ -27,6 +27,9 @@ p[0-9].txt
 # site-ul cartii — generat integral de `npm run cuprins-carte`, ca si descarcarile
 /public/carte/
 
+# Pachete locale de distribuție (pot include arhive criptate și nu sunt surse versionate).
+/dist/
+
 # Videoul de prezentare si cadrele lui: artefacte GENERATE (zeci de MB), reproductibile cu
 # scripts/video-prezentare.mjs. Nu se comit — dar fara linia asta ar fi raportate ca „arbore
 # murdar" de garda din src/deployState.js la fiecare pornire in productie.

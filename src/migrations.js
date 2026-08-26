@@ -129,6 +129,77 @@ const MIGRATIONS = [
       return n;
     },
   },
+  {
+    v: 6,
+    desc: 'separa dovezile dosarului-sursa de dosarul local creat prin import de firma',
+    up(d) {
+      // Versiunile anterioare păstrau aprobările sursă separat, dar lăsau depunerile și selecția
+      // transmisă pe dosarul local, a cărui identitate numerică de firmă era nouă. Rezultatul nu
+      // trebuie „resigilat” retroactiv: păstrăm ce se mai poate demonstra ca pachet opac cu hash,
+      // iar dosarul local reîncepe de la artefactul generat, fără să pretindă depunerea sursă.
+      const filings = require('./declarations');
+      const chain = require('./globalChain');
+      const migratedAt = new Date().toISOString();
+      let n = 0;
+      for (const rec of d.declarations || []) {
+        if (rec.importedSourceFilingEvidence || !Array.isArray(rec.importedSourceDocumentApprovals)) continue;
+        const approvals = JSON.parse(JSON.stringify(rec.importedSourceDocumentApprovals));
+        const firstApproval = approvals[0] || {};
+        const sourceChainHash = (((rec.stateEvents || [])[0] || {}).evidence || {}).importedSourceChainHash || '';
+        const evidence = {
+          schemaVersion: 1, recoveredFromLegacyImport: true,
+          dossier: { id: firstApproval.dossierId || '', key: firstApproval.dossierKey || '' },
+          sourceStateChainHash: sourceChainHash,
+          documentApprovals: approvals,
+          transmittedArtifactHash: rec.transmittedArtifactHash || '',
+          transmittedApprovalHash: rec.transmittedApprovalHash || '',
+          submissions: JSON.parse(JSON.stringify(rec.depuneri || [])),
+          artifactHash: rec.artifactHash || '',
+          artifacts: (rec.artifacts || []).map((row) => ({ sha256: row.sha256, bytes: row.bytes,
+            filename: row.filename, mime: row.mime })),
+          profileHash: rec.profileHash || '', profileProvenanceHash: rec.profileProvenanceHash || '',
+        };
+        evidence.evidenceHash = chain.sha256(Buffer.from(chain.canonicalJson(evidence), 'utf8'));
+        rec.importedSourceFilingEvidence = evidence;
+        delete rec.importedSourceDocumentApprovals;
+        rec.documentApprovals = []; delete rec.documentApproval;
+        rec.approvedAt = null; rec.approvedBy = '';
+        rec.depuneri = []; rec.statusHistory = [];
+        delete rec.transmittedArtifactHash; delete rec.transmittedApprovalHash;
+        delete rec.transmittedAt; delete rec.submittedAt; rec.recipisa = '';
+        rec.status = filings.exactArtifact(rec, rec.artifactHash) ? 'generata' : 'nedepusa';
+        if (rec.status === 'generata') rec.generatedAt = migratedAt;
+        if (rec.dossier) rec.dossier.createdAt = migratedAt;
+        delete rec.stateEvents; delete rec.stateChainHash;
+        filings.ensureStateLedger(rec, rec.firmaId, rec.tip, rec.period, { at: migratedAt });
+        n += 1;
+      }
+      return n;
+    },
+  },
+  {
+    v: 7,
+    desc: 'materializează rolul colaboratorilor istorici; lipsa ulterioară devine doar vizualizare',
+    up(d) {
+      // Înaintea matricei, simpla apartenență la `user.firme` acorda în fapt operațiuni de
+      // aprobator. Păstrăm explicit acea stare la migrare, ca actualizarea să nu taie accesul
+      // existent fără urmă. După migrare, runtime-ul nu mai are fallback privilegiat.
+      const owners = new Map((d.firme || []).map((f) => [Number(f.id), Number(f.ownerId)]));
+      let n = 0;
+      for (const u of d.users || []) {
+        if (!u || u.role === 'admin') continue;
+        const roles = Object.assign({}, u.firmaRoluri || {});
+        let changed = false;
+        for (const rawFid of u.firme || []) {
+          const fid = Number(rawFid);
+          if (!Number.isFinite(fid) || owners.get(fid) === Number(u.id)) continue;
+          if (!roles[String(fid)]) { roles[String(fid)] = 'aprobator'; changed = true; }
+        }
+        if (changed) { u.firmaRoluri = roles; n += 1; }
+      }
+      return n;
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.v), 0);

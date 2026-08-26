@@ -1,0 +1,284 @@
+{
+ "parte": "Appendices · to use, not to read",
+ "nr": "C",
+ "titlu": "The tax calendar",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The calendar below is not a list of deadlines to memorize, but a map: it shows what a company owes depending on what it is and what it does. The first column of each table is always the condition — if it doesn't apply, the row doesn't need to be read."
+  },
+  {
+   "tip": "p",
+   "text": "With few exceptions, deadlines fall on the 25th of the month following the reporting period. Exceptions are noted where they occur. As with any figure that can change, checking the text currently in force remains mandatory before filing."
+  },
+  {
+   "tip": "cheie",
+   "text": "Failure to file and failure to pay are penalized separately. A zero declaration is still a declaration — the penalty for non-filing applies regardless of the amount."
+  },
+  {
+   "tip": "h",
+   "text": "What depends on what"
+  },
+  {
+   "tip": "p",
+   "text": "Three choices determine almost the entire list. They are the ones from chapter 37, placed here as a starting point."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The three questions that decide the calendar",
+   "cap": [
+    "Question",
+    "If YES",
+    "If NO"
+   ],
+   "randuri": [
+    [
+     "Is the company registered for VAT purposes?",
+     "D300, D394, D406, VAT journals",
+     "none of them"
+    ],
+    [
+     "Does the company have employees or paid collaborators?",
+     "D112 monthly, payroll records, D205 annually",
+     "none"
+    ],
+    [
+     "Is the company a microenterprise?",
+     "D100 quarterly, on revenue",
+     "D100 for advances and D101 annually, on profit"
+    ]
+   ],
+   "nota": "A fourth question is added for companies trading within the Union: intra-Community transactions bring D390 and shift VAT to monthly filing."
+  },
+  {
+   "tip": "h",
+   "text": "Monthly"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Obligations with monthly deadlines",
+   "cap": [
+    "What",
+    "By when",
+    "Who"
+   ],
+   "randuri": [
+    [
+     "D112 — contributions and payroll tax",
+     "25th of the following month",
+     "companies with employees"
+    ],
+    [
+     "D300 — VAT return",
+     "25th of the following month",
+     "taxpayers with a monthly fiscal period"
+    ],
+    [
+     "D394 — informative declaration",
+     "together with D300",
+     "the same"
+    ],
+    [
+     "D390 VIES — intra-Community transactions",
+     "25th of the following month",
+     "those with intra-Community transactions in that month"
+    ],
+    [
+     "D406 SAF-T — the standard audit file",
+     "its own deadline, after the month",
+     "depending on taxpayer category"
+    ],
+    [
+     "D100 — withholding tax, dividends",
+     "25th of the following month",
+     "when such obligations exist"
+    ],
+    [
+     "Payment of declared obligations",
+     "25th of the following month",
+     "all"
+    ],
+    [
+     "D301 — special VAT return",
+     "25th of the following month",
+     "those NOT normally registered for VAT, in the month with transactions"
+    ],
+    [
+     "D307 — VAT adjustments",
+     "25th of the following month",
+     "those who deducted VAT for goods that change their purpose"
+    ],
+    [
+     "D311 — VAT collected with a canceled code",
+     "25th of the following month",
+     "companies whose code was canceled but which still collected tax"
+    ]
+   ],
+   "nota": "D390 is not filed as zero: if there were no intra-Community transactions in that month, there is no filing obligation."
+  },
+  {
+   "tip": "h",
+   "text": "Quarterly"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Obligations with quarterly deadlines",
+   "cap": [
+    "What",
+    "By when",
+    "Who"
+   ],
+   "randuri": [
+    [
+     "D300 and D394",
+     "25th of the month following the quarter",
+     "taxpayers with a quarterly fiscal period"
+    ],
+    [
+     "D100 — microenterprise income tax",
+     "25th of the month following the quarter",
+     "microenterprises"
+    ],
+    [
+     "D100 — profit tax advance payment",
+     "25th of the month following the quarter",
+     "those applying the advance payment system"
+    ],
+    [
+     "D112 quarterly",
+     "25th of the month following the quarter",
+     "small companies, under the conditions of the law"
+    ],
+    [
+     "Trial balance at the end of the quarter",
+     "—",
+     "all (an accounting obligation, not a filing one)"
+    ]
+   ],
+   "nota": "The switch from quarterly to monthly period is not optional: a single intra-Community acquisition of goods triggers it, starting from that very month."
+  },
+  {
+   "tip": "h",
+   "text": "Annual"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Obligations with annual deadlines",
+   "cap": [
+    "What",
+    "When",
+    "Who"
+   ],
+   "randuri": [
+    [
+     "General inventory of assets",
+     "before preparing the financial statements",
+     "all"
+    ],
+    [
+     "Annual financial statements",
+     "own deadline, in the months following closing",
+     "all"
+    ],
+    [
+     "D101 — profit tax",
+     "own deadline, after the financial year closes",
+     "profit tax payers"
+    ],
+    [
+     "D205 — withholding tax by beneficiary",
+     "own deadline, in the following year",
+     "those who withheld tax at source"
+    ],
+    [
+     "Inventory register and inventory documents",
+     "at the closing of the financial year",
+     "all"
+    ],
+    [
+     "General Meeting resolution — approval and distribution",
+     "after the financial statements are prepared",
+     "all"
+    ],
+    [
+     "Tax records register",
+     "when determining the tax",
+     "profit tax payers"
+    ],
+    [
+     "D107 — sponsorship beneficiaries",
+     "together with the annual tax return",
+     "those who granted sponsorships, private scholarships, or patronage"
+    ]
+   ],
+   "nota": "The order in the table is also the order of execution: the inventory precedes the financial statements, and the General Meeting resolution follows them. None can be skipped — see chapter 44."
+  },
+  {
+   "tip": "h",
+   "text": "On request, or upon an event"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What has no fixed deadline",
+   "cap": [
+    "What",
+    "When it occurs"
+   ],
+   "randuri": [
+    [
+     "Amending declaration",
+     "whenever a filed declaration is corrected"
+    ],
+    [
+     "Notification of change of VAT fiscal period",
+     "upon the first intra-Community acquisition of goods"
+    ],
+    [
+     "Update of the tax vector",
+     "upon any change of regime or activity"
+    ],
+    [
+     "Taxpayer record sheet / tax clearance certificate",
+     "upon the company's request, for banks or tenders"
+    ],
+    [
+     "Declaration of amendments to the trade registry",
+     "upon changes of registered office, business object, or administrator"
+    ],
+    [
+     "D710 — correction declaration",
+     "when a payment obligation declared through D100 is corrected"
+    ],
+    [
+     "D177 — redirection of tax",
+     "after the annual declaration, if unused sponsorship credit remains"
+    ]
+   ],
+   "nota": "The last two are not tax obligations, but they occur often enough in practice to deserve their place in the calendar."
+  },
+  {
+   "tip": "h",
+   "text": "The order of the month, as a work list"
+  },
+  {
+   "tip": "p",
+   "text": "The calendar tells you by when. The order in which you get there is the one from chapter 39, and it's worth repeating here, since it's the part most often skipped."
+  },
+  {
+   "tip": "recap",
+   "titlu": "The order, always the same",
+   "puncte": [
+    "1. All of the month's documents are recorded and posted.",
+    "2. The bank statement is recorded and reconciled with invoices.",
+    "3. Adjustments are made, and VAT is determined.",
+    "4. The trial balance is prepared and checked.",
+    "5. Declarations are generated FROM the trial balance, validated, and filed.",
+    "6. Receipts are archived, obligations are paid, the period is closed."
+   ]
+  },
+  {
+   "tip": "p",
+   "text": "Step 5 is the one that cannot precede step 4. A declaration generated before the trial balance will need to be corrected afterward, and correcting an already-filed declaration always costs more than a day's wait."
+  }
+ ]
+}

@@ -1,0 +1,269 @@
+{
+ "parte": "Part VII · The registers and verification · phase 8",
+ "nr": "31",
+ "titlu": "Systematic view: the general ledger",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The same transactions, the same amounts, the same month — but arranged differently. The general ledger takes everything from the journal and groups it by account, not by day."
+  },
+  {
+   "tip": "p",
+   "text": "The result is a ledger card for each account, and that card answers the question the journal could not: what is the situation of this account, where did it start, and how did it get here."
+  },
+  {
+   "tip": "h",
+   "text": "An account's ledger card"
+  },
+  {
+   "tip": "p",
+   "text": "The structure is the same for all accounts, regardless of their nature: opening balance, the period's movements in chronological order, the turnover on each side, and the closing balance."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ledger card for account 371 Merchandise, June",
+   "cap": [
+    "Date",
+    "Description",
+    "Debit",
+    "Credit"
+   ],
+   "randuri": [
+    [
+     "",
+     "Opening balance",
+     "20.000",
+     ""
+    ],
+    [
+     "2026-06-10",
+     "Purchase of merchandise (stock inflow)",
+     "10.000",
+     ""
+    ],
+    [
+     "2026-06-15",
+     "Inventory write-off — cost of merchandise sold",
+     "",
+     "8.000"
+    ],
+    [
+     "",
+     "Turnover",
+     "10.000",
+     "8.000"
+    ],
+    [
+     "",
+     "Closing balance",
+     "22.000",
+     ""
+    ]
+   ],
+   "numerice": [
+    3,
+    4
+   ],
+   "nota": "The closing balance is obtained from the opening balance plus debit turnover minus credit turnover: 20,000 + 10,000 − 8,000 = 22,000."
+  },
+  {
+   "tip": "p",
+   "text": "This card tells, on a single screen, the complete story of the merchandise in June: the business started with 20,000 lei of merchandise, purchased another 10,000, sold merchandise that had cost 8,000, and was left with 22,000 in the warehouse."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth noting that the same event — the sale on June 15 — appears in the journal as three lines, of which only one is visible in the ledger card for account 371. This is not a loss of information: the other two appear in the ledger cards for accounts 4111, 707, and 4427. Each account sees, from the transaction, only the part that concerns it."
+  },
+  {
+   "tip": "cheie",
+   "text": "The journal and the general ledger contain exactly the same figures. They differ only in the question they answer: \"what happened then\" versus \"what is the situation here\"."
+  },
+  {
+   "tip": "h",
+   "text": "The path back"
+  },
+  {
+   "tip": "p",
+   "text": "The most important property of the general ledger is not that it shows the balance, but that it shows what it's made of. Any figure in a report can be unpacked, step by step, down to the document that produced it."
+  },
+  {
+   "tip": "p",
+   "text": "The path always has the same four steps: the balance sheet or the report you started from points to an account in the trial balance; the account in the trial balance points to its ledger card in the general ledger; a movement in the card points to the journal entry; the entry points to the supporting document."
+  },
+  {
+   "tip": "p",
+   "text": "Accounting software makes this journey in four clicks. A paper file makes it in four quarter-hours. But the possibility of making it is the same, and it is mandatory: a figure that cannot be traced back to a document has no business being in a financial statement."
+  },
+  {
+   "tip": "h",
+   "text": "Synthetic and analytic"
+  },
+  {
+   "tip": "p",
+   "text": "Account 401 Suppliers has a balance. But the real question for any business owner is not \"how much do I owe\", but \"whom do I owe\". The answer lies in the account's analytic breakdown: the same amount, split by each partner."
+  },
+  {
+   "tip": "p",
+   "text": "The relationship between the two is a fixed rule: the sum of the analytic balances must equal the balance of the synthetic account. Not approximately — exactly. If they are not equal, one of them is wrong, and the wrong one is almost always the analytic breakdown, because that's where partners recorded under two different names get lost."
+  },
+  {
+   "tip": "p",
+   "text": "This check is worth doing monthly and is among the few that can be fully automated. Software that displays the analytic breakdown without confirming agreement with the synthetic account offers a nice-looking but unreliable list."
+  },
+  {
+   "tip": "h",
+   "text": "What the general ledger is not"
+  },
+  {
+   "tip": "p",
+   "text": "Two confusions deserve clarification, since they often arise among those learning on their own."
+  },
+  {
+   "tip": "p",
+   "text": "The general ledger is not the trial balance. The general ledger contains the movements — all of them, one by one. The trial balance contains only the totals of each account, on a single line. One is the material, the other is the summary."
+  },
+  {
+   "tip": "p",
+   "text": "Nor is it a separate register, written a second time. In paper-based bookkeeping it actually was: the same transaction was copied manually into two registers, and the copying was the source of errors. In software, both registers are two views of the same collection of entries — which is why they can never differ."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The general ledger is a mandatory register under the Accounting Law, and the accepted forms — the ledger card for miscellaneous transactions and, respectively, the \"chess-board\" ledger card (fișă de cont șah) — are those set out in the regulations on financial-accounting documents; the choice between them is a matter of volume and organization, not of compliance. Three useful observations. First: analytic development is mandatory for accounts expressly required by the regulations — among them third parties, inventories by custody/management unit, and expenses with limited deductibility — and the company's chart of accounts, with the analytic symbols used, is part of the accounting policies manual and must remain stable over time; changing the analytic structure during the fiscal year breaks comparability and is one of the frequent causes of synthetic-analytic mismatch. Second: for bifunctional accounts, the balance is determined on a net basis, but the presentation in the balance sheet follows the nature of the item, not the sign of the balance in the trial balance — a credit balance on 4111 is not presented as a trade payable without prior analysis of the cause, which is usually an unadjusted advance or an unallocated receipt. Third: the check on agreement between the analytic balances and the synthetic one must be performed at every closing and documented; it is the first control that catches partners entered twice under different names, and the difference it flags is always real, even if it is not visible in the synthetic trial balance."
+  },
+  {
+   "tip": "h",
+   "text": "What's next"
+  },
+  {
+   "tip": "p",
+   "text": "With the journal and the general ledger, the bookkeeping is complete: everything is recorded, in chronological order and grouped by account. The question remains whether everything adds up — and for that there is a single tool, the oldest in accounting. That is the next chapter."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 31.1 — the path back, in four steps",
+   "enunt": [
+    "The balance sheet shows trade payables of 87,400 lei. The business owner asks what the figure is made of and why it is higher than last month.",
+    "Describe the path, step by step, down to the documents."
+   ],
+   "rezolvare": [
+    "Step 1 — from balance sheet to trial balance: the trade payables line is made up of the credit balances of accounts 401, 404, and 408. Identify each one.",
+    "Step 2 — from trial balance to analytic breakdown: the balance of 401 is split by each supplier. Here you can immediately see whether the increase comes from a single partner or from many.",
+    "Step 3 — from analytic to ledger card: for the identified supplier, the month's movements, in chronological order.",
+    "Step 4 — from card to entry, and from entry to document: the invoice that produced the increase, with its number and date.",
+    "The check that confirms the path: the sum of the analytic balances must be exactly the synthetic balance. If it isn't, step 2 is lying, and the rest of the path leads to the wrong place.",
+    "Software performs the four steps in four clicks. What no software can do is step zero: knowing WHY it increased — that is, whether that purchase made sense."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Which accounts require analytic development"
+  },
+  {
+   "tip": "p",
+   "text": "Analytic detail is not kept everywhere — that would be work without information. It is kept where the synthetic balance does not answer the question the account exists for."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Where analytic development is mandatory, and by what criterion",
+   "cap": [
+    "Accounts",
+    "Broken down by",
+    "The question it answers"
+   ],
+   "randuri": [
+    [
+     "401, 404, 408",
+     "supplier",
+     "whom I owe, and since when"
+    ],
+    [
+     "4111, 418, 461",
+     "customer or debtor",
+     "who owes me"
+    ],
+    [
+     "409, 419",
+     "partner",
+     "what exactly the advance was given or received for"
+    ],
+    [
+     "5121, 5124",
+     "bank account",
+     "which statement is reconciled against which balance"
+    ],
+    [
+     "5311, 5314",
+     "cash office",
+     "which cash register log"
+    ],
+    [
+     "421, 425",
+     "employee",
+     "who is owed, and how much"
+    ],
+    [
+     "542",
+     "person",
+     "who holds unaccounted-for company money"
+    ]
+   ],
+   "nota": "The common criterion: in each case, the total balance is true and useless. The information is in the breakdown."
+  },
+  {
+   "tip": "p",
+   "text": "For inventories, the breakdown is done by custody/management unit and by product, and for expenses with limited deductibility — protocol, sponsorship, vehicles — by category, because otherwise the year-end tax calculation cannot be done without reconstruction."
+  },
+  {
+   "tip": "h",
+   "text": "What happens when the analytic breakdown doesn't agree"
+  },
+  {
+   "tip": "p",
+   "text": "The equality between the sum of the analytic balances and the synthetic balance is the cheapest check in accounting and one of the most productive. When it doesn't work out, the causes are few and identifiable."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Why it doesn't agree",
+   "cap": [
+    "Cause",
+    "How to recognize it"
+   ],
+   "randuri": [
+    [
+     "the same partner under two names",
+     "two analytic lines that should be one"
+    ],
+    [
+     "a transaction recorded without a partner",
+     "the difference is exactly its amount"
+    ],
+    [
+     "a deleted partner with a remaining balance",
+     "synthetic balance greater than the sum of the analytic balances"
+    ],
+    [
+     "balances carried forward without breakdown",
+     "the difference appears from the first month of the year"
+    ]
+   ],
+   "nota": "The first is the most frequent and the hardest to fix later: after a few months, the two \"companies\" each have their own history."
+  },
+  {
+   "tip": "cheie",
+   "text": "An analytic breakdown that doesn't agree with the synthetic account is not a reporting error: it's a data error. And the wrong figure is almost always the one in the breakdown, because the balance is checked against totals."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "The general ledger contains the same transactions as the journal, grouped by account instead of by day.",
+    "Every ledger card has the same structure: opening balance, movements, turnover, closing balance.",
+    "An account sees, from each transaction, only the part that concerns it; the whole is reassembled from several cards.",
+    "Its main purpose is the path back: from balance sheet to trial balance, from trial balance to card, from card to entry, from entry to document.",
+    "The sum of the analytic balances must EXACTLY equal the synthetic account's balance — a monthly check, fully automatable.",
+    "The general ledger is not the trial balance: one contains the movements, the other only the totals."
+   ]
+  }
+ ]
+}

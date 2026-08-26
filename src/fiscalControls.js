@@ -144,8 +144,9 @@ function controalePartener(v, yearEntries, year) {
 function check(v, opts) {
   opts = opts || {};
   const company = (v || {}).company || {};
-  const profile = fiscalProfile.build(company, { angajati: (v || {}).angajati });
   const year = String(opts.year || new Date().getFullYear());
+  const ruleSet = fiscal.rulesAt(year + '-12'); const rates = ruleSet.rates;
+  const profile = fiscalProfile.profileAt(v || {}, year, { angajati: (v || {}).angajati });
   const posted = acc.postedEntries(v);
   const yearEntries = posted.filter((e) => String(e.period || periodOf(e.data)).startsWith(year));
   const findings = [];
@@ -160,7 +161,7 @@ function check(v, opts) {
     // 1b) Neplatitor aproape de / peste plafonul de scutire TVA (art. 310) -> obligatie de inregistrare.
     //     La depasire, inregistrarea se cere in 10 zile de la finalul lunii depasirii; altfel ANAF
     //     inregistreaza din oficiu retroactiv. Advisory pe cifra de afaceri (70x) cumulata pe an.
-    const plafonTva = Number(fiscal.FISCAL.plafonScutireTvaLei) || 0;
+    const plafonTva = Number(rates.plafonScutireTvaLei) || 0;
     const ca = cifraAfaceri(yearEntries);
     if (plafonTva > 0 && ca > plafonTva) add('atentie', 'tva-plafon-scutire-depasit',
       'Cifra de afaceri a anului ' + year + ' (' + ca + ' lei) depășește plafonul de scutire TVA (' + plafonTva + ' lei) — ești obligat să ceri înregistrarea în scopuri de TVA în 10 zile de la finalul lunii depășirii (art. 310 Cod fiscal).');
@@ -183,8 +184,8 @@ function check(v, opts) {
     const venitAn = venituriClasa7(yearEntries);
     // Acelasi curs ca la D100 (BNR, 31 decembrie anul precedent), altfel controlul si declaratia
     // ar folosi doua plafoane diferite pentru aceeasi firma.
-    const cursP = bnr.cursPlafonMicro((v.cursuriBnr || []), Number(year), fiscal.FISCAL.cursPlafonMicro);
-    const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (cursP.curs || 0));
+    const cursP = bnr.cursPlafonMicro((v.cursuriBnr || []), Number(year), rates.cursPlafonMicro);
+    const plafonLei = round2((rates.plafonMicroEur || 0) * (cursP.curs || 0));
     // Doar in preajma plafonului: acolo alegerea cursului poate schimba incadrarea. Altfel ar fi
     // un avertisment permanent pentru orice firma micro care n-a incarcat cursuri.
     if (cursP.sursa !== 'bnr' && plafonLei > 0 && venitAn > round2(plafonLei * 0.9)) add('info', 'micro-curs-orientativ',
@@ -203,8 +204,8 @@ function check(v, opts) {
   //    marcat dar sub prag pe ambele fluxuri -> poate iesi din obligatie (info).
   const areIntracom = yearEntries.some((e) => INTRACOM_TYPES.has(e.tip));
   const rulaj = intracomTurnover(yearEntries);
-  const pragIntro = Number(fiscal.FISCAL.pragIntrastatIntroduceri) || 0;
-  const pragExp = Number(fiscal.FISCAL.pragIntrastatExpedieri) || 0;
+  const pragIntro = Number(rates.pragIntrastatIntroduceri) || 0;
+  const pragExp = Number(rates.pragIntrastatExpedieri) || 0;
   const depasesteIntro = pragIntro > 0 && rulaj.introduceri > pragIntro;
   const depasesteExp = pragExp > 0 && rulaj.expedieri > pragExp;
   if (depasesteIntro || depasesteExp) {
@@ -236,7 +237,9 @@ function check(v, opts) {
 
   const byLevel = { eroare: 0, atentie: 0, info: 0 };
   for (const f of findings) byLevel[f.nivel] += 1;
-  return { year, profil: profile, findings, byLevel, ok: findings.every((f) => f.nivel !== 'eroare') };
+  return { year, profil: profile, findings, byLevel,
+    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
+    ok: findings.every((f) => f.nivel !== 'eroare') };
 }
 
 // `cifraAfaceri` / `venituriClasa7` sunt expuse pentru teste: sunt agregarile pe care le golea

@@ -1,0 +1,226 @@
+{
+ "parte": "Part IX · Closing · phases 10–11",
+ "nr": "42",
+ "titlu": "Closing the Year",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Twelve closed months do not make a closed year. At the end of the fiscal year an operation takes place that has no counterpart in any month: the revenue and expense accounts are extinguished, and their balance is gathered into a single account."
+  },
+  {
+   "tip": "p",
+   "text": "The operation is called closing the result accounts, and understanding it clarifies a question many business owners ask without ever getting a clear answer: where exactly does it say how much the company earned."
+  },
+  {
+   "tip": "h",
+   "text": "Why the result accounts disappear"
+  },
+  {
+   "tip": "p",
+   "text": "The accounts in classes 6 and 7 measure an interval, not a state. Account 607 doesn't say \"I have 8,000 lei worth of goods,\" but \"during this period I gave out 8,000 lei worth of goods.\" These are flow accounts, and the flow belongs to the fiscal year that is ending."
+  },
+  {
+   "tip": "p",
+   "text": "On January 1, measurement must start from zero — otherwise expenses would accumulate indefinitely, and the third year's result would also contain the first two. Emptying them is not a formality: it is the condition for the following fiscal year to mean anything."
+  },
+  {
+   "tip": "cheie",
+   "text": "Balance sheet accounts carry over across years; result accounts, never. A balance remaining in a class 6 or 7 account on January 1 is always an unperformed closing."
+  },
+  {
+   "tip": "h",
+   "text": "How it's done"
+  },
+  {
+   "tip": "p",
+   "text": "All revenue accounts are debited with their balance, and account 121 Profit or Loss is credited. All expense accounts are credited with their balance, and 121 is debited. In the end, the only thing that remains is the balance of account 121."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Closing, for a profitable year",
+   "cap": [
+    "Operation",
+    "Debit",
+    "Credit",
+    "Effect"
+   ],
+   "randuri": [
+    [
+     "Closing revenues",
+     "7xx",
+     "121",
+     "121 receives the total revenues"
+    ],
+    [
+     "Closing expenses",
+     "121",
+     "6xx",
+     "121 loses the total expenses"
+    ],
+    [
+     "The result",
+     "",
+     "",
+     "the balance remaining in 121"
+    ]
+   ],
+   "nota": "A credit balance in 121 = profit. A debit balance = loss. It is the only account in the chart of accounts whose meaning reads exactly opposite to how the names of the surrounding accounts sound."
+  },
+  {
+   "tip": "p",
+   "text": "A concrete example: revenues of 500,000 lei, expenses of 420,000. After closing, account 121 has a credit balance of 80,000 lei. This is the figure that appears in the income statement as the gross result for the fiscal year."
+  },
+  {
+   "tip": "h",
+   "text": "The tax, which comes afterward"
+  },
+  {
+   "tip": "p",
+   "text": "The order here is often confusing, because it appears circular: corporate income tax is an expense, so it should be closed into 121; but it is calculated based on the result, which is obtained precisely from 121."
+  },
+  {
+   "tip": "p",
+   "text": "The actual order has three stages. First, all revenue and expense accounts are closed, except for the tax account. This yields the gross result. Based on it, the tax is calculated and recorded, and then the tax account is also closed into 121."
+  },
+  {
+   "tip": "p",
+   "text": "What remains in 121 after the third stage is the net result — the profit that can actually be distributed. In the example above, with a tax of 13,280 lei, the net result is 66,720."
+  },
+  {
+   "tip": "h",
+   "text": "What is NOT closed"
+  },
+  {
+   "tip": "p",
+   "text": "This is worth stating explicitly, because it is the mistake that empties reports: only the accounts in classes 6 and 7 are closed. All others — assets, liabilities, equity — keep their balance and carry over into the following year as opening balances."
+  },
+  {
+   "tip": "p",
+   "text": "Account 371 keeps the merchandise in the warehouse. Account 401 keeps the payables to suppliers. Account 5121 keeps the money. A closing that touched them would wipe out the company's assets, not its result."
+  },
+  {
+   "tip": "p",
+   "text": "The practical consequence, for anyone reading reports: after the annual closing, any report built on the turnover of the closed year's result accounts shows zero. Not because the activity has disappeared, but because it has been moved into 121. This is why financial statements are prepared on the trial balance BEFORE closing."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The operation is required by accounting regulations, which provide that at the end of the fiscal year the balances of the revenue and expense accounts are transferred to the profit and loss account. Four practical observations. First: two distinct trial balances are used — the one before the closing operations, on which the income statement and notes are prepared, and the one after, which serves the balance sheet; using the second one for the result account produces a form that is entirely zero, and the error goes unnoticed because the balance sheet comes out correct. Second: account 121 is not settled at the closing of the fiscal year, but keeps the result until its distribution, in the following fiscal year, after the financial statements are approved — its balance on January 1 is normal, unlike that of accounts 6 and 7. Third: the corporate income tax expense is determined based on the taxable result, not the accounting result, and its recording changes the net result without changing the taxable base; the correct order is closing the result accounts, determining the tax, recording it, and only then closing account 691. Fourth: for companies paying microenterprise income tax, the tax expense is determined quarterly based on revenues, and the closing follows the same order, even though the base has no connection to the result."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "We used a figure twice above without explaining it: the tax of 13,280 lei on a profit of 80,000. Anyone calculating 16% of 80,000 gets 12,800, not 13,280. The difference is not a mistake — it is the subject of the next chapter."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 42.1 — what remains after closing",
+   "enunt": [
+    "Before the annual closing, the trial balance shows: 707 credit 500,000; 607 debit 300,000; 641 debit 120,000; 371 debit 80,000; 4111 debit 15,000; 401 credit 45,000; 5121 debit 60,000; 1012 credit 30,000.",
+    "(a) Does the trial balance close? (b) What balances remain after closing the result accounts, and what is the balance of 121? (c) Why can't the income statement be prepared AFTER this operation?"
+   ],
+   "rezolvare": [
+    "(a) Debit: 300,000 + 120,000 + 80,000 + 15,000 + 60,000 = 575,000. Credit: 500,000 + 45,000 + 30,000 = 575,000. It closes.",
+    "(b) Only the balance sheet accounts remain: 371 debit 80,000, 4111 debit 15,000, 5121 debit 60,000, 401 credit 45,000, 1012 credit 30,000. Accounts 707, 607, and 641 become zero.",
+    "The balance of 121: 500,000 revenues − 420,000 expenses = 80,000 lei, CREDIT, i.e. gross profit.",
+    "The verification after closing: assets 80,000 + 15,000 + 60,000 = 155,000; liabilities 45,000 + 30,000 + 80,000 = 155,000. It closes now too — the profit has taken the place of the vanished turnovers, which is exactly the purpose of the operation.",
+    "(c) Because the turnovers of accounts 6 and 7 have become zero. An income statement prepared on the trial balance AFTER closing comes out entirely at zero — and the error goes unnoticed, because the balance sheet prepared on the same trial balance comes out correct. This is the most frequent cause of empty reports."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The three stages, in figures"
+  },
+  {
+   "tip": "p",
+   "text": "The order of the three stages is best understood by tracking what account 121 contains after each one. Here is a year with 500,000 lei in revenues, 420,000 in expenses (excluding tax), and a tax of 12,800."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Account 121, after each step",
+   "cap": [
+    "Stage",
+    "What is closed",
+    "Balance of 121"
+   ],
+   "randuri": [
+    [
+     "before closing",
+     "—",
+     "0"
+    ],
+    [
+     "1. revenues",
+     "7xx = 121, with 500,000",
+     "500,000 credit"
+    ],
+    [
+     "2. expenses (excluding 691)",
+     "121 = 6xx, with 420,000",
+     "80,000 credit — the GROSS result"
+    ],
+    [
+     "",
+     "the tax is calculated on this result",
+     "—"
+    ],
+    [
+     "3. the tax expense",
+     "121 = 691, with 12,800",
+     "67,200 credit — the NET result"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "The tax is calculated between step 2 and step 3. That's why there are three stages, not one: the figure needed for step 3 is obtained only after step 2."
+  },
+  {
+   "tip": "p",
+   "text": "Anyone who closes all the expense accounts at once, including 691, obtains a gross result already reduced by the tax — and if the tax is then calculated on it, the resulting figure is smaller than the amount actually owed. The error is self-perpetuating: each recalculation deepens it."
+  },
+  {
+   "tip": "h",
+   "text": "What remains in 121 after December 31"
+  },
+  {
+   "tip": "p",
+   "text": "Unlike accounts 6 and 7, account 121 is NOT settled at the closing of the fiscal year. It keeps the result until its distribution, which takes place in the following year, after the financial statements are approved."
+  },
+  {
+   "tip": "p",
+   "text": "So a balance in 121 on January 1 is normal and expected — unlike a balance in 607 or 707, which is always an unperformed closing. It is a small and often confused distinction, and the confusion leads to additional \"closings\" that empty the result before it has been distributed."
+  },
+  {
+   "tip": "cheie",
+   "text": "On January 1, the revenue and expense accounts must be ZERO. Account 121 is not — it carries the result until distribution, that is, until the shareholders decide what to do with it."
+  },
+  {
+   "tip": "h",
+   "text": "The microenterprise: same path, different base"
+  },
+  {
+   "tip": "p",
+   "text": "For companies paying microenterprise income tax, the closing mechanism is unchanged, but the step between the stages looks different: the tax is not calculated on the result, but on revenues, and not at the end of the year, but quarterly."
+  },
+  {
+   "tip": "p",
+   "text": "The consequence is that, on December 31, the tax expense is already recorded — four quarters, already declared and paid. The third stage still exists, but it closes an expense that no longer depends on the result just calculated. The order remains the same; only the dependency between the steps disappears."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Revenue and expense accounts measure an interval, so they are emptied at its end; balance sheet accounts carry over across years.",
+    "Revenues are closed through 7xx = 121, expenses through 121 = 6xx. What remains in 121 is the result.",
+    "A credit balance in 121 means profit, a debit balance means loss.",
+    "The tax is recorded after closing the other accounts, and only then is it also closed — three stages, not one.",
+    "A balance remaining in a class 6 or 7 account on January 1 is an unperformed closing.",
+    "Financial statements are prepared on the trial balance BEFORE closing; after it, reports based on turnovers show zero."
+   ]
+  }
+ ]
+}

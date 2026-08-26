@@ -62,7 +62,11 @@ function lastEntries(entries, n) {
 // astfel intreg trimestrul pentru platitorii trimestriali.
 function vatPeriod(company, monthPeriod) {
   const m = String(monthPeriod || '').match(/^(\d{4})-(\d{2})$/);
-  if (m && company && company.perioadaTva === 'T') return m[1] + '-Q' + Math.ceil(Number(m[2]) / 3);
+  // Acceptă firma simplă sau vederea scoped (`company` + fiscalProfileHistory). Pentru firmele cu
+  // istoric, cadența este cea valabilă în LUNA cerută, nu setarea de azi.
+  const fiscalView = require('./fiscalProfile').profileAt(company || {}, monthPeriod);
+  const legacyTrim = company && !company.company && company.perioadaTva === 'T';
+  if (m && fiscalView && (fiscalView.trimestrialTva || fiscalView.perioadaTva === 'T' || legacyTrim)) return m[1] + '-Q' + Math.ceil(Number(m[2]) / 3);
   return monthPeriod;
 }
 
@@ -1104,13 +1108,19 @@ function cashRegisterValuta(db, period, moneda) {
 function cashControl(db, cont, period, opts) {
   cont = cont || '5311';
   // Plafoanele stau in fiscalConfig (sursa unica, datata), nu in cod: erau hardcodate aici, deci
-  // o modificare a Legii 70/2015 ar fi cerut vanatoare prin module. `fiscal.FISCAL` poarta si
-  // suprascrierile din Setari, deci o firma poate stabili o limita interna mai stricta.
-  const lim = Object.assign({}, fiscal.FISCAL, opts || {});
-  const limJuridic = Number(lim.plafonNumerarJuridic) || 5000;
-  const limFizic = Number(lim.plafonNumerarFizic) || 10000;
-  const limSold = Number(lim.plafonSoldCasa) || 50000;
-  const limTotalZi = Number(lim.plafonNumerarTotalZi) || 10000;
+  // o modificare a Legii 70/2015 se rezolva prin versiunea efectiva a perioadei controlate.
+  let ruleSet = null; let rulesMissing = '';
+  try { ruleSet = fiscal.rulesAt(period); } catch (e) {
+    if (e.code !== 'FISCAL_RULES_NOT_FOUND') throw e; rulesMissing = e.message;
+  }
+  const lim = Object.assign({}, ruleSet ? ruleSet.rates : {}, opts || {});
+  // Fara versiune nu inventam plafoane si nu reutilizam ultimul an: controlul fizic al soldului
+  // negativ continua, iar controalele fiscale sunt marcate indisponibile.
+  const limit = (key) => Number.isFinite(Number(lim[key])) ? Number(lim[key]) : Infinity;
+  const limJuridic = limit('plafonNumerarJuridic');
+  const limFizic = limit('plafonNumerarFizic');
+  const limSold = limit('plafonSoldCasa');
+  const limTotalZi = limit('plafonNumerarTotalZi');
   const opening = (db.openingBalances || {})[cont] || { d: 0, c: 0 };
   const before = accumulate(allLines(postedEntries(db).filter((e) => beforePeriod(e, period))))[cont] || { d: 0, c: 0 };
   let sold = round2((opening.d + before.d) - (opening.c + before.c));
@@ -1178,6 +1188,8 @@ function cashControl(db, cont, period, opts) {
     ? zilePesteLimita.reduce((a, b) => (b.sold > a.sold ? b : a))
     : null;
   return { cont, period, soldFinal: sold, negative, plafon, plafonTotalZi, soldPesteLimita, zilePesteLimita,
+    ruleSetId: ruleSet && ruleSet.id || null, fiscalRulesHash: ruleSet && ruleSet.hash || null,
+    rulesMissing: rulesMissing || null,
     ok: !negative.length && !plafon.length && !plafonTotalZi.length && !zilePesteLimita.length };
 }
 

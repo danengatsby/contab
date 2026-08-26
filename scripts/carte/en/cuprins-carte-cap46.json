@@ -1,0 +1,252 @@
+{
+ "parte": "Part X · The financial statements · phase 12",
+ "nr": "46",
+ "titlu": "The Balance Sheet",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The balance sheet is a photograph. The income statement told the story of a whole year; the balance sheet shows a single moment — usually December 31, midnight — and states what the company has and to whom it owes."
+  },
+  {
+   "tip": "p",
+   "text": "It has two sides, and they are always equal. Not because the company is \"balanced,\" but because the two sides describe the same thing from two angles: what exists, and where it came from."
+  },
+  {
+   "tip": "h",
+   "text": "The Two Questions"
+  },
+  {
+   "tip": "p",
+   "text": "The assets answer the question \"what does the company have\": goods, inventory, receivables, cash. The liabilities and equity answer \"what was it financed with\": owners' money, undistributed profit, debts."
+  },
+  {
+   "tip": "p",
+   "text": "Every leu in the assets came from somewhere. Either the owners put it in, or the company produced it and kept it, or it is owed to someone. There is no fourth option — and that is where the equality comes from."
+  },
+  {
+   "tip": "cheie",
+   "text": "Assets = Liabilities + Equity is not a check that may or may not balance. It is the same reality counted twice: once by form, once by origin."
+  },
+  {
+   "tip": "h",
+   "text": "A Balance Sheet, Read"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Balance Sheet as of December 31",
+   "cap": [
+    "ASSETS",
+    "Amount",
+    "LIABILITIES AND EQUITY",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Fixed assets (net)",
+     "48.000",
+     "Share capital",
+     "30.000"
+    ],
+    [
+     "Inventory",
+     "22.000",
+     "Reserves",
+     "4.000"
+    ],
+    [
+     "Receivables",
+     "31.000",
+     "Retained earnings",
+     "20.000"
+    ],
+    [
+     "Cash and bank",
+     "39.000",
+     "Result for the year",
+     "26.000"
+    ],
+    [
+     "",
+     "",
+     "Liabilities over 1 year",
+     "25.000"
+    ],
+    [
+     "",
+     "",
+     "Liabilities under 1 year",
+     "35.000"
+    ],
+    [
+     "TOTAL ASSETS",
+     "140.000",
+     "TOTAL LIABILITIES AND EQUITY",
+     "140.000"
+    ]
+   ],
+   "numerice": [
+    2,
+    4
+   ],
+   "total": true,
+   "nota": "The first four lines on the liabilities and equity side make up equity: 80,000 lei. This is the owners' net worth — what would remain if all debts were paid."
+  },
+  {
+   "tip": "p",
+   "text": "The figure of 80,000 lei in the note is the most important one in the whole document and, paradoxically, does not appear as a separate line in the usual reading. It answers the question \"how much is the company worth to its owners,\" and its evolution from year to year is the most honest measure of success."
+  },
+  {
+   "tip": "h",
+   "text": "The Order of the Lines Is Not Random"
+  },
+  {
+   "tip": "p",
+   "text": "Assets are arranged in increasing order of liquidity: first what is hardest to convert into cash — buildings, equipment — and last, cash itself."
+  },
+  {
+   "tip": "p",
+   "text": "Liabilities and equity follow the increasing order of enforceability: first what never has to be returned — the owners' capital —, then long-term debts, then those payable in the coming months."
+  },
+  {
+   "tip": "p",
+   "text": "Arranged this way, the two columns can also be read horizontally. An asset that is hard to convert into cash, financed from short-term debt, is the classic signal of a cash-flow problem that has not yet occurred. The comparison between the bottom of the assets and the bottom of the liabilities — current assets versus current liabilities — is the simplest financial health indicator there is."
+  },
+  {
+   "tip": "h",
+   "text": "What the Balance Sheet Does Not Show"
+  },
+  {
+   "tip": "p",
+   "text": "This is worth saying, because otherwise the document is overrated. The balance sheet does not contain the market value of the company, but the historical cost of its elements, adjusted for depreciation and impairment."
+  },
+  {
+   "tip": "p",
+   "text": "It also does not contain the brand, the customer base, or the team's expertise — real assets, sometimes the most valuable ones, which do not meet recognition criteria. A services company with thirty good employees may have a smaller balance sheet than a warehouse full of goods."
+  },
+  {
+   "tip": "p",
+   "text": "That is why the balance sheet is not read alone. Read alongside the income statement and the cash flow, it says a lot; read in isolation, it says less about the company than it seems to."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "The balance sheet is prepared in the F10 format provided by the accounting regulations, abbreviated for micro-entities and small entities and complete for medium and large ones, with two columns — the beginning and the end of the financial year. Four observations. First: the balance sheet identity must result by construction, not by adjusting a balancing line — each account must fall into exactly one line, with the correct sign, and the totals must be calculated using the form's formulas, not summed independently; otherwise a divergence appears between what the report shows and what the validator checks. Second: elements are presented at NET value — fixed assets reduced by depreciation and impairment, receivables by the impairment adjustments from Chapter 27 — and presentation at gross value simultaneously inflates the assets and, by correlation, the indicators calculated on them. Third: the split of debts into those due within one year and over one year is made according to the actual maturity at the balance sheet date, not according to the nature of the account; the balance of account 167 from Chapter 24 is split between both lines, depending on the installments for the next twelve months. Fourth: credit balances on receivables accounts and debit balances on liabilities accounts are not offset against each other, but are presented on the side that corresponds to their economic nature, after analyzing the cause — the prohibition on offsetting is one of the rules most often violated in practice, and the effect is a simultaneous understatement of assets and liabilities."
+  },
+  {
+   "tip": "h",
+   "text": "What Comes Next"
+  },
+  {
+   "tip": "p",
+   "text": "The two main documents are ready. However, they are not the only ones filed — and among those that accompany them, one answers the question that neither the balance sheet nor the income statement touches: where did the money go."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 46.1 — What the Balance Sheet Says When Read Horizontally",
+   "enunt": [
+    "Balance sheet: net fixed assets 200,000; inventory 60,000; receivables 90,000; cash and bank 10,000. Equity 120,000; liabilities over one year 40,000; liabilities under one year 200,000.",
+    "(a) Does it balance? (b) What does the horizontal comparison show?"
+   ],
+   "rezolvare": [
+    "(a) Assets: 200,000 + 60,000 + 90,000 + 10,000 = 360,000. Liabilities and equity: 120,000 + 40,000 + 200,000 = 360,000. It balances.",
+    "(b) Current assets (inventory + receivables + cash) = 160,000. Current liabilities = 200,000. The company has 40,000 lei more to pay in the next twelve months than it can convert into cash in the same period.",
+    "The cause is also visible horizontally: fixed assets of 200,000 are financed from equity (120,000) plus long-term debt (40,000) = 160,000, so 40,000 of them are financed from SHORT-term debt. An asset that is recovered over five years, paid from money owed in six months.",
+    "This is not an accounting error and it does not show up in the income statement. It is a cash-flow problem that has not yet occurred — and it is the one thing the balance sheet says better than any other document."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The Official Form Does Not Have Two Columns"
+  },
+  {
+   "tip": "p",
+   "text": "The balance sheet in this chapter is presented in two columns, because that is the easiest way to understand the equality. The official form, however, looks different: it is VERTICAL, and the equality is not seen at a glance — it is reached at the end, through a chain of subtractions."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Example Balance Sheet, in Official Form",
+   "cap": [
+    "Line",
+    "What It Includes",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "A. Fixed assets",
+     "net fixed assets",
+     "15.366,65"
+    ],
+    [
+     "B. Current assets",
+     "inventory, receivables, cash and bank",
+     "71.015,00"
+    ],
+    [
+     "D. Liabilities under one year",
+     "suppliers, salaries, contributions, VAT",
+     "20.127,50"
+    ],
+    [
+     "E. Net current assets",
+     "B − D",
+     "50.887,50"
+    ],
+    [
+     "F. Total assets minus current liabilities",
+     "A + E",
+     "66.254,15"
+    ],
+    [
+     "J. Equity",
+     "capital, retained earnings, result for the year",
+     "66.254,15"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "The classic equality appears only at the end: F = J. The two figures are the same, but they were reached by different routes."
+  },
+  {
+   "tip": "p",
+   "text": "Line E deserves attention, since it is the only one that does not appear in the two-column form and is perhaps the most useful in the whole document: net current assets, i.e. what remains of short-term assets after paying short-term debts. Here, 50,887.50 lei — a company that can cover its near-term obligations more than three times over."
+  },
+  {
+   "tip": "p",
+   "text": "When line E is negative, the company has more to pay in the next twelve months than it can convert into cash in the same period. This is not an accounting error and does not appear anywhere in the income statement — but it is the first thing a bank reads."
+  },
+  {
+   "tip": "cheie",
+   "text": "The vertical form does not hide the equality, it postpones it — and along the way, it calculates an indicator that the two-column form does not produce at all."
+  },
+  {
+   "tip": "h",
+   "text": "Abbreviated or Complete"
+  },
+  {
+   "tip": "p",
+   "text": "The form has two versions, and the choice is not free: it depends on the category the company falls into, according to size criteria — total assets, turnover, and average number of employees."
+  },
+  {
+   "tip": "p",
+   "text": "Micro-entities and small entities file the abbreviated balance sheet, with the large groups. Medium and large ones file the complete form, with over a hundred lines, where each group is broken down into elements. The economic content is the same; what differs is how much of it is visible."
+  },
+  {
+   "tip": "p",
+   "text": "The move from one category to another does not happen at the first exceedance: the criteria must be exceeded for two consecutive financial years. The rule exists precisely so that one good year does not change the reporting regime of a company that returns, the following year, to its usual size."
+  },
+  {
+   "tip": "recap",
+   "titlu": "To Remember From This Chapter",
+   "puncte": [
+    "The balance sheet is a photograph at a specific date; the income statement is a film of the year.",
+    "Assets show what the company has, liabilities and equity show where it came from — so the equality holds by construction, not by luck.",
+    "Equity is the owners' net worth: what would remain after paying all debts.",
+    "Assets are ordered by liquidity, liabilities and equity by enforceability — that is why the two columns can also be read horizontally.",
+    "Elements are presented NET: fixed assets minus depreciation, receivables minus impairment adjustments.",
+    "The balance sheet does not contain the market value of the company, nor unrecognized assets — the brand, the customers, the team."
+   ]
+  }
+ ]
+}

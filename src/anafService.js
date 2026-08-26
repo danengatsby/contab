@@ -18,6 +18,7 @@ const zipGuard = require('./zipGuard');
 const db = require('./db');
 const anaf = require('./anaf');
 const xml = require('./xml');
+const fiscalProfile = require('./fiscalProfile');
 const coa = require('./chartOfAccounts');
 const efacturaImport = require('./efacturaImport');
 const bnr = require('./bnr');
@@ -154,7 +155,7 @@ async function sendToSpv(user, entryId) {
   if (!xml.isSendable(e)) fail(400, 'Doar facturile emise pot fi trimise in SPV.');
   const fid = e.firmaId || db.firmaActiva();
   const c = anafCfgW(fid); // conexiunea SPV a firmei careia ii apartine factura
-  const company = db.getFirma(fid) || {};
+  const company = fiscalProfile.companyAt(db.scoped(fid), e.data || e.period);
   const cif = (c.cif || company.cui || '').replace(/^ro/i, '');
   const ubl = xml.eFacturaXml(company, e, db.get().partners[fid] || {});
   const r = await anaf.upload(c, ubl, cif);
@@ -234,7 +235,11 @@ async function importFromSpv(fid, msgId) {
   const docId = db.nextId('doc');
   let parsed;
   try { parsed = xml.parseUblInvoice(extractInvoiceXml(buf)); } catch (e) { parsed = { suggestedType: 'factura_cumparare_marfuri', fields: {}, cuis: [] }; }
-  d.documents.push({ id: docId, firmaId: fid, fileName: 'spv-' + msgId + '.zip', storedName, uploadedAt: new Date().toISOString(), text: '', spvMsgId: msgId });
+  d.documents.push({
+    id: docId, firmaId: fid, fileName: 'spv-' + msgId + '.zip', storedName,
+    uploadedAt: new Date().toISOString(), text: '', spvMsgId: msgId,
+    sha256: crypto.createHash('sha256').update(buf).digest('hex'),
+  });
   db.save();
   return Object.assign({ documentId: docId, fileName: 'SPV ' + msgId, source: 'spv', msgId }, parsed);
 }
@@ -279,11 +284,21 @@ function importEfactura(fid, b, upsertPartner) {
     tipNume: (inv.tip === 'creditnote' ? 'Storno factura cumparare' : 'Factura cumparare') + ' (import e-Factura)',
     partener: inv.furnizor.nume, partenerCui: inv.furnizor.cui, document: inv.numar || '',
     explicatie: 'Import e-Factura primită' + notaCurs, fileId: null, system: false, lines,
+    // DueDate-ul UBL devine data autoritara a registrului documentelor deschise. Nu ramane doar
+    // in preview-ul parserului: aging-ul, platile si testul fiscal art. 26 il citesc de aici.
+    openItem: { dueDate: inv.scadenta || data, dueSource: 'efactura', contractualTermDays: null,
+      affiliated: null, guaranteed: null, dispute: null },
     // Soldul in valuta ramane vizibil pentru reevaluarea de la sfarsit de perioada: fara
     // `valutaInfo`, articolul ar arata ca unul in lei si contul n-ar mai fi reevaluat.
     ...(cursAplicat !== 1 ? { valutaInfo: { valuta: inv.moneda, sumaValuta: round2(sign * (inv.baza + inv.tva)), curs: cursAplicat } } : {}),
     items: inv.linii.map((l) => ({ nume: l.nume, cantitate: round2(sign * l.cantitate), pret: l.pret, cota: l.cota })),
   };
+  const spvMessageId = b.spvMsgId || b.spvMessageId || b.msgId || null;
+  entry.sourceIdentity = {
+    ...(spvMessageId ? { spvMessageId: String(spvMessageId) } : {}),
+    fileSha256: crypto.createHash('sha256').update(String(b.xml || ''), 'utf8').digest('hex'),
+  };
+  if (spvMessageId) entry.spvImport = { msgId: String(spvMessageId), at: new Date().toISOString() };
   db.pushEntry(entry, { context: 'import e-Factura/SPV' });
   if (upsertPartner) upsertPartner(fid, entry);
   db.save();
@@ -327,6 +342,7 @@ async function spvDescarca(fid, msgId, detalii) {
   d.documents.push({
     id: docId, firmaId: fid, fileName: nume.replace(/[^\w .-]+/g, ' ').trim() + '.pdf', storedName,
     uploadedAt: new Date().toISOString(), text: '', spvMsgId: msgId,
+    sha256: crypto.createHash('sha256').update(buf).digest('hex'),
   });
   db.save();
   return { documentId: docId, nume };

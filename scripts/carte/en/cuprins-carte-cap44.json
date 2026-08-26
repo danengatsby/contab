@@ -1,0 +1,267 @@
+{
+ "parte": "Part IX · Closing · phases 10–11",
+ "nr": "44",
+ "titlu": "Distribution of the result",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The net profit now exists as a balance in account 121. But it is not at anyone's disposal: until distribution, it is a figure, not an available sum."
+  },
+  {
+   "tip": "p",
+   "text": "Distribution is the last step of the closed financial year and, at the same time, the first of the next one — because it happens after the financial statements are approved, that is, in the following year."
+  },
+  {
+   "tip": "h",
+   "text": "The order, which is legal"
+  },
+  {
+   "tip": "p",
+   "text": "Three acts must occur in this order, and none can be skipped: the financial statements are prepared, the general meeting of shareholders approves them and decides on the distribution, and only afterward is the distribution recorded and the dividends can be paid."
+  },
+  {
+   "tip": "p",
+   "text": "A business owner who takes money out of the company before this order has not received dividends: they have taken a loan from their own company, with all the tax consequences that follow. The distinction seems formal and is among the most expensive in practice."
+  },
+  {
+   "tip": "cheie",
+   "text": "A dividend is not a withdrawal of money. It is the outcome of a decision that cannot be made without approved financial statements."
+  },
+  {
+   "tip": "h",
+   "text": "The legal reserve comes first"
+  },
+  {
+   "tip": "p",
+   "text": "From the profit, the legal reserve is set up first: 5% of the gross profit, until the reserve reaches one fifth of the subscribed and paid-up share capital."
+  },
+  {
+   "tip": "p",
+   "text": "It is an unavailable reserve — it cannot be distributed and can only be used under the conditions set by law. Its purpose is creditor protection: part of the earnings stays in the company, as a buffer."
+  },
+  {
+   "tip": "p",
+   "text": "In accounting terms, the setting up of the reserve passes through an intermediate account, 129 Profit Distribution, which is then closed into 121. This detour seems unnecessary, but it is what makes the distribution appear distinctly in the income statement, not as a simple transfer between equity accounts."
+  },
+  {
+   "tip": "h",
+   "text": "What remains, in figures"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Distribution of a net profit of 66,720 lei",
+   "cap": [
+    "Step",
+    "Journal entry",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Setting up the legal reserve",
+     "129 = 1061",
+     "4.000"
+    ],
+    [
+     "Closing the distribution account",
+     "121 = 129",
+     "4.000"
+    ],
+    [
+     "The remainder, to retained earnings",
+     "121 = 117",
+     "62.720"
+    ],
+    [
+     "Gross dividends decided",
+     "117 = 457",
+     "62.720"
+    ],
+    [
+     "Dividend tax 16%",
+     "457 = 446",
+     "10.035,20"
+    ],
+    [
+     "Payment to shareholders",
+     "457 = 5121",
+     "52.684,80"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "nota": "The reserve is calculated on the GROSS profit (5% of 80,000), although it is taken from the NET profit. The two bases differ, and confusing them is a frequent error."
+  },
+  {
+   "tip": "p",
+   "text": "Out of 80,000 lei of gross profit, the shareholder actually receives 52,684.80. The rest went to corporate income tax — 13,280 —, to dividend tax — 10,035.20 —, and to the legal reserve — 4,000, which nevertheless remains in the company."
+  },
+  {
+   "tip": "p",
+   "text": "It is worth telling a business owner clearly: between the profit in the balance sheet and the money that reaches them, there are two successive taxes, not one. This is the figure on which the decision to distribute or reinvest is made, and it appears nowhere in the financial statements."
+  },
+  {
+   "tip": "h",
+   "text": "The loss"
+  },
+  {
+   "tip": "p",
+   "text": "When the financial year ends with a loss, the mechanism is symmetrical and simpler: the debit balance of account 121 is carried into retained earnings, where it awaits coverage from future profits."
+  },
+  {
+   "tip": "p",
+   "text": "It is neither erased nor ignored. A company with a loss carried forward cannot distribute dividends before covering it — the rule is economic common sense: you do not divide up a gain that has not yet recovered a previous loss."
+  },
+  {
+   "tip": "h",
+   "text": "Interim dividends"
+  },
+  {
+   "tip": "p",
+   "text": "The law also allows distribution during the year, based on interim financial statements. It is a real facility, but with a condition that is often forgotten: if at the end of the financial year the result turns out to be smaller than what was distributed, the difference must be returned."
+  },
+  {
+   "tip": "p",
+   "text": "It is, therefore, an advance on a profit that has not yet occurred. Treated as such, it is useful; treated as a final distribution, it produces, at year end, a receivable from the shareholders themselves, which no one had anticipated."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The distribution of the result is made in accordance with accounting regulations and the decision of the general meeting, and the setting up of the legal reserve is mandatory under the conditions of Companies Law no. 31/1990 and tax-deductible under Art. 26 para. (1) letter a) of the Fiscal Code. Four observations. First: the calculation base of the reserve is the gross accounting profit, and the cumulative cap is 20% of the subscribed and paid-up share capital — a company that reaches the cap no longer sets up the reserve, and the tax deduction ceases along with the obligation. Second: the dividend tax is 16% for dividends distributed starting January 1, 2026, under Law 141/2025, and the payment deadline is tied to the date the dividend is paid, with a special rule for dividends distributed but not paid by the end of the financial year — this last rule is the most frequently overlooked, because it requires payment of the tax even if the shareholder has received nothing. Third: dividends distributed on an interim basis are adjusted after the approval of the annual financial statements, and amounts distributed in excess must be returned; until returned, they constitute a receivable from the shareholder, with implications regarding income from other sources if not returned. Fourth: the distribution cannot exceed the distributable profit, determined after covering losses carried forward and setting up legal reserves; distribution beyond this limit triggers liability for those who approved it, beyond the tax consequences."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "With the distribution, the financial year is complete: recorded, verified, declared, closed, and distributed. What remains is the part for which everything else was done — the documents that state, in one page, what the company did in a year."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 44.1 — how much reaches the shareholder",
+   "enunt": [
+    "Continuing the previous exercise: gross accounting profit 120,000, corporate income tax 22,464, legal reserve 6,000. The shareholder wants to distribute everything possible.",
+    "Calculate the amount that actually reaches them and the proportion of the gross profit."
+   ],
+   "rezolvare": [
+    "Net profit: 120,000 − 22,464 = 97,536 lei.",
+    "From it, the legal reserve of 6,000 is set up (calculated on gross, but taken from net), so what remains to be distributed is: 91,536 lei.",
+    "Dividend tax 16%: 14,645.76 lei. What reaches the shareholder: 76,890.24 lei.",
+    "Out of 120,000 lei of gross profit, the shareholder receives 76,890.24 — that is, 64%. The rest: 22,464 corporate income tax, 14,645.76 dividend tax, and 6,000 legal reserve, which nevertheless remains in the company.",
+    "The figure to remember, because it is the one on which the decision to distribute or reinvest is made: between the profit in the balance sheet and the money in the pocket, there are TWO successive taxes, not one — and they appear nowhere in the financial statements."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "How much can actually be distributed"
+  },
+  {
+   "tip": "p",
+   "text": "Net profit is not automatically the amount that can be divided up. From it, three things are subtracted, in order — and what remains is called distributable profit."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "From net profit to distributable profit",
+   "cap": [
+    "Step",
+    "What is subtracted",
+    "Why"
+   ],
+   "randuri": [
+    [
+     "1",
+     "loss carried forward from previous years",
+     "you do not divide up a gain that has not recovered a loss"
+    ],
+    [
+     "2",
+     "the legal reserve due for the current year",
+     "it is mandatory, up to the cap"
+    ],
+    [
+     "3",
+     "other reserves required by law or by the articles of association",
+     "if any exist"
+    ],
+    [
+     "=",
+     "distributable profit",
+     "only this can become a dividend"
+    ]
+   ],
+   "nota": "The order matters: the reserve is calculated on the year's GROSS profit, but is taken from the NET profit, after covering the loss."
+  },
+  {
+   "tip": "p",
+   "text": "Distributing beyond this limit is not an accounting error, but an act with consequences: the amounts must be returned, and those who approved it are liable for it. This is why the general meeting's decision must be based on approved financial statements, not on an estimate."
+  },
+  {
+   "tip": "h",
+   "text": "The reserve cap, calculated"
+  },
+  {
+   "tip": "p",
+   "text": "The legal reserve is not built up indefinitely. It accumulates until it reaches one fifth of the subscribed and paid-up share capital, and from that point on the obligation ceases — along with its deductibility."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "How much more can be set up, with a capital of 30,000 lei",
+   "cap": [
+    "Element",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Subscribed and paid-up share capital",
+     "30.000,00"
+    ],
+    [
+     "Reserve cap (20%)",
+     "6.000,00"
+    ],
+    [
+     "Reserve already set up",
+     "0,00"
+    ],
+    [
+     "Can still be set up",
+     "6.000,00"
+    ],
+    [
+     "5% of the year's gross profit",
+     "21,04"
+    ],
+    [
+     "The year's reserve (the lower of the two)",
+     "21,04"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "The figures are those calculated by the application on the book's example. With a small gross profit, the reserve is small — but the obligation exists every year with a profit, until the cap is reached."
+  },
+  {
+   "tip": "p",
+   "text": "The last two rows show the rule: 5% of gross profit is set up, but no more than the space remaining up to the cap. For a company with high profits, the cap is reached within a few years, and the reserve ceases; for one with small profits, the obligation accompanies the company for a long time."
+  },
+  {
+   "tip": "cheie",
+   "text": "The legal reserve is not an expense and does not leave the company. It is part of the earnings that the law prevents from being distributed — a buffer for creditors, not a loss for the shareholders."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Distribution takes place after the approval of the financial statements, that is, in the following financial year.",
+    "Money taken from the company before the decision is not dividends, but a loan from the company.",
+    "The legal reserve comes first: 5% of GROSS profit, up to 20% of the subscribed and paid-up share capital; it is unavailable.",
+    "Between the gross profit and the money reaching the shareholder there are TWO taxes: 16% on profit and 16% on dividends.",
+    "A loss carried forward blocks distribution until it is covered.",
+    "Interim dividends are an advance: if the final result is smaller, the difference must be returned."
+   ]
+  }
+ ]
+}

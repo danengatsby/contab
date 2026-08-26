@@ -9,10 +9,23 @@ const crypto = require('crypto');
 const db = require('../db');
 const plans = require('../plans');
 const authlib = require('../auth');
+const permissions = require('../permissions');
 const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { requireAdmin, logAudit, startSession, publicUser } = ctx;
+  const FIRMA_ROLES = new Set(['vizualizare', 'operator', 'verificator', 'aprobator']);
+  function normalizedFirmaRoles(firme, supplied, current) {
+    const src = supplied && typeof supplied === 'object' ? supplied : (current || {});
+    return Object.fromEntries((firme || []).map(Number).filter(Number.isFinite).map((fid) => {
+      const role = src[String(fid)] || src[fid];
+      return [String(fid), FIRMA_ROLES.has(role) ? role : 'vizualizare'];
+    }));
+  }
+
+  // Contractul public al rolurilor pe firma. UI-ul afiseaza aceasta matrice; nu pastreaza o
+  // copie proprie care ar putea spune „poate posta” in timp ce serviciul refuza (sau invers).
+  app.get('/api/permissions/matrix', (req, res) => res.json(permissions.describe()));
 
   app.get('/api/users', requireAdmin, (req, res) => {
     const base = (req.protocol || 'http') + '://' + req.get('host');
@@ -34,7 +47,10 @@ module.exports = function register(app, ctx) {
     const d = db.get();
     if (authlib.usernameTaken(d.users, username)) return res.status(400).json({ error: 'Utilizator deja existent.' });
     const { salt, hash } = await authlib.hashPasswordAsync(b.password);
-    const u = { id: db.nextUserId(), username, email: b.email || '', salt, hash, role: b.role === 'admin' ? 'admin' : 'user', firme: Array.isArray(b.firme) ? b.firme.map(Number) : [], firmaActiva: (b.firme && b.firme[0]) || null };
+    const firme = Array.isArray(b.firme) ? b.firme.map(Number) : [];
+    const u = { id: db.nextUserId(), username, email: b.email || '', salt, hash,
+      role: b.role === 'admin' ? 'admin' : 'user', firme, firmaActiva: firme[0] || null };
+    if (u.role !== 'admin') u.firmaRoluri = normalizedFirmaRoles(firme, b.firmaRoluri);
     d.users.push(u);
     logAudit('user.create', username + ' (' + u.role + ')', { req, firmaId: null });
     db.save();
@@ -45,12 +61,14 @@ module.exports = function register(app, ctx) {
     if (!u) return res.status(404).json({ error: 'Utilizator inexistent' });
     const b = req.body || {};
     if (b.role) u.role = b.role === 'admin' ? 'admin' : 'user';
-    if (Array.isArray(b.firme)) u.firme = b.firme.map(Number);
+    if (Array.isArray(b.firme)) {
+      u.firme = b.firme.map(Number);
+      if (u.role !== 'admin') u.firmaRoluri = normalizedFirmaRoles(u.firme, b.firmaRoluri, u.firmaRoluri);
+    }
     if (b.drepturi && typeof b.drepturi === 'object') u.drepturi = { readonly: !!b.drepturi.readonly, faraSalarii: !!b.drepturi.faraSalarii };
     if (b.firmaRoluri && typeof b.firmaRoluri === 'object') {
-      const allowed = new Set(['vizualizare', 'operator', 'verificator', 'aprobator']);
       u.firmaRoluri = Object.fromEntries(Object.entries(b.firmaRoluri)
-        .filter(([fid, role]) => /^\d+$/.test(fid) && allowed.has(role) && (u.firme || []).includes(Number(fid))));
+        .filter(([fid, role]) => /^\d+$/.test(fid) && FIRMA_ROLES.has(role) && (u.firme || []).includes(Number(fid))));
     }
     if (b.password) { const h = await authlib.hashPasswordAsync(b.password); u.salt = h.salt; u.hash = h.hash; u.mustChange = false; }
     logAudit('user.update', u.username, { req, firmaId: null });
@@ -79,11 +97,13 @@ module.exports = function register(app, ctx) {
     const d = db.get();
     if (d.users.some((u) => u.username === b.username)) return res.status(400).json({ error: 'Utilizator deja existent.' });
     const token = crypto.randomBytes(24).toString('hex');
+    const inviteFirme = Array.isArray(b.firme) ? b.firme.map(Number) : [];
     const u = {
       id: db.nextUserId(), username: b.username, email: b.email || '', salt: '', hash: '', pending: true, inviteToken: token,
       inviteExp: Date.now() + 7 * 24 * 3600 * 1000, // expira in 7 zile
-      role: b.role === 'admin' ? 'admin' : 'user', firme: Array.isArray(b.firme) ? b.firme.map(Number) : [], firmaActiva: (b.firme && b.firme[0]) || null,
+      role: b.role === 'admin' ? 'admin' : 'user', firme: inviteFirme, firmaActiva: inviteFirme[0] || null,
     };
+    if (u.role !== 'admin') u.firmaRoluri = normalizedFirmaRoles(inviteFirme, b.firmaRoluri);
     d.users.push(u);
     logAudit('invite.create', b.username, { req, firmaId: null });
     db.save();

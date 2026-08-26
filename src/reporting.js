@@ -18,6 +18,7 @@ const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profi
 const decl = require('./declarations');
 const stmt = require('./statements');
 const { reconcile } = require('./reconcile');
+const openItems = require('./openItems');
 const recurring = require('./recurring');
 const CONT_SPONSORIZARE = '6582'; // art. 25(4)(i) — cheltuiala de sponsorizare
 // Maparea cota->rand D300 si perimetrul e-Factura. xml.js nu importa nimic din lantul de
@@ -351,6 +352,7 @@ function d100micro(db, period, cota, opts) {
   // din care face parte `period` (ex. 2026-06 -> aprilie + mai + iunie).
   const m = Number(String(period || '').slice(5, 7)) || 0;
   const y = String(period || '').slice(0, 4);
+  const ruleSet = fiscal.rulesAt(period); const rates = ruleSet.rates;
   const q0 = m ? m - ((m - 1) % 3) : 0;
   const luni = m ? [q0, q0 + 1, q0 + 2].map((x) => y + '-' + String(x).padStart(2, '0')) : [];
   const lines = acc.resultLines(acc.postedEntries(db).filter((e) => luni.includes(String(e.period || periodOf(e.data)))));
@@ -378,14 +380,14 @@ function d100micro(db, period, cota, opts) {
   // Cursul plafonului vine de la BNR, din ultima zi a exercitiului precedent — nu din valoarea
   // rotunda de configurare. La 5,0 in loc de ~5,08, plafonul de 100.000 EUR iese 500.000 in loc de
   // ~508.000, iar o firma cu 505.000 lei era declarata gresit iesita din regimul micro.
-  const cursP = bnr.cursPlafonMicro(db.cursuriBnr, Number(y), fiscal.FISCAL.cursPlafonMicro);
+  const cursP = bnr.cursPlafonMicro(db.cursuriBnr, Number(y), rates.cursPlafonMicro);
   const ct = micro.cotaAplicabila({ an: Number(y), venitCumulatLei, curs: cursP.curs,
-    caen: (db.company || {}).caen }, fiscal.FISCAL);
+    caen: (db.company || {}).caen }, rates);
   // Suprascrierea de cota ramane utila pentru anii istorici. Din 2026 schema D100 cere 1%, deci
   // nu permitem ca o suprascriere veche la 3% sa produca o suma incompatibila semantic cu XML-ul.
   const cotaManuala = Number(y) < 2026 && !!cota;
   const rate = cotaManuala ? cota : ct.cota;
-  const plafonLei = round2((fiscal.FISCAL.plafonMicroEur || 0) * (cursP.curs || 0));
+  const plafonLei = round2((rates.plafonMicroEur || 0) * (cursP.curs || 0));
   const avertismente = [];
   // Un plafon calculat pe o valoare implicita nu are voie sa arate la fel cu unul calculat pe
   // cursul oficial: incadrarea in regimul micro se decide pe el. Semnalam insa doar cand cursul
@@ -397,7 +399,7 @@ function d100micro(db, period, cota, opts) {
       + '. Adu cursurile BNR (Setari -> Curs valutar) inainte de a decide incadrarea.');
   }
   if (plafonLei > 0 && venitAn > plafonLei) {
-    avertismente.push('Veniturile anului (' + venitAn + ' lei) DEPASESC plafonul micro de ' + fiscal.FISCAL.plafonMicroEur
+    avertismente.push('Veniturile anului (' + venitAn + ' lei) DEPASESC plafonul micro de ' + rates.plafonMicroEur
       + ' EUR (~' + plafonLei + ' lei): firma iese din regimul micro si datoreaza impozit pe profit — verifica incadrarea inainte de a depune D100 pe micro.');
   } else if (plafonLei > 0 && venitAn >= round2(plafonLei * 0.8)) {
     avertismente.push('Veniturile anului (' + venitAn + ' lei) au atins ' + Math.round((venitAn / plafonLei) * 100)
@@ -409,7 +411,7 @@ function d100micro(db, period, cota, opts) {
   // Motivul cotei si notele bazei ajung in avertismente doar cand spun ceva ce nu se vede din
   // cifre: la anii istorici, comutarea pe 3% e o schimbare pe care contabilul trebuie s-o observe.
   // Suprascrierea manuala tace despre motiv — nu mai e al motorului.
-  if (!cotaManuala && ct.cota !== (fiscal.FISCAL.impozitMicro || 1)) avertismente.push(ct.motiv);
+  if (!cotaManuala && ct.cota !== (rates.impozitMicro || 1)) avertismente.push(ct.motiv);
   for (const a of ct.avertismente) avertismente.push(a);
   for (const n of bz.note) avertismente.push(n);
   // SPONSORIZAREA la micro (art. 56^1): se SCADE din impozitul trimestrial, in limita a 20% din el.
@@ -430,7 +432,7 @@ function d100micro(db, period, cota, opts) {
     .reduce((sx, e) => sx + (e.lines || [])
       .filter((l) => String(l.debit || '').startsWith(CONT_SPONSORIZARE))
       .reduce((sy, l) => sy + (Number(l.suma) || 0), 0), 0));
-  const plafonSpons = round2((impozitBrut * (Number(fiscal.FISCAL.sponsorizareImpozitPct) || 0)) / 100);
+  const plafonSpons = round2((impozitBrut * (Number(rates.sponsorizareImpozitPct) || 0)) / 100);
   // Consum FIFO: „in ordinea inregistrarii" (alin. (3)) — deci reportul VECHI intai, sponsorizarea
   // trimestrului la urma. Ordinea inversa ar lasa sa expire tocmai ce era pe cale sa expire.
   const cons = consumaVintage(reportIn.concat([{ trimestru: period, suma: sponsTrim }]), plafonSpons);
@@ -446,7 +448,8 @@ function d100micro(db, period, cota, opts) {
     sponsorizareNefolosita: round2(sponsTrim - (cons.detaliu.filter((x) => x.trimestru === period)
       .reduce((sx, x) => sx + x.folosit, 0))),
     impozit: round2(impozitBrut - sponsDedusa),
-    venitAn, plafonMicroLei: plafonLei, plafonMicroEur: fiscal.FISCAL.plafonMicroEur, avertismente,
+    venitAn, plafonMicroLei: plafonLei, plafonMicroEur: rates.plafonMicroEur, avertismente,
+    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
     // Desfasurarea bazei (art. 53) si a cotei (art. 51), pentru raport si pentru revizie.
     venitClasa7: bz.venitClasa7, scaderi: bz.scaderi, totalScaderi: bz.totalScaderi,
     adaugari: bz.adaugari, totalAdaugari: bz.totalAdaugari,
@@ -488,13 +491,14 @@ function d100profit(db, period, opts) {
   opts = opts || {};
   const m = Number(String(period || '').slice(5, 7)) || 0;
   const y = String(period || '').slice(0, 4);
+  const ruleSet = fiscal.rulesAt(period); const rates = ruleSet.rates;
   const trimestru = m ? Math.ceil(m / 3) : 0;
   const ultimaLuna = (t) => y + '-' + String(t * 3).padStart(2, '0');
   const company = db.company || {};
   // Optiunile de calcul, aceleasi ca la inchiderea anuala, dar taiate la finalul trimestrului.
   const optiuni = (panaLa) => Object.assign({
-    cota: fiscal.FISCAL.impozitProfit,
-    plafoane: fiscal.FISCAL,
+    cota: rates.impozitProfit,
+    plafoane: rates,
     pierdereReportata: Number((company.pierdereFiscala || {})[Number(y) - 1]) || 0,
     cheltAuto: cheltuieliAuto(db, y, panaLa),
     cheltLipsaNeimputabila: cheltuieliLipsaNeimputabila(db, y, panaLa),
@@ -533,6 +537,7 @@ function d100profit(db, period, opts) {
   }
   const seDeclaraTrimestrial = trimestru >= 1 && trimestru <= 3;
   return { period, trimestru, y,
+    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
     impozitCumulat: cumulat.impozit, impozitAnterior, diferenta,
     // Suma care merge pe declaratie: plata anticipata la sistemul anual, diferenta reala altfel.
     impozit: anticipat ? (rezultatAnticipat.plata != null ? rezultatAnticipat.plata : 0) : Math.max(0, diferenta),
@@ -609,7 +614,8 @@ function platiAnticipate(db, y, trimestru, profil, cumulat, anterior, avertismen
     const arePerioade = acc.postedEntries(db).some((e) => String(e.period || '').startsWith(String(anPrec)));
     if (arePerioade) {
       impozitAnPrecedent = round2(acc.profitTax(db, String(anPrec), {
-        cota: fiscal.FISCAL.impozitProfit, plafoane: fiscal.FISCAL,
+        cota: fiscal.rulesAt(String(anPrec) + '-12').rates.impozitProfit,
+        plafoane: fiscal.rulesAt(String(anPrec) + '-12').rates,
       }).impozit);
       sursaBaza = 'recalculat din înregistrările anului ' + anPrec;
     }
@@ -673,7 +679,7 @@ function rulajContPanaLa(db, year, cont, panaLa) {
  *  Ruta si validarea pre-depunere trec amandoua pe aici — altfel o firma pe impozit pe profit
  *  descarca o declaratie de microintreprindere, cu alt cod de obligatie si alta suma. */
 function d100(db, period, opts) {
-  const profil = fiscalProfile.build((db || {}).company || {});
+  const profil = fiscalProfile.profileAt(db || {}, period);
   // Profilul se paseaza mai departe: la impozitul pe profit el decide SISTEMUL (trimestrial sau
   // anual cu plati anticipate, art. 41), deci si suma care merge pe declaratie, si daca
   // trimestrul IV se declara. Fara el, d100profit ar calcula mereu varianta trimestriala.
@@ -779,6 +785,7 @@ function proRataTva(db, year) {
 /** Estimarea Declaratiei Unice pentru PFA (sistem real): venitul net anual + CAS/CASS/impozit. */
 function declaratiaUnica(db, year) {
   const y = String(year);
+  const ruleSet = fiscal.rulesAt(y + '-01');
   const r = periodRulaj2(db, y);
   let venituri = 0; let cheltuieli = 0;
   for (const cod of Object.keys(r)) {
@@ -788,15 +795,15 @@ function declaratiaUnica(db, year) {
     if (clasa === 6) cheltuieli = round2(cheltuieli + (r[cod].d - r[cod].c));
   }
   const venitNet = round2(venituri - cheltuieli);
-  const sm = fiscal.salariuMinimLa(y + '-01'); // plafoanele DU: salariul minim al anului de realizare
+  const sm = ruleSet.rates.salariuMinim; // plafoanele DU: salariul minim al anului de realizare
   // Varianta pe INCASAT/PLATIT (fiscalitatea PFA in sistem real e pe incasari, nu pe facturat):
   // din registrul-jurnal de incasari si plati, doar operatiunile activitatii (fara interne/aporturi/taxe).
   const rjip = acc.registruIncasariPlati(db, y);
-  const tInc = fiscal.taxePfa(rjip.venitNetIncasat, { salariuMinim: sm });
+  const tInc = fiscal.taxePfa(rjip.venitNetIncasat, { period: y + '-01', rules: ruleSet, salariuMinim: sm });
   return Object.assign({
     year: y, venituri, cheltuieli, venitNet,
     incasat: { incasari: rjip.tot.incFiscale, plati: rjip.tot.platiFiscale, venitNet: rjip.venitNetIncasat, cas: tInc.cas, cass: tInc.cass, impozit: tInc.impozit, total: tInc.total },
-  }, fiscal.taxePfa(venitNet, { salariuMinim: sm }));
+  }, fiscal.taxePfa(venitNet, { period: y + '-01', rules: ruleSet, salariuMinim: sm }));
 }
 
 /**
@@ -946,7 +953,7 @@ function livrabile(db, period) {
     return { period, list: finalizeaza(listPfa), sumar };
   }
   // micro/profit: D101 (id 16) apare DOAR la regimul de impozit pe profit (micro nu depune D101)
-  const prof = fiscalProfile.build(db.company);
+  const prof = fiscalProfile.profileAt(db, period);
   const listFinal = prof.profit ? list : list.filter((x) => x.id !== 16);
   return { period, list: finalizeaza(listFinal), sumar };
 }
@@ -1102,6 +1109,7 @@ function provizioane(db, year, panaLa) {
 /** Registrul de evidenta fiscala: trecerea de la rezultatul contabil la cel fiscal. */
 function registruFiscal(db, year, cota, opts) {
   opts = opts || {};
+  const ruleSet = fiscal.rulesAt(String(year) + '-12'); const rates = ruleSet.rates;
   const pl = stmt.profitLoss(db, year);
   const r = periodRulaj2(db, year);
   // Procentele fixe pe cont vin din `deductibilitate.js`, nu dintr-o tabela locala. Se calculeaza
@@ -1117,7 +1125,7 @@ function registruFiscal(db, year, cota, opts) {
   // cote procentul ar cadea la zero si ar arata o nedeductibilitate care nu e a legii.
   const bazaCreante = ajustariCreanteArt26(db, year);
   const splitAjust = ajustariDepreciere(db, year);
-  const randCreante = deduct.ajustariCreante(r, bazaCreante, opts.plafoane || fiscal.FISCAL, splitAjust.creante.cheltuiala);
+  const randCreante = deduct.ajustariCreante(r, bazaCreante, opts.plafoane || rates, splitAjust.creante.cheltuiala);
   if (randCreante) { fixeRez.randuri.push(randCreante); fixeRez.total = round2(fixeRez.total + randCreante.nedeductibil); }
   // Stocurile si imobilizarile: integral nedeductibile, cu simetricul lor la venituri.
   const nedAjust = deduct.ajustariNedeductibile(splitAjust);
@@ -1172,8 +1180,8 @@ function registruFiscal(db, year, cota, opts) {
   // configuratie. Aceeasi sursa ca D100, altfel registrul si declaratia dau doua cifre.
   const bzMicro = micro.baza(r, { ultimulTrimestru: true, rulajAn: r });
   const ctMicro = micro.cotaAplicabila({ an: Number(year), venitCumulatLei: bzMicro.baza,
-    curs: bnr.cursPlafonMicro(db.cursuriBnr, Number(year), fiscal.FISCAL.cursPlafonMicro).curs,
-    caen: (db.company || {}).caen }, fiscal.FISCAL);
+    curs: bnr.cursPlafonMicro(db.cursuriBnr, Number(year), rates.cursPlafonMicro).curs,
+    caen: (db.company || {}).caen }, rates);
   const impozitMicro = round2((bzMicro.baza * ctMicro.cota) / 100);
   return {
     year, rezultatContabil, cheltNeded, totalNeded, venituriList, venituriNeimpozabile, mentiuni,
@@ -1181,6 +1189,7 @@ function registruFiscal(db, year, cota, opts) {
     rateMicro: ctMicro.cota, bazaMicro: bzMicro.baza, // cota nu mai e mereu 1%, deci se si afiseaza
     // Aditiv: randurile cu plafon si totalul lor, separate de procentele fixe.
     ajustariPlafon: dedRez.randuriPlafon, totalPlafoane,
+    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
   };
 }
 
@@ -1265,9 +1274,51 @@ function notes(db, year) {
   ];
 
   // ── NOTA 5 — situatia creantelor si datoriilor
+  const oi = openItems.registry(db, y + '-12');
+  const knownOpen = oi.openDocuments.filter((d) => d.dueKnown);
+  const limit1 = String(Number(y) + 1) + '-12-31'; const limit5 = String(Number(y) + 5) + '-12-31';
+  const maturity = (d) => d.dueDate <= limit1 ? 'sub1' : d.dueDate <= limit5 ? 'intre1si5' : 'peste5';
+  const sumOpen = (sens, cls) => round2((cls ? knownOpen : oi.openDocuments)
+    .filter((d) => d.sens === sens && (!cls || maturity(d) === cls)).reduce((s, d) => s + d.residual, 0));
+  const creanteOi = sumOpen('creanta'); const datoriiOi = sumOpen('datorie');
+  // Conturile gestionate document-cu-document dau exigibilitatea reala. Restul soldului F10
+  // (taxe, salarii, alte conturi fara document comercial) ramane in clasa lui contabila.
+  const managedCreanteLedger = round2(openItems.CONTURI_CREANTE.reduce((s, c) => s + Math.max(0, Number(close[c]) || 0), 0));
+  const managedDatoriiLedger = round2(openItems.CONTURI_DATORII.reduce((s, c) => s + Math.max(0, -(Number(close[c]) || 0)), 0));
+  const creanteAltele = round2(Math.max(0, r.B_creante - managedCreanteLedger));
+  const datoriiAlteleCurente = round2(Math.max(0, r.D_datorii - managedDatoriiLedger));
+  const necunoscuteCreante = round2(oi.openDocuments.filter((d) => d.sens === 'creanta' && !d.dueKnown).reduce((s, d) => s + d.residual, 0));
+  const necunoscuteDatorii = round2(oi.openDocuments.filter((d) => d.sens === 'datorie' && !d.dueKnown).reduce((s, d) => s + d.residual, 0));
+  // Pentru grupa 16 nu inventăm o scadență: numai principalul din contractele de leasing cu
+  // grafic valid este distribuit 1–5/>5 ani; împrumuturile fără scadențar rămân neclasificate.
+  let leasing1_5 = 0; let leasingPeste5 = 0;
+  for (const contract of (db.leasingContracts || [])) {
+    try {
+      for (const row of require('./leasing').contractSchedule(contract).rows) {
+        const due = row.period + '-01';
+        if (due <= limit1) continue;
+        if (due <= limit5) leasing1_5 = round2(leasing1_5 + row.principal);
+        else leasingPeste5 = round2(leasingPeste5 + row.principal);
+      }
+    } catch (_) { /* contract incomplet: soldul rămâne explicit neclasificat */ }
+  }
+  const leasingKnown = Math.min(r.G_datoriiLT, round2(leasing1_5 + leasingPeste5));
+  if (leasingKnown < leasing1_5 + leasingPeste5 && leasing1_5 + leasingPeste5 > 0) {
+    const ratio = leasingKnown / (leasing1_5 + leasingPeste5); leasing1_5 = round2(leasing1_5 * ratio); leasingPeste5 = round2(leasingKnown - leasing1_5);
+  }
+  const longTermUnclassified = round2(Math.max(0, r.G_datoriiLT - leasing1_5 - leasingPeste5));
   const n5 = {
-    creanteTotal: r.B_creante, creanteSub1: r.B_creante, creantePeste1: 0,
-    datoriiTotal: round2(r.D_datorii + r.G_datoriiLT), datoriiSub1: r.D_datorii, datorii1_5: r.G_datoriiLT, datoriiPeste5: 0,
+    creanteTotal: round2(creanteOi + creanteAltele),
+    creanteSub1: sumOpen('creanta', 'sub1'), creante1_5: sumOpen('creanta', 'intre1si5'),
+    creantePeste5: sumOpen('creanta', 'peste5'),
+    creanteNeclasificate: round2(necunoscuteCreante + creanteAltele),
+    datoriiTotal: round2(datoriiOi + datoriiAlteleCurente + r.G_datoriiLT),
+    datoriiSub1: round2(sumOpen('datorie', 'sub1') + datoriiAlteleCurente),
+    datorii1_5: round2(sumOpen('datorie', 'intre1si5') + leasing1_5),
+    datoriiPeste5: round2(sumOpen('datorie', 'peste5') + leasingPeste5),
+    datoriiNeclasificate: round2(necunoscuteDatorii + longTermUnclassified),
+    documenteDeschise: oi.openDocuments.length,
+    scadenteLipsa: oi.openDocuments.filter((d) => !d.dueKnown).length,
   };
 
   const bs = stmt.balanceSheet(db, y + '-12');
@@ -1293,10 +1344,14 @@ function notes(db, year) {
     { titlu: 'Nota 3 — Repartizarea profitului', linii: n3linii },
     { titlu: 'Nota 4 — Analiza rezultatului din exploatare', linii: n4linii },
     { titlu: 'Nota 5 — Situatia creantelor si datoriilor', tabel: {
-      cols: [{ k: 'k', label: 'Element' }, { k: 'total', label: 'Total', num: true }, { k: 'sub1', label: 'Sub 1 an', num: true }, { k: 'peste1', label: 'Peste 1 an', num: true }],
+      cols: [{ k: 'k', label: 'Element' }, { k: 'total', label: 'Total', num: true }, { k: 'sub1', label: 'Sub 1 an', num: true },
+        { k: 'intre1si5', label: '1–5 ani', num: true }, { k: 'peste5', label: 'Peste 5 ani', num: true },
+        { k: 'neclasificat', label: 'Scadență nedocumentată', num: true }],
       rows: [
-        { k: 'Creante', total: n5.creanteTotal, sub1: n5.creanteSub1, peste1: n5.creantePeste1 },
-        { k: 'Datorii', total: n5.datoriiTotal, sub1: n5.datoriiSub1, peste1: round2(n5.datorii1_5 + n5.datoriiPeste5), _bold: true },
+        { k: 'Creante', total: n5.creanteTotal, sub1: n5.creanteSub1, intre1si5: n5.creante1_5,
+          peste5: n5.creantePeste5, neclasificat: n5.creanteNeclasificate },
+        { k: 'Datorii', total: n5.datoriiTotal, sub1: n5.datoriiSub1, intre1si5: n5.datorii1_5,
+          peste5: n5.datoriiPeste5, neclasificat: n5.datoriiNeclasificate, _bold: true },
       ],
     } },
     { titlu: 'Nota 6 — Indicatori economico-financiari', linii: [
@@ -1305,12 +1360,43 @@ function notes(db, year) {
       { k: 'Rata rentabilitatii (rezultat net / venituri) %', v: rentabilitate, raw: true },
     ] },
   ];
+  const yearEntries = acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y));
+  const stockMovements = (db.stockMovements || []).filter((m) => String(m.data || '').startsWith(y));
+  const stockMethod = String(((db.company || {}).metodaEvaluareStoc || 'cmp')).toLowerCase() === 'fifo' ? 'FIFO' : 'cost mediu ponderat (CMP)';
+  const methodLabels = { liniara: 'liniară', degresiva: 'degresivă', accelerata: 'accelerată' };
+  const accountingMethods = [...new Set((db.assets || []).filter((a) => String(a.dataPif || '') <= y + '-12-31')
+    .map((a) => methodLabels[a.metoda || 'liniara'] || String(a.metoda)))];
+  const fiscalMethods = [...new Set((db.assets || []).filter((a) => String(a.dataPif || '') <= y + '-12-31')
+    .map((a) => methodLabels[a.metodaFiscala || a.metoda || 'liniara'] || String(a.metodaFiscala || a.metoda)))];
+  const fxEntries = yearEntries.filter((e) => e.valutaInfo || e.moneda || (e.lines || []).some((l) => l.moneda)).length;
+  const categoryRow = (db.balanceCategoryHistory || []).filter((x) => String(x.year || x.an || '') === y)
+    .sort((a, b) => String(a.confirmedAt || a.createdAt || '').localeCompare(String(b.confirmedAt || b.createdAt || ''))).pop();
+  const categoryCode = categoryRow && (categoryRow.category || categoryRow.categorie || categoryRow.categorieRaportare);
+  const categoryLabel = { microentitate: 'microentitate', mica: 'entitate mică',
+    'mijlocie-mare': 'entitate mijlocie/mare', mijlocie_mare: 'entitate mijlocie/mare' }[categoryCode] || categoryCode;
+  const disputed = oi.openDocuments.filter((d) => d.sens === 'creanta' && d.dispute === true);
+  const affiliated = oi.openDocuments.filter((d) => d.sens === 'creanta' && d.affiliated === true);
+  const guaranteed = oi.openDocuments.filter((d) => d.sens === 'creanta' && d.guaranteed === true);
+  const amount = (list) => round2(list.reduce((s, x) => s + x.residual, 0));
+  sections.push({ titlu: 'Nota 7 — Riscuri și informații documentate la nivel de creanță', linii: [
+    { k: 'Creanțe în litigiu', v: amount(disputed) }, { k: 'Creanțe față de afiliați', v: amount(affiliated) },
+    { k: 'Creanțe garantate', v: amount(guaranteed) }, { k: 'Documente fără scadență confirmată', v: n5.scadenteLipsa, raw: true },
+  ] });
   const principii = [
     'Continuitatea activitatii — se presupune ca firma isi continua activitatea in viitorul previzibil.',
     'Prudenta — nu se supraevalueaza activele si veniturile, nici nu se subevalueaza datoriile si cheltuielile.',
     'Independenta exercitiului — fiecare venit si cheltuiala se inregistreaza in perioada de care apartine.',
     'Permanenta metodelor — aceleasi metode de evaluare de la o perioada la alta.',
-    'Evaluarea stocurilor la iesire: cost mediu ponderat / FIFO; amortizarea: metoda liniara.',
+    stockMovements.length ? 'Stocuri: metoda configurată și folosită la cele ' + stockMovements.length + ' mișcări ale anului este ' + stockMethod + '.'
+      : 'Stocuri: nu există mișcări în ' + y + '; politica configurată pentru prima utilizare este ' + stockMethod + '.',
+    accountingMethods.length ? 'Imobilizări: metode contabile prezente în registru — ' + accountingMethods.join(', ') + '; metode fiscale — ' + fiscalMethods.join(', ') + '.'
+      : 'Imobilizări: nu există active amortizabile în registru la 31.12.' + y + '.',
+    fxEntries ? 'Valută: ' + fxEntries + ' articole ale exercițiului poartă informații valutare; elementele monetare se reevaluează distinct.'
+      : 'Valută: nu au fost identificate articole cu informații valutare în exercițiu.',
+    categoryLabel ? 'Raportare anuală: categoria confirmată pentru ' + y + ' este „' + categoryLabel + '”; nu este dedusă din regimul de impozitare.'
+      : 'Raportare anuală: nu există încă o confirmare istorică a categoriei contabile pentru ' + y + '; situațiile nu trebuie depuse până la confirmare.',
+    'Creanțele și datoriile comerciale sunt clasificate din subregistrul documentelor deschise; ' + n5.scadenteLipsa
+      + ' document(e) fără termen confirmat sunt prezentate separat, nu presupuse sub un an.',
   ];
   return { year: y, bs, pl, rf, f20, f10, sections, principii, nota1: n1rows, nota2: n2, nota5: n5, lichiditate, solvabilitate, rentabilitate, capitalSocial, rezervaLegala, reportat };
 }
@@ -1404,8 +1490,11 @@ function cashForecast(db, templates, opts) {
   const pos = (c) => round2(fb[c] || 0);
   let cash = round2(pos('5121') + pos('5311') + pos('5124') + pos('5314'));
   const cashNow = cash;
-  const rc = reconcile(db);
   const start = (opts.startPeriod && /^\d{4}-\d{2}$/.test(opts.startPeriod)) ? opts.startPeriod : new Date().toISOString().slice(0, 7);
+  const oi = openItems.registry(db, new Date().toISOString().slice(0, 10));
+  const dueIn = (sens, period, index) => round2(oi.openDocuments.filter((d) => d.sens === sens
+    && (index === 0 ? d.dueDate.slice(0, 7) <= period : d.dueDate.slice(0, 7) === period))
+    .reduce((s, d) => s + d.residual, 0));
   const rows = [];
   for (let i = 0; i < months; i++) {
     const period = addMonths(start, i);
@@ -1413,15 +1502,15 @@ function cashForecast(db, templates, opts) {
     const due = recurring.dueForPeriod(templates || [], period);
     let recIn = 0; let recOut = 0;
     for (const t of due) { const amt = recurringAmount(t); if (isIncomeTemplate(t.tip)) recIn = round2(recIn + amt); else recOut = round2(recOut + amt); }
-    const incClienti = i === 0 ? rc.totalClienti : 0;
-    const platiFurnizori = i === 0 ? rc.totalFurnizori : 0;
+    const incClienti = dueIn('creanta', period, i);
+    const platiFurnizori = dueIn('datorie', period, i);
     const net = round2(incClienti + recIn - platiFurnizori - recOut);
     cash = round2(cash + net);
     rows.push({ period, opening, incClienti, recIn, platiFurnizori, recOut, net, closing: cash });
   }
   const minClosing = rows.length ? Math.min(...rows.map((r) => r.closing)) : cashNow;
   return {
-    startPeriod: start, months, cashNow, openReceivables: rc.totalClienti, openPayables: rc.totalFurnizori,
+    startPeriod: start, months, cashNow, openReceivables: oi.totals.receivables, openPayables: oi.totals.payables,
     rows, ending: cash, minClosing: round2(minClosing), riscLichiditate: minClosing < 0,
   };
 }
@@ -1630,6 +1719,12 @@ function reportMicroLaInceputul(db, period) {
     const an = Math.floor(i / 4);
     const luna = ((i % 4) + 1) * 3;
     const p = an + '-' + String(luna).padStart(2, '0');
+    const qStart = luna - 2; const prefix = String(an) + '-';
+    const hasActivity = acc.postedEntries(db).some((e) => {
+      const ep = String(e.period || periodOf(e.data)); const em = Number(ep.slice(5, 7));
+      return ep.startsWith(prefix) && em >= qStart && em <= luna;
+    });
+    if (!hasActivity) continue;
     const t = d100micro(db, p, null, { faraReport: true });
     if (!t.impozitBrut && !t.sponsorizareTrimestru) continue; // trimestru fara activitate
     const c = consumaVintage(vintage.concat([{ trimestru: p, suma: t.sponsorizareTrimestru }]), t.plafonSponsorizare);
@@ -1645,18 +1740,19 @@ function trimestreMicro(db, year) {
 
 function d177(db, year, opts) {
   const o = opts || {};
+  const ruleSet = fiscal.rulesAt(String(year) + '-12'); const rates = ruleSet.rates;
   // Plafonul se calculeaza DIFERIT dupa regim, si asta era limita lasata explicit la prima
   // livrare: la impozitul pe profit e min(0,75% din cifra de afaceri; 20% din impozit)
   // (art. 25(4)(i)); la MICRO nu exista limita pe cifra de afaceri — e doar 20% din impozitul pe
   // veniturile microintreprinderilor (art. 56^1). Aplicat plafonul de profit unei firme micro,
   // cifra iesea din alta lege.
-  const micro = fiscalProfile.build((db && db.company) || {}, { angajati: (db && db.angajati) || [] }).micro;
+  const micro = fiscalProfile.profileAt(db || {}, year, { angajati: (db && db.angajati) || [] }).micro;
   let plafon; let folosit; let regim;
   if (micro) {
     regim = 'micro';
     // impozitul micro al ANULUI = suma celor patru trimestre
     const impozitAn = round2(trimestreMicro(db, year).reduce((sx, t) => sx + (t.impozitBrut || 0), 0));
-    plafon = round2((impozitAn * (Number(fiscal.FISCAL.sponsorizareImpozitPct) || 0)) / 100);
+    plafon = round2((impozitAn * (Number(rates.sponsorizareImpozitPct) || 0)) / 100);
     // Cat s-a SCAZUT deja efectiv din impozitul trimestrial (art. 56^1) — acum se stie, fiindca
     // `d100micro` calculeaza deducerea. Restul e ce se mai poate redirectiona prin D177.
     folosit = round2(trimestreMicro(db, year).reduce((sx, t) => sx + t.sponsorizareDedusa, 0));
@@ -1703,6 +1799,7 @@ function d177(db, year, opts) {
 
   return {
     year: anStr, regim,
+    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
     // `tipPlatitor` nu se mai deduce din regimul firmei: validatorul accepta o SINGURA valoare
     // ("1") in v1 — sondate toate variantele. Il pune generatorul, nu raportul.
     sumaMax: plafon, sumaAnt: folosit, sumaRest: rest,
@@ -1718,6 +1815,7 @@ function d177(db, year, opts) {
 
 function d101(db, year, opts) {
   opts = opts || {};
+  const ruleSet = fiscal.rulesAt(String(year) + '-12');
   // `rezultatFiscal` = instantaneul salvat de inchidere pe articolul 691 = 4411. Cand exista,
   // declaratia il REFOLOSESTE in loc sa recalculeze: pierderile reportate au fost deja consumate
   // de inchidere, deci aceleasi reguli pe starea de acum ar da alta cifra decat cea inregistrata.
@@ -1746,6 +1844,7 @@ function d101(db, year, opts) {
   const mapD101 = (!manual && pt.ajustari && pt.ajustari.length) ? deduct.mapareD101(pt.ajustari) : null;
   return {
     year: String(year), cota: pt.cota,
+    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
     venituriExploatare: vExpl, cheltuieliExploatare: cExpl, rezExploatare,
     venituriFinanciare: vFin, cheltuieliFinanciare: cFin, rezFinanciar,
     rezultatBrut,

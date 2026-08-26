@@ -1,5 +1,5 @@
 'use strict';
-import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri, legaCompletareCui, confirmAction, alertAction } from './core.js';
+import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri, legaCompletareCui, confirmAction, promptAction, alertAction } from './core.js';
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, renderVideo, setSettingsDeps } from './settings.js';
@@ -33,10 +33,12 @@ setPeriodsDeps({ renderEntryLists, onTab }); // functiile sunt declarate mai jos
 registerFormFlow({
   form: '#companyForm',
   title: 'Configurarea firmei',
-  firstStepTitle: 'Identitate și regim TVA',
+  firstStepTitle: 'Configurare de bază — 3 pași simpli',
   entityKey: () => 'firma:' + (META.firmaActiva || 'curenta'),
-  progressFields: ['nume', 'cui', 'tipEntitate', 'adresa', 'oras', 'judet', 'caen', 'perioadaTva',
-    'regimImpozit', 'formaProprietate', 'administrator', 'intocmitNume', 'intocmitCalitate', 'iban', 'email'],
+  progressFields: (form) => ['nume', 'cui', 'tipEntitate', 'adresa', 'oras', 'judet', 'caen',
+    ...(form.tvaPlatitor && form.tvaPlatitor.value === 'true' ? ['perioadaTva'] : []),
+    ...(form.tipEntitate && form.tipEntitate.value !== 'pfa' ? ['regimImpozit'] : [])]
+    .map((name) => form.elements[name]).filter(Boolean),
   onDiscard: () => fillCompanyForm(),
 });
 
@@ -62,7 +64,7 @@ async function promptFirmaSubscribe(firmaId, firmaNume) {
     return;
   }
   const da = await confirmAction('Firma „' + (firmaNume || '') + '" va folosi planul ' + planNume + '. '
-    + 'Fiecare firmă are propriul abonament (' + planNume + ' pentru ' + (contabil ? 'contabili' : 'necontabili') + '). '
+    + 'Prețul este 99 lei/lună/firmă (' + planNume + ' pentru ' + (contabil ? 'contabili' : 'necontabili') + '). '
     + 'Se deschide plata online, iar datele firmei rămân intacte.', { title: 'Activezi abonamentul?', confirmLabel: 'Continuă la plată' });
   firmaSubPromptOpen = false;
   if (!da) return;
@@ -78,8 +80,8 @@ async function promptFirmaSubscribe(firmaId, firmaNume) {
 // ── Inscriere firma (pagina publica de pe login) ──
 
 
-// ───────────────────────── TABS (sidebar, acordeon) ─────────────────────────
-// Secțiuni colapsabile: clic pe antet deschide secțiunea (și le închide pe celelalte = un singur grup deschis).
+// ───────────────────────── MENIU SUPERIOR (dropdownuri) ──────────────────────
+// Clic pe antet deschide submeniul și le închide pe celelalte: un singur dropdown deschis.
 function closeMenus(except) {
   $$('#tabs .navgroup.open').forEach((g) => { if (g === except) return; g.classList.remove('open'); const l = g.querySelector('.navlabel'); if (l) l.setAttribute('aria-expanded', 'false'); });
 }
@@ -88,11 +90,10 @@ function openGroup(g) {
   closeMenus(g);
   g.classList.add('open');
   const l = g.querySelector('.navlabel'); if (l) l.setAttribute('aria-expanded', 'true');
-  // Bara laterala isi deruleaza singura continutul (`#tabs` are overflow-y:auto). Un grup deschis
-  // langa marginea de jos isi lasa intrarile SUB taietura: se vad doar daca banuiesti ca trebuie sa
-  // derulezi. Se aduc in cadru DOAR daca sunt chiar taiate — altfel meniul ar sari la fiecare clic.
+  // Pe telefon arborele devine sertar și își derulează singur conținutul. Aducem submeniul în
+  // cadru numai acolo; pe desktop dropdownul este poziționat sub eticheta din banda de sus.
   const meniu = g.querySelector('.navmenu');
-  if (!meniu) return;
+  if (!meniu || !window.matchMedia('(max-width: 700px)').matches) return;
   requestAnimationFrame(() => {
     const bara = g.closest('#tabs'); if (!bara) return;
     if (meniu.getBoundingClientRect().bottom > bara.getBoundingClientRect().bottom) {
@@ -111,14 +112,22 @@ $$('#tabs .navgroup').forEach((g) => {
     else openGroup(g);
   });
 });
-// Deschide sectiunea de LUCRU la pornire. Ancorata pe CONTINUT, nu pe pozitie: varianta veche
-// lua „prima .navgroup din DOM" presupunand ca e Documente, iar mutarea lui Setări sub Ghid a
-// facut-o sa deschida exact sectiunea in care nu-ti incepi ziua.
-openGroup($$('#tabs .navgroup').find((g) => g.querySelector('[data-tab="documente"]')) || $$('#tabs .navgroup')[0]);
+// Un meniu superior nu pornește cu un dropdown lăsat peste conținut.
+closeMenus();
+document.addEventListener('click', (ev) => {
+  if (!ev.target.closest('#tabs .navgroup')) closeMenus();
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Escape') return;
+  const deschis = $('#tabs .navgroup.open');
+  if (!deschis) return;
+  const label = deschis.querySelector('.navlabel');
+  closeMenus();
+  if (label) label.focus();
+});
 
-// Destinațiile aplicației stau în două regiuni cu roluri diferite: ciclul contabil în #tabs,
-// iar Ghid/Mesaje în banda globală #sideTools. Sunt însă o SINGURĂ navigare logică.
-const NAV_TAB_SELECTOR = '#tabs button[data-tab], #sideTools button[data-tab]';
+// Toate destinațiile, inclusiv Ghid și Mesaje, sunt în același navigator #tabs.
+const NAV_TAB_SELECTOR = '#tabs button[data-tab]';
 function navTabButtons() { return $$(NAV_TAB_SELECTOR); }
 function navTabButton(name) { return navTabButtons().find((b) => b.dataset.tab === name) || null; }
 function activeNavTabButton() { return navTabButtons().find((b) => b.classList.contains('active')) || null; }
@@ -126,7 +135,8 @@ function selectNavTabButton(b) {
   navTabButtons().forEach((x) => x.classList.toggle('active', x === b));
   $$('#tabs .navlabel').forEach((l) => l.classList.remove('active'));
   const grp = b.closest('.navgroup');
-  if (grp) { openGroup(grp); grp.querySelector('.navlabel').classList.add('active'); }
+  closeMenus();
+  if (grp) grp.querySelector('.navlabel').classList.add('active');
 }
 function navigateFromTabButton(b) {
   if (!b || !b.dataset.tab) return;
@@ -146,9 +156,14 @@ $('#tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b || !b.dataset.tab) return; // ignora etichetele de grup
   navigateFromTabButton(b);
 });
+// Portofoliu nu ocupă un loc în navigator; rămâne disponibil acolo unde se gestionează
+// mai multe firme: Setări -> Cine are acces -> Firmele mele.
+$('#portofoliuGo') && $('#portofoliuGo').addEventListener('click', () => goTab('portofoliu'));
+// Utilitarele care nu schimbă pagina (țema, densitatea, căutarea etc.) închid dropdownul
+// după alegere; destinațiile data-tab sunt tratate de listenerul unic de pe #tabs.
 $('#sideTools').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-tab]');
-  if (b) navigateFromTabButton(b);
+  const control = e.target.closest('button, a');
+  if (control && !control.dataset.tab) closeMenus();
 });
 function onTab(t) {
   if (t === 'dashboard') loadDashboard();
@@ -234,10 +249,6 @@ function fillFirmaSelect() {
   // optiune de adaugare direct din selector (discoverability) — duce la Setari -> Firmele mele.
   // Contul demo nu adauga/gestioneaza firme (lucreaza doar pe firma demo, resetata periodic).
   sel.innerHTML = opts + (isDemo() ? '' : '<option value="__add__">＋ Adaugă / gestionează firme…</option>');
-  // Portofoliul ramane MEREU vizibil, si cu o singura firma. Ascunderea sub 2 firme parea logica
-  // („n-ai ce compara"), dar facea intrarea sa apara si sa dispara singura pe masura ce se adauga
-  // sau se sterg firme — iar o functie care se evapora arata a defect, nu a decizie. Cu o firma,
-  // ecranul e o privire de conformitate pe declaratiile ei, deci nici nu e gol.
 }
 // Schimbarea firmei active, ca functie ASTEPTABILA. Handlerul de pe #firmaSelect e async, deci
 // cine il declanseaza cu dispatchEvent nu are cum sa astepte sfarsitul lui `init()`. Notificarile
@@ -302,6 +313,9 @@ function applySessionState(u) {
   const contNav = $('#tabs button[data-tab="cont"]');
   if (u && u.impersonating) {
     $('#imperName').textContent = u.username;
+    const expiry = $('#imperExpiry');
+    if (expiry) expiry.textContent = u.impersonating.expiresAt
+      ? (' · expiră la ' + String(u.impersonating.expiresAt).slice(11, 16)) : '';
     banner.classList.remove('hidden');
     document.body.classList.add('impersonating');
     if (contNav) contNav.classList.add('hidden');
@@ -314,8 +328,29 @@ function applySessionState(u) {
   setLastUnread((u && u.unreadMessages) || 0);
 }
 async function impersonate(userId) {
+  const reason = await promptAction('Accesul este temporar și rămâne în jurnalul de audit.', {
+    title: 'Motivul impersonării', label: 'Motiv', multiline: true, required: true, minLength: 10,
+    confirmLabel: 'Continuă',
+  });
+  if (reason == null) return;
+  const ticket = await promptAction('Leagă accesul de solicitarea care îl justifică.', {
+    title: 'Referință obligatorie', label: 'Tichet / solicitare', required: true, minLength: 3,
+    placeholder: 'ex. SUP-1842', confirmLabel: 'Continuă',
+  });
+  if (ticket == null) return;
+  const password = await promptAction('Reautentifică-te înainte de accesul privilegiat.', {
+    title: 'Confirmă parola', label: 'Parola de administrator', inputType: 'password', required: true,
+    confirmLabel: 'Continuă',
+  });
+  if (password == null) return;
+  const code = await promptAction('Introdu un cod curent din aplicația TOTP. Codurile de rezervă nu sunt acceptate pentru impersonare.', {
+    title: 'Confirmă 2FA', label: 'Cod TOTP', inputType: 'text', required: true,
+    pattern: /^\d{6}$/, patternMessage: 'Codul TOTP trebuie să aibă 6 cifre.', confirmLabel: 'Intră pentru 15 minute',
+  });
+  if (code == null) return;
   try {
-    await api('/api/impersonate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
+    await api('/api/impersonate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, reason, ticket, password, code, durationMinutes: 15 }) });
     await init(); onTab('dashboard'); toast('Ai intrat pe contul utilizatorului');
   } catch (e) { toast(e.message, true); }
 }
@@ -384,6 +419,18 @@ async function init() {
   // Plasa de siguranta (daca meta ar fi permisa candva): acelasi ecran de schimbare fortata.
   if (USER.mustChange) { showForcePw(); return; }
   $('#userBadge').textContent = USER.username ? (USER.username + (USER.tip ? ' · ' + USER.tip : '')) : '';
+  // Administratorul neinrolat poate ajunge numai la pagina in care isi activeaza 2FA. Serverul
+  // aplica aceeasi poarta; blocarea navigatiei evita o succesiune de ecrane care raspund 428.
+  $$('#tabs button[data-twofa-locked="1"]').forEach((b) => { b.disabled = false; delete b.dataset.twofaLocked; });
+  if (USER.twofaRequired) {
+    $$('#tabs button[data-tab]').forEach((b) => {
+      if (b.dataset.tab !== 'cont') { b.disabled = true; b.dataset.twofaLocked = '1'; }
+    });
+    applySessionState(USER);
+    goTab('cont'); render2FA();
+    toast('Activează 2FA pentru a continua ca administrator.', true);
+    return;
+  }
   // Prin CLASA, nu prin style.display: `= ''` doar sterge stilul inline si lasa regula din
   // foaia de stil sa ascunda mai departe — asa au ramas INVIZIBILE pentru admin cardurile de
   // utilizatori, backup, SMTP si cote fiscale, plus exportul complet si stergerea logoului.
@@ -408,12 +455,6 @@ async function init() {
   $$('button[data-tab="salarizare"], button[data-tab="angajati"], button[data-tab="regsalarii"]')
     .forEach((b) => b.classList.toggle('hidden', faraSalarii));
   const gs = $('#navgrupSalarii'); if (gs) gs.classList.toggle('hidden', faraSalarii); // tot meniul, nu doar intrarea
-  // Portofoliul e tabelul „toate firmele deodata", deci are sens doar de la A DOUA firma in sus.
-  // Un patron cu firma lui vedea o intrare care nu-i spune nimic. Se ASCUNDE, nu se scoate:
-  // la a doua firma reapare singur, fara nicio setare. Acelasi tipar cu `.hidden` ca mai sus —
-  // un display:none inline ar fi batut de `!important`-ul din regulile de sidebar.
-  const maiMulteFirme = !!(USER.firme && USER.firme.length > 1);
-  const np = $('#navPortofoliu'); if (np) np.classList.toggle('hidden', !maiMulteFirme);
   initUiMode(); // mod simplu implicit pentru necontabili (ascunde partea tehnica din meniu)
   // Ghidul se construieste DUPA initUiMode: citeste aceleasi grupuri din #tabs, iar modul simplu
   // le ascunde prin CSS, nu le scoate din DOM — deci cuprinsul ramane complet in ambele moduri.
@@ -476,7 +517,6 @@ async function init() {
     toast('Completează-ți datele personale (nume, telefon) în Setări → Contul meu.', true);
   }
   maybeWelcome();
-  maybeTour();
   $('#companyName').textContent = (META.company && META.company.nume) || '';
   fillFirmaSelect();
   setFormFlowCompany(META.firmaActiva);
@@ -485,6 +525,7 @@ async function init() {
   fillCompanyForm();
   fillTipSelect();
   fillPeriods();
+  renderLegal();
   renderAI();
   refreshNotifBadge();
   addPanelInfo(); // ⓘ cu explicatii pe fiecare panou
@@ -518,6 +559,56 @@ $('#paletaBtn') && $('#paletaBtn').addEventListener('click', deschidePaleta);
 // ───────────────────────── IMPORT EXTRAS BANCAR ─────────────────────────
 // Extras in public/bank.js. Ii injectam reimprospatarea de dupa import (functiile traiesc aici).
 setBankRefresh(() => { fillPeriods(); loadEntries(); loadDashboard(); });
+function renderLegal() {
+  const legal = META.legal || {};
+  const firma = legal.firm || { mode: 'unclassified', operational: false };
+  const status = $('#legalDataStatus');
+  const testBtn = $('#legalTestMode');
+  const realBtn = $('#legalRealMode');
+  const canManage = !!firma.canManage && !isDemo();
+  if (status) {
+    if (firma.mode === 'test') {
+      status.className = 'status ok';
+      status.textContent = '✔ Mod date fictive. Scrierile sunt permise, dar nu introduce informații despre persoane sau firme reale.';
+    } else if (firma.mode === 'real' && firma.operational) {
+      status.className = 'status ok';
+      status.textContent = '✔ Date reale activate prin acceptarea DPA-ului curent' + (firma.acceptedAt ? ' la ' + firma.acceptedAt.slice(0, 10) : '') + '.';
+    } else if (firma.mode === 'real') {
+      status.className = 'status err';
+      status.textContent = 'Datele reale sunt blocate: cadrul juridic sau acceptarea DPA-ului nu mai este curentă.';
+    } else {
+      status.className = 'status err';
+      status.textContent = 'Alege regimul datelor înainte de prima scriere în această firmă.';
+    }
+    if (!canManage) status.textContent += ' Numai proprietarul firmei poate schimba această alegere.';
+  }
+  if (testBtn) testBtn.disabled = !canManage;
+  if (realBtn) {
+    realBtn.disabled = !canManage || !legal.ready;
+    realBtn.title = legal.ready ? '' : 'Datele reale rămân blocate până la identificarea furnizorului și validarea dosarului GDPR.';
+  }
+}
+
+$('#legalTestMode') && $('#legalTestMode').addEventListener('click', async () => {
+  const confirm = $('#legalTestConfirm');
+  if (!confirm || !confirm.checked) { toast('Confirmă mai întâi că vei folosi exclusiv date fictive.', true); return; }
+  try {
+    await api('/api/legal/mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'test', confirmFictitious: true }) });
+    setMeta(await api('/api/meta')); confirm.checked = false; renderLegal(); renderAI();
+    toast('Firma este în modul date fictive.');
+  } catch (e) { toast(e.message, true); }
+});
+
+$('#legalRealMode') && $('#legalRealMode').addEventListener('click', async () => {
+  const accept = $('#legalRealAccept');
+  if (!accept || !accept.checked) { toast('Acceptă explicit cele trei documente juridice curente.', true); return; }
+  try {
+    await api('/api/legal/mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'real', acceptTerms: true, acceptPrivacy: true, acceptDpa: true }) });
+    setMeta(await api('/api/meta')); accept.checked = false; renderLegal(); renderAI();
+    toast('Datele reale au fost activate pentru această firmă.');
+  } catch (e) { toast(e.message, true); }
+});
+
 function renderAI() {
   const ai = META.ai || { available: false, enabled: false };
   const st = $('#aiStatus');
@@ -525,7 +616,8 @@ function renderAI() {
   const toggle = $('#aiToggle');
   if (ai.available) {
     st.className = 'status ok';
-    st.textContent = '✔ Cheie API detectată. Model: ' + (ai.model || '—');
+    st.textContent = 'Furnizor configurat: ' + (ai.provider || '—') + ' · model: ' + (ai.model || '—')
+      + (ai.enabled ? ' · opt-in activ pentru firma curentă' : ' · niciun document nu este transmis fără opt-in');
     help.classList.add('hidden');
   } else {
     st.className = 'status';
@@ -534,20 +626,27 @@ function renderAI() {
     help.textContent = 'Pentru a activa extragerea cu AI, pornește serverul cu cheia setată:\n\n  ANTHROPIC_API_KEY=sk-ant-... npm start';
   }
   toggle.checked = !!ai.enabled;
-  // setare GLOBALA — doar adminul o comuta (ceilalti o vad, dezactivata)
-  const adminAI = USER.role === 'admin';
-  toggle.disabled = !ai.available || !adminAI;
-  if (!adminAI && ai.available) { st.textContent += ' · comutarea o face administratorul'; }
+  const legalFirm = (META.legal && META.legal.firm) || {};
+  toggle.disabled = !ai.available || ai.platformEnabled === false || !legalFirm.operational || !legalFirm.canManage || isDemo();
+  if (!legalFirm.canManage && ai.available) st.textContent += ' · decizia aparține proprietarului firmei';
 }
 $('#aiToggle').addEventListener('change', async (e) => {
-  await api('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ useAI: e.target.checked }) });
-  META.ai.enabled = e.target.checked;
-  toast('Setare salvată');
+  const enabled = e.target.checked;
+  if (enabled) {
+    const accepted = await confirmAction('Documentul complet va fi transmis furnizorului AI afișat, exclusiv pentru extragerea câmpurilor. Activezi pentru firma curentă?', { title: 'Opt-in AI per firmă', confirmLabel: 'Da, activează' });
+    if (!accepted) { e.target.checked = false; return; }
+  }
+  try {
+    await api('/api/legal/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, confirmExternalProcessing: enabled }) });
+    setMeta(await api('/api/meta')); renderAI();
+    toast(enabled ? 'Opt-in AI activat pentru firma curentă.' : 'Transmiterea către AI a fost oprită.');
+  } catch (err) { e.target.checked = !enabled; toast(err.message, true); }
 });
 function fillCompanyForm() {
   const f = $('#companyForm');
   ['nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'iban', 'banca', 'telefon', 'email', 'capitalSocial', 'pdfFooter', 'asociatiText', 'proRataTva', 'caen', 'perioadaTva', 'dataAnulareTva', 'dataReinregistrareTva'].forEach((k) => { if (f[k]) f[k].value = META.company[k] || ''; });
   if (f.tipEntitate) f.tipEntitate.value = META.company.tipEntitate === 'pfa' ? 'pfa' : 'srl';
+  if (f.tvaPlatitor) f.tvaPlatitor.value = META.company.tvaPlatitor ? 'true' : 'false';
   if (f.tvaLaIncasare) f.tvaLaIncasare.checked = !!META.company.tvaLaIncasare;
   if (f.tvaArt317) f.tvaArt317.checked = !!META.company.tvaArt317;
   if (f.tvaCodAnulat) f.tvaCodAnulat.checked = !!META.company.tvaCodAnulat;
@@ -569,6 +668,7 @@ function fillCompanyForm() {
   if (f.impozitProfitAnPrec) f.impozitProfitAnPrec.value = ((META.company.impozitProfitAn || {})[anAcum - 1] != null) ? (META.company.impozitProfitAn || {})[anAcum - 1] : '';
   if (f.ipcAnPrec) f.ipcAnPrec.value = ((META.company.ipcAnticipate || {})[anAcum] != null) ? (META.company.ipcAnticipate || {})[anAcum] : '';
   aplicaSistemProfit();
+  aplicaConfigurareFirmaSimpla();
   const scut = (META.company.scutiri && typeof META.company.scutiri === 'object') ? META.company.scutiri : {};
   document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { c.checked = !!scut[c.dataset.scutire]; });
   // antetul situatiilor financiare — se completeaza dupa ce nomenclatoarele sunt in DOM
@@ -580,11 +680,98 @@ function fillCompanyForm() {
   });
   refreshLogo();
   refreshFiscalProfile();
+  renderFiscalHistory();
+  refreshBalanceCategory();
+  renderBalanceCategoryHistory();
 }
 
-// Campurile de antet ale situatiilor financiare anuale (S1120/S1121).
-const BILANT_FIELDS = ['caenE', 'codTeritorial', 'formaProprietate', 'administrator',
+// Categoria contabila + campurile de antet ale situatiilor financiare anuale (S1120/S1121/S1122).
+const BILANT_FIELDS = ['categorieRaportare', 'caenE', 'codTeritorial', 'formaProprietate', 'administrator',
   'intocmitNume', 'intocmitCalitate', 'intocmitNr', 'auditStatut', 'auditorNume', 'auditorNr', 'auditorCif'];
+
+const balanceCategoryLabel = (value) => ({
+  micro: 'microentitate', mic: 'entitate mică', mare: 'entitate mijlocie/mare',
+}[value] || 'neconcludent');
+
+async function refreshBalanceCategory() {
+  const box = $('#balanceCategoryStatus'); const yearInput = $('#balanceCategoryYear');
+  if (!box || !yearInput) return;
+  if (!yearInput.value) yearInput.value = String(new Date().getFullYear() - 1);
+  const employees = ($('#balanceCategoryEmployees') || {}).value;
+  const q = new URLSearchParams({ year: yearInput.value });
+  if (String(employees || '').trim() !== '') q.set('numarMediuSalariati', employees);
+  box.innerHTML = '<span class="ei">📐</span><p class="muted">Se calculează încadrarea…</p>';
+  try {
+    const r = await api('/api/balance-category?' + q.toString());
+    const a = r.assessment; const i = a.currentIndicators; const p = a.previousIndicators;
+    const current = balanceCategoryLabel(a.currentRawCategory);
+    const recommended = balanceCategoryLabel(a.recommendedCategory);
+    const emp = i.numarMediuSalariati == null ? 'date incomplete (' + i.payrollMonths + '/12 state)' : fmt(i.numarMediuSalariati);
+    const confirmation = r.confirmation;
+    let confirmationText = '<span class="status err">Neconfirmată — generarea bilanțului este blocată.</span>';
+    if (confirmation && r.confirmedAndCurrent) {
+      const savedEmployees = confirmation.indicatorOverrides && confirmation.indicatorOverrides.numarMediuSalariati;
+      if ($('#balanceCategoryEmployees') && $('#balanceCategoryEmployees').value === '' && savedEmployees != null) {
+        $('#balanceCategoryEmployees').value = savedEmployees;
+      }
+      confirmationText = '<span class="status ok">Confirmată: ' + H(balanceCategoryLabel(confirmation.category))
+        + ' · ' + H(String(confirmation.confirmedAt || '').replace('T', ' ').slice(0, 16))
+        + ' · ' + H(confirmation.confirmedByUsername || confirmation.confirmedRole || 'utilizator') + '</span>';
+      const categorySelect = document.querySelector('#companyForm [name="categorieRaportare"]');
+      if (categorySelect) categorySelect.value = confirmation.category;
+    } else if (confirmation) {
+      confirmationText = '<span class="status err">Confirmarea existentă nu mai corespunde datelor curente — reconfirmă.</span>';
+    }
+    const warnings = (a.reasons || []).length
+      ? '<ul class="checklist todo">' + a.reasons.map((x) => '<li>⚠️ ' + H(x) + '</li>').join('') + '</ul>' : '';
+    box.innerHTML = '<span class="ei">📐</span><div><b>' + H(a.year) + ': recomandare ' + H(recommended) + '</b>'
+      + '<p class="muted">Active: ' + H(fmt(i.totalActive)) + ' lei · cifră de afaceri: ' + H(fmt(i.cifraAfaceri))
+      + ' lei · nr. mediu salariați: ' + H(emp) + '. Încadrare brută: ' + H(current) + '.<br>'
+      + 'Exercițiul anterior: active ' + H(fmt(p.totalActive)) + ' lei · cifră de afaceri ' + H(fmt(p.cifraAfaceri))
+      + ' lei · încadrare brută ' + H(balanceCategoryLabel(a.previousRawCategory)) + '.</p>'
+      + confirmationText + warnings + '</div>';
+  } catch (e) {
+    box.innerHTML = '<span class="ei">📐</span><p class="status err">' + H(e.message) + '</p>';
+  }
+}
+
+async function renderBalanceCategoryHistory() {
+  const box = $('#balanceCategoryHistory'); if (!box) return;
+  try {
+    const r = await api('/api/balance-category/history'); const rows = r.history || [];
+    if (!rows.length) { box.innerHTML = '<p class="muted">Nu există încă nicio confirmare anuală.</p>'; return; }
+    box.innerHTML = '<table><thead><tr><th>An</th><th>Categorie confirmată</th><th>Calcul</th><th>Indicatori</th><th>Confirmată de</th><th>Justificare</th></tr></thead><tbody>'
+      + rows.map((x) => '<tr><td><b>' + H(x.year) + '</b></td><td>' + H(balanceCategoryLabel(x.category))
+        + '</td><td>' + H(balanceCategoryLabel(x.calculatedCategory)) + '</td><td>Active ' + H(fmt((x.indicators || {}).totalActive || 0))
+        + ' · CA ' + H(fmt((x.indicators || {}).cifraAfaceri || 0)) + ' · sal. '
+        + H((x.indicators || {}).numarMediuSalariati == null ? 'incomplet' : fmt(x.indicators.numarMediuSalariati))
+        + '</td><td>' + H(x.confirmedByUsername || x.confirmedRole || '') + '<br><span class="muted">'
+        + H(String(x.confirmedAt || '').replace('T', ' ').slice(0, 16)) + '</span></td><td>' + H(x.justification || '—') + '</td></tr>').join('')
+      + '</tbody></table>';
+  } catch (e) { box.innerHTML = '<p class="status err">' + H(e.message) + '</p>'; }
+}
+
+$('#balanceCategoryRefresh') && $('#balanceCategoryRefresh').addEventListener('click', refreshBalanceCategory);
+$('#balanceCategoryYear') && $('#balanceCategoryYear').addEventListener('change', () => {
+  if ($('#balanceCategoryEmployees')) $('#balanceCategoryEmployees').value = '';
+  refreshBalanceCategory();
+});
+$('#balanceCategoryEmployees') && $('#balanceCategoryEmployees').addEventListener('change', refreshBalanceCategory);
+$('#balanceCategoryConfirm') && $('#balanceCategoryConfirm').addEventListener('click', async () => {
+  const categorySelect = document.querySelector('#companyForm [name="categorieRaportare"]');
+  const year = ($('#balanceCategoryYear') || {}).value;
+  if (!categorySelect || !categorySelect.value) return toast('Alege categoria contabilă de raportare.', true);
+  try {
+    await api('/api/balance-category/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      year, category: categorySelect.value,
+      numarMediuSalariati: ($('#balanceCategoryEmployees') || {}).value || null,
+      justification: ($('#balanceCategoryJustification') || {}).value || '',
+    }) });
+    if ($('#balanceCategoryJustification')) $('#balanceCategoryJustification').value = '';
+    await Promise.all([refreshBalanceCategory(), renderBalanceCategoryHistory()]);
+    toast('Categoria bilanțului a fost confirmată pentru ' + year + '.');
+  } catch (e) { toast(e.message, true); }
+});
 
 // Nomenclatoarele vin de la SERVER, nu sunt scrise in HTML: valorile admise sunt cele extrase din
 // validatorul oficial ANAF (src/bilantNomenclator.js). O lista copiata in frontend ar putea drifta
@@ -625,6 +812,29 @@ function aplicaSistemProfit() {
   if (el) el.addEventListener('change', aplicaSistemProfit);
 });
 
+function firmaPlatitoareTva(form) {
+  return !!(form && form.tvaPlatitor && String(form.tvaPlatitor.value) === 'true');
+}
+
+// În pasul simplu se văd numai întrebările aplicabile. Valorile avansate NU sunt șterse când
+// secțiunea se ascunde: un contabil poate comuta temporar regimul ca să verifice o variantă, iar
+// formularul nu are voie să piardă tacit o configurare fiscală deja salvată.
+function aplicaConfigurareFirmaSimpla() {
+  const f = $('#companyForm'); if (!f) return;
+  const platitoare = firmaPlatitoareTva(f);
+  const pfa = !!(f.tipEntitate && f.tipEntitate.value === 'pfa');
+  const anulat = !!(f.tvaCodAnulat && f.tvaCodAnulat.checked);
+  $('#companyVatPeriodRow')?.classList.toggle('hidden', !platitoare);
+  $('#companyTaxRegimeRow')?.classList.toggle('hidden', pfa);
+  $('#companyTvaCashRow')?.classList.toggle('hidden', !platitoare);
+  $('#companyProRataRow')?.classList.toggle('hidden', !platitoare);
+  $('#companyTvaCancelledDetails')?.classList.toggle('hidden', !anulat);
+}
+['tvaPlatitor', 'tvaCodAnulat', 'tipEntitate'].forEach((n) => {
+  const el = document.querySelector('#companyForm [name="' + n + '"]');
+  if (el) el.addEventListener('change', aplicaConfigurareFirmaSimpla);
+});
+
 // Completarea datelor firmei dupa CUI, din registrul public ANAF. Aici intra si CAEN-ul, care nu
 // e cosmetic: fara el, controlul de coerenta al aplicatiei semnaleaza „esti platitor de TVA, dar
 // codul CAEN nu e completat — decontul D300 il solicita", iar conditia de activitate pentru
@@ -655,9 +865,61 @@ async function refreshFiscalProfile() {
         ctrlHtml = '<div class="muted">✓ Controale de coerență: nicio problemă pe anul curent.</div>';
       }
     } catch (_) { /* controalele sunt best-effort */ }
-    box.innerHTML = `<span class="ei">⚙️</span><p><b>Profil calculat:</b> ${tva} · ${regim} · D406 <b>${{ L: 'lunar', T: 'trimestrial', A: 'anual' }[p.d406] || p.d406}</b> · Intrastat ${p.intrastat ? '<b>da</b>' : 'nu'} · salariați ${p.areAngajati ? 'da' : 'nu'}${scutiri.length ? ' · scutiri: ' + scutiri.join(', ').toUpperCase() : ''}<br><span class="muted">Declarațiile, termenele, alertele și controalele se generează din acest profil.</span></p>${ctrlHtml}`;
+    const interval = p.fiscalValidFrom ? ` · valabil ${H(p.fiscalValidFrom)}–${H(p.fiscalValidTo || 'prezent')}` : '';
+    const recorded = p.fiscalRecordedAt ? ` · înregistrat ${H(String(p.fiscalRecordedAt).replace('T', ' ').slice(0, 16))} UTC` : '';
+    box.innerHTML = `<span class="ei">⚙️</span><p><b>Profil calculat:</b> ${tva} · ${regim} · D406 <b>${{ L: 'lunar', T: 'trimestrial', A: 'anual' }[p.d406] || p.d406}</b> · Intrastat ${p.intrastat ? '<b>da</b>' : 'nu'} · salariați ${p.areAngajati ? 'da' : 'nu'}${scutiri.length ? ' · scutiri: ' + scutiri.join(', ').toUpperCase() : ''}${interval}${recorded}<br><span class="muted">Declarațiile, termenele, alertele și controalele se generează din acest profil.</span></p>${ctrlHtml}`;
   } catch (e) { box.innerHTML = `<span class="ei">⚙️</span><p class="muted">Profilul fiscal se calculează după salvarea firmei.</p>`; }
 }
+
+function fiscalChangesFromForm() {
+  const f = $('#companyForm'); const scutiri = {};
+  document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { if (c.checked) scutiri[c.dataset.scutire] = true; });
+  return {
+    tipEntitate: f.tipEntitate.value,
+    tvaPlatitor: firmaPlatitoareTva(f),
+    tvaArt317: !!(f.tvaArt317 && f.tvaArt317.checked),
+    tvaLaIncasare: !!(f.tvaLaIncasare && f.tvaLaIncasare.checked),
+    tvaCodAnulat: !!(f.tvaCodAnulat && f.tvaCodAnulat.checked),
+    dataAnulareTva: f.dataAnulareTva ? f.dataAnulareTva.value : '',
+    motivAnulareTva: f.motivAnulareTva ? f.motivAnulareTva.value : 'oficiu',
+    dataReinregistrareTva: f.dataReinregistrareTva ? f.dataReinregistrareTva.value : '',
+    perioadaTva: f.perioadaTva ? f.perioadaTva.value : 'L',
+    regimImpozit: f.regimImpozit ? f.regimImpozit.value : 'micro',
+    d406Cadenta: f.d406Cadenta ? f.d406Cadenta.value : '',
+    intrastatObligat: !!(f.intrastatObligat && f.intrastatObligat.checked),
+    sistemProfit: f.sistemProfit ? f.sistemProfit.value : 'trimestrial',
+    anticipatProfitContabil: !!(f.anticipatProfitContabil && f.anticipatProfitContabil.checked),
+    scutiri,
+  };
+}
+
+async function renderFiscalHistory() {
+  const box = $('#fiscalHistory'); if (!box) return;
+  if ($('#fiscalValidFrom') && !$('#fiscalValidFrom').value) $('#fiscalValidFrom').value = new Date().toISOString().slice(0, 10);
+  try {
+    const r = await api('/api/fiscal-profile/history'); const rows = r.history || [];
+    if (!rows.length) { box.innerHTML = '<p class="muted">Nu există încă revizii. Prima schimbare va crea automat și fotografia inițială.</p>'; return; }
+    const tva = (v) => v.tvaCodAnulat ? 'cod anulat' : v.tvaPlatitor ? 'TVA ' + (v.perioadaTva === 'T' ? 'trimestrial' : 'lunar') : v.tvaArt317 ? 'art. 317' : 'neplătitor';
+    box.innerHTML = `<table><thead><tr><th>Valabil de la</th><th>Valabil până la</th><th>Regim</th><th>TVA</th><th>D406</th><th>Motiv</th><th>Înregistrată la</th></tr></thead><tbody>${rows.map((x) => {
+      const v = x.values || {};
+      return `<tr><td><b>${H(x.validFrom)}</b></td><td>${H(x.validTo || 'prezent')}</td><td>${H(v.regimImpozit || (v.tipEntitate === 'pfa' ? 'pfa' : 'micro'))}</td><td>${H(tva(v))}</td><td>${H(v.d406Cadenta || 'automat')}</td><td>${H(x.note || '')}</td><td>${H(String(x.recordedAt || x.createdAt || '').replace('T', ' ').slice(0, 16))} UTC</td></tr>`;
+    }).join('')}</tbody></table>`;
+  } catch (e) { box.innerHTML = `<p class="status err">${H(e.message)}</p>`; }
+}
+
+$('#fiscalRevisionSave') && $('#fiscalRevisionSave').addEventListener('click', async () => {
+  const validFrom = ($('#fiscalValidFrom') || {}).value;
+  if (!validFrom) return toast('Alege data de intrare în vigoare', true);
+  try {
+    const r = await api('/api/fiscal-profile/history', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      validFrom, note: ($('#fiscalRevisionNote') || {}).value || '', changes: fiscalChangesFromForm(),
+    }) });
+    META.company = r.company;
+    if ($('#fiscalRevisionNote')) $('#fiscalRevisionNote').value = '';
+    await Promise.all([renderFiscalHistory(), refreshFiscalProfile()]);
+    toast('Revizie fiscală salvată, valabilă de la ' + validFrom);
+  } catch (e) { toast(e.message, true); }
+});
 // Logo firma (apare in antetul PDF-urilor emise) — incarcare/stergere + previzualizare
 async function refreshLogo() {
   const img = $('#logoPreview'); const del = $('#logoDeleteBtn');
@@ -689,8 +951,8 @@ function renderLock() {
   if (st) { st.className = 'status' + (lu ? ' ok' : ''); st.textContent = lu ? '🔒 Perioade blocate până la ' + lu + ' inclusiv (read-only).' : 'Nicio perioadă blocată — toate lunile sunt editabile.'; }
   if (inp && lu) inp.value = lu;
 }
-async function setLock(lockedUntil) {
-  const r = await api('/api/period-lock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lockedUntil }) });
+async function setLock(lockedUntil, motiv) {
+  const r = await api('/api/period-lock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lockedUntil, motiv }) });
   if (META.company) META.company.lockedUntil = r.lockedUntil;
   renderLock();
   return r;
@@ -698,13 +960,24 @@ async function setLock(lockedUntil) {
 $('#lockSet') && $('#lockSet').addEventListener('click', async () => {
   const v = $('#lockUntil').value;
   if (!v) return toast('Alege o lună', true);
-  try { await setLock(v); toast('Perioade blocate până la ' + v); } catch (e) { toast(e.message, true); }
+  let motiv = '';
+  const curent = META.company && META.company.lockedUntil;
+  if (curent && v < curent) {
+    motiv = await promptAction('Reducerea intervalului blocat este un override. Motivul rămâne în jurnalul de audit.', {
+      title: 'Reduci blocarea?', label: 'Motivul excepției', multiline: true, required: true, minLength: 10,
+      confirmLabel: 'Aplică override-ul', danger: true,
+    });
+    if (motiv == null) return;
+  }
+  try { await setLock(v, motiv); toast('Perioade blocate până la ' + v); } catch (e) { toast(e.message, true); }
 });
 $('#lockClear') && $('#lockClear').addEventListener('click', async () => {
-  if (!await confirmAction('Toate lunile închise vor deveni din nou editabile. Această excepție poate schimba rapoarte sau declarații deja depuse.', {
-    title: 'Deblochezi toate perioadele?', confirmLabel: 'Deblochează', danger: true,
-  })) return;
-  try { await setLock(null); toast('Perioade deblocate'); } catch (e) { toast(e.message, true); }
+  const motiv = await promptAction('Toate lunile închise vor deveni editabile. Motivul excepției rămâne în jurnalul de audit.', {
+    title: 'Deblochezi toate perioadele?', label: 'Motivul excepției', multiline: true, required: true, minLength: 10,
+    confirmLabel: 'Deblochează', danger: true,
+  });
+  if (motiv == null) return;
+  try { await setLock(null, motiv); toast('Perioade deblocate'); } catch (e) { toast(e.message, true); }
 });
 // ── „Luna de lucru" + filtrele de perioada → public/periods.js ──
 // Mod compact (densitate) — comutator in bara, retinut in browser
@@ -768,10 +1041,9 @@ $$('.qa[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.data
 
 // HARTA LUNII — o singură sursă.
 //
-// Aplicația descria aceeași lună în două feluri care nu se potriveau: banda de sus numea șapte
-// „etape" (documente, emite, jurnal, carte, balanță, închideri, declarații), iar cockpitul de
-// închidere numea șase „pași" (documente, bancă, TVA, declarații, aprobare, blocare). Consecința
-// pentru cine ține luna: TVA-ul și punctajul bancar — pași OBLIGATORII — nu apăreau nicăieri în
+// Aplicația descria aceeași lună în două feluri care nu se potriveau: banda de sus numea „etape"
+// de navigare, iar cockpitul numește controalele efective de închidere. Consecința pentru cine
+// ține luna: operațiuni obligatorii precum amortizarea, reevaluarea, TVA-ul și punctajul bancar nu apăreau în
 // bandă, în timp ce jurnalul și balanța, care se CONSULTĂ, erau numerotate ca pași de executat.
 // Iar „etapa 6/7" deschidea un ecran care începea de la „1/6".
 //
@@ -781,6 +1053,9 @@ $$('.qa[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.data
 const PASII_LUNII = [
   { key: 'documente', tab: 'intrate' },
   { key: 'banca', tab: 'reconciliere' },
+  { key: 'amortizare_lunara', tab: 'mijloace' },
+  { key: 'reevaluare_valutara', tab: 'inchideri' },
+  { key: 'ajustari_inventar', tab: 'inchidere-an' },
   { key: 'tva', tab: 'tva' },
   { key: 'declaratii', tab: 'livrabile' },
   { key: 'aprobare', tab: null }, // se rezolvă în cockpit, nu pe ecran propriu
@@ -813,34 +1088,48 @@ function welcomeKey() { return 'contab_welcomed_' + ((USER && USER.username) || 
 function maybeWelcome() {
   try { if (localStorage.getItem(welcomeKey())) return; } catch (e) { return; }
   $('#welcomeOverlay').classList.remove('hidden');
+  setTimeout(() => $('#welcomeStart').focus(), 0);
 }
 function closeWelcome() {
   try { localStorage.setItem(welcomeKey(), '1'); } catch (e) { /* ignora */ }
   $('#welcomeOverlay').classList.add('hidden');
 }
-$('#welcomeStart').addEventListener('click', () => { closeWelcome(); startTour(); });
+$('#welcomeStart').addEventListener('click', () => {
+  closeWelcome();
+  if (USER && USER.faraFirma) { goTab('acces'); return; }
+  goTab('dashboard');
+  // Dashboard-ul se încarcă asincron. Primul pas nefinalizat este traseul real al firmei, nu un
+  // tur paralel; dacă răspunsul nu a sosit încă, alegerea ghidată rămâne fallback-ul util.
+  setTimeout(() => {
+    const primul = $('#primiiPasiList .fstep:not(.done)');
+    if (primul) primul.click(); else { const q = $('#qaWizard'); if (q) q.click(); }
+  }, 350);
+});
 $('#welcomeGuide').addEventListener('click', () => { closeWelcome(); goTab('ghid'); });
+$('#welcomeLater').addEventListener('click', closeWelcome);
+// Dialogurile de pornire țin tastatura în interiorul lor. Fără asta, Tab ajungea în meniul și
+// formularele ascunse vizual sub overlay, iar utilizatorul nu mai știa unde se află focusul.
+document.addEventListener('keydown', (e) => {
+  const dialog = ['#welcomeOverlay', '#opWizard'].map((s) => $(s)).find((x) => x && !x.classList.contains('hidden'));
+  if (!dialog) return;
+  if (e.key === 'Escape' && dialog.id === 'welcomeOverlay') { e.preventDefault(); closeWelcome(); return; }
+  if (e.key !== 'Tab') return;
+  const focusable = [...dialog.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+    .filter((x) => x.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0]; const last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 
 // ───────────────────────── TUR GHIDAT (noul meniu) ─────────────────────────
 const TOUR = [
-  { ic: '👋', title: 'Bun venit! Meniul, pe scurt', text: 'L-am organizat pe ORDINEA în care se lucrează: de sus în jos e chiar ciclul contabil — documente, bani, ce mișcă lunar, verificare, închiderea lunii, declarații, rapoarte. Ți-l arăt în câțiva pași — apoi ești gata.' },
-  { sel: '#tabs [data-tab="dashboard"]', ic: '🏠', title: 'Acasă', text: 'Punctul de plecare: butoane „Ce vrei să faci?" și o privire de ansamblu asupra firmei.' },
-  { sel: '#sideTools [data-tab="ghid"]', ic: '📖', title: 'Ghid', text: 'Cum lucrezi, pas cu pas — de la primul document până la declarații.' },
-  { sel: '#sideTools [data-tab="mesaje"]', ic: '💬', title: 'Mesaje', text: 'Ai o întrebare? Scrie-i administratorului direct de aici — îți răspunde în aplicație.' },
-  { sel: '#tabs [data-tab="notificari"]', ic: '🔔', title: 'Notificări', text: 'Termenele fiscale care se apropie și restanțele. Fiecare rând are butonul care le rezolvă.' },
-  { sel: '#navPortofoliu', ic: '🗂', title: 'Portofoliu', text: 'Toate firmele tale deodată: ce declarații are fiecare și ce a rămas de făcut. Util mai ales când administrezi mai multe.' },
-  { group: 'Documente', ic: '📥', title: 'Documente & facturi', text: 'De aici pornește totul: încarci documentele primite (aplicația le citește singură) și emiți facturi către clienți.' },
-  { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Încasările și plățile prin bancă și casă, plus punerea lor față în față cu extrasul bancar.' },
-  { group: 'Stocuri', ic: '📦', title: 'Stocuri', text: 'Marfa și materialele: ce ai pe stoc, ce a intrat și ce a ieșit. Îl folosești doar dacă firma ta ține stocuri.' },
-  { group: 'Salarii', ic: '👥', title: 'Salarii', text: 'Statul de plată al lunii, datele angajaților și registrul anual; de aici iese și declarația D112.' },
-  { group: 'Mijloace fixe', ic: '🏢', title: 'Mijloace fixe', text: 'Bunurile de folosință îndelungată și amortizarea lor lunară, calculată automat — plus contractele de leasing și scadențarele lor.' },
-  { group: 'Registre', ic: '📒', title: 'Registre contabile', text: 'Pasul de verificare, înainte de închidere: balanța, jurnalul, fișa fiecărui cont. Aici te uiți ca să vezi dacă mai lipsește ceva.' },
-  { group: 'Închideri', ic: '🔒', title: 'Închideri', text: 'Închiderea lunii, ca listă de pași cu stare calculată din date — și, separat, operațiunile de sfârșit de an.' },
-  { group: 'Taxe', ic: '🧾', title: 'Taxe & declarații', text: 'TVA-ul de plată, declarațiile pentru ANAF și drumul de la rezultatul contabil la cel fiscal. Vin după închidere, fiindcă din ea se calculează.' },
-  { group: 'Rapoarte', ic: '📊', title: 'Rapoarte & analize', text: 'Ce se calculează singur din documentele tale: situații financiare, buget vs realizat, scadențar — și arhiva lunii, dosarul gata de predat.' },
-  { group: 'Date firmă', ic: '📁', title: 'Date firmă', text: 'Nomenclatoarele: clienții și furnizorii tăi și, în modul expert, planul de conturi.' },
-  { group: 'Setări', ic: '⚙️', title: 'Setări', text: 'Tot ce se configurează o dată și se mai atinge rar — plus aplicația de instalat pe calculatorul tău.' },
-  { ic: '🎉', title: 'Gata!', text: 'Începe din 🏠 Acasă → „Ce vrei să faci?". Poți relua oricând turul din butonul 🧭 Tur meniu.' },
+  { ic: '👋', title: 'Meniul în 60 de secunde', text: 'Ai nevoie doar de traseul principal: pornești de acasă, adaugi documente, urmărești banii și rezolvi notificările.' },
+  { sel: '#tabs [data-tab="dashboard"]', ic: '🏠', title: 'Acasă', text: 'Aici găsești următorul pas concret și situația firmei pe scurt.' },
+  { group: 'Documente', ic: '📥', title: 'Documente', text: 'Încarci ce primești și emiți facturile tale. Aplicația construiește evidența din ele.' },
+  { group: 'Bani', ic: '🏦', title: 'Bani', text: 'Urmărești încasările, plățile și potrivirea cu extrasul bancar.' },
+  { sel: '#tabs [data-tab="notificari"]', ic: '🔔', title: 'Notificări', text: 'Vezi numai ce are termen sau cere atenție și mergi direct la acțiunea care rezolvă.' },
+  { ic: '🎉', title: 'Gata', text: 'Restul meniului rămâne disponibil când ai nevoie de el. Poți relua turul din „Unelte”.' },
 ];
 let tourIdx = 0;
 function tourKey() { return 'contab_tour_v1_' + ((USER && USER.username) || '?'); }
@@ -868,10 +1157,10 @@ function subintrariVizibile(grupEticheta) {
     .map((b) => b.textContent.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
 }
-// Pasii CHIAR aplicabili contului curent. „Portofoliu" apare doar de la 2 firme in sus, iar
-// intrarile tehnice lipsesc in modul simplu — un pas care descrie un meniu inexistent e o
+// Pasii CHIAR aplicabili contului curent. Intrarile ascunse dupa rol sau in modul simplu lipsesc
+// din tur — un pas care descrie un meniu inexistent e o
 // promisiune pe care aplicatia n-o tine, si strica si numaratoarea („pasul 4 din 13", cu pasi
-// goi). Se recalculeaza la FIECARE pornire, fiindca modul si numarul de firme se schimba.
+// goi). Se recalculeaza la FIECARE pornire, fiindca modul si drepturile se pot schimba.
 let TOUR_PASI = TOUR;
 function tourAplicabil(step) {
   if (!step.sel && !step.group) return true; // introducerea si finalul n-au tinta
@@ -902,16 +1191,11 @@ function showTourStep(i) {
 }
 function startTour() { TOUR_PASI = TOUR.filter(tourAplicabil); $('#tourCard').classList.remove('hidden'); showTourStep(0); }
 function endTour() { clearTourHighlight(); $('#tourCard').classList.add('hidden'); try { localStorage.setItem(tourKey(), '1'); } catch (e) { /* ignora */ } }
-function maybeTour() {
-  try { if (localStorage.getItem(tourKey())) return; } catch (e) { return; }
-  if (!$('#welcomeOverlay').classList.contains('hidden')) return; // dacă se arată bun-venitul, turul pornește după „Începe turul”
-  startTour();
-}
 $('#tourNext').addEventListener('click', () => { if (tourIdx >= TOUR_PASI.length - 1) endTour(); else showTourStep(tourIdx + 1); });
 $('#tourBack').addEventListener('click', () => showTourStep(tourIdx - 1));
 $('#tourSkip').addEventListener('click', endTour);
 $('#tourReplay') && $('#tourReplay').addEventListener('click', startTour);
-// acelasi tur, pornit si din banda de sus (langa comutatorul de densitate): din Ghid se ajunge
+// acelasi tur, pornit si din grupul Unelte (langa comutatorul de densitate): din Ghid se ajunge
 // doar daca stii ca exista, iar turul e util tocmai celui care inca NU stie unde e ce.
 $('#tourBtn') && $('#tourBtn').addEventListener('click', startTour);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#tourCard').classList.contains('hidden')) endTour(); });
@@ -1062,7 +1346,7 @@ function renderSubscription(data) {
     return `<div class="plan-card${p.recomandat ? ' recomandat' : ''}${isCurrent ? ' current' : ''}">
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
       <h3>${H(p.nume)}</h3>
-      <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + fmt(p.pret) + '</b> ' + p.moneda}<span>${p.pret === 0 ? '' : '/ ' + p.perioada}</span></div>
+      <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + H(p.pret) + '</b> <span>' + H(p.moneda + '/' + p.perioada) + '</span>'}</div>
       <p class="plan-desc">${H(p.descriere || '')}</p>
       <ul class="plan-feat">${(p.features || []).map((f) => `<li>${f}</li>`).join('')}</ul>
       <div class="plan-action">${action}</div>
@@ -1219,10 +1503,34 @@ $('#anafPoll').addEventListener('click', async () => {
 
 // ── Planul de conturi + solduri initiale (afisare, import CSV) → public/plan.js ──
 // ───────────────────────── SETTINGS / SEED ─────────────────────────
+function campuriFirmaBazaLipsa(form) {
+  const campuri = [
+    ['cui', 'CUI-ul'], ['nume', 'denumirea'], ['caen', 'codul CAEN'], ['adresa', 'adresa'],
+    ['oras', 'orașul'], ['judet', 'județul'],
+  ];
+  if (firmaPlatitoareTva(form)) campuri.push(['perioadaTva', 'perioada TVA']);
+  return campuri.filter(([name]) => !String((form.elements[name] || {}).value || '').trim());
+}
+
 $('#companyForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
-  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaLaIncasare: f.tvaLaIncasare.checked, tvaArt317: f.tvaArt317 ? f.tvaArt317.checked : false,
+  const quick = !!(e.submitter && e.submitter.id === 'companyQuickSave');
+  const quickStatus = $('#companyQuickStatus');
+  if (quick) {
+    const lipsa = campuriFirmaBazaLipsa(f);
+    if (lipsa.length) {
+      if (quickStatus) {
+        quickStatus.className = 'status err';
+        quickStatus.textContent = 'Mai completează: ' + lipsa.map((x) => x[1]).join(', ') + '.';
+      }
+      const primul = f.elements[lipsa[0][0]];
+      if (primul) { primul.focus(); primul.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      return;
+    }
+    if (quickStatus) { quickStatus.className = 'muted'; quickStatus.textContent = 'Se salvează…'; }
+  }
+  const body = { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaPlatitor: firmaPlatitoareTva(f), tvaLaIncasare: f.tvaLaIncasare.checked, tvaArt317: f.tvaArt317 ? f.tvaArt317.checked : false,
     tvaCodAnulat: f.tvaCodAnulat ? f.tvaCodAnulat.checked : false,
     dataAnulareTva: f.dataAnulareTva ? f.dataAnulareTva.value : '',
     motivAnulareTva: f.motivAnulareTva ? f.motivAnulareTva.value : 'oficiu',
@@ -1255,13 +1563,23 @@ $('#companyForm').addEventListener('submit', async (e) => {
   document.querySelectorAll('#scutiriBox [data-scutire]').forEach((c) => { if (c.checked) body.scutiri[c.dataset.scutire] = true; });
   // antetul situatiilor financiare anuale (bilant)
   BILANT_FIELDS.forEach((k) => { if (f[k]) body[k] = String(f[k].value || '').trim(); });
+  // Formularul nou declara explicit ca aceste valori intra in vigoare AZI. Clientii API vechi,
+  // care nu trimit data, pastreaza comportamentul retroactiv pentru compatibilitate.
+  body.fiscalValidFrom = new Date().toISOString().slice(0, 10);
   const r = await api('/api/company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   META.company = r.company || body;
   refreshFiscalProfile(); // recalculeaza rezumatul profilului — inaintea DOM-ului care ar putea arunca
+  renderFiscalHistory();
+  refreshBalanceCategory();
+  renderBalanceCategoryHistory();
   const cn = $('#companyName'); if (cn) cn.textContent = body.nume; // absent in modul simplu — nu bloca restul
   formFlowSaved(f);
   window.dispatchEvent(new CustomEvent('contab:company-saved'));
   toast('Date firmă salvate' + (body.tvaLaIncasare ? ' · regim TVA la încasare ACTIV' : ''));
+  if (quick) {
+    if (quickStatus) { quickStatus.className = 'status ok'; quickStatus.textContent = 'Configurarea de bază este salvată.'; }
+    goTab('dashboard');
+  }
 });
 $('#seedBtn').addEventListener('click', async () => {
   $('#seedStatus').textContent = 'Se încarcă…';

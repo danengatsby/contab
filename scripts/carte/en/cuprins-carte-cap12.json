@@ -1,0 +1,240 @@
+{
+ "parte": "Part III · The document · phase 2",
+ "nr": "12",
+ "titlu": "Draft, validated, approved, posted",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "A document entered into the software does not, by that simple fact, enter the accounting records. Between \"I typed it\" and \"it's recorded\" lie several steps, and they are not the software's bureaucracy: they are exactly the separation discussed in chapter 4, between the one who enters and the one who takes responsibility."
+  },
+  {
+   "tip": "p",
+   "text": "At a small business, where the same person does both things, the steps seem like an affectation. They become useful, however, on the first day someone makes a mistake — and they are indispensable the moment someone other than the person signing the balance sheet works on entering documents."
+  },
+  {
+   "tip": "h",
+   "text": "The four states"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The path of an entry",
+   "cap": [
+    "State",
+    "What it means",
+    "Can it be deleted?"
+   ],
+   "randuri": [
+    [
+     "Draft",
+     "it has been typed, but nothing is decided yet; it may be incomplete",
+     "yes, without a trace"
+    ],
+    [
+     "Validated",
+     "the data is complete and consistent with the document",
+     "yes"
+    ],
+    [
+     "Approved",
+     "someone with the right to do so has taken responsibility for the content",
+     "yes, until posting"
+    ],
+    [
+     "Posted",
+     "it has entered the accounting records and all reports",
+     "NO — only by reversal (storno)"
+    ]
+   ],
+   "nota": "Only the last state produces effects. A draft does not appear in the trial balance, does not enter the VAT return, and is not visible in the balance sheet."
+  },
+  {
+   "tip": "p",
+   "text": "The threshold that matters is the last one. Until posting, an entry is an intention: it can be corrected, completed, or deleted without anyone ever knowing it existed. After posting, it becomes a recorded fact, and recorded facts are not deleted — they are corrected through another entry, which also remains."
+  },
+  {
+   "tip": "cheie",
+   "text": "Before posting, a mistake is a correction. After posting, it is a new transaction."
+  },
+  {
+   "tip": "h",
+   "text": "Why what has been posted is not deleted"
+  },
+  {
+   "tip": "p",
+   "text": "The question arises immediately, and it is legitimate: if I made a mistake, why can't I delete it and write it correctly? The answer has two parts, one practical and one of principle."
+  },
+  {
+   "tip": "p",
+   "text": "Practical: other things have already been calculated based on the posted entry. A VAT return filed, a trial balance sent to the bank, a statement handed to a partner. Deletion would make the same documents say something different today than they said yesterday, with nothing explaining the difference."
+  },
+  {
+   "tip": "p",
+   "text": "Of principle: the trail of the correction is part of the proof. Accounting records in which mistakes disappear without a trace are, to an outsider, indistinguishable from records in which figures are adjusted as needed. Precisely because errors are normal and inevitable, the way they are corrected says everything about the seriousness of the records."
+  },
+  {
+   "tip": "h",
+   "text": "Who can do what"
+  },
+  {
+   "tip": "p",
+   "text": "The steps take on full meaning when they are tied to different people. The usual model at a company with an external accountant looks like this: someone from the company enters documents as they appear, the accountant checks and posts them."
+  },
+  {
+   "tip": "p",
+   "text": "The advantage is not control, but the proper division of labor. The person at the company knows what happened — they saw the goods, they signed for receipt. The accountant knows how it is recorded. Each does the part the other cannot do, and the state of the document shows, at any moment, where things stand."
+  },
+  {
+   "tip": "p",
+   "text": "At a company where the business owner does everything alone, the steps remain useful in a more modest way: they separate \"I set the document aside so I wouldn't lose it\" from \"I checked it and it's fine.\" These are two different things, and mixing them is the usual cause of invoices recorded twice."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The state flow is the digital form of an internal control principle: separating the recording function from the approval function. Even where separation by person is not possible — small firms, a single accountant — separation in time preserves part of the benefit, because verification is done with the document in hand and not in the same motion as typing. Two consequences for practice. First: posting rights must be treated as a distinct right in the access matrix, not as a consequence of write access; a user who can enter documents should not also be able to post them, if the company's structure allows otherwise. Second: the moment of posting determines the period only together with the transaction date, not in its place — an entry posted in March with a February date belongs to February, and if February is closed, the system must refuse it, not silently reclassify it. This refusal is the subject of period locking, covered in chapter 41."
+  },
+  {
+   "tip": "h",
+   "text": "What is visible from outside"
+  },
+  {
+   "tip": "p",
+   "text": "A side effect of the states, often more valuable than the control itself: at any moment one can say what is ready and what is not. How many of the month's documents are still drafts, how many are awaiting verification, how many have actually entered the accounting records."
+  },
+  {
+   "tip": "p",
+   "text": "At the end of the month, the question \"have we finished?\" is no longer answered from memory, but read off directly. And when the answer is no, one can see exactly what is missing — which turns month-end closing from a hunch into a list. Chapter 39 returns to this."
+  },
+  {
+   "tip": "p",
+   "text": "The question of what exactly is checked before a document is allowed to pass remains. That is the next chapter."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 12.1 — who presses the button, and when",
+   "enunt": [
+    "A company employs an operator who enters documents and an accountant responsible for filings. On the 12th of the month, the operator enters 40 invoices. On the 14th, the accountant discovers that three of them are from the previous month, already closed and filed.",
+    "(a) What state should the 40 have been in on the 12th? (b) What is done with the three?"
+   ],
+   "rezolvare": [
+    "(a) In draft state. Entry is an execution operation; posting is the act by which someone takes responsibility for the figure. If the 40 had been posted directly, the three would already have entered the records of a closed month — or would have been rejected by the period guard, which is exactly the desired behavior.",
+    "(b) They are not recorded in the closed month. They are recorded in the current month, and if they affect the VAT or the result of the previous month, it is evaluated whether a corrective return is warranted — a decision that depends on the amount involved and the deadlines.",
+    "What the exercise shows: the draft/posted separation is not bureaucracy, it is the place where verification happens. A company where everyone posts directly has nowhere to verify, and errors reach the filings without passing by anyone."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What can be done in each state"
+  },
+  {
+   "tip": "p",
+   "text": "The four states are not decorative labels: each one changes what can be done with the item and what the rest of the application sees."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Rights of each state",
+   "cap": [
+    "State",
+    "Visible in reports?",
+    "Can be modified?",
+    "Can be deleted?"
+   ],
+   "randuri": [
+    [
+     "draft",
+     "no",
+     "yes",
+     "yes"
+    ],
+    [
+     "validated",
+     "no",
+     "yes",
+     "yes"
+    ],
+    [
+     "approved",
+     "no",
+     "yes",
+     "yes"
+    ],
+    [
+     "posted",
+     "YES",
+     "no",
+     "no"
+    ]
+   ],
+   "nota": "The first column is the one that matters: until posting, the item does not exist for the trial balance, for the VAT return, or for statements. Posting is the moment it enters the records."
+  },
+  {
+   "tip": "p",
+   "text": "From this follows a practical consequence that beginners discover late: an item entered and left as a draft is NOT an entry. It does not appear in the trial balance, does not enter the VAT return, and is not visible in reports. \"Entered\" documents that cannot be found anywhere are, almost always, forgotten drafts."
+  },
+  {
+   "tip": "h",
+   "text": "Why three states before posting, and not one"
+  },
+  {
+   "tip": "p",
+   "text": "At a small company, the three states before posting seem like a luxury: the same person enters and posts. But they describe three different questions, and at a company with a team, each one has a different answer."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The three questions",
+   "cap": [
+    "Transition",
+    "Who does it",
+    "What it answers"
+   ],
+   "randuri": [
+    [
+     "draft → validated",
+     "the operator",
+     "is the document complete and correctly read?"
+    ],
+    [
+     "validated → approved",
+     "the accountant",
+     "is the accounting classification the right one?"
+    ],
+    [
+     "approved → posted",
+     "the person responsible",
+     "do I take responsibility for the figure as it stands?"
+    ]
+   ],
+   "nota": "At a small company, the same person answers three times. The fact that they answer separately each time is precisely the point of the states."
+  },
+  {
+   "tip": "cheie",
+   "text": "Posting is not a save button. It is a signature on a statement about the past — and that is why, after it, correction is done by reversal (storno), not by modification."
+  },
+  {
+   "tip": "h",
+   "text": "What happens to a draft from a closed month"
+  },
+  {
+   "tip": "p",
+   "text": "The case comes up often and deserves clarification: a draft created in June, left unposted, while in the meantime June has been closed."
+  },
+  {
+   "tip": "p",
+   "text": "The draft still exists — nothing has been deleted — but it can no longer be posted there, because the period is locked. It is not a loss of data, but a question: did that document belong to June or not? If yes, it is recorded in the current month and it is evaluated whether a corrective filing is warranted. If not, the date is corrected."
+  },
+  {
+   "tip": "p",
+   "text": "This situation is, in fact, exactly the reason why the period guard checks at POSTING, not at creation: a draft can be composed at any time, but entry into the records is subject to the calendar."
+  },
+  {
+   "tip": "recap",
+   "titlu": "To remember from this chapter",
+   "puncte": [
+    "An entered document is not a recorded document: only the \"posted\" state produces effects in the trial balance, in VAT, and in the balance sheet.",
+    "Until posting a mistake is a correction; after posting it becomes a new transaction, through reversal (storno).",
+    "Deleting a posted entry would make already-issued reports say something different, without explanation.",
+    "The steps separate who enters from who takes responsibility — ideally different people, but separation in time also helps.",
+    "The state of documents shows, at any moment, what is ready and what is missing for the month."
+   ]
+  }
+ ]
+}

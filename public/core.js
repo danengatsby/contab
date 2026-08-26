@@ -7,7 +7,10 @@
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-export const fmt = (n) => (Number(n) || 0).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const uiLanguage = () => (typeof window !== 'undefined' && window.contabI18n ? window.contabI18n.language() : 'ro');
+export const uiLocale = () => (typeof window !== 'undefined' && window.contabI18n ? window.contabI18n.locale() : 'ro-RO');
+export const tr = (s) => (typeof window !== 'undefined' && window.contabI18n ? window.contabI18n.t(s) : String(s == null ? '' : s));
+export const fmt = (n) => (Number(n) || 0).toLocaleString(uiLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 // Rotunjire la 2 zecimale (bani), aceeasi semantica cu src/util.js. Folosita in stocuri
 // (total valoare stoc) si la auto-completarea salariilor — lipsea din frontend (ReferenceError).
 export const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
@@ -18,7 +21,7 @@ export const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 10
 // depunere ambiguitatea nu e cosmetica.
 export const dataRo = (iso) => {
   const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : String(iso || '');
+  return m ? (uiLanguage() === 'en' ? `${m[3]}/${m[2]}/${m[1]}` : `${m[3]}.${m[2]}.${m[1]}`) : String(iso || '');
 };
 
 // Pluralul romanesc, ca sa nu mai scriem „pas(i)". Regula are DOUA praguri, nu unul: de la 20 in
@@ -26,6 +29,7 @@ export const dataRo = (iso) => {
 // (101 pasi, 120 de pasi). Zero ramane fara „de" — „0 de pasi" nu se spune.
 export const plural = (n, sg, pl) => {
   const x = Math.abs(Math.trunc(Number(n) || 0));
+  if (uiLanguage() === 'en') return n + ' ' + tr(x === 1 ? sg : pl);
   if (x === 1) return n + ' ' + sg;
   const ultimele2 = x % 100;
   const cuDe = x >= 20 && (ultimele2 === 0 || ultimele2 >= 20);
@@ -66,7 +70,10 @@ export const fiscalRate = (key, fallback) => {
   return Number.isFinite(v) && v > 0 ? v : fallback;
 };
 // Procentul ca text, in scriere romaneasca (virgula zecimala): "25%", "2,25%".
-export const fiscalPct = (key, fallback) => String(fiscalRate(key, fallback)).replace('.', ',') + '%';
+export const fiscalPct = (key, fallback) => {
+  const value = String(fiscalRate(key, fallback));
+  return (uiLanguage() === 'en' ? value : value.replace('.', ',')) + '%';
+};
 // Substituie `{cheie|implicit}` cu cota curenta in textele explicative (glosar, panouri).
 // Tabelele lor sunt constante evaluate la IMPORT, cand META.fiscal inca nu e incarcat, deci
 // substituim la randare, nu la definire.
@@ -87,7 +94,7 @@ export function toast(msg, err) {
   const t = $('#toast'); if (!t) return;
   if (toastTimer) clearTimeout(toastTimer);
   const isError = !!err;
-  t.textContent = msg;
+  t.textContent = tr(msg);
   t.className = 'toast show ' + (isError ? 'is-error' : 'is-success');
   // Erorile sunt urgente și trebuie anunțate imediat; confirmările obișnuite nu
   // întrerup cititorul de ecran. Atributele revin la starea neutră după mesaj.
@@ -118,16 +125,16 @@ function appDialog(kind, message, opts) {
     const mark = document.createElement('span'); mark.className = 'app-dialog-mark'; mark.setAttribute('aria-hidden', 'true');
     mark.textContent = o.danger ? '!' : (kind === 'prompt' ? '…' : '✓');
     const title = document.createElement('h2'); title.id = 'appDialogTitle';
-    title.textContent = o.title || (kind === 'alert' ? 'Informație' : kind === 'prompt' ? 'Completează detaliile' : 'Confirmă acțiunea');
+    title.textContent = tr(o.title || (kind === 'alert' ? 'Informație' : kind === 'prompt' ? 'Completează detaliile' : 'Confirmă acțiunea'));
     head.append(mark, title); card.appendChild(head);
 
     const body = document.createElement('div'); body.className = 'app-dialog-body';
-    const text = document.createElement('p'); text.className = 'app-dialog-message'; text.textContent = String(message || '');
+    const text = document.createElement('p'); text.className = 'app-dialog-message'; text.textContent = tr(message || '');
     body.appendChild(text);
     let input = null;
     if (kind === 'prompt') {
       const label = document.createElement('label'); label.className = 'app-dialog-label';
-      const labelText = document.createElement('span'); labelText.textContent = o.label || 'Valoare';
+      const labelText = document.createElement('span'); labelText.textContent = tr(o.label || 'Valoare');
       input = document.createElement(o.multiline ? 'textarea' : 'input');
       if (!o.multiline) input.type = o.inputType || 'text';
       input.value = o.value == null ? '' : String(o.value);
@@ -147,10 +154,10 @@ function appDialog(kind, message, opts) {
     let cancel = null;
     if (kind !== 'alert') {
       cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn ghost';
-      cancel.textContent = o.cancelLabel || 'Renunță'; actions.appendChild(cancel);
+      cancel.textContent = tr(o.cancelLabel || 'Renunță'); actions.appendChild(cancel);
     }
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'btn primary' + (o.danger ? ' danger' : '');
-    ok.textContent = o.confirmLabel || (kind === 'alert' ? 'Am înțeles' : 'Continuă'); actions.appendChild(ok);
+    ok.textContent = tr(o.confirmLabel || (kind === 'alert' ? 'Am înțeles' : 'Continuă')); actions.appendChild(ok);
     card.appendChild(actions); dlg.appendChild(card); document.body.appendChild(dlg);
 
     let inchis = false;

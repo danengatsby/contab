@@ -570,6 +570,21 @@ const firmaBil = Object.assign({}, v.company, {
   telefon: '0211234567', formaProprietate: '35', administrator: 'Popescu Ion',
   intocmitNume: 'Ionescu Maria', intocmitCalitate: '21', intocmitNr: '12345', auditStatut: '3',
 });
+// Seed-ul are un imprumut 1621. Dupa eliminarea clasificarii dupa prefix, fiecare dintre cele doua
+// exercitii comparative cere propria dovada de scadenta; referinta nu are voie sa treaca printr-un
+// implicit „toata grupa 16 este pe termen lung". Metadatele sunt create prin acelasi registru
+// append-only, cu hash, pe care il foloseste ruta aplicatiei.
+v.balanceSheetMappings = v.balanceSheetMappings || [];
+for (const an of ['2025', '2026']) {
+  v.balanceSheetMappings.push(bilant.metadataRecord(v, v.firmaId || v.company.id || 1, {
+    year: an, account: '1621', dueDate: '2029-12-31', affiliation: 'none',
+    reason: 'Scadenta contractuala a imprumutului din referinta fiscala',
+  }, { id: 'validator', username: 'referinta-fiscala' }, 'ref-bsm-1621-' + an));
+  v.balanceSheetMappings.push(bilant.metadataRecord(v, v.firmaId || v.company.id || 1, {
+    year: an, account: '401', affiliation: 'none',
+    reason: 'Furnizorul din referinta fiscala nu este entitate afiliata sau asociata',
+  }, { id: 'validator', username: 'referinta-fiscala' }, 'ref-bsm-401-' + an));
+}
 for (const [cat, tip] of [['micro', 'S1120'], ['mic', 'S1121'], ['mare', 'S1122']]) {
   const s = bilant.situatii(v, firmaBil, '2026', cat);
   if (s.lipsa.length) throw new Error(tip + ': antet incomplet — ' + s.lipsa.join('; '));

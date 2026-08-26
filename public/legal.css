@@ -13,5 +13,8 @@ h2{font-size:20px;margin:34px 0 10px;letter-spacing:-.01em}
 p,li{color:#33405c}
 ul{padding-left:22px}
 .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin:14px 0}
+.legal-warning{background:#fff7df;border:1px solid #d9b55e;border-left:5px solid #a96f00;border-radius:12px;padding:16px 19px;margin:18px 0 26px}
+.legal-warning p{margin:4px 0 0;color:#55400d}
+.legal-warning strong{color:#5e4100}
 a{color:var(--accent)}
 footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:44px;padding-top:18px}

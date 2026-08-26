@@ -8,6 +8,16 @@
 // offline si nu depinde de nicio cerere de retea dupa incarcare.
 
 (function () {
+  var limba = document.documentElement.getAttribute('data-carte-limba') || 'ro';
+  var limbaSalvata = '';
+  try { limbaSalvata = localStorage.getItem('carte-limba') || localStorage.getItem('contab_language_v1') || ''; } catch (e) { /* privat */ }
+  // Prima intrare in carte urmeaza limba deja aleasa in aplicatie. Linkurile RO/EN salveaza
+  // intentia inainte de navigare, deci utilizatorul poate reveni explicit la oricare versiune.
+  if (limba === 'ro' && limbaSalvata === 'en' && !/\/carte\/en\//.test(location.pathname)) {
+    location.replace('/carte/en/' + location.search + location.hash);
+    return;
+  }
+
   var sectiuni = Array.prototype.slice.call(document.querySelectorAll('.capitol, #coperta'));
   var linkuri = Array.prototype.slice.call(document.querySelectorAll('.nav a[data-id]'));
   var drum = document.querySelector('.drum');
@@ -16,6 +26,8 @@
   var cauta = document.querySelector('.cauta');
   var pasi = { prev: document.querySelector('.pasi .prec'), next: document.querySelector('.pasi .urm') };
   var ordine = linkuri.map(function (a) { return a.getAttribute('data-id'); });
+  var titluCarte = (document.querySelector('.text') || {}).getAttribute
+    ? document.querySelector('.text').getAttribute('data-book-title') : document.title;
 
   function arata(id, dinHash) {
     if (!id || ordine.indexOf(id) < 0) id = ordine[0];
@@ -27,7 +39,7 @@
     });
     var activ = linkuri.filter(function (a) { return a.getAttribute('data-id') === id; })[0];
     if (drum) drum.textContent = activ ? (activ.getAttribute('data-drum') || '') : '';
-    document.title = (activ ? activ.getAttribute('data-titlu') + ' · ' : '') + 'Contabilitatea, în ordinea în care se întâmplă';
+    document.title = (activ ? activ.getAttribute('data-titlu') + ' · ' : '') + titluCarte;
     // pasii inainte/inapoi
     var i = ordine.indexOf(id);
     [['prev', i - 1], ['next', i + 1]].forEach(function (par) {
@@ -74,6 +86,19 @@
       var intunecat = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       pune(intunecat ? 'light' : 'dark');
     } else { pune(acum === 'dark' ? 'light' : 'dark'); }
+  });
+
+  // ── limba ────────────────────────────────────────────────────────────────
+  Array.prototype.forEach.call(document.querySelectorAll('a[data-limba]'), function (a) {
+    a.addEventListener('click', function () {
+      var aleasa = a.getAttribute('data-limba') || 'ro';
+      try {
+        localStorage.setItem('carte-limba', aleasa);
+        localStorage.setItem('contab_language_v1', aleasa);
+      } catch (e) { /* privat */ }
+      // Pastreaza capitolul curent la schimbarea limbii, inclusiv din butonul barei mobile.
+      a.href = a.href.replace(/#.*$/, '') + (location.hash || '#coperta');
+    });
   });
 
   // ── cautare in cuprins ───────────────────────────────────────────────────

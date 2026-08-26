@@ -27,9 +27,9 @@ function fileFor(ts) {
   return path.join(auditDir(), 'audit-' + String(ts || new Date().toISOString()).slice(0, 7) + '.ndjson');
 }
 
-function filesAscending() {
+function filesAscending(dir) {
   try {
-    return fs.readdirSync(auditDir()).filter((n) => /^audit-\d{4}-\d{2}\.ndjson$/.test(n)).sort();
+    return fs.readdirSync(dir || auditDir()).filter((n) => /^audit-\d{4}-\d{2}\.ndjson$/.test(n)).sort();
   } catch (_) { return []; }
 }
 
@@ -50,30 +50,54 @@ function filesFingerprint() {
  * Verifica integral toate liniile si lantul. Liniile istorice create inainte de versiunea 1 sunt
  * acceptate numai la inceput; dupa prima linie inlantuita, o linie legacy inseamna ruptura.
  */
-function verify() {
+function verifyContents(entries) {
+  const files = (Array.isArray(entries) ? entries : []).map((entry) => ({
+    name: String(entry && entry.name || ''),
+    text: Buffer.isBuffer(entry && entry.content) ? entry.content.toString('utf8')
+      : String(entry && (entry.text != null ? entry.text : entry.content) || ''),
+  })).filter((entry) => /^audit-\d{4}-\d{2}\.ndjson$/.test(entry.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const names = new Set();
   let expected = ''; let chained = 0; let legacy = 0; let chainStarted = false;
-  for (const name of filesAscending()) {
-    const lines = fs.readFileSync(path.join(auditDir(), name), 'utf8').split('\n');
+  const fileHashes = [];
+  for (const file of files) {
+    const name = file.name;
+    if (names.has(name)) return { ok: false, motiv: name + ' apare de mai multe ori', files: files.length, chained, legacy, fileHashes };
+    names.add(name);
+    fileHashes.push({ name, sha256: crypto.createHash('sha256').update(file.text, 'utf8').digest('hex') });
+    const lines = file.text.split('\n');
     for (let i = 0; i < lines.length; i += 1) {
       if (!lines[i].trim()) continue;
       let rec;
       try { rec = JSON.parse(lines[i]); } catch (_) {
-        return { ok: false, motiv: name + ':' + (i + 1) + ' nu este JSON valid', files: filesAscending().length, chained, legacy };
+        return { ok: false, motiv: name + ':' + (i + 1) + ' nu este JSON valid', files: files.length, chained, legacy, fileHashes };
       }
       const isChained = rec.chainVersion === 1 && typeof rec.hash === 'string' && typeof rec.prevHash === 'string';
       if (!isChained) {
-        if (chainStarted) return { ok: false, motiv: name + ':' + (i + 1) + ' rupe lantul de audit', files: filesAscending().length, chained, legacy };
+        if (chainStarted) return { ok: false, motiv: name + ':' + (i + 1) + ' rupe lantul de audit', files: files.length, chained, legacy, fileHashes };
         legacy += 1;
         continue;
       }
       chainStarted = true;
-      if (rec.prevHash !== expected) return { ok: false, motiv: name + ':' + (i + 1) + ' are prevHash neasteptat', files: filesAscending().length, chained, legacy };
+      if (rec.prevHash !== expected) return { ok: false, motiv: name + ':' + (i + 1) + ' are prevHash neasteptat', files: files.length, chained, legacy, fileHashes };
       const actual = hashRecord(rec);
-      if (rec.hash !== actual) return { ok: false, motiv: name + ':' + (i + 1) + ' are amprenta invalida', files: filesAscending().length, chained, legacy };
+      if (rec.hash !== actual) return { ok: false, motiv: name + ':' + (i + 1) + ' are amprenta invalida', files: files.length, chained, legacy, fileHashes };
       expected = rec.hash; chained += 1;
     }
   }
-  return { ok: true, files: filesAscending().length, chained, legacy, head: expected || null };
+  return { ok: true, files: files.length, chained, legacy, head: expected || null, fileHashes };
+}
+
+function verifyDirectory(dir) {
+  const target = dir || auditDir();
+  const entries = filesAscending(target).map((name) => ({
+    name, content: fs.readFileSync(path.join(target, name)),
+  }));
+  return verifyContents(entries);
+}
+
+function verify() {
+  return verifyDirectory(auditDir());
 }
 
 function ensureTail() {
@@ -140,4 +164,4 @@ function listFiles() {
   return filesAscending().reverse();
 }
 
-module.exports = { append, listFiles, auditDir, fileFor, probeWritable, verify, hashRecord };
+module.exports = { append, listFiles, auditDir, fileFor, probeWritable, verify, verifyDirectory, verifyContents, hashRecord };

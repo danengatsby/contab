@@ -3,11 +3,7 @@
 const { round2 } = require('./util');
 const coa = require('./chartOfAccounts');
 const { postedEntries } = require('./accounting'); // registrele analitice numara doar articole postate
-// Pragul de vechime cu efect FISCAL (art. 26) se citeste LA RULARE din `fiscal.FISCAL`, nu din
-// fiscalConfig direct: acolo ajung si suprascrierile din Setari, iar o valoare capturata la import
-// ar ramane cea implicita pentru firmele care si-au schimbat parametrii. Acelasi tipar ca la
-// plafonul auto din `assets.js`.
-const fiscal = require('./fiscal');
+const openItems = require('./openItems');
 
 // Conturile de CREANTE si de DATORII pe partener — SURSA UNICA a perimetrului. Le folosesc si
 // vechimea soldurilor (aging, mai jos), si fisele de partener (reconcile.js). Cat timp fiecare
@@ -15,13 +11,13 @@ const fiscal = require('./fiscal');
 // citea doar 401, iar „Datorii de platit" citea tot perimetrul.
 // SENSUL: la creante soldul creste pe DEBIT (factura emisa), la datorii pe CREDIT (factura primita).
 // 419 (avansuri incasate de la clienti) sta la datorii desi contrapartea e un client: e o obligatie.
-// 409 (avansuri platite furnizorilor) NU e in niciuna dintre liste — la fel ca inainte; adaugarea
-// lui e o decizie separata, dar acum se face intr-un singur loc, nu in doua care pot drifta.
-const CONTURI_CREANTE = ['4111', '418', '461'];
-const CONTURI_DATORII = ['401', '404', '408', '419', '462'];
+// 409 (avansuri plătite furnizorilor) este creanță, iar 419 (avansuri încasate de la clienți)
+// este datorie. Efectele comerciale și clienții incerți rămân în același registru prin reclasificări.
+const CONTURI_CREANTE = openItems.CONTURI_CREANTE;
+const CONTURI_DATORII = openItems.CONTURI_DATORII;
 
 // Conturi care se detaliaza pe partener (dimensiunea = partenerul)
-const PARTNER_SYNTH = ['401', '404', '408', '409', '419', '4111', '418', '461', '462'];
+const PARTNER_SYNTH = [...new Set([...CONTURI_CREANTE, ...CONTURI_DATORII])];
 // Conturi care se detaliaza pe o eticheta libera (banca, angajat, casierie etc.)
 const TAG_SYNTH = ['5121', '5124', '5311', '5314', '542', '421', '425'];
 const ANALYTIC_ACCOUNTS = [...PARTNER_SYNTH, ...TAG_SYNTH];
@@ -101,23 +97,19 @@ function analyticBalance(db) {
   return result;
 }
 
-// Conturi de creante (clienti/debitori) si de datorii (furnizori/creditori)
-const CREANTE = ['4111', '418', '461'];
-const DATORII = ['401', '404', '408', '419', '462'];
-
 /** Situatia creantelor si datoriilor (scadentar): solduri restante per partener. */
 function receivablesPayables(db) {
-  const sections = analyticBalance(db);
-  const clienti = []; const furnizori = [];
-  for (const s of sections) {
-    if (CREANTE.includes(s.synth)) {
-      for (const r of s.rows) if (r.sfD > 0) clienti.push({ synth: s.synth, nume: s.nume, partener: r.den, cui: r.cui, sold: r.sfD });
-    } else if (DATORII.includes(s.synth)) {
-      for (const r of s.rows) if (r.sfC > 0) furnizori.push({ synth: s.synth, nume: s.nume, partener: r.den, cui: r.cui, sold: r.sfC });
+  const reg = openItems.registry(db, null);
+  const grouped = (sens) => {
+    const by = new Map();
+    for (const d of reg.openDocuments.filter((x) => x.sens === sens)) {
+      const key = d.account + '|' + d.partnerKey;
+      const r = by.get(key) || { synth: d.account, nume: coa.accountName(d.account), partener: d.partener, cui: d.cui, sold: 0, documents: [] };
+      r.sold = round2(r.sold + d.residual); r.documents.push(d); by.set(key, r);
     }
-  }
-  clienti.sort((a, b) => b.sold - a.sold);
-  furnizori.sort((a, b) => b.sold - a.sold);
+    return [...by.values()].sort((a, b) => b.sold - a.sold);
+  };
+  const clienti = grouped('creanta'); const furnizori = grouped('datorie');
   return {
     clienti, furnizori,
     totalClienti: round2(clienti.reduce((t, x) => t + x.sold, 0)),
@@ -130,79 +122,9 @@ function receivablesPayables(db) {
  * (cele mai vechi facturi se sting primele). Buckets: 0-30, 31-60, 61-90, >90 zile.
  */
 function aging(db, asOf) {
-  const ref = asOf ? new Date(String(asOf).length === 7 ? asOf + '-28' : asOf) : new Date();
-
-  function build(accounts, chargeOnDebit) {
-    const map = new Map();
-    const ensure = (key, den, cui) => {
-      if (!map.has(key)) map.set(key, { partener: den || key, cui: cui || '', charges: [], paid: 0 });
-      const r = map.get(key);
-      if (den && (r.partener === key || !/[a-z]/i.test(r.partener))) r.partener = den;
-      if (!r.cui && cui) r.cui = cui;
-      return r;
-    };
-    // solduri initiale analitice (fara data) -> factura cea mai veche
-    for (const o of (db.openingAnalytic || [])) {
-      if (!accounts.includes(o.cont)) continue;
-      const r = ensure(partnerKey(o.partener, o.cui), o.partener, o.cui);
-      const net = chargeOnDebit ? (Number(o.d) || 0) - (Number(o.c) || 0) : (Number(o.c) || 0) - (Number(o.d) || 0);
-      if (net > 0) r.charges.push({ date: '1900-01-01', amount: round2(net) });
-      else if (net < 0) r.paid = round2(r.paid - net);
-    }
-    for (const e of postedEntries(db)) {
-      const key = partnerKey(e.partener, e.partenerCui);
-      for (const l of e.lines) {
-        const onDebit = accounts.includes(l.debit);
-        const onCredit = accounts.includes(l.credit);
-        if (!onDebit && !onCredit) continue;
-        // MUTARE IN INTERIORUL familiei (4111 = 418 la facturarea unui aviz; 408 = 401 cand
-        // soseste factura): creanta/datoria isi schimba doar contul, marimea ei nu se misca.
-        // Fara linia asta, latura care primeste era numarata ca o factura NOUA, iar cea care da
-        // era ignorata — deci acelasi element intra de doua ori. Un aviz de 10.000 facturat apoi
-        // aparea in scadentar ca 20.000, in timp ce `receivablesPayables`, care merge pe soldul
-        // net din `analyticBalance`, arata corect 10.000: doua cifre pentru acelasi lucru, pe
-        // acelasi ecran — exact ce evita perimetrul comun din capul modulului.
-        if (onDebit && onCredit) continue;
-        const r = ensure(key, e.partener, e.partenerCui);
-        const isCharge = chargeOnDebit ? onDebit : onCredit;
-        if (isCharge) r.charges.push({ date: e.data, amount: round2(l.suma) });
-        else r.paid = round2(r.paid + l.suma);
-      }
-    }
-    const out = [];
-    for (const r of map.values()) {
-      r.charges.sort((a, b) => (a.date < b.date ? -1 : 1));
-      let paid = r.paid;
-      const b = { b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0, b270plus: 0 };
-      let total = 0;
-      for (const c of r.charges) {
-        let open = c.amount;
-        if (paid > 0) { const used = Math.min(paid, open); open = round2(open - used); paid = round2(paid - used); }
-        if (open <= 0) continue;
-        const age = Math.floor((ref - new Date(c.date)) / 86400000);
-        const k = age <= 30 ? 'b0_30' : age <= 60 ? 'b31_60' : age <= 90 ? 'b61_90' : 'b90plus';
-        b[k] = round2(b[k] + open);
-        // `b270plus` e SUBMULTIME a lui `b90plus`, nu o grupa noua alaturi de ele — deliberat.
-        // Cele patru grupe sunt disjuncte si se aduna la total; a taia `b90plus` in doua ar fi
-        // schimbat scadentarul afisat (dashboard, PDF, CSV, interfata) pentru o nevoie FISCALA.
-        // Pragul de 270 de zile e cel din art. 26 alin. (1) lit. c) Cod fiscal, singura limita de
-        // vechime cu efect fiscal; restul grupelor sunt de gestiune, nu de lege.
-        if (age > (Number(fiscal.FISCAL.ajustariCreanteZile) || 270)) b.b270plus = round2(b.b270plus + open);
-        total = round2(total + open);
-      }
-      if (total > 0.005) out.push({ partener: r.partener, cui: r.cui, total, ...b });
-    }
-    return out.sort((a, b) => b.total - a.total);
-  }
-
-  const clienti = build(CONTURI_CREANTE, true);
-  const furnizori = build(CONTURI_DATORII, false);
-  const sum = (list) => {
-    const t = { total: 0, b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0, b270plus: 0 };
-    for (const x of list) for (const k of Object.keys(t)) t[k] = round2(t[k] + x[k]);
-    return t;
-  };
-  return { asOf: ref.toISOString().slice(0, 10), clienti, furnizori, totalClienti: sum(clienti), totalFurnizori: sum(furnizori) };
+  const a = openItems.groupedAging(db, asOf);
+  return { asOf: a.asOf, clienti: a.clienti, furnizori: a.furnizori,
+    totalClienti: a.totalClienti, totalFurnizori: a.totalFurnizori, registry: a.registry };
 }
 
 module.exports = { analyticBalance, receivablesPayables, aging, PARTNER_SYNTH, TAG_SYNTH, ANALYTIC_ACCOUNTS, partnerKey, CONTURI_CREANTE, CONTURI_DATORII };

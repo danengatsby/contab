@@ -30,6 +30,44 @@ body.dark.erp {
   --ds-status-success: #6ed6a0;
 }
 
+/* Cât timp furnizorul nu este identificat formal, avertismentul despre datele de test este o
+   condiție de utilizare, nu un toast care dispare. Același component apare înainte de înscriere,
+   persistent în aplicație și lângă formularele care cer documente/CNP/salarii. */
+.test-stage-warning,
+body.erp .test-stage-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--ink);
+  background: color-mix(in srgb, #d89b18 13%, var(--card));
+  border: 1px solid color-mix(in srgb, #a96f00 38%, var(--line));
+  border-radius: 11px;
+}
+.test-stage-warning { margin: 0 0 16px; padding: 11px 13px; font-size: 13px; }
+.test-stage-warning.compact { margin: 10px 0 13px; padding: 9px 11px; }
+.test-stage-warning .test-stage-icon,
+body.erp .test-stage-banner .test-stage-icon { flex: 0 0 auto; line-height: 1.4; }
+.test-stage-warning p,
+body.erp .test-stage-banner p { min-width: 0; margin: 0; color: inherit; line-height: 1.45; overflow-wrap: anywhere; }
+.test-stage-warning p > span { display: block; }
+.test-stage-warning a,
+body.erp .test-stage-banner a { color: inherit; font-weight: 700; text-decoration: underline; }
+body.erp .test-stage-banner {
+  justify-content: center;
+  width: 100%;
+  padding: 9px 18px;
+  background: color-mix(in srgb, #d89b18 17%, var(--card));
+  border-width: 0 0 1px;
+  border-radius: 0;
+  font-size: 13.5px;
+}
+body.erp .test-stage-banner p > span { margin-left: 5px; }
+
+@media (max-width: 700px) {
+  body.erp .test-stage-banner { justify-content: flex-start; padding: 9px 12px; font-size: 12.5px; }
+  body.erp .test-stage-banner p > span { display: block; margin: 2px 0 0; }
+}
+
 /* Pictogramă de componentă — aceeași geometrie pentru navigație, carduri și ajutor. */
 body.erp .app-icon {
   display: inline-grid;
@@ -498,6 +536,49 @@ body.erp .form-progress-track > span {
   border-radius: inherit;
   transition: width .2s ease;
 }
+/* Primul contact cu „Firma mea” rămâne în limbaj de business: CUI, confirmarea identității și
+   două alegeri pe care antreprenorul le poate citi din vectorul fiscal. Configurația rară începe
+   abia în pasul următor al aceluiași formular, fără să dublăm câmpurile sau salvarea. */
+body.erp .company-quick-intro {
+  padding: 13px 15px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--good) 7%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--good) 22%, var(--line));
+  border-radius: 11px;
+}
+body.erp .company-quick-intro p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+body.erp .company-quick-step {
+  padding: 15px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+body.erp .company-quick-heading { display: flex; gap: 11px; align-items: flex-start; margin-bottom: 8px; }
+body.erp .company-quick-heading > span {
+  display: grid;
+  flex: 0 0 28px;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  background: var(--app-clay);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+}
+body.erp .company-quick-heading h3 { margin: 1px 0 2px; color: var(--ink); font-size: 15px; }
+body.erp .company-quick-heading p { margin: 0; color: var(--muted); font-size: 12.5px; }
+body.erp .company-quick-fields { gap: 6px 14px; }
+body.erp .company-basic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 14px;
+}
+/* Pasul de bază se încheie aici. Configurația contabilă rămâne accesibilă din sumarul pasului 2,
+   nu printr-un al doilea CTA „Continuă” care ar împinge începătorul exact în zona evitată. */
+body.erp #companyForm > .form-step[data-step-index="0"] .form-step-actions { display: none; }
 body.erp .form-step {
   grid-column: 1 / -1;
   margin: 0;
@@ -677,6 +758,9 @@ body.erp .msg-edit:focus-visible { opacity: 1; }
   body.erp .form-progress-track { grid-column: 1; }
   body.erp .form-step-body { grid-template-columns: 1fr; padding: 14px; }
   body.erp .form-step-body > * { grid-column: 1 !important; min-width: 0; }
+  body.erp .company-quick-step { padding: 13px; }
+  body.erp .company-basic-actions { align-items: stretch; }
+  body.erp .company-basic-actions .btn { width: 100%; }
   body.erp .alert { flex-wrap: wrap; }
   body.erp .toast {
     right: 12px;
@@ -888,3 +972,8 @@ body.erp .closealoc-act {
   text-underline-offset: 2px;
 }
 body.erp .closealoc[open] > summary .closealoc-act { text-decoration: none; }
+
+/* Contract global pentru starea ascunsă. Componentele design-system au selectori mai specifici
+   (`body.erp .btn`, flex/grid etc.); fără această regulă un buton `.hidden` putea redeveni vizibil,
+   cum se întâmpla cu „Înapoi” la primul nivel al selectorului ghidat. */
+body.erp .hidden { display: none !important; }

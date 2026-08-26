@@ -169,7 +169,7 @@ function notesBody(doc, n) {
     doc.moveDown(0.4);
   }
   if (doc.y > doc.page.height - 160) doc.addPage();
-  doc.fillColor(C.head).font('Helvetica-Bold').fontSize(11).text('Nota 7 — Principii si politici contabile', doc.page.margins.left, doc.y + 6);
+  doc.fillColor(C.head).font('Helvetica-Bold').fontSize(11).text('Nota 8 — Principii si politici contabile aplicate', doc.page.margins.left, doc.y + 6);
   doc.moveDown(0.2);
   doc.fillColor(C.ink).font('Helvetica').fontSize(9.5);
   n.principii.forEach((p) => doc.text('•  ' + clean(p), { width: doc.page.width - doc.page.margins.left - doc.page.margins.right }));
@@ -180,6 +180,65 @@ function notesPdf(res, company, n) {
   header(doc, company, 'Note explicative la situatiile financiare', 'Exercitiul ' + n.year);
   notesBody(doc, n);
   finish(doc, res, 'note-explicative.pdf');
+}
+
+// Previziunea directă pe 13 săptămâni este un raport de management, distinct de situația
+// anuală a fluxurilor de trezorerie. Poate reda fie calculul live, fie fotografia imuabilă
+// păstrată pentru backtesting; hash-urile tipărite leagă PDF-ul de baza și versiunea exactă.
+function cashForecast13Body(doc, forecast, meta) {
+  const f = forecast || {}; const a = f.assumptions || {}; const m = meta || {};
+  const rows = (f.rows || []).map((r) => ({
+    week: 'S' + r.week + '\n' + String(r.startDate || '').slice(5) + ' - ' + String(r.endDate || '').slice(5),
+    opening: fmt(r.opening), customers: fmt(r.customerReceipts), recurringIn: fmt(r.recurringIn),
+    suppliers: fmt(r.supplierPayments), payroll: fmt(r.payroll), taxes: fmt(r.taxes),
+    leasing: fmt(r.leasing), recurringOut: fmt(r.recurringOut), net: fmt(r.net), closing: fmt(r.closing),
+    _accent: Number(r.closing) < 0,
+  }));
+  doc.fillColor(C.ink).font('Helvetica').fontSize(9)
+    .text('Scenariu: ' + clean(a.scenarioLabel || f.scenario || 'Baza')
+      + '  |  Numerar initial: ' + fmt(f.cashNow) + ' lei'
+      + '  |  Creante deschise: ' + fmt(f.openReceivables) + ' lei'
+      + '  |  Datorii deschise: ' + fmt(f.openPayables) + ' lei');
+  if (m.snapshotId) doc.fillColor(C.muted).fontSize(8.5)
+    .text('Fotografie ' + clean(m.snapshotId) + ' | salvata ' + clean(m.createdAt || '')
+      + (m.createdByName ? ' de ' + clean(m.createdByName) : ''));
+  doc.moveDown(0.4);
+  table(doc, [
+    { label: 'Sapt.', key: 'week', width: 84, wrap: true },
+    { label: 'Sold initial', key: 'opening', width: 66, align: 'right' },
+    { label: 'Clienti', key: 'customers', width: 58, align: 'right' },
+    { label: 'Intrari rec.', key: 'recurringIn', width: 58, align: 'right' },
+    { label: 'Furnizori', key: 'suppliers', width: 58, align: 'right' },
+    { label: 'Salarii', key: 'payroll', width: 54, align: 'right' },
+    { label: 'Taxe', key: 'taxes', width: 50, align: 'right' },
+    { label: 'Leasing', key: 'leasing', width: 54, align: 'right' },
+    { label: 'Iesiri rec.', key: 'recurringOut', width: 58, align: 'right' },
+    { label: 'Flux net', key: 'net', width: 58, align: 'right' },
+    { label: 'Sold final', key: 'closing', width: 66, align: 'right' },
+  ], rows);
+  const u = f.unplanned || {};
+  const missingReceivables = Number(u.missingDueDateReceivables) || 0;
+  const missingPayables = Number(u.missingDueDatePayables) || 0;
+  doc.fillColor(f.liquidityRisk ? C.danger : C.muted).font('Helvetica-Bold').fontSize(9)
+    .text(f.liquidityRisk ? 'Risc de lichiditate: sold minim proiectat ' + fmt(f.minClosing) + ' lei.'
+      : 'Sold minim proiectat: ' + fmt(f.minClosing) + ' lei.');
+  doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)
+    .text('Ipoteze: incasari ' + fmt(a.receivableFactorPct) + '%; intarziere suplimentara '
+      + (Number(a.receivableExtraDelayDays) || 0) + ' zile; furnizori '
+      + fmt(a.payablesProbabilityPct) + '%; salarii ziua ' + (a.salaryPaymentDay || '-')
+      + '; taxe ziua ' + (a.taxPaymentDay || '-') + '.')
+    .text('Neplanificat din lipsa scadentei: creante ' + fmt(missingReceivables)
+      + ' lei; datorii ' + fmt(missingPayables) + ' lei.')
+    .text('SHA-256 baza: ' + clean(f.basisHash || '-'));
+  if (m.forecastHash) doc.text('SHA-256 fotografie: ' + clean(m.forecastHash));
+}
+
+function cashForecast13Pdf(res, company, forecast, meta) {
+  const doc = newDoc(true);
+  header(doc, company, 'Previziune cash-flow direct - 13 saptamani',
+    String(forecast.startDate || '') + ' - ' + String(forecast.endDate || ''));
+  cashForecast13Body(doc, forecast, meta);
+  finish(doc, res, 'cash-flow-13-saptamani.pdf');
 }
 
 // Factura emisa (document vizual pentru client), generata din articolul contabil.
@@ -306,4 +365,5 @@ function setStatementsPdf(res, company, data) {
 }
 
 
-module.exports = { plBody, plPdf, bilantBody, balanceSheetPdf, notesBody, notesPdf, cashFlowBody, cashFlowPdf, equityBody, equityPdf, roman, setStatementsPdf };
+module.exports = { plBody, plPdf, bilantBody, balanceSheetPdf, notesBody, notesPdf,
+  cashForecast13Body, cashForecast13Pdf, cashFlowBody, cashFlowPdf, equityBody, equityPdf, roman, setStatementsPdf };

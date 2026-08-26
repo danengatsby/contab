@@ -1,0 +1,300 @@
+{
+ "parte": "Part X · The financial statements · phase 12",
+ "nr": "45",
+ "titlu": "The Income Statement",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "We arrive at the documents for which all the rest was done. Forty-four chapters of entries, checks, and closings come together in two pages — and the first of them answers the question with which the book began: did you earn or did you lose?"
+  },
+  {
+   "tip": "p",
+   "text": "The income statement is a flow statement: it covers a period, from January 1 to December 31, and shows what happened within it. It says nothing about what the firm has — that's the balance sheet's job."
+  },
+  {
+   "tip": "h",
+   "text": "Structure: two activities, two results"
+  },
+  {
+   "tip": "p",
+   "text": "The form does not lump all revenues and all expenses into a single pile. It separates them into two activities, and this separation is the main piece of information the document provides."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The income statement, in its structure",
+   "cap": [
+    "Level",
+    "What it includes"
+   ],
+   "randuri": [
+    [
+     "Operating revenue",
+     "14.000,00"
+    ],
+    [
+     "Operating expenses",
+     "13.579,17"
+    ],
+    [
+     "Operating result",
+     "420,83"
+    ],
+    [
+     "Financial revenue",
+     "0,00"
+    ],
+    [
+     "Financial expenses",
+     "0,00"
+    ],
+    [
+     "Financial result",
+     "0,00"
+    ],
+    [
+     "Gross result",
+     "420,83"
+    ]
+   ],
+   "nota": "The 13,579.17 in expenses breaks down into: goods sold 8,000, salaries 5,000, employer's contribution 112.50, and depreciation 466.67."
+  },
+  {
+   "tip": "cheie",
+   "text": "The operating result tells you whether the business works. The net result tells you what's left after everything. A firm can have the first positive and the second negative — and then the problem isn't the business, but how it's financed."
+  },
+  {
+   "tip": "h",
+   "text": "On real figures"
+  },
+  {
+   "tip": "p",
+   "text": "Here is the situation of a small firm, generated from its own accounting records — the same one from the chapters on ledgers."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Income statement for the financial year",
+   "cap": [
+    "Item",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "Operating revenue",
+     "14.000,00"
+    ],
+    [
+     "Operating expenses",
+     "13.579,17"
+    ],
+    [
+     "Operating result",
+     "420,83"
+    ],
+    [
+     "Financial revenue",
+     "0,00"
+    ],
+    [
+     "Financial expenses",
+     "0,00"
+    ],
+    [
+     "Financial result",
+     "0,00"
+    ],
+    [
+     "Gross result",
+     "420,83"
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "The 13,579.17 in expenses breaks down into: goods sold 8,000, salaries 5,000, employer's contribution 112.50, and depreciation 466.67."
+  },
+  {
+   "tip": "p",
+   "text": "The breakdown in the note is the document's second piece of information, and it deserves careful reading. At this firm, goods sold represent almost two-thirds of expenses, and salaries the rest. This structure tells you what kind of firm it is — a trader, not a service provider — without needing to ask anyone."
+  },
+  {
+   "tip": "h",
+   "text": "Why the money doesn't appear anywhere"
+  },
+  {
+   "tip": "p",
+   "text": "This is the question every business owner asks on first reading: if I have a profit of 420.83 lei, where is it?"
+  },
+  {
+   "tip": "p",
+   "text": "The answer is that it's nowhere, because profit is not an amount of money. It's a measure of the difference between value created and value consumed — and the two are recognized when they occur, not when they are paid."
+  },
+  {
+   "tip": "p",
+   "text": "The depreciation of 466.67 lei in the example illustrates this perfectly: it's an expense that reduced profit without taking a single leu out of the account. Symmetrically, an invoice issued and not collected produced revenue without bringing in any money. It's the same thing Chapter 1 was saying, now arrived at its final form."
+  },
+  {
+   "tip": "h",
+   "text": "How to read it, in five seconds"
+  },
+  {
+   "tip": "p",
+   "text": "An experienced reader does not go through the document from top to bottom. They look at three things and usually form an opinion before reading the rest."
+  },
+  {
+   "tip": "p",
+   "text": "First, the sign of the operating result — if it's negative, nothing else matters much. Then the ratio between the operating result and revenue, i.e., the margin. Finally, the financial result: if it swallows a significant part of the operating result, the firm is working for the bank."
+  },
+  {
+   "tip": "p",
+   "text": "The comparison with the previous year, which appears on the form as a second column, adds a fourth piece of information and is the most valuable of all: not how much, but which direction."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The income statement is prepared according to the accounting regulations approved by OMFP 1802/2014, in the F20 format, with a condensed structure for micro-entities and a full structure for the other categories. Four practical observations. First: the document is prepared based on the trial balance BEFORE the closing operations for the result accounts; using the balance after this produces a form that is entirely zero, and the error goes unnoticed because the balance sheet still comes out correctly — this is the most common cause of blank reports. Second: net turnover includes accounts 70x reduced by the commercial discounts granted from 709, and does not include revenue from subsidies, other operating revenue, or financial revenue; using total revenue as turnover distorts both the indicators and the reporting and audit thresholds. Third: the change in finished goods inventory and capitalized production are presented separately and can be negative — a negative change is not an error, but a signal of a decrease in finished goods inventory. Fourth: the gross result in this form is exactly the basis for the legal reserve from Chapter 44, and the income tax expense is presented separately, after the gross result; inserting it into operating expenses falsifies both the operating result and the basis for the reserve."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "The income statement has answered the question about the period. What remains is the question about the moment: what does the firm have and what does it owe, at a given date. That's the balance sheet, and the equality that defines it is no coincidence."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 45.1 — read the income statement in three glances",
+   "enunt": [
+    "Firm A: operating revenue 800,000, operating expenses 760,000, financial revenue 0, financial expenses 35,000.",
+    "Firm B: operating revenue 800,000, operating expenses 830,000, financial revenue 40,000, financial expenses 0.",
+    "Both have a gross result of 5,000 and 10,000, respectively. Which one is healthier?"
+   ],
+   "rezolvare": [
+    "Firm A: operating result +40,000, financial result −35,000, gross +5,000. The business produces; the cost of financing swallows almost all of it. The problem is the financing structure, not the activity.",
+    "Firm B: operating result −30,000, financial result +40,000, gross +10,000. The business is LOSING money; the profit comes from something else — interest, an exchange-rate difference, a non-recurring item of income.",
+    "So B looks better on the bottom line and is sicker. A can refinance a loan; B has to change its activity.",
+    "The reading rule, in order: the sign of the OPERATING result, then the margin, then how much the financial result swallows. The bottom line is the least informative line in the whole document, even though it's the only one everyone reads."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What an outside reader looks at"
+  },
+  {
+   "tip": "p",
+   "text": "The form has the same lines for every firm, but whoever reads it isn't looking for the same things. It's worth knowing what each one is after, because that shows which line has to hold up under scrutiny."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Three readers, three lines",
+   "cap": [
+    "Who reads",
+    "What they look for first",
+    "Why"
+   ],
+   "randuri": [
+    [
+     "The bank",
+     "the operating result and depreciation",
+     "they add them up: how much cash the activity produces"
+    ],
+    [
+     "A buyer of the firm",
+     "the margin and its trend over three years",
+     "how much of what they see is repeatable"
+    ],
+    [
+     "The tax inspection",
+     "expenses under special regime",
+     "entertainment, sponsorship, vehicles, provisions"
+    ]
+   ],
+   "nota": "None of them looks first at net profit. It's the most cited and least informative figure in the document."
+  },
+  {
+   "tip": "h",
+   "text": "The structure of expenses tells you what kind of firm it is"
+  },
+  {
+   "tip": "p",
+   "text": "The breakdown of expenses by nature — goods, materials, personnel, depreciation, services — is the document's second piece of information, and from it you can read the business model without asking anyone."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The expenses of the firm in the example, by nature",
+   "cap": [
+    "Account",
+    "Nature",
+    "Amount",
+    "Share of total"
+   ],
+   "randuri": [
+    [
+     "607",
+     "Goods sold",
+     "8.000,00",
+     "59%"
+    ],
+    [
+     "641",
+     "Salaries",
+     "5.000,00",
+     "37%"
+    ],
+    [
+     "646",
+     "Employer's contribution",
+     "112,50",
+     "1%"
+    ],
+    [
+     "6811",
+     "Depreciation",
+     "466,67",
+     "3%"
+    ],
+    [
+     "",
+     "Total",
+     "13.579,17",
+     "100%"
+    ]
+   ],
+   "numerice": [
+    3,
+    4
+   ],
+   "total": true,
+   "nota": "Almost 60% is the cost of goods sold: it's a trading firm. For a service provider, the first line would be missing, and salaries would exceed 60%."
+  },
+  {
+   "tip": "p",
+   "text": "This ratio is useful over time too, not just between firms. An increase in the share of salaries without a corresponding increase in revenue means the firm hired ahead of orders; an increase in depreciation means it invested. Both are decisions, and the income statement shows them a year later than when they were made."
+  },
+  {
+   "tip": "h",
+   "text": "What can't be seen from it"
+  },
+  {
+   "tip": "p",
+   "text": "The document says nothing about when the money comes in — that's the cash flow statement's job — nor about what the firm has, which is the balance sheet's job. But it has another, less obvious limitation: it doesn't distinguish what's repeatable from what happened only once."
+  },
+  {
+   "tip": "p",
+   "text": "A firm that sold a piece of equipment this year at a gain has a better result, but not a better business. That's why disposals of assets are presented separately, and anyone analyzing a firm first subtracts the non-recurring items — an operation not required by any form, but without which the comparison with last year says nothing."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key points from this chapter",
+   "puncte": [
+    "The income statement covers a period, not a moment: it tells you what happened between two dates.",
+    "The structure separates operations from financial activity — and the operating result is the line that tells you whether the business works.",
+    "The gross result is the sum of the two; tax is deducted after it and is calculated on the taxable result.",
+    "Profit is not an amount of money: depreciation reduces profit without taking out a single leu, and an uncollected invoice produces revenue without bringing in any money.",
+    "It's read in three glances: the sign of the operating result, the margin, and how much the financial result swallows.",
+    "It's prepared based on the trial balance BEFORE the closing of the result accounts — otherwise it comes out entirely at zero."
+   ]
+  }
+ ]
+}

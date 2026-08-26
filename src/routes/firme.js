@@ -9,7 +9,9 @@ const multer = require('multer');
 const plans = require('../plans');
 const db = require('../db');
 const svc = require('../firmeService');
+const permissions = require('../permissions');
 const notify = require('../notify');
+const legal = require('../legalCompliance');
 const { isDemoUser } = require('../session');
 
 module.exports = function register(app, ctx) {
@@ -27,6 +29,56 @@ module.exports = function register(app, ctx) {
       res.status(e.status).json(e.code ? { error: e.message, code: e.code } : { error: e.message });
     }
   };
+
+  const accepted = (value) => value === true || value === 'true' || value === '1';
+  function importLegalOptions(req, replace) {
+    if (isDemoUser(req.user)) {
+      const e = new Error('Contul demo nu poate restaura sau importa firme.');
+      e.status = 403; throw e;
+    }
+    if (replace) {
+      const target = db.getFirma(activeId(req));
+      if (!target) { const e = new Error('Nicio firmă activă pentru restaurare.'); e.status = 400; e.code = 'NO_ACTIVE_COMPANY'; throw e; }
+      const state = legal.firmState(target);
+      if (!state.operational) {
+        const e = new Error('Declară regimul datelor firmei înainte de restaurare.');
+        e.status = 428; e.code = state.reason; throw e;
+      }
+      return {};
+    }
+
+    const body = req.body || {};
+    const mode = String(body.dataMode || '').trim().toLowerCase();
+    if (mode === 'test') {
+      if (!accepted(body.confirmFictitious)) {
+        const e = new Error('Confirmă că pachetul importat conține exclusiv date fictive.');
+        e.status = 400; e.code = 'TEST_DATA_DECLARATION_REQUIRED'; throw e;
+      }
+      return {
+        dataMode: 'test',
+        legalAcceptance: legal.acceptanceRecord('test-data', req.user, { declaration: 'fictitious-only', source: 'company-import' }),
+      };
+    }
+    if (mode === 'real') {
+      const launch = legal.assess();
+      if (!launch.ready) {
+        const e = new Error('Importul datelor reale este oprit până la completarea cadrului juridic.');
+        e.status = 503; e.code = 'LEGAL_READINESS_INCOMPLETE'; throw e;
+      }
+      if (!accepted(body.acceptTerms) || !accepted(body.acceptPrivacy) || !accepted(body.acceptDpa)) {
+        const e = new Error('Acceptă explicit Termenii, Politica de confidențialitate și DPA-ul curent.');
+        e.status = 400; e.code = 'LEGAL_ACCEPTANCE_REQUIRED'; throw e;
+      }
+      return {
+        dataMode: 'real',
+        legalAcceptance: legal.acceptanceRecord('real-data', req.user, {
+          controllerDeclaration: true, providerTaxId: launch.provider.taxId, source: 'company-import',
+        }),
+      };
+    }
+    const e = new Error('Alege explicit regimul pachetului importat: „test” sau „real”.');
+    e.status = 428; e.code = 'DATA_MODE_UNCLASSIFIED'; throw e;
+  }
 
   app.get('/api/firme', (req, res) => {
     const d = db.get();
@@ -82,8 +134,9 @@ module.exports = function register(app, ctx) {
   }));
 
   app.post('/api/firme/import', (req, res) => run(res, () => {
+    const replace = req.query.mode === 'replace';
     const bundle = (req.body && req.body.firma) ? req.body : (req.body && req.body.bundle);
-    const r = svc.importBundle(req.user, bundle, { replace: req.query.mode === 'replace', activeFid: activeId(req) });
+    const r = svc.importBundle(req.user, bundle, Object.assign({ replace, activeFid: activeId(req) }, importLegalOptions(req, replace)));
     logAudit('firma.import', (r.replaced ? 'firma ' + r.firmaId + ' SUPRASCRISA din copie' : 'firma noua ' + r.firmaId + ' (restaurare din fisier)'), { req, firmaId: r.firmaId });
     return { ok: true, firmaId: r.firmaId, replaced: r.replaced };
   }));
@@ -104,6 +157,7 @@ module.exports = function register(app, ctx) {
   }));
 
   app.get('/api/firme/:id/export', (req, res) => run(res, () => {
+    const fid = Number(req.params.id); permissions.assert(req.user, fid, 'data.export', db.getFirma(fid));
     const r = svc.exportBundle(req.user, req.params.id);
     const fname = 'contabo-' + r.slug + '-' + new Date().toISOString().slice(0, 10) + '.json';
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -113,6 +167,7 @@ module.exports = function register(app, ctx) {
 
   // Copie completa (ZIP) a unei firme.
   app.get('/api/firme/:id/export-zip', (req, res) => run(res, () => {
+    const fid = Number(req.params.id); permissions.assert(req.user, fid, 'data.export', db.getFirma(fid));
     const z = svc.exportZip(req.user, req.params.id);
     logAudit('firma.export', 'copie ZIP (' + z.nFiles + ' fisiere)', { req, firmaId: Number(req.params.id) });
     res.setHeader('Content-Type', 'application/zip');
@@ -137,7 +192,9 @@ module.exports = function register(app, ctx) {
   const importLimiter = uploadGuard.userLimit('import-zip', RATE_IMPORT, 'Prea multe importuri de arhive.');
   const uploadRestore = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
   app.post('/api/firme/import-zip', importLimiter, uploadRestore.single('file'), (req, res) => run(res, () => {
-    const r = svc.importZip(req.user, req.file && req.file.buffer, { replace: req.query.mode === 'replace', activeFid: activeId(req) });
+    const replace = req.query.mode === 'replace';
+    const r = svc.importZip(req.user, req.file && req.file.buffer,
+      Object.assign({ replace, activeFid: activeId(req) }, importLegalOptions(req, replace)));
     logAudit('firma.import', (r.replaced ? 'firma ' + r.firmaId + ' SUPRASCRISA din ZIP' : 'firma noua ' + r.firmaId) + ' (' + r.files + ' fisiere)', { req, firmaId: r.firmaId });
     return { ok: true, firmaId: r.firmaId, files: r.files, replaced: r.replaced };
   }));

@@ -1,0 +1,500 @@
+{
+ "parte": "Part VIII · The state · phases 9 and 13",
+ "nr": "37",
+ "titlu": "Declarations and their deadlines",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The number of declarations a Romanian company owes is intimidating at first glance and becomes manageable as soon as you understand the principle: each declaration corresponds to an obligation, and obligations arise from what the company does, not from what someone chose to require."
+  },
+  {
+   "tip": "p",
+   "text": "A company with no employees does not file D112. One with no intra-Community transactions does not file D390. The list is not the same for everyone — it is derived from the tax regime and from actual activity."
+  },
+  {
+   "tip": "h",
+   "text": "Who owes what"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The declaration and the obligation behind it",
+   "cap": [
+    "Declaration",
+    "When it is filed",
+    "What it reports"
+   ],
+   "randuri": [
+    [
+     "D112",
+     "monthly or quarterly",
+     "wages, contributions, income tax"
+    ],
+    [
+     "D300",
+     "monthly or quarterly",
+     "the VAT return"
+    ],
+    [
+     "D394",
+     "filed together with D300",
+     "supplies and purchases within national territory"
+    ],
+    [
+     "D390",
+     "monthly",
+     "intra-Community transactions"
+    ],
+    [
+     "D406 SAF-T",
+     "monthly or quarterly",
+     "the standard audit file — the accounting data"
+    ],
+    [
+     "D100",
+     "monthly or quarterly",
+     "micro-enterprise tax, advance payments, withholdings"
+    ],
+    [
+     "D101",
+     "annual",
+     "corporate income tax"
+    ],
+    [
+     "D205",
+     "annual",
+     "withholdings for each beneficiary"
+    ],
+    [
+     "D301",
+     "in the month with transactions",
+     "the special return: tax owed by those not normally registered"
+    ],
+    [
+     "D307",
+     "upon the event",
+     "VAT adjustments — goods that change destination"
+    ],
+    [
+     "D311",
+     "in the month with transactions",
+     "VAT collected during the period when the VAT code was cancelled"
+    ],
+    [
+     "D107",
+     "annual, together with D101",
+     "beneficiaries of sponsorships, patronage, and scholarships"
+    ],
+    [
+     "Financial statements",
+     "annual",
+     "balance sheet, income statement, notes"
+    ]
+   ],
+   "nota": "Deadlines are tied to the company's fiscal period, and this can change during the year — see chapter 35."
+  },
+  {
+   "tip": "p",
+   "text": "The observation that organizes the table is that the declarations are not independent. D394 is filed together with D300 and must match it. D406 contains, in detailed form, the data that appear aggregated in the others. And the annual financial statements must agree with the sum of the monthly declarations."
+  },
+  {
+   "tip": "cheie",
+   "text": "The declarations are different views of the same data. If they don't agree with each other, the declarations are not the problem — the accounting behind them is."
+  },
+  {
+   "tip": "h",
+   "text": "The company's regime decides the list"
+  },
+  {
+   "tip": "p",
+   "text": "Two companies with the same turnover can have completely different lists. Three choices, made once, determine almost everything."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What each choice changes",
+   "cap": [
+    "The choice",
+    "If yes",
+    "If no"
+   ],
+   "randuri": [
+    [
+     "VAT payer",
+     "D300, D394, VAT ledgers",
+     "none of these"
+    ],
+    [
+     "Has employees",
+     "monthly D112, payroll records, D205",
+     "none"
+    ],
+    [
+     "Micro or profit tax",
+     "quarterly D100 / annual D101",
+     "the other option"
+    ]
+   ],
+   "nota": "All three can change during the year, and the change produces declarative effects immediately, not starting next year."
+  },
+  {
+   "tip": "h",
+   "text": "The month's calendar"
+  },
+  {
+   "tip": "p",
+   "text": "For an ordinary company, a VAT payer with employees, the month has a fixed rhythm. It's not complicated, but it is strict — and easier to keep as a list than as a memory."
+  },
+  {
+   "tip": "p",
+   "text": "First, the previous month's documents are closed and the bank statement is reconciled. Then adjustments are made. Then the trial balance is prepared. Only after the trial balance are the declarations generated — because they are composed from it. Finally, they are filed, the obligations are paid, and the evidence is archived."
+  },
+  {
+   "tip": "p",
+   "text": "The order is not a preference. A declaration generated before the trial balance will need correction afterward, and correcting an already-filed declaration costs more than a day's wait. Part nine of the book covers this order in detail."
+  },
+  {
+   "tip": "h",
+   "text": "The annual close"
+  },
+  {
+   "tip": "p",
+   "text": "Besides the tax returns, the fiscal year ends with obligations that are not owed to ANAF and that are most often forgotten: the inventory register and inventory documents, financial statements filed on time, and the general meeting's resolution approving the statements and distributing profit."
+  },
+  {
+   "tip": "p",
+   "text": "The last point deserves emphasis for a business owner: dividends cannot be distributed without a shareholders' resolution, and the resolution cannot be adopted without approved financial statements. This order is legal, not accounting, and cannot be shortened."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Filing deadlines are those set out in the Fiscal Procedure Code and in the orders approving the model for each declaration, and they generally refer to the 25th of the month following the reporting period, with its own exceptions for the annual financial statements and for D406. Four practical observations. First: failure to file and late filing are sanctioned separately from non-payment, and the fine for the declaration applies even if the amount owed is zero — zero declarations are not optional. Second: correcting a declaration is done through a rectifying declaration, but D112 and D300 have different procedural regimes, and for some informative declarations correction requires full retransmission, not just the difference; the wrong choice results in doubling the reported amounts. Third: the fiscal vector — the configuration of the company's declarative obligations in ANAF's records — must match the actual situation, and updating it is the taxpayer's obligation; a company left with an active obligation in the vector after it has ceased that activity will receive notices for declarations it no longer has anything to fill in. Fourth: tax obligations are settled in the order provided by law, not in the order chosen at payment; a payment without the correct reference may be allocated to a different debt than intended, generating late-payment charges on an obligation the payer believed was settled."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "A correctly prepared declaration is half of the obligation. The other half — and, in an audit, the part that matters — is proof that it was filed and received. That is the next chapter, and it is the shortest in the book."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 37.1 — what this company files",
+   "enunt": [
+    "An SRL company, a micro-enterprise, registered for VAT purposes with a quarterly period, two employees, no intra-Community transactions.",
+    "List what it files in an ordinary month, what it files at the end of the quarter, and what it files annually."
+   ],
+   "rezolvare": [
+    "Monthly: D112, for payroll contributions and income tax. That's all — VAT is quarterly, and D390 is not filed since there are no intra-Community transactions.",
+    "Quarterly: D300 (the VAT return), D394 (together with it), D100 for micro-enterprise income tax. Plus D406 SAF-T, on its own category's deadline.",
+    "Annually: financial statements with annexes and the statement of responsibility, D205 if it withheld tax at source, the inventory register and inventory documents, the general meeting resolution approving and distributing results.",
+    "What it does NOT file: D101 — it is not a corporate income tax payer.",
+    "What would change everything: a single intra-Community acquisition of goods. From that very month, VAT becomes monthly, D390 appears, and the company's calendar changes entirely — without anyone having decided so."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The fiscal vector: what the state thinks you owe"
+  },
+  {
+   "tip": "p",
+   "text": "There is a list of your declarative obligations kept not by you, but by the tax administration. It's called the fiscal vector, and it's the configuration according to which the system expects declarations from your company."
+  },
+  {
+   "tip": "p",
+   "text": "The consequence matters more than it seems: if the vector says you are a monthly VAT payer, the system expects a return every month — even if the company no longer has any activity. Not receiving it, it sends a notice. Conversely, if the vector doesn't contain an obligation you actually have, the absence of the declaration goes unflagged, but the obligation remains."
+  },
+  {
+   "tip": "cheie",
+   "text": "The fiscal vector does not update itself. It is a declaration of mentions filed by the company — and between what you do and what the state thinks you do, there can be a gap that generates notices for years."
+  },
+  {
+   "tip": "h",
+   "text": "How the list is derived, in practice"
+  },
+  {
+   "tip": "p",
+   "text": "A well-built program does not keep a hand-written list of the company's declarations: it derives it from the company's profile. Three or four attributes decide almost everything, and the rest follows."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "From profile to calendar",
+   "cap": [
+    "The attribute",
+    "What it triggers"
+   ],
+   "randuri": [
+    [
+     "VAT payer + monthly period",
+     "D300 and D394 monthly, D406 monthly"
+    ],
+    [
+     "VAT payer + quarterly period",
+     "the same, quarterly"
+    ],
+    [
+     "has employees",
+     "monthly D112, annual D205, payroll records"
+    ],
+    [
+     "micro-enterprise",
+     "quarterly D100, on revenues"
+    ],
+    [
+     "corporate income tax payer",
+     "D100 for advance payments, annual D101"
+    ],
+    [
+     "intra-Community transactions in the month",
+     "D390 for that month"
+    ],
+    [
+     "exceeding the Intrastat threshold",
+     "the statistical declaration, per flow"
+    ]
+   ],
+   "nota": "Deriving the list has an advantage a written list does not: it corrects itself when the company changes. A hand-kept list remains the one from two years ago."
+  },
+  {
+   "tip": "h",
+   "text": "What is paid, beyond what is declared"
+  },
+  {
+   "tip": "p",
+   "text": "Filing and payment are two distinct obligations, with distinct sanctions. They can be fulfilled one without the other, in both directions — and the most unpleasant case is a declaration filed with the amount unpaid, because that's where late-payment charges accrue on a debt acknowledged in writing."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What the company from the book's example actually owes, for the month of June",
+   "cap": [
+    "Account",
+    "Obligation",
+    "Amount"
+   ],
+   "randuri": [
+    [
+     "444",
+     "Income tax on wages",
+     "325,00"
+    ],
+    [
+     "4315",
+     "CAS — social security contributions",
+     "1.250,00"
+    ],
+    [
+     "4316",
+     "CASS — health insurance contributions",
+     "500,00"
+    ],
+    [
+     "436",
+     "CAM — insurance contribution",
+     "112,50"
+    ],
+    [
+     "",
+     "Total to be transferred by the 25th",
+     "2.187,50"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "The figures are not filled into a form: they are exactly the account balances from the trial balance. If they don't match D112, one of the two is wrong."
+  },
+  {
+   "tip": "h",
+   "text": "Declarations arising from a situation, not from a regime"
+  },
+  {
+   "tip": "p",
+   "text": "The table at the beginning of the chapter is the usual list: what an ordinarily active company owes, month by month. There is, however, a second group, tied not to the tax regime but to circumstance. They are never filed — until the month in which they are."
+  },
+  {
+   "tip": "p",
+   "text": "The distinction matters for whoever keeps the records. The first list can be written into a calendar at the start of the year and followed mechanically. The second cannot: it is derived from the month's transactions, and if no one looks at the transactions, the obligation goes unnoticed. It is the only place in the tax calendar where the absence of a declaration doesn't prove it wasn't owed."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Situation-based declarations",
+   "cap": [
+    "Declaration",
+    "The situation that gives rise to it",
+    "When"
+   ],
+   "randuri": [
+    [
+     "D301",
+     "the company is NOT normally registered for VAT purposes, but carries out a transaction that gives rise to tax: an intra-Community acquisition above the threshold, services received from the Union, a new means of transport",
+     "by the 25th of the month following the one in which the transaction occurred"
+    ],
+    [
+     "D307",
+     "goods for which VAT was deducted change destination: transferred, scrapped, or the right of deduction is lost",
+     "by the 25th of the month following the event"
+    ],
+    [
+     "D311",
+     "the company collected VAT during the period when its VAT code was cancelled — the tax is owed, even though the right of deduction does not exist",
+     "by the 25th of the following month"
+    ],
+    [
+     "D107",
+     "the company granted sponsorships, private scholarships, or patronage: the state wants the list of beneficiaries, not just the amount",
+     "together with the annual tax declaration"
+    ],
+    [
+     "D177",
+     "the company redirects to beneficiaries the portion of the sponsorship credit it did not use as a tax reduction",
+     "after the annual declaration, within the redirection deadline"
+    ]
+   ],
+   "nota": "D177 is not a payment declaration — the amount payable in it is zero. It is a request: the money leaves from the tax already owed, toward the entities named in the request."
+  },
+  {
+   "tip": "cheie",
+   "text": "The first four arise from a transaction that the accounting records already contain. A program that keeps the records can propose them on its own; a person keeping the records must know they exist, otherwise they won't look for them."
+  },
+  {
+   "tip": "h",
+   "text": "When the declaration is wrong"
+  },
+  {
+   "tip": "p",
+   "text": "No filed declaration can be deleted. It can only be replaced or corrected, and how this is done depends on what kind of declaration it was — a distinction usually learned by getting it wrong once."
+  },
+  {
+   "tip": "p",
+   "text": "Declarations that report transactions — the VAT return, the D394 informative return, the payroll declaration — are corrected through a rectifying declaration: the same declaration, for the same period, marked as rectifying, which fully replaces the previous one. The difference is not filed; the whole, corrected, is filed."
+  },
+  {
+   "tip": "p",
+   "text": "Declarations that establish payment obligations — D100 — are not rectified the same way. For them there is the D710 correction declaration, which states what amount was declared incorrectly and what the correct one is. The reason for the difference is that D100 doesn't describe transactions but creates a debt in the payer's record: the correction must reach that debt, not retell the month."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "How each is corrected",
+   "cap": [
+    "The incorrect declaration",
+    "Is corrected with",
+    "What is filed"
+   ],
+   "randuri": [
+    [
+     "D300 — the VAT return",
+     "rectifying D300",
+     "the whole return, redone, for the same period"
+    ],
+    [
+     "D394 — the informative return",
+     "rectifying D394",
+     "the whole informative return, redone"
+    ],
+    [
+     "D112 — wages and contributions",
+     "rectifying D112",
+     "the whole declaration, redone"
+    ],
+    [
+     "D100 — payment obligations",
+     "D710 — correction declaration",
+     "only the affected obligation: the amount declared and the correct amount"
+    ],
+    [
+     "D101, D205, D107 — annual",
+     "the same declaration, rectifying",
+     "the whole declaration, redone"
+    ]
+   ]
+  },
+  {
+   "tip": "cheie",
+   "text": "An amending return replaces. A D710 corrects. The first retells the whole period from scratch, the second touches a single amount in the payer's record — and that's why they aren't interchangeable."
+  },
+  {
+   "tip": "p",
+   "text": "The practical rule for both: the correction is made after the bookkeeping has been clarified, not instead of it. An amending return filed on top of a trial balance that is still unresolved will itself need correcting, and a string of amendments for the same month is the first thing an inspector will notice."
+  },
+  {
+   "tip": "h",
+   "text": "Obligations that accompany the goods, not the bookkeeping"
+  },
+  {
+   "tip": "p",
+   "text": "All the returns discussed so far describe what was recorded. But there are two obligations that don't concern the recording itself, but the goods themselves: one is fulfilled before a truck departs, the other statistically reports the movement of goods across the border. Neither is a tax return in the usual sense — the first doesn't establish any amount, the second isn't even filed with ANAF — and that's exactly why they get overlooked."
+  },
+  {
+   "tip": "p",
+   "text": "e-Transport is the system through which the state tracks the transport of goods. Before the goods are set in motion, the transport must be declared and receives a unique code, which must accompany the goods along the way. The key word is \"before\": a code obtained after the truck has left fixes nothing, and roadside checks happen on the road, not in the bookkeeping."
+  },
+  {
+   "tip": "p",
+   "text": "In practice, the declaration is made from the delivery note — the document that is drawn up anyway when goods leave — plus data that isn't found in the bookkeeping: the vehicle, the route, who organizes the transport. Software that already has the delivery note can prepare the rest; what it can't do for you is know the license plate number."
+  },
+  {
+   "tip": "p",
+   "text": "Intrastat is something else, though it concerns the same goods. It's a statistical return, filed with the National Institute of Statistics, not with ANAF, and it establishes no tax. It becomes mandatory when the company exceeds an annual threshold, calculated separately for each direction: one for what comes in from the Union, another for what goes out. You can be obligated on one direction and free on the other."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Two obligations about goods, not about amounts",
+   "cap": [
+    "",
+    "e-Transport",
+    "Intrastat"
+   ],
+   "randuri": [
+    [
+     "To whom",
+     "ANAF",
+     "National Institute of Statistics"
+    ],
+    [
+     "When",
+     "before the goods are set in motion",
+     "monthly, as long as you're above the threshold"
+    ],
+    [
+     "What triggers it",
+     "the transport of tracked goods",
+     "exceeding the annual threshold, on each direction separately"
+    ],
+    [
+     "What it produces",
+     "a code that accompanies the goods",
+     "a statistical report, with no amount due"
+    ],
+    [
+     "Where it's taken from",
+     "the delivery note + transport data",
+     "intra-Community supplies and acquisitions of goods"
+    ]
+   ],
+   "nota": "Intrastat thresholds are set by INS order and are checked for each direction separately; they don't depend on the company's VAT regime."
+  },
+  {
+   "tip": "cheie",
+   "text": "Intrastat counts goods, D390 declares transactions. They're calculated from the same invoices, but they can't substitute for one another: one goes to statistics, the other to the tax authority."
+  },
+  {
+   "tip": "p",
+   "text": "It's also worth highlighting the difference from intra-Community services: they're included in D390, but not in Intrastat, because nothing physically crosses the border. This is the most common confusion between the two — and it's immediately obvious, because the totals never match."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "The list of returns is derived from the company's regime and activity — it's not the same for everyone.",
+    "Returns are different views of the same data: if they don't agree with each other, the bookkeeping is at fault.",
+    "Three choices decide almost everything: VAT payer status, having employees, micro-enterprise or corporate income tax.",
+    "The order of the month is fixed: documents, bank statement, adjustments, trial balance, then returns — never the reverse.",
+    "Zero-value returns are not optional; the penalty for non-filing applies regardless of the amount.",
+    "Dividends require a shareholders' resolution, and the resolution requires approved financial statements.",
+    "Besides the monthly list there are situational returns — D301, D307, D311, D107 — which are never filed, until the month in which they are.",
+    "An amending return replaces the entire return; D710 corrects a single payment obligation. They are not interchangeable.",
+    "e-Transport is done BEFORE the goods leave; Intrastat is statistical, filed with INS, and establishes no amount."
+   ]
+  }
+ ]
+}

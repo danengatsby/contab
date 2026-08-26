@@ -1,0 +1,314 @@
+{
+ "parte": "Part VIII · The state · phases 9 and 13",
+ "nr": "35",
+ "titlu": "VAT: collected, deductible, payable",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Value added tax is the most misunderstood obligation of a company, and the confusion starts from something simple: the VAT money passes through the company's account, but it is never the company's own."
+  },
+  {
+   "tip": "p",
+   "text": "The company collects it from the customer along with the invoice, holds it for a few weeks, and transfers it to the state. Its role is that of a collector, not a payer — even though the return says \"payable.\""
+  },
+  {
+   "tip": "h",
+   "text": "The two accounts"
+  },
+  {
+   "tip": "p",
+   "text": "The entire mechanics of VAT rest on two accounts and the difference between them."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The two faces of the tax",
+   "cap": [
+    "Account",
+    "What it accumulates",
+    "Nature"
+   ],
+   "randuri": [
+    [
+     "4427 VAT collected",
+     "tax invoiced to customers",
+     "liability — not the company's money"
+    ],
+    [
+     "4426 Deductible VAT",
+     "tax paid to suppliers",
+     "receivable — recoverable"
+    ]
+   ],
+   "nota": "The difference between them is what the company owes the state for that month. If it is negative, the state owes the company."
+  },
+  {
+   "tip": "p",
+   "text": "The \"value added\" in the tax's name is exactly this difference. The company pays tax only on what it has added to the value of the good — the rest had already been paid by its suppliers, and the company deducts it."
+  },
+  {
+   "tip": "h",
+   "text": "The return, in real figures"
+  },
+  {
+   "tip": "p",
+   "text": "Here is June for a small company, as the VAT return comes out of its own accounting records, without any intervention."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "June's VAT return",
+   "cap": [
+    "Operation",
+    "Base",
+    "Rate",
+    "VAT"
+   ],
+   "randuri": [
+    [
+     "Supplies of taxable goods and services",
+     "14.000",
+     "21%",
+     "2.940"
+    ],
+    [
+     "Purchases with the right of deduction",
+     "10.000",
+     "21%",
+     "2.100"
+    ],
+    [
+     "VAT payable",
+     "",
+     "",
+     "840"
+    ]
+   ],
+   "numerice": [
+    2,
+    4
+   ],
+   "total": true,
+   "nota": "The figures are not filled in: they are added up from the month's accounting entries. The return is a result, not a form."
+  },
+  {
+   "tip": "p",
+   "text": "The company collected 2,940 lei of VAT from customers and paid 2,100 to suppliers. It owes the state the difference of 840. It has neither lost nor gained anything: the 840 lei were, from the very start, the state's."
+  },
+  {
+   "tip": "cheie",
+   "text": "The return is not filled in, it is composed. Every figure in it comes from accounting entries already recorded — if you have to type something in, an entry is missing somewhere."
+  },
+  {
+   "tip": "h",
+   "text": "When the deductible is larger"
+  },
+  {
+   "tip": "p",
+   "text": "This happens often and is not an anomaly: a month with large investments, inventory built up ahead of the season, an exempt export with the right of deduction. The difference becomes VAT to be recovered."
+  },
+  {
+   "tip": "p",
+   "text": "The company then has two options: to request a refund, with a tax inspection in most cases, or to carry forward the amount to the following month, where it will be deducted from the VAT payable."
+  },
+  {
+   "tip": "p",
+   "text": "Carrying forward is the natural and most commonly used mechanism. It is also why the return has, at its head, a line for the previous period's balance: VAT is not closed month by month, but flows from one month to the next until it is settled."
+  },
+  {
+   "tip": "h",
+   "text": "When VAT is not deductible"
+  },
+  {
+   "tip": "p",
+   "text": "The right of deduction is not automatic. Three conditions must be met at once, and the absence of any one of them cancels it."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What deduction requires",
+   "cap": [
+    "Condition",
+    "What it means in practice"
+   ],
+   "randuri": [
+    [
+     "a compliant invoice",
+     "with all mandatory elements, in the company's name"
+    ],
+    [
+     "economic purpose",
+     "the purchase serves the company's taxable operations"
+    ],
+    [
+     "supplier registered for VAT purposes",
+     "code valid on the date of the operation"
+    ]
+   ],
+   "nota": "Checking the supplier's VAT code on the invoice date is not a formality: an invoice from a supplier whose code has been cancelled does not give the right of deduction."
+  },
+  {
+   "tip": "p",
+   "text": "To these are added the express limitations: expenses without economic purpose, entertainment expenses above the ceiling, and, the most frequent case, passenger cars — for which the deduction is limited to half, if the vehicle is not used exclusively for economic purposes."
+  },
+  {
+   "tip": "h",
+   "text": "Monthly or quarterly"
+  },
+  {
+   "tip": "p",
+   "text": "The fiscal period depends on turnover and on intra-Community operations. The practical rule: small companies file quarterly, large ones monthly, and an intra-Community acquisition of goods immediately changes the period to monthly, starting from the very month in which it occurred."
+  },
+  {
+   "tip": "p",
+   "text": "The surprising consequence is that the change is neither optional nor postponable: a single purchase from a supplier in another Union country brings with it the obligation to switch to monthly filing and to report the change. It is one of the few situations where a single operation changes the company's reporting regime."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The rates in force are 21% standard and 11% reduced, applicable from August 1, 2025 under Law 141/2025, and the exemption threshold for small enterprises is 395,000 lei. Four practical observations. First: chargeability, not the chargeable event, determines the month in which the tax enters the return — for supplies of goods and services the two usually coincide, but for advances chargeability occurs upon collection, and for intra-Community acquisitions on the date the invoice is issued or, at the latest, on the fifteenth day of the month following the chargeable event; treating them according to the document date is a constant source of discrepancies between the accounting records and the return. Second: the right of deduction is exercised in the return for the period in which the substantive and formal conditions are met, but it may also be exercised later, within the limitation period, through a subsequent return or a corrective return — the distinction between the two paths has procedural consequences, so it is not chosen at random. Third: the carry-forward line in the return must correspond exactly to the balance of account 4424 in the previous period's trial balance; checking this correlation before filing catches practically all carry-forward errors. Fourth: the return is corrected through a corrective return, but this cannot be filed after a tax inspection for that period has begun — the practical correction deadline is, therefore, shorter than the legal one."
+  },
+  {
+   "tip": "h",
+   "text": "The link with the registers"
+  },
+  {
+   "tip": "p",
+   "text": "The return is composed from the sales journal and the purchases journal, encountered in chapter 30. These are registers for VAT purposes, distinct from the accounting journals, and their totals must correspond to the turnover of accounts 4427 and 4426 in the trial balance."
+  },
+  {
+   "tip": "p",
+   "text": "This correlation is the last check before filing and is always worth doing: if the journals and the trial balance do not say the same thing, one of them is wrong, and the return built on either one will be just as wrong."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 35.1 — the return, from entries",
+   "enunt": [
+    "The month: taxable sales 40,000 base; purchases with right of deduction 25,000 base; a fuel invoice of 2,000 base for a passenger car also used personally; VAT balance to be recovered from the previous month 900 lei. Rate 21%.",
+    "Calculate the VAT payable or to be recovered."
+   ],
+   "rezolvare": [
+    "Collected: 40,000 × 21% = 8,400 lei.",
+    "Deductible from ordinary purchases: 25,000 × 21% = 5,250 lei.",
+    "Fuel: VAT of 2,000 × 21% = 420 lei, but only 50% deductible for the vehicle that is not used exclusively for economic purposes — so 210 lei. The remaining 210 becomes an expense.",
+    "Total deductible: 5,250 + 210 = 5,460 lei. The month's difference: 8,400 − 5,460 = 2,940 payable.",
+    "The carry-forward is subtracted: 2,940 − 900 = 2,040 lei payable.",
+    "The check to be made before filing: the 900 lei on the carry-forward line must be EXACTLY the balance of account 4424 in the previous month's trial balance. This is the correlation that catches almost all carry-forward errors."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The chargeable event and chargeability"
+  },
+  {
+   "tip": "p",
+   "text": "This is the most frequent source of discrepancies between the accounting records and the return, and it comes from a distinction that the document does not show: the moment the operation OCCURS is not necessarily the moment the tax BECOMES DUE."
+  },
+  {
+   "tip": "p",
+   "text": "The first is called the chargeable event, the second chargeability. In an ordinary supply they coincide, and the distinction seems unnecessary. In four situations they do not coincide — and that is exactly where the month is gotten wrong."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "When the tax becomes due",
+   "cap": [
+    "Operation",
+    "Chargeable event",
+    "Chargeability"
+   ],
+   "randuri": [
+    [
+     "Ordinary supply of goods",
+     "at delivery",
+     "at delivery (along with the invoice)"
+    ],
+    [
+     "Advance collected from the customer",
+     "has not occurred yet",
+     "at the COLLECTION of the advance"
+    ],
+    [
+     "Intra-Community acquisition",
+     "at delivery in the other state",
+     "on the invoice date, but no later than the 15th day of the following month"
+    ],
+    [
+     "VAT cash accounting scheme",
+     "at delivery",
+     "at the COLLECTION of the invoice"
+    ],
+    [
+     "Continuous supply (rent, subscription)",
+     "at the end of the agreed period",
+     "at each due date under the contract"
+    ]
+   ],
+   "nota": "The right-hand column is the one that decides which return the operation enters. Those who go by the document date get the last four rows wrong."
+  },
+  {
+   "tip": "p",
+   "text": "The third row deserves to be read twice, since it is the most counterintuitive: for an intra-Community acquisition without an invoice received by the 15th day of the following month, the tax becomes chargeable regardless, on that date. The document is not waited for — a self-invoice is issued."
+  },
+  {
+   "tip": "cheie",
+   "text": "The return is composed according to CHARGEABILITY, not the document date. It is the only rule in this chapter that a program cannot guess from the invoice: it needs to know what kind of operation it is."
+  },
+  {
+   "tip": "h",
+   "text": "The advance, in figures"
+  },
+  {
+   "tip": "p",
+   "text": "The advance case deserves to be unpacked, since it produces three operations for a single sale and because the second one is the one that gets forgotten."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "An advance of 12,100 lei, followed by a delivery of 24,200",
+   "cap": [
+    "Moment",
+    "What is recorded",
+    "VAT collected"
+   ],
+   "randuri": [
+    [
+     "The advance is collected",
+     "advance invoice: 4111 = 419 + 4427",
+     "2,100.00 — chargeable NOW"
+    ],
+    [
+     "The goods are delivered",
+     "final invoice, for the total value",
+     "4.200,00"
+    ],
+    [
+     "On the same invoice",
+     "REVERSAL of advance: 4111 = 419 + 4427, in red",
+     "−2.100,00"
+    ],
+    [
+     "",
+     "VAT collected, in total",
+     "4.200,00"
+    ]
+   ],
+   "numerice": [
+    3
+   ],
+   "total": true,
+   "nota": "Without the third line, the tax would be collected twice on the same value: once on the advance and again on delivery."
+  },
+  {
+   "tip": "p",
+   "text": "The regularization of the advance is done in the final invoice itself, not as a separate operation — and this is why the document type for the final invoice with an advance is distinct from the ordinary one. It is the same pattern as the inventory write-off in chapter 11: a line that is not visible from the document, but without which the result is wrong."
+  },
+  {
+   "tip": "recap",
+   "titlu": "To remember from this chapter",
+   "puncte": [
+    "VAT money passes through the company, but is not the company's own: 4427 is a liability, 4426 is a receivable, the difference is transferred.",
+    "The return is not filled in, it is composed from the month's accounting entries.",
+    "When the deductible is larger, the amount is carried forward to the following month — VAT flows from one month to the next.",
+    "Deduction requires three conditions at once: a compliant invoice, economic purpose, and a supplier with a valid code on the date of the operation.",
+    "The rates are 21% and 11% from August 1, 2025; the deduction for passenger cars is limited to 50%.",
+    "A single intra-Community acquisition of goods switches the company to monthly filing, immediately and mandatorily."
+   ]
+  }
+ ]
+}

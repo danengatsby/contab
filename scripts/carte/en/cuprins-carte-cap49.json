@@ -1,0 +1,239 @@
+{
+ "parte": "Part XI · The trail · phase 14",
+ "nr": "49",
+ "titlu": "Archiving",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The bookkeeping is finished. The financial statements are signed and filed, the returns have receipts, the fiscal year is closed. This part is about what remains — and about the day, two or five years from now, when someone starts asking questions."
+  },
+  {
+   "tip": "p",
+   "text": "That day comes more often than people think: a tax inspection, a loan application, the sale of the company, a dispute with a partner. And the question is always the same: show me the document."
+  },
+  {
+   "tip": "h",
+   "text": "The monthly file"
+  },
+  {
+   "tip": "p",
+   "text": "The archiving unit is not the document, but the month. A complete monthly file contains everything an outsider would need in order to reconstruct that month without asking anyone."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What a month's file contains",
+   "cap": [
+    "Item",
+    "Why"
+   ],
+   "randuri": [
+    [
+     "Supporting documents",
+     "without them, no entry can be proven"
+    ],
+    [
+     "The journal ledger and the general ledger",
+     "what was recorded, chronologically and by account"
+    ],
+    [
+     "The trial balance",
+     "the position from which the returns were compiled"
+    ],
+    [
+     "The VAT journals",
+     "the basis of the VAT return"
+    ],
+    [
+     "The filed returns AND the receipts",
+     "a return without a receipt proves nothing"
+    ],
+    [
+     "Adjustment notes",
+     "the reasoning that doesn't show in the figures"
+    ],
+    [
+     "Bank statements and reconciliation",
+     "the external proof of the treasury position"
+    ]
+   ],
+   "nota": "The file is put together at closing, not reconstructed at inspection time. The difference shows exactly in what is missing."
+  },
+  {
+   "tip": "cheie",
+   "text": "A reconstructed file contains what was found. A file put together on time contains what was supposed to exist. The difference between the two is exactly what an inspector is looking for."
+  },
+  {
+   "tip": "h",
+   "text": "The year's file"
+  },
+  {
+   "tip": "p",
+   "text": "On top of the twelve monthly files, an annual one is added, with the documents concerning the entire fiscal year: the financial statements with all annexes, the declaration of responsibility, the inventory register and the inventory documents, the fiscal record register, and the resolution approving and distributing the result."
+  },
+  {
+   "tip": "p",
+   "text": "It is worth building as a closed whole, not as a box you keep adding to indefinitely. A closed fiscal year no longer changes — and its file should have the same property."
+  },
+  {
+   "tip": "p",
+   "text": "In an electronic archive, this property can even be proven: each file receives a cryptographic fingerprint, and the entire file set receives a combined one. Any later modification to any file changes the final fingerprint, so it becomes visible. It is the digital equivalent of the seal on a paper file, and it's harder to forge."
+  },
+  {
+   "tip": "h",
+   "text": "How long to keep it"
+  },
+  {
+   "tip": "p",
+   "text": "Retention periods are set by the accounting law and have been amended several times in recent years. This is one of the few figures in this book that we don't write down: it should be checked against the text currently in force, not recited from memory."
+  },
+  {
+   "tip": "p",
+   "text": "What doesn't change is the underlying principle: documents must exist for at least as long as the tax authority can still establish obligations for that period. A document destroyed before that deadline expires leaves the company defenseless exactly in the situation the document was meant to cover."
+  },
+  {
+   "tip": "p",
+   "text": "There is also a category with its own rules, worth noting separately: documents used to establish employees' pension rights. A former employee may need a certificate more than twenty years later, and the company is obligated to be able to issue it."
+  },
+  {
+   "tip": "h",
+   "text": "An electronic archive doesn't keep itself"
+  },
+  {
+   "tip": "p",
+   "text": "A paper archive degrades slowly and visibly. An electronic one disappears instantly and silently — a failed drive, an expired storage account, a format nothing can open anymore."
+  },
+  {
+   "tip": "p",
+   "text": "That's why a backup that has never been restored is not a backup, but an assumption. The only proof that an archive works is its actual restoration, done periodically, as an exercise."
+  },
+  {
+   "tip": "p",
+   "text": "The second rule is just as simple and just as often broken: the copy must be kept in a different place than the original. An archive kept on the same computer as the bookkeeping solves accidental deletion and nothing else — not fire, not theft, not encryption."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The retention obligation is set out in Accounting Law no. 82/1991, which establishes the retention periods for the mandatory accounting registers and for supporting documents, with a special regime for payroll records, and electronic archiving is permitted under the conditions provided by law and by the rules on financial-accounting documents. Four remarks. First: the deadlines have been amended through successive legislative interventions, and applying an expired deadline out of habit leads to the destruction of documents still needed — checking the text in force at the time of destruction, recorded in a report, is the prudent practice. Second: destruction of documents upon expiry of the retention period is done based on a report, with management's approval; undocumented destruction is, before an inspection, impossible to distinguish from loss. Third: for documents kept exclusively electronically, the authenticity of origin, integrity of content, and legibility must be ensured throughout the retention period, and the system must allow them to be printed on request; an archive in a proprietary format of a vendor that no longer exists does not meet the third condition. Fourth: the reconstruction of documents lost, stolen, or destroyed before the deadline is done according to the procedure in the rules, with a declaration and proof of the steps taken — the procedure exists precisely because the situation is foreseeable, but it cannot be applied retroactively to an archive that was never organized."
+  },
+  {
+   "tip": "h",
+   "text": "What follows"
+  },
+  {
+   "tip": "p",
+   "text": "The files answer the question of what was recorded. One question remains, which the documents don't answer: who did each thing, and when."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 49.1 — the file that doesn't answer",
+   "enunt": [
+    "During an inspection, justification is requested for an expense of 24,000 lei from two years earlier. The month's file contains: the invoice, the payment statement, the month's trial balance, and the VAT return with receipt. The inspector asks why the expense was considered deductible, given that the supplier's line of business is \"consultancy,\" while the company is a bakery.",
+    "What is missing from the file?"
+   ],
+   "rezolvare": [
+    "Nothing that is formally required. All the documents proving the TRANSACTION are there: that it was invoiced, that it was paid, that it was recorded, that it was declared.",
+    "What's missing is what proves the CONNECTION to the business activity: the contract, the consultant's activity report, the deliverable, the correspondence. That is, exactly what turns a real payment into a deductible expense.",
+    "The consequence: without them, the expense is non-deductible, and the related VAT could not be deducted — not because the transaction is fictitious, but because it cannot be proven that it served the business activity.",
+    "The lesson for the monthly file: the supporting document answers \"what happened.\" For expenses where the reality of the service is not evident from the invoice, the file must also answer \"what it was used for\" — and that second answer must be gathered THEN, not two years later."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "When the document is missing: reconstruction"
+  },
+  {
+   "tip": "p",
+   "text": "The rule from chapter 9 says that without a document, nothing is recorded. It does not, however, address what happens when the document existed and was lost — and for that there is a procedure, with steps and deadlines."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The steps of reconstruction",
+   "cap": [
+    "Step",
+    "What it produces"
+   ],
+   "randuri": [
+    [
+     "Reporting the loss, in writing",
+     "the date from which the deadline runs"
+    ],
+    [
+     "The declaration of the person responsible for the document",
+     "the circumstances of the loss"
+    ],
+    [
+     "The request for a duplicate to the issuer",
+     "proof of the steps taken"
+    ],
+    [
+     "The duplicate, marked \"DUPLICATE\"",
+     "the reconstructed document"
+    ],
+    [
+     "The reconstruction file",
+     "all of the above, together"
+    ]
+   ],
+   "nota": "A duplicate on its own is not a reconstruction: without the file showing why it was needed, it's just a second copy that appeared out of nowhere."
+  },
+  {
+   "tip": "p",
+   "text": "What cannot be reconstructed are documents attesting to movements of cash or valuables — receipts, fiscal receipts, cheque leaves. For these there is no duplicate: their value lies precisely in their uniqueness, and the loss is treated as a shortage, not as a document to be recreated."
+  },
+  {
+   "tip": "h",
+   "text": "The electronic archive: three conditions, not one"
+  },
+  {
+   "tip": "p",
+   "text": "\"We keep everything scanned\" is not an electronic archive. The law requires three things at once, and an archive that meets only two of them fulfills none of the purposes for which it exists."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What must be ensured",
+   "cap": [
+    "Condition",
+    "What it means in practice",
+    "What violates it"
+   ],
+   "randuri": [
+    [
+     "authenticity of origin",
+     "it is known who the document comes from",
+     "a scan with no record of the source at all"
+    ],
+    [
+     "integrity of content",
+     "it has not changed since archiving",
+     "editable files, without a fingerprint"
+    ],
+    [
+     "legibility throughout the period",
+     "it can still be read years later",
+     "a proprietary format of a vendor that no longer exists"
+    ]
+   ],
+   "nota": "The third is the forgotten one. A document archived in a format that nothing can open anymore is, legally, a lost document."
+  },
+  {
+   "tip": "p",
+   "text": "From this comes a practical choice worth making consciously: keep the archive in open, widely used formats — PDF, XML, CSV — not in the internal format of the program you use today. It's the same logic behind encrypting the offsite copy with a standard utility rather than a proprietary format: recovery must not depend on the very program that was just lost."
+  },
+  {
+   "tip": "p",
+   "text": "And the destruction of documents upon expiry of the retention period is done based on a report, with management's approval. Without it, during an inspection, documented destruction cannot be distinguished from loss — and the consequences of the two are not the same."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "The archiving unit is the month, not the document: the file must allow an outsider to reconstruct the month.",
+    "A file put together at closing contains what was supposed to exist; one reconstructed at inspection contains what was found.",
+    "The year's file is closed as a whole; in an electronic archive, cryptographic fingerprints make any later modification visible.",
+    "Retention periods have changed several times — check the text in force, don't recite from memory.",
+    "A backup that has never been restored is an assumption, not a copy.",
+    "The copy must be kept somewhere other than the original: otherwise it only solves accidental deletion."
+   ]
+  }
+ ]
+}

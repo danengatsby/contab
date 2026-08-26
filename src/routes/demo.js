@@ -12,6 +12,72 @@ const { seed } = require('../seed');
 
 const DEMO_SNAPSHOT = path.join(db.DATA_DIR, 'demo-firma.json');
 
+function monthIndex(period) {
+  const m = String(period || '').match(/^(\d{4})-(\d{2})$/);
+  return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : NaN;
+}
+function periodAt(index) { return String(Math.floor(index / 12)).padStart(4, '0') + '-' + String((index % 12) + 1).padStart(2, '0'); }
+function shiftIso(value, delta, today) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/);
+  if (!m) return value;
+  const idx = Number(m[1]) * 12 + Number(m[2]) - 1 + delta;
+  const year = Math.floor(idx / 12); const month = idx % 12;
+  const maxDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  let day = Math.min(Number(m[3]), maxDay);
+  const targetPeriod = periodAt(idx);
+  if (targetPeriod === today.slice(0, 7)) day = Math.min(day, Number(today.slice(8, 10)));
+  return targetPeriod + '-' + String(day).padStart(2, '0') + m[4];
+}
+
+/** Face snapshot-ul demonstrativ evergreen: două luni relevante, sold bancar plauzibil și
+ * obligații istorice marcate ca depuse. Vizitatorul vede un exemplu de lucru, nu restanțe create
+ * doar fiindcă snapshot-ul a îmbătrânit. Funcția mută numai copia citită pentru import. */
+function prepareDemoBundle(bundle, now) {
+  const today = new Date(now || Date.now()).toISOString().slice(0, 10);
+  const periods = [...new Set((bundle.entries || []).map((e) => String(e.period || e.data || '').slice(0, 7)).filter((p) => /^\d{4}-\d{2}$/.test(p)))].sort();
+  if (!periods.length) return bundle;
+  const keep = periods.slice(-2); const latest = keep[keep.length - 1];
+  const delta = monthIndex(today.slice(0, 7)) - monthIndex(latest);
+  const mapPeriod = (p) => periodAt(monthIndex(p) + delta);
+  const selected = new Set(keep);
+
+  bundle.entries = (bundle.entries || []).filter((e) => selected.has(String(e.period || e.data || '').slice(0, 7))).map((e) => {
+    const src = String(e.period || e.data).slice(0, 7);
+    e.period = mapPeriod(src); e.data = shiftIso(e.data, delta, today);
+    // În exemplu facturile emise au parcurs deja SPV; altfel fiecare snapshot devine automat
+    // restant după cinci zile și panoul demo începe cu alerte roșii.
+    if (/^factura_vanzare/.test(e.tip || '')) e.spv = { index: 'DEMO', stare: 'trimisa' };
+    return e;
+  });
+  bundle.stockMovements = (bundle.stockMovements || []).filter((x) => selected.has(String(x.data || '').slice(0, 7)))
+    .map((x) => { x.data = shiftIso(x.data, delta, today); return x; });
+  bundle.payrollHistory = (bundle.payrollHistory || []).filter((x) => selected.has(String(x.period || '').slice(0, 7)))
+    .map((x) => { x.period = mapPeriod(x.period); return x; });
+  bundle.declarations = (bundle.declarations || []).filter((x) => selected.has(String(x.period || '').slice(0, 7)))
+    .map((x) => Object.assign(x, { period: mapPeriod(x.period), status: 'depusa', submittedAt: shiftIso(x.submittedAt || today, delta, today) }));
+
+  // Încasările lunare ale exemplului intrau toate în casă, în timp ce plățile ieșeau toate din
+  // bancă. Pe un istoric mai lung asta producea banca negativă și numerar exagerat. Exemplul
+  // folosește încasare prin bancă, scenariul obișnuit pentru facturile B2B prezentate.
+  for (const e of bundle.entries) if (e.tip === 'incasare_client') {
+    for (const l of (e.lines || [])) if (String(l.debit) === '5311') l.debit = '5121';
+  }
+
+  const previous = periodAt(monthIndex(today.slice(0, 7)) - 1);
+  const fid = (bundle.firma || {}).id;
+  for (const tip of ['d300', 'd394', 'd112', 'saft', 'd100']) {
+    if (bundle.declarations.some((x) => x.period === previous && x.tip === tip)) continue;
+    bundle.declarations.push({ id: 'demo-' + tip + '-' + previous, firmaId: fid, tip, period: previous,
+      status: 'depusa', generatedAt: today + 'T08:00:00.000Z', submittedAt: today + 'T09:00:00.000Z', recipisa: 'DEMO', note: 'Exemplu demonstrativ' });
+  }
+  if (bundle.firma) bundle.firma.createdAt = mapPeriod(keep[0]) + '-01T00:00:00.000Z';
+  for (const a of (bundle.assets || [])) {
+    a.dataAchizitie = shiftIso(a.dataAchizitie, delta, today);
+    a.dataPif = shiftIso(a.dataPif, delta, today);
+  }
+  return bundle;
+}
+
 /** Provisioning idempotent al perechii demo: patronul `demo` (deja creat pe productie) + contabilul
  *  `demo-contabil`. Ambele partajeaza firma demo (colaborare patron<->contabil, ambele opereaza).
  *  Ruleaza la boot si la fiecare reset — restaureaza legatura daca un vizitator a scos un cont in demo.
@@ -29,6 +95,10 @@ function ensureDemoContabil() {
   // ambele conturi trebuie sa aiba acces la firma demo (opereaza amandoua)
   demo.firme = demo.firme || []; if (!demo.firme.includes(fid)) demo.firme.push(fid);
   contabil.firme = contabil.firme || []; if (!contabil.firme.includes(fid)) contabil.firme.push(fid);
+  // Demo-ul este singura excepție intenționat operabilă fără configurare manuală; dreptul este
+  // materializat, nu dedus din simpla apartenență la firmă.
+  demo.firmaRoluri = Object.assign({}, demo.firmaRoluri || {}, { [fid]: 'aprobator' });
+  contabil.firmaRoluri = Object.assign({}, contabil.firmaRoluri || {}, { [fid]: 'aprobator' });
   if (!contabil.firmaActiva || !contabil.firme.includes(contabil.firmaActiva)) contabil.firmaActiva = fid;
   contabil.subscription = { status: 'active', plan: 'pro' }; // tip „contabil" (Pro)
   return contabil;
@@ -40,7 +110,7 @@ function resetDemo() {
   const demo = d.users.find((u) => u.username === 'demo');
   const fid = demo && (demo.firme || [])[0];
   if (!fid || !fs.existsSync(DEMO_SNAPSHOT)) return { ok: false, reason: 'fara demo sau snapshot' };
-  const bundle = JSON.parse(fs.readFileSync(DEMO_SNAPSHOT, 'utf8'));
+  const bundle = prepareDemoBundle(JSON.parse(fs.readFileSync(DEMO_SNAPSHOT, 'utf8')));
   const keepActive = d.firmaActiva; // importFirma muta firma activa — o pastram
   db.importFirma(bundle, { targetFid: fid, deferSave: true });
   d.firmaActiva = keepActive;
@@ -54,7 +124,7 @@ function resetDemo() {
   return { ok: true, firmaId: fid };
 }
 
-module.exports = function register(app, ctx) {
+function register(app, ctx) {
   const { requireAdmin, logAudit } = ctx;
 
   app.post('/api/demo/reset', requireAdmin, (req, res) => {
@@ -78,4 +148,6 @@ module.exports = function register(app, ctx) {
   });
 
   return { resetDemo, ensureDemoContabil };
-};
+}
+register.prepareDemoBundle = prepareDemoBundle;
+module.exports = register;

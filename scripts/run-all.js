@@ -9,8 +9,10 @@
 //  se citeste ca „o problema mica" — nu ca „doua treimi din suita nu au rulat".
 //
 //  Aici fiecare suita ruleaza INDEPENDENT, iar la final se raporteaza toate. Codul de
-//  iesire ramane 1 daca vreuna a picat, deci CI si `prestart` se comporta la fel de
-//  strict ca inainte — dar acum stii CE a picat si ce a trecut totusi.
+//  iesire ramane 1 daca vreuna a picat, deci CI se comporta la fel de strict ca
+//  inainte — dar acum stii CE a picat si ce a trecut totusi. `prestart` ruleaza
+//  separat numai poarta rapida de sintaxa; marketingul si PostgreSQL au suite
+//  explicite, ca absenta unui driver sau o captura invechita sa nu para test trecut.
 //
 //  Principiul e acelasi cu al portii fiscale: „n-am putut verifica" nu e „e bine".
 //  O suita care nu a rulat trebuie sa fie VIZIBILA, nu absenta din raport.
@@ -27,6 +29,7 @@ const SUITE = [
   'scripts/check-syntax.js',
   'test/db-guard.js',
   'test/auth.js',
+  'test/bilant-controls.js',
   'test/run.js',
   'test/cazuri-aprobate.js',
   'test/extractor.js',
@@ -34,8 +37,8 @@ const SUITE = [
   'test/frontend.mjs',
   'test/anaf.js',
   'test/store.js',
+  'test/annual-archive.js',
   'test/durability.js',
-  'test/store-pg.js',
   'test/http.js',
 ];
 

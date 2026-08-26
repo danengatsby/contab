@@ -1,0 +1,227 @@
+{
+ "parte": "Part X · The financial statements · phase 12",
+ "nr": "48",
+ "titlu": "The four cross-checks to verify before signing",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "This chapter is a list of four checks. Together they take less than ten minutes, can be done on paper, and catch most serious errors in a set of financial statements."
+  },
+  {
+   "tip": "p",
+   "text": "It deserves to be treated as a ritual. Not because it's legally required, but because the signature on the last page creates personal liability, and those ten minutes are the cheapest thing in the entire exercise."
+  },
+  {
+   "tip": "h",
+   "text": "First: assets equal liabilities"
+  },
+  {
+   "tip": "p",
+   "text": "Total assets must equal total liabilities, to the leu. Not approximately, not with an acceptable rounding difference — exactly."
+  },
+  {
+   "tip": "p",
+   "text": "As seen in chapter 46, the equality holds by construction: if it doesn't come out right, an account has fallen into two rows or into none. The most frequent cause is a new account, which appeared during the year, that the mapping doesn't know — and it doesn't announce itself, except through this discrepancy."
+  },
+  {
+   "tip": "h",
+   "text": "Second: the same result in two places"
+  },
+  {
+   "tip": "p",
+   "text": "The result of the financial year appears in two documents: as a line in the balance sheet, among equity, and as the last line of the income statement."
+  },
+  {
+   "tip": "p",
+   "text": "The two must coincide. When they don't, the explanation is almost always the same: one of the documents was prepared on the trial balance before the closing of result accounts, and the other on the one after."
+  },
+  {
+   "tip": "cheie",
+   "text": "A correct balance sheet next to an income statement showing zero is not a matched pair of documents. It's the same document prepared twice, on two different trial balances."
+  },
+  {
+   "tip": "h",
+   "text": "Third: cash flow ending balance equals balance sheet balance"
+  },
+  {
+   "tip": "p",
+   "text": "The amount at which the cash flow statement ends must be exactly the balance of the cash and bank accounts in the balance sheet. In the example from the previous chapter: 46,915 lei in both places."
+  },
+  {
+   "tip": "p",
+   "text": "This is the check that catches omissions in the flow — a forgotten bank account, a foreign-currency cash register not converted, a letter of credit treated separately. All produce the same discrepancy, and none of them shows up any other way."
+  },
+  {
+   "tip": "h",
+   "text": "Fourth: the change equals the sum of the three activities"
+  },
+  {
+   "tip": "p",
+   "text": "The difference between year-end cash and beginning-of-year cash must equal the sum of the operating, investing, and financing flows. In the example: 46,915 minus 45,000 makes 1,915, and 1,915 plus zero plus zero also makes 1,915."
+  },
+  {
+   "tip": "p",
+   "text": "This check catches a different class of errors: misclassified transactions. A loan repayment recorded under operating instead of financing does not change the total change — but it completely changes the interpretation of the document, and if the sum doesn't come out right, it means a transaction was counted twice or not at all."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The four, in a table",
+   "cap": [
+    "Check",
+    "What it catches"
+   ],
+   "randuri": [
+    [
+     "Total assets = total liabilities",
+     "accounts mapped incorrectly or not at all"
+    ],
+    [
+     "Result in the balance sheet = result in the income statement",
+     "documents prepared on different trial balances"
+    ],
+    [
+     "Final cash from the flow = treasury balance",
+     "cash accounts omitted from the flow"
+    ],
+    [
+     "Change = sum of the three activities",
+     "transactions misclassified or double-counted"
+    ]
+   ],
+   "nota": "None of them requires calculations. All they require is placing two figures side by side."
+  },
+  {
+   "tip": "h",
+   "text": "What they don't catch"
+  },
+  {
+   "tip": "p",
+   "text": "It's worth saying, in the spirit of chapter 33: the four cross-checks are internal-consistency checks. They confirm that the documents agree with each other — not that what they say is true."
+  },
+  {
+   "tip": "p",
+   "text": "An overvalued inventory item, an unadjusted doubtful receivable, an expense recorded in the wrong year — all pass all four. For these there are other tools, described in their proper place: the inventory count, aging analysis of balances, comparison with supporting documents."
+  },
+  {
+   "tip": "p",
+   "text": "The cross-checks are the last gate, not the only one. Their purpose is to guarantee that, if an error still exists somewhere, it's a substantive error — not one that anyone could have caught by placing two figures side by side."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The checks above are consistency requirements of the forms, and the official validator enforces them as blocking rules — a set that doesn't meet them cannot be filed. Four observations. First: besides these, the forms contain dozens of internal correlations between lines, and the validator checks all of them; running it before filing is mandatory in practice, but it doesn't replace the checks above, because it confirms the form's internal coherence, not its agreement with the underlying accounting. Second: the correlation between the opening-of-year column and the previous year's financial statements must be checked explicitly; a discrepancy there signals either an error correction from the prior year, which must be presented as such in the notes, or an incorrect carry-forward of balances. Third: for entities subject to audit or review obligations, the cross-checks are documented in the closing file together with their result, not merely with a note that they were performed. Fourth: signing the financial statements by the preparer and by the administrator engages distinct liabilities — the first for the conformity of preparation, the second for the organization of the accounting and for the accuracy of the data; it's the same division discussed in chapter 4, now arrived at the moment it becomes concrete."
+  },
+  {
+   "tip": "h",
+   "text": "What comes next"
+  },
+  {
+   "tip": "p",
+   "text": "With the signature on the financial statements, the financial year is closed. But the obligations do not end there: what remains is what happens after everything has been filed — the files, the traces, and the boundary between what software does and what always remains a human's responsibility."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 48.1 — which cross-check fails",
+   "enunt": [
+    "A set of financial statements shows: total assets 360,000 = total liabilities 360,000; result in the balance sheet 90,000, while the income statement closes at 0; final cash from the flow 10,000, equal to the treasury balance; change in cash flow 5,000, and the sum of the three activities 5,000.",
+    "Which of the four cross-checks fails, and what happened?"
+   ],
+   "rezolvare": [
+    "The second one fails: the result in the balance sheet (90,000) does not match the one in the income statement (0).",
+    "The cause is almost always the same: the balance sheet was prepared on the trial balance AFTER the closing of the result accounts, and the income statement on the same trial balance — where the turnover of accounts class 6 and 7 is already zero.",
+    "Why the other three pass: the identity assets = liabilities remains valid after closing; the cash flow statement is built on cash accounts, unaffected by the closing.",
+    "The remedy: the income statement must be prepared on the trial balance BEFORE closing. These are two distinct trial balances, and confusing them produces an empty form that passes three checks out of four.",
+    "The point worth remembering: a set in which three cross-checks out of four pass is a WRONG set. There's no such thing as \"almost correct\" for a balance sheet."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "What the validator checks, and what it doesn't"
+  },
+  {
+   "tip": "p",
+   "text": "Before filing, the set goes through an official validator that rejects inconsistent forms. It's a good net, and a limited one, and its limit must be known: the validator looks inside the form, not outside it."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The two perimeters",
+   "cap": [
+    "What the validator checks",
+    "What it CANNOT check"
+   ],
+   "randuri": [
+    [
+     "correlations between the form's lines",
+     "whether the lines correspond to the accounting"
+    ],
+    [
+     "the identity assets = liabilities",
+     "whether the assets are correctly valued"
+    ],
+    [
+     "the format and mandatory nature of fields",
+     "whether the figure in the field is the true one"
+    ],
+    [
+     "consistency with the prior year, where required",
+     "whether the prior year was correct"
+    ]
+   ],
+   "nota": "A perfectly valid set can be completely wrong. The validator confirms that the form holds together, not that it describes the company."
+  },
+  {
+   "tip": "p",
+   "text": "From this follows the correct order of checks: first the cross-checks with the accounting — the four in this chapter — then the validator. In reverse, a passed validator gives false reassurance, and the errors it cannot see remain undiscovered until an inspection."
+  },
+  {
+   "tip": "h",
+   "text": "The fifth and sixth cross-check"
+  },
+  {
+   "tip": "p",
+   "text": "The four in the title are the blocking ones. There are two more that do not stop the filing and that catch equally serious errors."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Checks that don't block, but matter",
+   "cap": [
+    "Compared item",
+    "With",
+    "What it catches"
+   ],
+   "randuri": [
+    [
+     "the total of the statement of changes in equity",
+     "the equity in the balance sheet",
+     "an equity movement not presented"
+    ],
+    [
+     "the opening-of-year column",
+     "the prior year's financial statements",
+     "an incorrect carry-forward, or a correction not presented in the notes"
+    ]
+   ],
+   "nota": "The second is the one most often skipped, because it seems like a formality. A discrepancy there means either a carry-forward error, or a prior-year error correction that MUST be explained in the notes."
+  },
+  {
+   "tip": "p",
+   "text": "It's worth noting why the second cannot be checked automatically by the validator: it does not have the prior year's financial statements. The only one who has them is the one who prepared them — which is why this check remains an obligation of the company, not of the system."
+  },
+  {
+   "tip": "cheie",
+   "text": "Order matters: cross-checks with the accounting first, the validator afterward. It is the last gate before filing, not the first check of correctness."
+  },
+  {
+   "tip": "recap",
+   "titlu": "To remember from this chapter",
+   "puncte": [
+    "Four checks, ten minutes, done before signing — not after filing.",
+    "Assets = liabilities, to the leu. If it doesn't come out right, an account has fallen into two rows or into none.",
+    "Result in the balance sheet = result in the income statement; otherwise, the two were prepared on different trial balances.",
+    "Final cash from the flow = balance of the treasury accounts in the balance sheet.",
+    "Change in cash = sum of the operating, investing, and financing flows.",
+    "All four are internal-consistency checks: they confirm that the documents agree with each other, not that what they say is true."
+   ]
+  }
+ ]
+}

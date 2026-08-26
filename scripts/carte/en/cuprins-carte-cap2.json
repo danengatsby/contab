@@ -1,0 +1,255 @@
+{
+ "parte": "Part I · Why accounting looks the way it does",
+ "nr": "2",
+ "titlu": "Why every amount is written twice",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The previous chapter ended with a promise. In the table showing where the business stood on the 31st of the month, the two columns came out equal — 75,000 on one side, 75,000 on the other. I said then that this was no accident. Now you can see why."
+  },
+  {
+   "tip": "p",
+   "text": "The answer is a single idea, and almost everything else in accounting follows from it: nothing appears out of nothing. Every amount that comes in somewhere comes from somewhere specific, and accounting writes down both ends."
+  },
+  {
+   "tip": "h",
+   "text": "Money doesn't appear, it moves"
+  },
+  {
+   "tip": "p",
+   "text": "When a business buys goods worth 60,000 lei on credit, two things happen at once, not one. The business has more goods, worth 60,000. And it has more debt, also 60,000. You can't have the goods without also having the debt; it came from somewhere."
+  },
+  {
+   "tip": "p",
+   "text": "When the customer pays 40,000, again two things happen: the money in the account increases by 40,000, and the right to claim more from the customer decreases by exactly that amount. The business hasn't become richer at that moment — it has exchanged one form of wealth (a receivable) for another (cash)."
+  },
+  {
+   "tip": "p",
+   "text": "That's all there is to it. Every transaction has a \"from where\" and a \"to where,\" and the two are equal by the nature of things, not by accounting convention. Accounting doesn't invent the rule; it merely refuses to write down only half of it."
+  },
+  {
+   "tip": "h",
+   "text": "Our business's month, unpacked"
+  },
+  {
+   "tip": "p",
+   "text": "Let's take exactly the same four transactions from the previous chapter and write both ends of each. No new figures appear — they are the same ones, looked at more closely."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Each transaction, on two ends",
+   "cap": [
+    "What happened",
+    "What the business obtained",
+    "Lei",
+    "Where it came from",
+    "Lei"
+   ],
+   "randuri": [
+    [
+     "Bought goods, on credit",
+     "Goods in warehouse",
+     "60.000",
+     "Payable to supplier",
+     "60.000"
+    ],
+    [
+     "Sold the goods",
+     "Right to collect from customer",
+     "100.000",
+     "Revenue from sale",
+     "100.000"
+    ],
+    [
+     "…and the goods left the warehouse",
+     "Expense with goods sold",
+     "60.000",
+     "Goods in warehouse",
+     "60.000"
+    ],
+    [
+     "Collected from customer",
+     "Cash in account",
+     "40.000",
+     "The right to claim it",
+     "40.000"
+    ],
+    [
+     "Paid the supplier",
+     "Decrease in payable",
+     "55.000",
+     "Cash in account",
+     "55.000"
+    ],
+    [
+     "Total",
+     "",
+     "315.000",
+     "",
+     "315.000"
+    ]
+   ],
+   "nota": "The two columns of amounts aren't equal because someone made them match at the end. They're equal because each row, taken alone, has the same amount at both ends.",
+   "numerice": [
+    3,
+    5
+   ],
+   "total": true
+  },
+  {
+   "tip": "p",
+   "text": "Notice the second and third rows. A single sale required two entries, because two distinct things happened: the business gained the right to 100,000, and, separately, it lost the goods that had cost it 60,000. The difference between them — 40,000 — is the gain discussed in the previous chapter. It isn't written anywhere directly; it comes out of the subtraction."
+  },
+  {
+   "tip": "cheie",
+   "text": "The equality of the totals isn't a check added at the end. It's the consequence of how each row was written."
+  },
+  {
+   "tip": "h",
+   "text": "Debit and credit: two words that don't mean what they seem to"
+  },
+  {
+   "tip": "p",
+   "text": "So far we've used \"what it obtained\" and \"where it came from.\" Accounting has two old names for these, and the only real difficulty in this chapter is that they sound like something other than what they mean."
+  },
+  {
+   "tip": "p",
+   "text": "The left-hand column of any account ledger is called debit. The right-hand one, credit. That's it. They don't mean \"good\" and \"bad,\" nor \"plus\" and \"minus,\" and they have nothing to do with a debit card or being credited by a bank."
+  },
+  {
+   "tip": "p",
+   "text": "What they do depends on the drawer you're writing in. For a cash or goods account, what accumulates goes on the left: it increases on the debit side. For a liability or a revenue account, the opposite: it increases on the right, on the credit side. This seems arbitrary, and in part it really is — it's a five-hundred-year-old convention. What matters is that it's the same for everyone, which allows two different sets of accounting records to be compared."
+  },
+  {
+   "tip": "p",
+   "text": "A business owner doesn't need to memorize this rule. An accounting program applies it automatically: you say what document you received, and it chooses the columns. Still, it's worth knowing that when someone says \"I debited account 5121,\" all they mean is \"I wrote the amount in the left-hand column of the bank ledger\" — that is, \"cash came in.\""
+  },
+  {
+   "tip": "h",
+   "text": "The check that comes for free"
+  },
+  {
+   "tip": "p",
+   "text": "From the fact that each row has equal amounts at both ends, something very practical follows: if you add up all the amounts written on the left, across the whole business, and all the amounts written on the right, the two totals must be identical. In our business's case, 315,000 and 315,000."
+  },
+  {
+   "tip": "p",
+   "text": "If they aren't, somewhere only half was written, or an amount was recorded incorrectly at one end. You don't yet know where, but you know for certain there's an error. The tool that performs this comparison is called the trial balance, and it has its own chapter later in the book."
+  },
+  {
+   "tip": "h",
+   "text": "And, more importantly, what the check does NOT catch"
+  },
+  {
+   "tip": "p",
+   "text": "Here it must be said, from the very first technical chapter of this book, something that textbooks postpone for too long: the equality of the totals doesn't prove the figures are correct. It only proves they're symmetrical."
+  },
+  {
+   "tip": "p",
+   "text": "If you record an invoice of 1,000 lei as 10,000, but you record it wrong at both ends, the totals still come out equal and the check stays silent. If you record a correct expense in the wrong drawer, the same thing happens. If you forget a document altogether, even more so: what was never written at all doesn't unbalance anything."
+  },
+  {
+   "tip": "p",
+   "text": "So double-entry bookkeeping catches one class of errors — the missing halves — and is blind to the rest. It's a very good tool, not an all-powerful one, and the difference between the two is paid for dearly when it's misunderstood. Chapter 33 of this book is dedicated exactly to this confusion."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "What is called above \"the two ends\" is the double entry required by the Accounting Law: every transaction is recorded simultaneously in the debit of one account and the credit of another, with the same amount. From this follow the four equalities of the trial balance — opening balances, period movements, total amounts, closing balances — which are consequences, not independent controls: a symmetrical error satisfies all four. Rows two and three of the table are the classic case of a dual-recognition transaction (recognizing revenue separately from releasing inventory from stock), where a system that recorded only the revenue would leave inventory overstated and the result false, while the trial balance stayed perfectly balanced. The debit/credit convention was formalized by Luca Pacioli in 1494, but it predated it in Venetian merchant practice; its usefulness lies not in the meaning of the words but in the fact that the position is fixed and verifiable."
+  },
+  {
+   "tip": "h",
+   "text": "Where this leads"
+  },
+  {
+   "tip": "p",
+   "text": "If every amount is written in two places, the natural question follows: in which ones exactly? Goods go in one place, the payable to the supplier in another, revenue in a third. These places are the accounts, and their complete list is the chart of accounts."
+  },
+  {
+   "tip": "p",
+   "text": "It isn't a list to be memorized — it's a vocabulary, and, as with any vocabulary, it's learned by using it. The next chapter shows how it's organized and why the numbers making it up aren't chosen at random."
+  },
+  {
+   "tip": "h",
+   "text": "The four types of movement"
+  },
+  {
+   "tip": "p",
+   "text": "Once it's accepted that every transaction has two ends, a practical question follows: how many kinds of movements actually exist? The answer is reassuring — four, and you can count them on your fingers."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "All possible transactions, by pattern",
+   "cap": [
+    "Pattern",
+    "Example",
+    "Effect on the balance sheet total"
+   ],
+   "randuri": [
+    [
+     "One asset increases, another decreases",
+     "you collect from a customer",
+     "unchanged"
+    ],
+    [
+     "An asset increases, a liability increases",
+     "you buy goods on credit",
+     "increases"
+    ],
+    [
+     "An asset decreases, a liability decreases",
+     "you pay a supplier",
+     "decreases"
+    ],
+    [
+     "One liability increases, another decreases",
+     "you refinance a loan",
+     "unchanged"
+    ]
+   ],
+   "nota": "There is no fifth pattern. Any accounting transaction, no matter how complicated, breaks down into combinations of these four."
+  },
+  {
+   "tip": "p",
+   "text": "The usefulness of the table isn't theoretical. When an entry seems odd, the first check is to fit it into one of the four rows. If it doesn't fit any of them, almost certainly a line is missing — or an account has been used that doesn't describe what actually happened."
+  },
+  {
+   "tip": "h",
+   "text": "Why the system was invented, and why it has lasted"
+  },
+  {
+   "tip": "p",
+   "text": "Double-entry bookkeeping isn't a modern convention. It was described in print in 1494 by the Franciscan friar Luca Pacioli, in a mathematics treatise — so it was already the current practice of Venetian merchants. Five centuries later, it remains essentially unchanged."
+  },
+  {
+   "tip": "p",
+   "text": "Its longevity has a simple explanation, and it's worth understanding: the system wasn't designed to calculate, but to make errors visible. In an age without computers, a method that automatically flags a missing half was worth more than a fast one. Today calculation is free, and that property remains the only reason the system is still here."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 2.1 — find the ends",
+   "enunt": [
+    "For each transaction, write the two ends (\"from where\" and \"to where\") and fit it into one of the four patterns:",
+    "(a) The owner deposits 50,000 lei as a capital contribution. (b) The business buys equipment for 30,000 lei, paid immediately through the bank. (c) The business receives a rent invoice for 2,000 lei, not yet paid. (d) The business pays the rent from (c)."
+   ],
+   "rezolvare": [
+    "(a) Cash (an asset) increases and equity increases. The second pattern, in the variant with equity instead of a liability: the balance sheet total increases by 50,000.",
+    "(b) Equipment (an asset) increases, cash (an asset) decreases. The first pattern: the total remains unchanged — the business has the same wealth, in a different form.",
+    "(c) The expense increases (so the result decreases, meaning the owner's share) and the payable to the supplier increases. The total increases by 2,000.",
+    "(d) The payable decreases, cash decreases. The third pattern: the total decreases by 2,000.",
+    "The point to remember: in (c) the expense appeared even though not a single leu moved; in (d) the money moved, but no new expense appeared. It's the same distinction from Chapter 1, now seen from inside the mechanism."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "What to remember from this chapter",
+   "puncte": [
+    "Every transaction has two ends: what the business obtained and where it came from. Accounting writes both, with the same amount.",
+    "That's why the totals come out equal — not because someone matches them at the end.",
+    "Debit means the left-hand column, credit the right-hand column. Nothing more; what they do depends on the account.",
+    "A sale requires two entries: the revenue, separate from the goods leaving the warehouse. The gain comes out of their difference.",
+    "The equality catches the missing halves and is blind to symmetrical errors, the wrong drawer, and the forgotten document."
+   ]
+  }
+ ]
+}

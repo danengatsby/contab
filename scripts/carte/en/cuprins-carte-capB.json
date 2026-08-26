@@ -1,0 +1,1272 @@
+{
+ "parte": "Appendices · to use, not to read",
+ "nr": "B",
+ "titlu": "Worked examples: 48 frequent situations",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "This appendix is a working vocabulary: for each situation that comes up frequently in a business, the complete journal entry — all lines, not just the obvious one."
+  },
+  {
+   "tip": "p",
+   "text": "The amounts are for illustration, chosen to be round numbers, and the VAT rate is the one currently in force. What matters are the accounts and, above all, the number of lines: most errors in practice don't come from choosing the wrong account, but from forgetting a line — see chapter 11."
+  },
+  {
+   "tip": "cheie",
+   "text": "Read each worked example first for the number of lines, then for the accounts. A sale of merchandise has three lines, not two; the disposal of a fixed asset has four."
+  },
+  {
+   "tip": "h",
+   "text": "Purchases"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "1. Purchase invoice — merchandise",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "371 Merchandise",
+     "401 Suppliers",
+     "10.000,00",
+     "Purchase of merchandise (entering stock)"
+    ],
+    [
+     "4426 Deductible VAT",
+     "401 Suppliers",
+     "2.100,00",
+     "Deductible VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "2. Purchase invoice — raw materials and supplies",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "301 Raw materials",
+     "401 Suppliers",
+     "10.000,00",
+     "Purchase of raw materials/supplies"
+    ],
+    [
+     "4426 Deductible VAT",
+     "401 Suppliers",
+     "2.100,00",
+     "Deductible VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "3. Services invoice received (rent, telecom, fees)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "628 Other expenses with services performed by third parties",
+     "401 Suppliers",
+     "10.000,00",
+     "Expenses with services received"
+    ],
+    [
+     "4426 Deductible VAT",
+     "401 Suppliers",
+     "2.100,00",
+     "Deductible VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "4. Utilities invoice (energy, water)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "605 Expenses with energy and water",
+     "401 Suppliers",
+     "10.000,00",
+     "Expenses with energy and water"
+    ],
+    [
+     "4426 Deductible VAT",
+     "401 Suppliers",
+     "2.100,00",
+     "Deductible VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "5. Invoice for the acquisition of a fixed asset",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "2131 Technological equipment (machinery, plant)",
+     "404 Suppliers of fixed assets",
+     "10.000,00",
+     "Acquisition of a fixed asset"
+    ],
+    [
+     "4426 Deductible VAT",
+     "404 Suppliers of fixed assets",
+     "2.100,00",
+     "Deductible VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "6. Intra-Community acquisition of goods (reverse charge)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "371 Merchandise",
+     "401 Suppliers",
+     "10.000,00",
+     "Intra-Community acquisition (base)"
+    ],
+    [
+     "4426 Deductible VAT",
+     "4427 Collected VAT",
+     "2.100,00",
+     "Reverse charge - deductible and collected VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "7. Import of goods from outside the Union (customs declaration)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "371 Merchandise",
+     "401 Suppliers",
+     "10.000,00",
+     "Import - value of goods"
+    ],
+    [
+     "371 Merchandise",
+     "446 Other taxes, duties and similar payments",
+     "500,00",
+     "Customs duties (included in the cost of goods)"
+    ],
+    [
+     "4426 Deductible VAT",
+     "446 Other taxes, duties and similar payments",
+     "2.205,00",
+     "VAT at customs (deductible)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "8. Acquisition subject to domestic reverse charge (art. 331)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "371 Merchandise",
+     "401 Suppliers",
+     "10.000,00",
+     "Acquisition under domestic reverse charge (base)"
+    ],
+    [
+     "4426 Deductible VAT",
+     "4427 Collected VAT",
+     "2.100,00",
+     "Domestic reverse charge - deductible and collected VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "9. Fuel with 50% deductible VAT (vehicle with limited use)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "6022 Fuel expenses",
+     "401 Suppliers",
+     "10.000,00",
+     "Fuel expenses"
+    ],
+    [
+     "4426 Deductible VAT",
+     "401 Suppliers",
+     "1.050,00",
+     "50% deductible VAT"
+    ],
+    [
+     "6022 Fuel expenses",
+     "401 Suppliers",
+     "1.050,00",
+     "50% non-deductible VAT (recorded as expense)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "10. Correction invoice received (red-ink reversal)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "371 Merchandise",
+     "401 Suppliers",
+     "-10.000,00",
+     "Reversal of purchase (in red)"
+    ],
+    [
+     "4426 Deductible VAT",
+     "401 Suppliers",
+     "-2.100,00",
+     "Reversal of deductible VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Sales"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "11. Sales invoice — merchandise (with inventory relief)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "707 Revenue from sale of merchandise",
+     "10.000,00",
+     "Revenue from sale of merchandise"
+    ],
+    [
+     "4111 Customers",
+     "4427 Collected VAT",
+     "2.100,00",
+     "Collected VAT"
+    ],
+    [
+     "607 Expenses with merchandise",
+     "371 Merchandise",
+     "10.000,00",
+     "Inventory relief - cost of merchandise sold"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "12. Services rendered invoice issued",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "704 Revenue from services rendered",
+     "10.000,00",
+     "Revenue from services rendered"
+    ],
+    [
+     "4111 Customers",
+     "4427 Collected VAT",
+     "2.100,00",
+     "Collected VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "13. Sales invoice — finished goods",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "701 Revenue from sale of finished goods",
+     "10.000,00",
+     "Revenue from sale of finished goods"
+    ],
+    [
+     "4111 Customers",
+     "4427 Collected VAT",
+     "2.100,00",
+     "Collected VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "14. Z report — retail sale in cash",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "5311 Cash on hand in lei",
+     "707 Revenue from sale of merchandise",
+     "10.000,00",
+     "Retail sale"
+    ],
+    [
+     "5311 Cash on hand in lei",
+     "4427 Collected VAT",
+     "2.100,00",
+     "Related collected VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "15. Intra-Community supply of goods (exempt)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "707 Revenue from sale of merchandise",
+     "10.000,00",
+     "Intra-Community supply (exempt with credit)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "16. Export of goods outside the Union (exempt with credit)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "707 Revenue from sale of merchandise",
+     "10.000,00",
+     "Export of goods outside the EU (exempt with credit)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "17. Supply subject to domestic reverse charge (invoice without VAT)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "707 Revenue from sale of merchandise",
+     "10.000,00",
+     "Supply under domestic reverse charge (no VAT - note on invoice)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "18. Correction invoice issued (red-ink reversal)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "707 Revenue from sale of merchandise",
+     "-10.000,00",
+     "Reversal of revenue (in red)"
+    ],
+    [
+     "4111 Customers",
+     "4427 Collected VAT",
+     "-2.100,00",
+     "Reversal of collected VAT"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "19. Advance invoice issued to the customer",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "419 Customers - creditors (advances)",
+     "10.000,00",
+     "Advance invoice - invoiced advance (excluding VAT)"
+    ],
+    [
+     "4111 Customers",
+     "4427 Collected VAT",
+     "2.100,00",
+     "Collected VAT related to the advance"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Treasury"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "20. Collection from customer (receipt or bank statement)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "5121 Bank accounts in lei",
+     "4111 Customers",
+     "10.000,00",
+     "Collection from customer"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "21. Payment to supplier",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "401 Suppliers",
+     "5121 Bank accounts in lei",
+     "10.000,00",
+     "Payment to supplier"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "22. Cash deposit at the bank (via internal transfers)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "581 Internal transfers",
+     "5311 Cash on hand in lei",
+     "10.000,00",
+     "Cash withdrawn from till - internal transfers"
+    ],
+    [
+     "5121 Bank accounts in lei",
+     "581 Internal transfers",
+     "10.000,00",
+     "Cash deposit at bank"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "23. Bank fee charged by the bank",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "627 Expenses with banking services and similar charges",
+     "5121 Bank accounts in lei",
+     "10.000,00",
+     "Expenses with banking services"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "24. Granting a cash advance to an employee",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "542 Cash advances",
+     "5311 Cash on hand in lei",
+     "10.000,00",
+     "Cash advance granted"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "25. Payment of taxes and duties to the state budget",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "446 Other taxes, duties and similar payments",
+     "5121 Bank accounts in lei",
+     "10.000,00",
+     "Payment of taxes/duties to the budget"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Inventory and production"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "26. Consumption slip — issuing materials from stock",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "601 Expenses with raw materials",
+     "301 Raw materials",
+     "10.000,00",
+     "Consumption from stock (consumption slip)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "27. Differences found on stocktaking (surplus or shortage)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "607 Expenses with merchandise",
+     "371 Merchandise",
+     "10.000,00",
+     "Shortage / deficit found on stocktaking"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "28. Charging a stocktaking shortage to the custodian",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4282 Other receivables from personnel",
+     "7588 Other operating revenue",
+     "10.000,00",
+     "Charging of stocktaking shortage - revenue"
+    ],
+    [
+     "4282 Other receivables from personnel",
+     "4427 Collected VAT",
+     "2.100,00",
+     "VAT related to the charge"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Payroll"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "29. Payroll statement — the month's salary entitlements",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "641 Expenses with personnel salaries",
+     "421 Personnel - salaries payable",
+     "5.000,00",
+     "Gross salaries payable"
+    ],
+    [
+     "421 Personnel - salaries payable",
+     "4315 Social insurance contribution (CAS)",
+     "1.250,00",
+     "CAS withholding 25%"
+    ],
+    [
+     "421 Personnel - salaries payable",
+     "4316 Health insurance contribution (CASS)",
+     "500,00",
+     "CASS withholding 10%"
+    ],
+    [
+     "421 Personnel - salaries payable",
+     "444 Income tax on salary-type income",
+     "325,00",
+     "Withholding tax on salaries 10%"
+    ],
+    [
+     "646 Expenses with the labor insurance contribution",
+     "436 Labor insurance contribution (CAM)",
+     "112,50",
+     "CAM 2.25% (employer)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "30. Payment of net salaries",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "421 Personnel - salaries payable",
+     "5121 Bank accounts in lei",
+     "10.000,00",
+     "Payment of net salaries"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Fixed assets and leasing"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "31. Commissioning a fixed asset",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "2131 Technological equipment (machinery, plant)",
+     "231 Tangible fixed assets in progress",
+     "10.000,00",
+     "Acceptance and commissioning"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "32. Monthly depreciation of fixed assets",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "6811 Operating expenses with depreciation of fixed assets",
+     "281 Depreciation of tangible fixed assets",
+     "10.000,00",
+     "Monthly depreciation"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "33. Scrapping a fixed asset (decommissioning)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "281 Depreciation of tangible fixed assets",
+     "2131 Technological equipment (machinery, plant)",
+     "3.000,00",
+     "Derecognition of accumulated depreciation"
+    ],
+    [
+     "6583 Expenses with disposed assets and other capital transactions",
+     "2131 Technological equipment (machinery, plant)",
+     "7.000,00",
+     "Remaining undepreciated value"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "34. Sale of a fixed asset (disposal for consideration)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "461 Sundry debtors",
+     "7583 Revenue from sale of assets and other capital transactions",
+     "10.000,00",
+     "Revenue from sale of the asset"
+    ],
+    [
+     "461 Sundry debtors",
+     "4427 Collected VAT",
+     "2.100,00",
+     "Collected VAT on disposal"
+    ],
+    [
+     "281 Depreciation of tangible fixed assets",
+     "2131 Technological equipment (machinery, plant)",
+     "3.000,00",
+     "Derecognition of accumulated depreciation"
+    ],
+    [
+     "6583 Expenses with disposed assets and other capital transactions",
+     "2131 Technological equipment (machinery, plant)",
+     "7.000,00",
+     "Remaining undepreciated value of the disposed asset"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "35. Recognition of an asset under finance lease",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "2133 Means of transport",
+     "167 Other loans and similar liabilities (leasing)",
+     "10.000,00",
+     "Asset under finance lease + liability"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "36. Lease installment invoice (principal, interest, VAT)",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "167 Other loans and similar liabilities (leasing)",
+     "404 Suppliers of fixed assets",
+     "10.000,00",
+     "Lease principal installment"
+    ],
+    [
+     "666 Interest expenses",
+     "404 Suppliers of fixed assets",
+     "500,00",
+     "Lease interest"
+    ],
+    [
+     "4426 Deductible VAT",
+     "404 Suppliers of fixed assets",
+     "2.100,00",
+     "Deductible VAT related to the installment"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "37. Payment of the lease installment",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "404 Suppliers of fixed assets",
+     "5121 Bank accounts in lei",
+     "10.000,00",
+     "Payment of lease installment"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Adjustments"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "38. Prepaid expense — initial recognition",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "471 Prepaid expenses",
+     "401 Suppliers",
+     "10.000,00",
+     "Expense recorded in advance"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "39. Monthly recognition of the prepaid expense",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "613 Expenses with insurance premiums",
+     "471 Prepaid expenses",
+     "10.000,00",
+     "Monthly share of the prepaid expense"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "40. Deferred revenue — initial recognition",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "472 Deferred revenue",
+     "10.000,00",
+     "Revenue recorded in advance"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "41. Unfavorable foreign exchange difference",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "665 Expenses from foreign exchange differences",
+     "401 Suppliers",
+     "10.000,00",
+     "Unfavorable foreign exchange difference"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Doubtful receivables and provisions"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "42. Customer become doubtful or in litigation",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4118 Doubtful customers or customers in litigation",
+     "4111 Customers",
+     "10.000,00",
+     "Receivable reclassified to doubtful customers"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "43. Setting up an impairment adjustment for receivables",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "6814 Expenses with impairment adjustments for current assets",
+     "491 Impairment adjustments for customer receivables",
+     "10.000,00",
+     "Impairment adjustment for customer receivables"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "44. Reversal of the adjustment — the customer paid or the risk disappeared",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "491 Impairment adjustments for customer receivables",
+     "7814 Revenue from impairment adjustments for current assets",
+     "10.000,00",
+     "Reversal of the impairment adjustment for receivables"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "45. Derecognition of an irrecoverable receivable",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "654 Losses on receivables and sundry debtors",
+     "4118 Doubtful customers or customers in litigation",
+     "10.000,00",
+     "Loss on irrecoverable receivable"
+    ],
+    [
+     "491 Impairment adjustments for customer receivables",
+     "7814 Revenue from impairment adjustments for current assets",
+     "10.000,00",
+     "Reversal of the adjustment related to the derecognized receivable"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "46. Receivable reactivated — a debtor considered lost pays",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "4111 Customers",
+     "754 Revenue from reactivated receivables and sundry debtors",
+     "10.000,00",
+     "Reactivated receivable (debtor considered lost)"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "47. Setting up a provision for risks and expenses",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "6812 Operating expenses with provisions",
+     "151 Provisions for risks and expenses",
+     "10.000,00",
+     "Setting up a provision for risks and expenses"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "48. Reversal of a provision that has become unnecessary",
+   "cap": [
+    "Debit",
+    "Credit",
+    "Amount",
+    "Explanation"
+   ],
+   "randuri": [
+    [
+     "151 Provisions for risks and expenses",
+     "7812 Revenue from provisions",
+     "10.000,00",
+     "Reversal of a provision that has become unnecessary"
+    ]
+   ],
+   "numerice": [
+    3
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "How to read a worked example"
+  },
+  {
+   "tip": "p",
+   "text": "Each table is a single journal entry, with all its lines. The amount of each line appears once on debit and once on credit — that is why the entry always balances, no matter how many lines it has."
+  },
+  {
+   "tip": "p",
+   "text": "Lines marked with negative amounts are \"red-ink\" reversals: the same accounts, with the amount negated. The convention and its rationale are covered in chapter 29."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Three observations before using the list",
+   "puncte": [
+    "The amounts are for illustration. The accounts and the number of lines are the real information.",
+    "A situation not found here should not be forced to fit the closest match: a proper, documented entry should be composed for it.",
+    "VAT rates change; the worked examples do not. The rate shown in the tables is the one in force at the time of printing."
+   ]
+  }
+ ]
+}

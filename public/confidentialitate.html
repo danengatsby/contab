@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="contabo-legal-version" content="2026-08-26.1" />
   <title>Contabo — Politica de confidențialitate</title>
   <meta name="description" content="Politica de confidențialitate Contabo: ce date colectăm, în ce scop, cât le păstrăm și care sunt drepturile tale conform GDPR." />
   <link rel="stylesheet" href="/legal.css">
@@ -12,12 +13,18 @@
   <div class="nav"><a href="/prezentare.html">Contabo<b>.</b></a></div>
   <div class="wrap">
     <h1>Politica de confidențialitate</h1>
-    <p class="upd">Ultima actualizare: 20 august 2026 · Se aplică aplicației Contabo (contabo.space).</p>
+    <p class="upd">Versiunea 2026-08-26.1 · Ultima actualizare: 26 august 2026 · Se aplică aplicației Contabo (contabo.space).</p>
+
+    <div class="legal-warning" role="alert">
+      <strong>Folosește doar date fictive în etapa de test.</strong>
+      <p>Până la publicarea identificării juridice complete a furnizorului, nu încărca facturi reale
+      și nu introduce CNP-uri, salarii, date contabile sau alte date despre persoane și firme reale.</p>
+    </div>
 
     <h2>1. Ce date prelucrăm</h2>
     <div class="card">
       <ul>
-        <li><b>Date de cont:</b> nume de utilizator, adresă de email (opțională, pentru recuperarea parolei și notificări), parola (stocată doar ca hash criptografic — nu o putem citi).</li>
+        <li><b>Date de cont:</b> nume de utilizator, adresă de email (obligatorie la înscriere, pentru recuperarea parolei și notificări), parola (stocată doar ca hash criptografic — nu o putem citi). În etapa de test, folosește o adresă dedicată testării și nu adresa altei persoane.</li>
         <li><b>Date personale ale abonaților</b> (planurile Start/Pro, introduse voluntar): nume și prenume, telefon, adresă, iar pentru contabili numărul de autorizație — folosite pe documentele generate („Întocmit de") și în declarațiile ANAF (declarant).</li>
         <li><b>Datele contabile ale firmelor tale:</b> documente încărcate, înregistrări, parteneri, angajați (nume, CNP, salarii — introduse de tine pentru statele de plată și D112). Pentru aceste date acționăm ca <b>persoană împuternicită</b>; tu rămâi operatorul lor.</li>
         <li><b>Date tehnice:</b> jurnal de audit al acțiunilor din cont (cine, ce, când), adresa IP și dispozitivele sesiunilor active (pentru securitate), cookie-ul de sesiune (strict necesar — nu folosim cookie-uri de marketing sau urmărire).</li>
@@ -37,8 +44,12 @@
     <div class="card">
       <ul>
         <li><b>Stripe</b> — procesarea plăților pentru abonamente (datele cardului ajung doar la Stripe, nu la noi).</li>
-        <li><b>Anthropic (Claude API)</b> — doar dacă folosești extragerea automată: documentul încărcat este transmis pentru citirea câmpurilor. Se poate dezactiva din Setări.</li>
-        <li><b>OpenAI</b> — <b>alternativă</b> la Anthropic pentru aceeași extragere automată, folosită doar dacă instalarea e configurată explicit pentru ea. Implicit extragerea merge pe Anthropic; niciun document nu ajunge la OpenAI dacă furnizorul nu e comutat.</li>
+        <li><b>Anthropic (Claude API)</b> — numai după opt-in-ul explicit al proprietarului firmei:
+          documentul complet încărcat este transmis pentru citirea câmpurilor. Opt-in-ul este
+          implicit oprit, se păstrează separat pentru fiecare firmă și poate fi revocat oricând.</li>
+        <li><b>OpenAI</b> — <b>alternativă</b> la Anthropic pentru aceeași extragere automată,
+          folosită numai dacă instalarea este configurată explicit pentru ea și firma a activat
+          opt-in-ul. Interfața afișează furnizorul și modelul înainte de activare.</li>
         <li><b>Resend</b> — trimiterea emailurilor (invitații, resetare parolă, notificări de termene).</li>
         <li><b>ANAF (SPV)</b> — doar la acțiunea ta explicită: trimiterea e-Facturilor, solicitarea Fișei Rol.</li>
         <li><b>ipwho.is</b> — pentru panoul de securitate al administratorului („Cine accesează aplicația") îi arătăm <b>locația aproximativă</b> a adreselor IP de pe care se fac autentificările, ca un acces nefiresc să poată fi observat. Se trimite <b>doar adresa IP</b>, niciodată cine ești sau ce faci în aplicație; adresele private nu pleacă deloc, iar rezultatul se ține în memorie ca să nu fie interogat repetat.</li>
@@ -75,6 +86,11 @@
         proprietarul poate șterge o firmă prin confirmarea denumirii exacte.</li>
       <li>Poți depune plângere la <a href="https://www.dataprotection.ro" target="_blank" rel="noopener">ANSPDCP</a>.</li>
     </ul>
+    <p>Cererile GDPR se trimit la <b>contact@contabo.space</b> sau din Mesaje. Cererea primește număr
+      intern, se verifică identitatea solicitantului fără a cere date excesive, se identifică rolul
+      nostru (operator ori persoană împuternicită), iar răspunsul și eventualele prelungiri sunt
+      consemnate. Dacă solicitarea privește angajații/partenerii unei firme, o transmitem fără
+      întârziere operatorului acelei firme și îl asistăm.</p>
 
     <h2>6. Securitate</h2>
     <ul>

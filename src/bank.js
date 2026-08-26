@@ -2,8 +2,8 @@
 
 const { round2 } = require('./util');
 const { parseRoNumber } = require('./extractor');
-const { reconcile } = require('./reconcile');
 const { candidatesFor } = require('./matching');
+const openItems = require('./openItems');
 
 /** Imparte un rand CSV respectand ghilimelele. */
 function splitCsvLine(line, delim) {
@@ -42,17 +42,22 @@ function parseCsv(text) {
     if (/data|date/.test(j) && /(suma|amount|debit|credit|valoare)/.test(j)) { headIdx = i; break; }
   }
   const norm = (s) => s.toLowerCase();
-  let cols = { data: 0, desc: 1, debit: -1, credit: -1, suma: -1 };
+  let cols = { data: 0, valueDate: -1, desc: 1, debit: -1, credit: -1, suma: -1, id: -1, balance: -1, currency: -1, iban: -1 };
   let start = 0;
   if (headIdx >= 0) {
     const h = rows[headIdx].map(norm);
     const find = (re) => h.findIndex((x) => re.test(x));
     cols = {
       data: find(/data|date/),
+      valueDate: find(/data.*val|value.*date/),
       desc: find(/descri|detal|explica|referin|beneficiar|ordonator|partener|denumire/),
       debit: find(/debit|plati|iesiri/),
       credit: find(/credit|incasari|intrari/),
       suma: find(/^suma$|amount|valoare/),
+      id: find(/id.*tranz|transaction.*id|referin.*banc|bank.*ref|ntry.*ref/),
+      balance: find(/^sold|sold.*curent|balance/),
+      currency: find(/moned|currency|ccy/),
+      iban: find(/^iban$|cont.*iban|account.*iban/),
     };
     start = headIdx + 1;
   }
@@ -75,7 +80,13 @@ function parseCsv(text) {
       if (v == null || v === 0) continue;
       suma = Math.abs(v); sens = v >= 0 ? 'in' : 'out';
     }
-    txns.push({ data, descriere, suma: round2(suma), sens });
+    const valueDate = cols.valueDate >= 0 ? parseDateRo(r[cols.valueDate] || '') : '';
+    const balance = cols.balance >= 0 ? parseRoNumber(r[cols.balance]) : null;
+    txns.push({ data, valueDate: valueDate || data, descriere, suma: round2(suma), sens,
+      externalId: cols.id >= 0 ? String(r[cols.id] || '').trim() : '',
+      ...(Number.isFinite(balance) ? { balance: round2(balance) } : {}),
+      currency: cols.currency >= 0 ? String(r[cols.currency] || '').trim().toUpperCase() : '',
+      iban: cols.iban >= 0 ? String(r[cols.iban] || '').replace(/\s+/g, '').toUpperCase() : '' });
   }
   return txns;
 }
@@ -92,7 +103,10 @@ function parseMt940(text) {
       if (!m) { cur = null; continue; }
       const yy = m[1].slice(0, 2); const mm = m[1].slice(2, 4); const dd = m[1].slice(4, 6);
       const sens = /C/.test(m[3]) && !/RC/.test(m[3]) ? 'in' : (/D/.test(m[3]) ? 'out' : 'in');
-      cur = { data: `20${yy}-${mm}-${dd}`, sens, suma: round2(parseRoNumber(m[4]) || 0), descriere: '' };
+      const rest = body.slice(m[0].length);
+      const ref = (rest.match(/\/\/([^\s]+)/) || rest.match(/N[A-Z0-9]{3}([^\s/]{1,32})/) || [])[1] || '';
+      cur = { data: `20${yy}-${mm}-${dd}`, valueDate: `20${yy}-${mm}-${dd}`, sens,
+        suma: round2(parseRoNumber(m[4]) || 0), descriere: '', externalId: ref.trim() };
     } else if (line.startsWith(':86:') && cur) {
       cur.descriere += line.slice(4).replace(/\?\d{2}/g, ' ').trim() + ' ';
     } else if (cur && line && !line.startsWith(':')) {
@@ -118,32 +132,135 @@ function xmlTagAll(xml, name) {
   return out;
 }
 
-/** Parseaza un extras CAMT.053 (bank-to-customer statement). O tranzactie = un <Ntry>. */
-function parseCamt(xml) {
+function xmlNode(xml, name) {
+  const m = String(xml).match(new RegExp('<(?:\\w+:)?' + name + '([^>]*)>([\\s\\S]*?)</(?:\\w+:)?' + name + '>'));
+  return m ? { attrs: m[1] || '', value: m[2] || '' } : { attrs: '', value: '' };
+}
+
+function amountNode(xml) {
+  const n = xmlNode(xml, 'Amt');
+  const ccy = (n.attrs.match(/\bCcy=["']([A-Za-z]{3})["']/i) || [])[1] || '';
+  return { amount: round2(parseFloat(String(n.value).replace(/,/g, '.')) || 0), currency: ccy.toUpperCase() };
+}
+
+function camtEntries(stmtXml) {
   const txns = [];
-  for (const ntry of xmlTagAll(xml, 'Ntry')) {
-    // Amt/CdtDbtInd de la nivelul Ntry sunt primele (inaintea NtryDtls) — non-greedy prinde intai pe ele
-    const suma = round2(parseFloat(String(xmlTag(ntry, 'Amt')).replace(/,/g, '.')) || 0);
+  for (const ntry of xmlTagAll(stmtXml, 'Ntry')) {
+    const amt = amountNode(ntry); const suma = amt.amount;
     if (!(suma > 0)) continue;
     let sens = xmlTag(ntry, 'CdtDbtInd').toUpperCase() === 'DBIT' ? 'out' : 'in';
-    if (/^(true|1)$/i.test(xmlTag(ntry, 'RvslInd').trim())) sens = sens === 'in' ? 'out' : 'in'; // stornare = semn invers
-    const dt = xmlTag(ntry, 'BookgDt') || xmlTag(ntry, 'ValDt');
-    const data = String(xmlTag(dt, 'Dt') || xmlTag(dt, 'DtTm')).slice(0, 10);
+    if (/^(true|1)$/i.test(xmlTag(ntry, 'RvslInd').trim())) sens = sens === 'in' ? 'out' : 'in';
+    const booking = xmlTag(ntry, 'BookgDt'); const value = xmlTag(ntry, 'ValDt');
+    const data = String(xmlTag(booking, 'Dt') || xmlTag(booking, 'DtTm') || xmlTag(value, 'Dt') || xmlTag(value, 'DtTm')).slice(0, 10);
+    const valueDate = String(xmlTag(value, 'Dt') || xmlTag(value, 'DtTm') || data).slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) continue;
-    // descriere pentru potrivirea partenerului: remitere nestructurata + nume parti + info suplimentara
     const parts = [];
     for (const u of xmlTagAll(ntry, 'Ustrd')) parts.push(xmlUnesc(u));
     for (const nm of xmlTagAll(xmlTag(ntry, 'RltdPties'), 'Nm')) parts.push(xmlUnesc(nm));
     const addl = xmlTag(ntry, 'AddtlNtryInf'); if (addl) parts.push(xmlUnesc(addl));
     const descriere = [...new Set(parts.map((s) => s.trim()).filter(Boolean))].join(' ').replace(/\s+/g, ' ').trim();
-    txns.push({ data, descriere, suma, sens });
+    const refs = ['AcctSvcrRef', 'NtryRef', 'TxId', 'EndToEndId', 'InstrId'].map((k) => xmlUnesc(xmlTag(ntry, k)).trim())
+      .filter((x) => x && !/^NOTPROVIDED$/i.test(x));
+    const related = xmlTag(ntry, 'RltdPties');
+    const partyIban = xmlTag(related, 'IBAN').replace(/\s+/g, '').toUpperCase();
+    txns.push({ data, valueDate, descriere, suma, sens, currency: amt.currency,
+      externalId: refs[0] || '', bankReference: refs.join('|').slice(0, 300), counterpartyIban: partyIban });
   }
   return txns;
+}
+
+/** Parseaza un extras CAMT.053 (bank-to-customer statement). O tranzactie = un <Ntry>. */
+function parseCamt(xml) {
+  return camtEntries(xml);
 }
 
 function parseStatement(text) {
   if (/<(?:\w+:)?BkToCstmrStmt[\s>]|camt\.053/i.test(text)) return parseCamt(text);
   return /:61:/.test(text) ? parseMt940(text) : parseCsv(text);
+}
+
+function periodBounds(txns) {
+  const dates = txns.map((t) => t.data).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x)).sort();
+  return { periodFrom: dates[0] || '', periodTo: dates[dates.length - 1] || '' };
+}
+
+function mtBalance(block, tag) {
+  const raw = ((block.match(new RegExp('^:' + tag + ':([^\\r\\n]+)', 'm')) || [])[1] || '').trim();
+  const m = raw.match(/^([CD])\d{6}([A-Z]{3})([0-9.,]+)/i); if (!m) return null;
+  const q = round2(parseRoNumber(m[3]) || 0);
+  return { amount: m[1].toUpperCase() === 'D' ? -q : q, currency: m[2].toUpperCase() };
+}
+
+function parseMt940Detailed(text) {
+  const blocks = String(text).match(/:20:[\s\S]*?(?=\r?\n:20:|$)/g) || [String(text)];
+  return blocks.map((block, index) => {
+    const transactions = parseMt940(block); const bounds = periodBounds(transactions);
+    const opening = mtBalance(block, '60F') || mtBalance(block, '60M');
+    const closing = mtBalance(block, '62F') || mtBalance(block, '62M');
+    const account = ((block.match(/^:25:([^\r\n]+)/m) || [])[1] || '').trim();
+    const iban = (account.match(/[A-Z]{2}\d{2}[A-Z0-9]{11,30}/i) || [])[0] || account;
+    return { format: 'MT940', statementExternalId: ((block.match(/^:28C:([^\r\n]+)/m) || [])[1] || '').trim() || 'MT940-' + (index + 1),
+      iban: iban.replace(/\s+/g, '').toUpperCase(), currency: (opening && opening.currency) || (closing && closing.currency) || '',
+      openingBalance: opening ? opening.amount : null, closingBalance: closing ? closing.amount : null,
+      ...bounds, transactions };
+  });
+}
+
+function camtBalance(stmt, wanted) {
+  for (const bal of xmlTagAll(stmt, 'Bal')) {
+    const type = xmlTag(xmlTag(bal, 'Tp'), 'Cd').trim().toUpperCase();
+    if (!wanted.includes(type)) continue;
+    const a = amountNode(bal); const ind = xmlTag(bal, 'CdtDbtInd').trim().toUpperCase();
+    return { amount: round2(ind === 'DBIT' ? -a.amount : a.amount), currency: a.currency,
+      date: String(xmlTag(xmlTag(bal, 'Dt'), 'Dt') || xmlTag(bal, 'Dt')).slice(0, 10) };
+  }
+  return null;
+}
+
+function parseCamtDetailed(xml) {
+  const blocks = xmlTagAll(xmlTag(xml, 'BkToCstmrStmt') || xml, 'Stmt');
+  return (blocks.length ? blocks : [xml]).map((stmt, index) => {
+    const transactions = camtEntries(stmt); const acct = xmlTag(stmt, 'Acct'); const bounds = periodBounds(transactions);
+    const opening = camtBalance(stmt, ['OPBD', 'PRCD']); const closing = camtBalance(stmt, ['CLBD', 'ITBD']);
+    const range = xmlTag(stmt, 'FrToDt');
+    const from = String(xmlTag(range, 'FrDtTm') || xmlTag(range, 'FrDt')).slice(0, 10);
+    const to = String(xmlTag(range, 'ToDtTm') || xmlTag(range, 'ToDt')).slice(0, 10);
+    return { format: 'CAMT.053', statementExternalId: xmlUnesc(xmlTag(stmt, 'Id')).trim() || 'CAMT-' + (index + 1),
+      iban: xmlTag(acct, 'IBAN').replace(/\s+/g, '').toUpperCase(),
+      currency: (xmlTag(acct, 'Ccy') || (opening && opening.currency) || (closing && closing.currency) || (transactions[0] && transactions[0].currency) || '').trim().toUpperCase(),
+      openingBalance: opening ? opening.amount : null, closingBalance: closing ? closing.amount : null,
+      periodFrom: from || (opening && opening.date) || bounds.periodFrom, periodTo: to || (closing && closing.date) || bounds.periodTo,
+      transactions };
+  });
+}
+
+function labeledAmount(text, re) {
+  for (const line of String(text).split(/\r?\n/)) if (re.test(line)) {
+    const nums = line.match(/[-+]?\d[\d .]*(?:[,.]\d+)?/g) || [];
+    for (let i = nums.length - 1; i >= 0; i -= 1) { const q = parseRoNumber(nums[i]); if (Number.isFinite(q)) return round2(q); }
+  }
+  return null;
+}
+
+function parseCsvDetailed(text) {
+  const transactions = parseCsv(text); const bounds = periodBounds(transactions);
+  const withBalance = transactions.filter((t) => Number.isFinite(t.balance));
+  let openingBalance = labeledAmount(text, /sold\s*(initial|precedent)|opening\s*balance/i);
+  let closingBalance = labeledAmount(text, /sold\s*(final|curent)|closing\s*balance/i);
+  if (withBalance.length) {
+    if (!Number.isFinite(openingBalance)) openingBalance = round2(withBalance[0].balance - (withBalance[0].sens === 'out' ? -withBalance[0].suma : withBalance[0].suma));
+    if (!Number.isFinite(closingBalance)) closingBalance = withBalance[withBalance.length - 1].balance;
+  }
+  const iban = ((String(text).match(/\b[A-Z]{2}\d{2}[A-Z0-9 ]{11,34}\b/i) || [])[0] || (transactions.find((t) => t.iban) || {}).iban || '').replace(/\s+/g, '').toUpperCase();
+  const currency = ((transactions.find((t) => t.currency) || {}).currency || (String(text).match(/\b(RON|EUR|USD|GBP|CHF|HUF|PLN)\b/i) || [])[1] || '').toUpperCase();
+  return [{ format: 'CSV', statementExternalId: '', iban, currency, openingBalance, closingBalance, ...bounds, transactions }];
+}
+
+/** Structura completa: un fisier poate contine mai multe extrase/IBAN-uri. */
+function parseDetailed(text) {
+  if (/<(?:\w+:)?BkToCstmrStmt[\s>]|camt\.053/i.test(text)) return parseCamtDetailed(text);
+  if (/:61:/.test(text)) return parseMt940Detailed(text);
+  return parseCsvDetailed(text);
 }
 
 /** Cauta partenerul potrivit dupa CUI sau denumire in descriere. */
@@ -162,19 +279,21 @@ function matchPartner(db, descriere) {
 /** Construieste o sugestie de inregistrare pentru o tranzactie bancara. */
 function suggest(db, t) {
   const lc = t.descriere.toLowerCase();
+  const bankAccount = String(t.currency || '').toUpperCase() && String(t.currency).toUpperCase() !== 'RON' ? '5124' : '5121';
+  const bankFields = { cont: bankAccount, analitic: t.iban || '' };
   if (/comision|spez|taxa adm|cost adm/.test(lc)) {
-    return { tip: 'comision_bancar', fields: { data: t.data, document: '', suma: t.suma } };
+    return { tip: 'comision_bancar', fields: { data: t.data, document: '', suma: t.suma, ...bankFields } };
   }
   if (/dobanda|dobânda/.test(lc) && t.sens === 'out') {
-    return { tip: 'dobanda_bancara', fields: { data: t.data, document: '', suma: t.suma } };
+    return { tip: 'dobanda_bancara', fields: { data: t.data, document: '', suma: t.suma, ...bankFields } };
   }
   const p = matchPartner(db, t.descriere);
   const partener = (p && p.den) || t.descriere.slice(0, 40);
   const cui = p && p.cui ? 'RO' + String(p.cui).replace(/^ro/i, '') : '';
   if (t.sens === 'in') {
-    return { tip: 'incasare_client', matched: !!p, fields: { data: t.data, partener, cuiPartener: cui, document: '', suma: t.suma, cont: '5121' } };
+    return { tip: 'incasare_client', matched: !!p, fields: { data: t.data, partener, cuiPartener: cui, document: '', suma: t.suma, ...bankFields } };
   }
-  return { tip: 'plata_furnizor', matched: !!p, fields: { data: t.data, partener, cuiPartener: cui, document: '', suma: t.suma, cont: '5121', contFz: '401' } };
+  return { tip: 'plata_furnizor', matched: !!p, fields: { data: t.data, partener, cuiPartener: cui, document: '', suma: t.suma, ...bankFields, contFz: '401' } };
 }
 
 // Index al facturilor DESCHISE (sold neachitat) pe SENS (creanta = de incasat / datorie = de
@@ -184,20 +303,17 @@ function suggest(db, t) {
 // sau una nesosita (408) nu gasea nimic de potrivit.
 function openInvoiceIndex(db) {
   const idx = { creanta: new Map(), datorie: new Map() };
-  for (const p of reconcile(db).partners) {
-    const m = idx[p.sens];
-    if (!m || !(p.deschise && p.deschise.length)) continue;
-    // ADAUGA, nu inlocuieste: acelasi partener poate avea mai multe conturi pe acelasi sens
-    // (401 si 404), iar un `set` simplu ar pastra doar ultimul grup si ar pierde restul facturilor.
-    const add = (k) => { if (k) m.set(k, (m.get(k) || []).concat(p.deschise)); };
-    add(p.den && p.den.toUpperCase().trim());
-    add(p.cui && String(p.cui).replace(/^ro/i, '').trim());
+  for (const d of openItems.registry(db, null).openDocuments) {
+    const m = idx[d.sens]; if (!m) continue;
+    const item = { id: d.id, doc: d.document, data: d.data, dueDate: d.dueDate, suma: d.residual };
+    const add = (k) => { if (k) m.set(k, (m.get(k) || []).concat(item)); };
+    add(d.partener && d.partener.toUpperCase().trim());
+    add(d.cui && String(d.cui).replace(/^ro/i, '').trim());
   }
   return idx;
 }
 
-function parseAndSuggest(db, text) {
-  const txns = parseStatement(text);
+function suggestTransactions(db, txns) {
   const openIdx = openInvoiceIndex(db);
   return txns.map((t, i) => {
     const sug = suggest(db, t);
@@ -218,4 +334,7 @@ function parseAndSuggest(db, text) {
   });
 }
 
-module.exports = { parseStatement, parseCsv, parseMt940, parseCamt, parseAndSuggest, matchPartner, openInvoiceIndex };
+function parseAndSuggest(db, text) { return suggestTransactions(db, parseStatement(text)); }
+
+module.exports = { parseStatement, parseDetailed, parseCsv, parseMt940, parseCamt, parseCamtDetailed, parseMt940Detailed,
+  parseCsvDetailed, parseAndSuggest, suggestTransactions, suggest, matchPartner, openInvoiceIndex };

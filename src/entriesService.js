@@ -18,6 +18,7 @@ const fiscalProfile = require('./fiscalProfile');
 const extractQuality = require('./extractQuality'); // guard de scriere derivat din profilul fiscal
 const payrollHistory = require('./payrollHistory');
 const leasingService = require('./leasingService');
+const permissions = require('./permissions');
 const { reqFirma } = require('./stocksService');
 const { round2, period: periodOf } = require('./util');
 
@@ -29,6 +30,13 @@ function fail(status, message) { const e = new Error(message); e.status = status
 const ENTRY_STATES = ['ciorna', 'validat', 'aprobat', 'postat'];
 function entryState(e) { return e.status || 'postat'; }
 
+function isTreasuryEntry(e) {
+  if (!e) return false;
+  if (e.bankTransactionId || e.tip === 'plata_salarii') return true;
+  return (e.lines || []).some((line) => /^(?:512|531|541|542|581)/.test(String(line.debit || ''))
+    || /^(?:512|531|541|542|581)/.test(String(line.credit || '')));
+}
+
 function actorId(actor) {
   const n = Number(actor && actor.id);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -38,23 +46,11 @@ function actorName(actor) {
   return String((actor && actor.username) || '').slice(0, 80) || null;
 }
 
-function firmaRole(actor, fid) {
-  if (!actor) return null;
-  if (actor.role === 'admin') return 'administrator';
-  const f = db.getFirma(fid);
-  if (f && Number(f.ownerId) === Number(actor.id)) return 'proprietar';
-  const roles = actor.firmaRoluri || {};
-  return roles[String(fid)] || roles[fid] || null;
-}
-
 function canTransition(actor, fid, target) {
   // Apelurile interne vechi, fara actor, raman compatibile; rutele HTTP trimit intotdeauna actorul.
   if (!actor) return true;
-  const role = firmaRole(actor, fid);
-  if (role === 'administrator' || role === 'proprietar' || role === 'aprobator' || role == null) return true;
-  if (role === 'verificator') return target === 'validat' || target === 'aprobat';
-  if (role === 'operator') return target === 'validat';
-  return false;
+  const action = { validat: 'entry.validate', aprobat: 'entry.approve', postat: 'entry.post' }[target];
+  return !!action && permissions.can(actor, fid, action, db.getFirma(fid));
 }
 
 /** Separarea initiator–aprobator este o politica explicita a firmei si devine efectiva numai
@@ -83,6 +79,7 @@ function markEntryActor(entry, actor, status) {
  *  (miscarile + liniile COGS intra atomic cu articolul — nicio scriere la eroare). */
 function createEntry(fid, b, deps) {
   fid = reqFirma(fid); b = b || {};
+  if (deps && deps.actor) permissions.assert(deps.actor, fid, 'write', db.getFirma(fid));
   const f = Object.assign({}, b.fields || {});
   const stocLines = Array.isArray(f.stoc) ? f.stoc.filter((s) => s && s.productId && Number(s.cantitate) > 0) : [];
   if (stocLines.length) f.cost = 0; // descarcarea vine din stoc, nu din campul manual — evita dubla inregistrare
@@ -92,17 +89,37 @@ function createEntry(fid, b, deps) {
   db.assertPeriodOpen(fid, entry.data, 'Inregistrarea'); // nu se posteaza intr-o luna inchisa
   // Guard de scriere derivat din profilul fiscal: opreste datele clar incompatibile cu regimul
   // (ex. neplatitor de TVA care colecteaza TVA). Advisory-ul ramane in fiscalControls.
-  const gViol = fiscalProfile.entryGuard(fiscalProfile.build(db.getFirma(fid)), entry);
+  const gViol = fiscalProfile.entryGuard(fiscalProfile.profileAt(db.scoped(fid), entry.data || entry.period), entry);
   if (gViol) fail(400, gViol);
   const actor = deps && deps.actor;
   // Intr-o echipa, butonul simplu „salveaza” nu poate ocoli controlul dublu: articolul intra in
   // flux ca ciorna. Intr-o firma cu un singur om comportamentul istoric (postare directa) ramane.
-  if (b.ciorna || makerCheckerRequired(fid)) entry.status = 'ciorna';
+  if (b.ciorna || makerCheckerRequired(fid)
+      || (actor && isTreasuryEntry(entry) && !permissions.can(actor, fid, 'treasury.approve', db.getFirma(fid)))) {
+    entry.status = 'ciorna';
+  }
   markEntryActor(entry, actor, entryState(entry));
   if (entryState(entry) === 'postat') leasingService.assertEntryCanPost(fid, entry);
-  if (b.spvMsgId) entry.spvImport = { msgId: b.spvMsgId, at: new Date().toISOString() };
   const d = db.get();
+  let sourceDoc = null;
+  if (b.fileId) {
+    sourceDoc = (d.documents || []).find((doc) => String(doc.id) === String(b.fileId)
+      && Number(doc.firmaId) === Number(fid));
+    if (!sourceDoc) fail(400, 'Documentul sursa nu exista in firma activa.');
+  }
+  const spvMessageId = b.spvMsgId || (sourceDoc && sourceDoc.spvMsgId) || null;
+  const fileSha256 = sourceDoc && sourceDoc.sha256 || null;
+  if (spvMessageId) entry.spvImport = { msgId: spvMessageId, at: new Date().toISOString() };
+  if (spvMessageId || fileSha256) entry.sourceIdentity = {
+    ...(spvMessageId ? { spvMessageId: String(spvMessageId) } : {}),
+    ...(fileSha256 ? { fileSha256: String(fileSha256) } : {}),
+  };
+  // Cheie legacy pentru articolele/instalarile care nu cunosc inca sourceIdentity. Cheia
+  // comerciala centrala ramane activa indiferent de prezenta fisierului.
+  if (spvMessageId) entry.dedupeKey = 'spv:' + String(spvMessageId);
+  else if (b.fileId) entry.dedupeKey = 'upload:' + String(b.fileId);
   let stocInfo = null;
+  let stagedStockMovements = [];
   if (stocLines.length) {
     const v = db.scoped(fid);
     let r;
@@ -120,15 +137,27 @@ function createEntry(fid, b, deps) {
     for (const ln of r.cogsLines) {
       if (!coa.getAccount(ln.debit) || !coa.getAccount(ln.credit)) fail(400, 'Cont de descarcare inexistent in plan: ' + ln.debit + '/' + ln.credit);
     }
-    for (const mv of r.newMovements) d.stockMovements.push(mv);
     // Retinem granita si marcam liniile calculate: la postarea unei ciorne costul se recalculeaza
     // pe stocul disponibil ATUNCI, nu ramane fotografia veche de la creare.
     entry.stocBaseLineCount = entry.lines.length;
     for (const ln of r.cogsLines) entry.lines.push(Object.assign({}, ln, { stocAuto: true }));
     entry.stocMovementIds = r.newMovements.map((m) => m.id);
+    stagedStockMovements = r.newMovements;
     stocInfo = { cogsTotal: r.total, warns: r.warns, lipsuri: r.lipsuri, movements: r.newMovements.length };
   }
-  db.pushEntry(entry, { context: 'articol contabil' });
+  const requestedOverride = b.duplicateOverride;
+  const duplicateOverride = requestedOverride
+    ? (typeof requestedOverride === 'object' ? requestedOverride : {
+      duplicateId: b.duplicateId, reason: b.duplicateReason || b.motivDuplicat,
+    })
+    : null;
+  db.pushEntry(entry, {
+    context: 'articol contabil', actor, duplicateOverride,
+    auditDuplicateOverride: deps && deps.auditDuplicateOverride,
+  });
+  // Miscarile sunt aplicate abia dupa ce TOATE gardele centrale (inclusiv anti-duplicat si auditul
+  // derogarii) au acceptat articolul. Altfel un 409 lasa stoc fantoma fara articol contabil.
+  for (const mv of stagedStockMovements) d.stockMovements.push(mv);
   deps.upsertPartner(fid, entry);
   if (!b.automat) inregistreazaInterventia(fid, b, entry, f);
   db.save();
@@ -215,7 +244,7 @@ function deleteEntry(id, fallbackFid, canFid) {
  *  originalul `stornat`. Corectie DOCUMENTATA si REVERSIBILA, in locul stergerii distructive.
  *  Articolele cu impact pe stoc au corectia dedicata (stoc/inventar) — aici sunt blocate ca sa
  *  nu desincronizeze fisa de magazie de cartea mare. */
-function stornoEntry(id, fallbackFid, canFid, dataStorno) {
+function stornoEntry(id, fallbackFid, canFid, dataStorno, actor) {
   const d = db.get();
   const e = d.entries.find((x) => x.id === id);
   if (!e || !canFid(e.firmaId == null ? d.firmaActiva : e.firmaId)) fail(404, 'Inregistrare inexistenta.');
@@ -223,6 +252,10 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
   if (e.stornoOf) fail(400, 'Nu se storneaza o nota de storno.');
   if (e.stornat) fail(400, 'Inregistrarea e deja stornata (nota ' + e.stornoBy + ').');
   const fid = e.firmaId == null ? fallbackFid : e.firmaId;
+  if (actor) {
+    permissions.assert(actor, fid, 'entry.post', db.getFirma(fid));
+    if (isTreasuryEntry(e)) permissions.assert(actor, fid, 'treasury.approve', db.getFirma(fid));
+  }
   const inventarLegat = (d.inventories || []).some((iv) => iv.firmaId === fid && (iv.entryIds || []).includes(e.id));
   if ((e.stocMovementIds && e.stocMovementIds.length) || e.stocMovementId || e.movementId || inventarLegat) {
     fail(400, 'Articolul are miscari de stoc — corecteaza prin stornarea documentului de stoc/inventar (altfel fisa de magazie si cartea mare ar diverge).');
@@ -263,6 +296,8 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno) {
     // validatoarele oficiale (verificat: D406 lunar cu storno in rosu si D300, ambele valide).
     lines: (e.lines || []).map((l) => ({ debit: l.debit, credit: l.credit, suma: round2(-l.suma), explicatie: 'Storno ' + (l.explicatie || '') })),
   };
+  markEntryActor(se, actor, 'postat');
+  se.postedBy = actorId(actor); se.postedAt = new Date().toISOString();
   db.pushEntry(se, { context: 'stornare articol' });
   e.stornat = true; e.stornoBy = se.id; e.stornoData = stornoData;
   // Fotografia salariala ramane in jurnal pentru audit, dar nu mai alimenteaza registrele,
@@ -288,6 +323,10 @@ function setEntryStatus(id, fallbackFid, canFid, target, actor) {
   const expected = ENTRY_STATES[ENTRY_STATES.indexOf(cur) + 1];
   if (target !== expected) fail(400, 'Tranzitie invalida: din „' + cur + '” urmatorul pas este „' + expected + '”.');
   if (!canTransition(actor, fid, target)) fail(403, 'Rolul tau pe aceasta firma nu permite pasul „' + target + '”.');
+  if ((target === 'aprobat' || target === 'postat') && isTreasuryEntry(e)
+      && actor && !permissions.can(actor, fid, 'treasury.approve', db.getFirma(fid))) {
+    fail(403, 'Aprobarea/postarea unei operatiuni de trezorerie cere dreptul treasury.approve.');
+  }
   const aid = actorId(actor);
   if (e.createdBy == null && aid != null) e.createdBy = aid; // ciorne istorice: primul operator devine initiatorul trasabil
   if (makerCheckerRequired(fid) && (target === 'aprobat' || target === 'postat')
@@ -374,7 +413,6 @@ function generateRecurring(fid, period, deps) {
   period = period || new Date().toISOString().slice(0, 7);
   const due = recurring.dueForPeriod((d.recurringInvoices || []).filter((t) => t.firmaId === fid), period);
   const created = []; const errors = [];
-  const profile = fiscalProfile.build(db.getFirma(fid)); // guard de profil, aplicat si aici (nu doar in createEntry)
   for (const t of due) {
     const fields = Object.assign({}, t.fields, {
       data: period + '-' + String(t.ziua || 1).padStart(2, '0'),
@@ -382,9 +420,10 @@ function generateRecurring(fid, period, deps) {
     });
     try {
       const entry = deps.buildEntry(t.tip, fields, null, fid);
-      const gViol = fiscalProfile.entryGuard(profile, entry);
+      const gViol = fiscalProfile.entryGuard(fiscalProfile.profileAt(db.scoped(fid), entry.data || entry.period), entry);
       if (gViol) throw new Error(gViol); // se aduna in errors, ca orice esec per sablon
       entry.recurringId = t.id;
+      entry.dedupeKey = 'recurent:' + t.id + ':' + period;
       if (makerCheckerRequired(fid)) entry.status = 'ciorna';
       markEntryActor(entry, deps && deps.actor, entryState(entry));
       db.pushEntry(entry, { context: 'sablon recurent' });
@@ -401,14 +440,24 @@ function generateRecurring(fid, period, deps) {
 
 /** Seteaza luna pana la care firma e read-only (null/gol = deblocare completa).
  *  404 (nu 403) pentru firma inexistenta — contractul istoric al rutei de admin. */
-function setPeriodLock(fid, lockedUntil) {
+function setPeriodLock(fid, lockedUntil, motiv) {
   const firma = db.getFirma(fid);
   if (!firma) fail(404, 'Firma inexistenta.');
-  if (lockedUntil == null || lockedUntil === '') firma.lockedUntil = null;
-  else if (/^\d{4}-\d{2}$/.test(lockedUntil) && Number(lockedUntil.slice(5)) >= 1 && Number(lockedUntil.slice(5)) <= 12) firma.lockedUntil = lockedUntil;
+  const anterior = firma.lockedUntil || null;
+  let urmator;
+  if (lockedUntil == null || lockedUntil === '') urmator = null;
+  else if (/^\d{4}-\d{2}$/.test(lockedUntil) && Number(lockedUntil.slice(5)) >= 1 && Number(lockedUntil.slice(5)) <= 12) urmator = lockedUntil;
   else fail(400, 'Format invalid. Foloseste YYYY-MM (ex. 2026-05) sau gol pentru deblocare.');
+  const override = !!anterior && (!urmator || urmator < anterior);
+  const reason = String(motiv || '').trim();
+  if (override && reason.length < 10) fail(400, 'Reducerea sau eliminarea blocării este un override și cere un motiv scris (minim 10 caractere).');
+  firma.lockedUntil = urmator;
+  if (override) {
+    firma.periodLockOverrides = Array.isArray(firma.periodLockOverrides) ? firma.periodLockOverrides : [];
+    firma.periodLockOverrides.push({ from: anterior, to: urmator, motiv: reason.slice(0, 500), at: new Date().toISOString() });
+  }
   db.save();
-  return { lockedUntil: firma.lockedUntil };
+  return { lockedUntil: firma.lockedUntil, previous: anterior, override, motiv: override ? reason.slice(0, 500) : '' };
 }
 
 /** TVA la incasare: din suma bruta incasata/platita, calculeaza TVA exigibila si posteaza nota.
@@ -427,7 +476,7 @@ function tvaExigibilitate(fid, b, deps) {
   markEntryActor(entry, deps && deps.actor, 'postat');
   entry.postedBy = actorId(deps && deps.actor);
   entry.postedAt = new Date().toISOString();
-  const gViol = fiscalProfile.entryGuard(fiscalProfile.build(db.getFirma(fid)), entry);
+  const gViol = fiscalProfile.entryGuard(fiscalProfile.profileAt(db.scoped(fid), entry.data || entry.period), entry);
   if (gViol) fail(400, gViol); // neplatitor nu poate exigibiliza TVA colectata
   // baza aferenta TVA-ului devenit exigibil (pentru D300 in perioada exigibilitatii — TVA la incasare)
   entry.tvaExig = { baza: round2(brut - tva), cota, side: b.tip === 'deductibila' ? 'deductibila' : 'colectata' };
@@ -437,7 +486,7 @@ function tvaExigibilitate(fid, b, deps) {
 }
 
 module.exports = {
-  createEntry, deleteEntry, stornoEntry, setEntryStatus,
+  createEntry, deleteEntry, stornoEntry, setEntryStatus, isTreasuryEntry,
   saveRecurring, deleteRecurring, generateRecurring,
   setPeriodLock, tvaExigibilitate,
 };

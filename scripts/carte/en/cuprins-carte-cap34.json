@@ -1,0 +1,300 @@
+{
+ "parte": "Part VII · The registers and verification · phase 8",
+ "nr": "34",
+ "titlu": "The Aging Schedule",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "All the reports so far have been made to verify or to report. The aging schedule is the only one made to run the business — and, perhaps for that reason, the only one a business owner reads on their own initiative."
+  },
+  {
+   "tip": "p",
+   "text": "It answers three questions the trial balance cannot reach: who owes me, whom I owe, and, above all, since when."
+  },
+  {
+   "tip": "h",
+   "text": "Why the Balance Isn't Enough"
+  },
+  {
+   "tip": "p",
+   "text": "Account 4111 Clients (Trade Receivables) might show a balance of 200,000 lei. The figure is true and almost useless, because it doesn't say whether the 200,000 are invoices issued last week or receivables two years old."
+  },
+  {
+   "tip": "p",
+   "text": "The first situation is normal. The second is a company in danger, with the same balance and the same balance sheet. The difference between them shows up nowhere in the general ledger — only in the age of the balances."
+  },
+  {
+   "tip": "cheie",
+   "text": "A receivable isn't measured only in lei, but in lei and in days. The second dimension is missing from all mandatory reports."
+  },
+  {
+   "tip": "h",
+   "text": "What It Looks Like"
+  },
+  {
+   "tip": "p",
+   "text": "The aging schedule places each partner on a row and splits their balance into age brackets, counted from the invoice date or from the due date."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Client Status as of June 30",
+   "cap": [
+    "Client",
+    "Total",
+    "0–30 days",
+    "31–60",
+    "61–90",
+    "over 90"
+   ],
+   "randuri": [
+    [
+     "Alfa Construct",
+     "48.000",
+     "48.000",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Beta Distribuție",
+     "65.000",
+     "20.000",
+     "45.000",
+     "",
+     ""
+    ],
+    [
+     "Gama Impex",
+     "31.000",
+     "",
+     "",
+     "",
+     "31.000"
+    ],
+    [
+     "Delta Service",
+     "12.000",
+     "",
+     "12.000",
+     "",
+     ""
+    ],
+    [
+     "TOTAL",
+     "156.000",
+     "68.000",
+     "57.000",
+     "0",
+     "31.000"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "total": true,
+   "nota": "The same information given by account 4111 — 156,000 lei — but with the question that actually matters already asked."
+  },
+  {
+   "tip": "p",
+   "text": "Read this way, the table says something the balance didn't: 31,000 lei are older than ninety days and belong to a single client. That is no longer a receivable to be tracked, but a decision to be made — chapter 27 shows what happens to it in the accounting."
+  },
+  {
+   "tip": "h",
+   "text": "How Aging Is Determined"
+  },
+  {
+   "tip": "p",
+   "text": "This is the technical part of the chapter, and it deserves to be understood, because on it depends whether the table tells the truth."
+  },
+  {
+   "tip": "p",
+   "text": "A client usually has several invoices and several payments, and payments rarely arrive with the note \"this settles invoice number such-and-such.\" It must therefore be decided which invoice each collection settles, and the entire distribution across intervals depends on this decision."
+  },
+  {
+   "tip": "p",
+   "text": "The natural convention is settlement in order of age: the first payment settles the oldest invoice, the remainder carries forward. This is also the one implicit in law absent other instructions, and the prudent one — if you err, you err by showing the balance older than it is, not newer."
+  },
+  {
+   "tip": "p",
+   "text": "The opposite convention — payment settles the most recent invoice — would make old debts appear forever fresh, and the table would become the exact opposite of an alert tool."
+  },
+  {
+   "tip": "h",
+   "text": "The Trap of Transfers Between Accounts"
+  },
+  {
+   "tip": "p",
+   "text": "There is a typical error in building the aging schedule, worth describing because it is invisible and doubles the figures."
+  },
+  {
+   "tip": "p",
+   "text": "A receivable can change accounts without changing size. A delivery note sits in 418 Clients — Invoices to be Issued; when the invoice is issued, the same receivable moves to 4111. Symmetrically, an expense without an invoice sits in 408 and moves to 401 when the invoice arrives."
+  },
+  {
+   "tip": "p",
+   "text": "If the mechanism that builds the aging schedule looks at each line separately, it will see at 4111 a new receivable of 10,000 lei and will not see that elsewhere a receivable of 10,000 has just disappeared. The result: the same client appears with 20,000 lei, half of which doesn't exist."
+  },
+  {
+   "tip": "p",
+   "text": "The sign that this has happened is easy to recognize: the aging schedule shows a different total than the account balance. When two reports about the same thing don't match, the one built by aggregation is always the wrong one — not the balance."
+  },
+  {
+   "tip": "h",
+   "text": "What to Do With It"
+  },
+  {
+   "tip": "p",
+   "text": "An aging schedule read monthly changes three things in running a business, and none of them is accounting."
+  },
+  {
+   "tip": "p",
+   "text": "First, the order of phone calls. You don't call every overdue client, but call first those in the oldest column with the largest amount — a list of five names, not fifty."
+  },
+  {
+   "tip": "p",
+   "text": "Then, the decision whether to keep delivering. A client with 45,000 lei overdue for more than sixty days should not receive a new order without a discussion, however tempting the order might be. Accounting doesn't make the decision, but it provides the figure without which the decision would be made by instinct."
+  },
+  {
+   "tip": "p",
+   "text": "Finally, the mirror. The same report exists for suppliers, and comparing the two tables shows whether the company finances its activity from supplier credit or the other way around. It is the simplest cash-flow analysis one can perform, and it requires no calculation."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "The statement of receivables and payables is expressly required as an annex to the annual financial statements, broken down by maturity terms — under one year and over one year — and information about overdue receivables and their age is covered in the explanatory notes. Four practical observations. First: the accounting aging schedule is built on the payment term from the contract or invoice, not on the document date; when the two are confused, an invoice due in ninety days appears overdue from day one, and the alert loses all value. Second: for receivables denominated in foreign currency, age is tracked based on the foreign-currency amount, and the lei balance is reconciled separately with the revaluation from chapter 26 — otherwise exchange-rate differences appear to be partial payments and disrupt settlement. Third: receivables from affiliated parties and those from third parties are presented separately, and offsetting between receivables and payables with the same partner may be done only under the conditions of the law on offsetting; net presentation without legal basis distorts both liquidity indicators and the reporting base for informative declarations. Fourth: the age of balances is the primary source for the impairment analysis in chapter 27 — the 270-day threshold from tax law is read directly from this table, and a company that doesn't prepare it monthly discovers the deductibility condition only after the fiscal year in which it could have been met has already expired."
+  },
+  {
+   "tip": "h",
+   "text": "What Comes Next"
+  },
+  {
+   "tip": "p",
+   "text": "With this chapter, part seven comes to a close. The company's accounting is complete, verified from every angle that can be verified, and read as a management tool."
+  },
+  {
+   "tip": "p",
+   "text": "Next comes the part where it turns toward the state. Not as a separate obligation, but as a result: declarations aren't filled in, they are composed from the month already recorded. And the first of them is the most frequent and the most misunderstood — value added tax."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 34.1 — Who Do You Call First",
+   "enunt": [
+    "The client aging schedule shows: Alfa 48,000 all under 30 days; Beta 65,000 of which 45,000 at 31–60 days; Gama 31,000 entirely over 90 days; Delta 12,000 at 31–60 days.",
+    "(a) Who do you call, and in what order? (b) Who do you stop delivering to? (c) What accounting entry is approaching?"
+   ],
+   "rezolvare": [
+    "(a) Gama first: 31,000 lei over 90 days is the oldest and one of the largest amounts. Then Beta, for the 45,000 at 31–60 days. Delta, with 12,000, is third. Alfa doesn't get called: it's not overdue.",
+    "(b) Gama no longer receives a new order without a discussion and, probably, without advance payment. Beta deserves a credit limit — not a refusal, but a cap.",
+    "(c) For Gama, reclassification to doubtful receivables is approaching and, if the situation doesn't change, the setting up of an impairment adjustment. Past 270 days, the partial deduction condition would also be met.",
+    "What the exercise shows: out of 156,000 lei of receivables, all the attention goes to three names, and the commercial decision and the accounting one are made from THE SAME figure. A balance of 156,000 on account 4111 alone would not have said any of these three things."
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The Supplier Aging Schedule, Read in Reverse"
+  },
+  {
+   "tip": "p",
+   "text": "The same report exists for payables, and there it is read exactly the other way around: what is a warning signal for clients is, up to a point, a resource for suppliers."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Company's Payables in the Example, by Age",
+   "cap": [
+    "Interval",
+    "Amount",
+    "What It Means"
+   ],
+   "randuri": [
+    [
+     "0–30 days",
+     "12.100,00",
+     "normal trade credit"
+    ],
+    [
+     "31–90 days",
+     "0,00",
+     "—"
+    ],
+    [
+     "over 90 days",
+     "2.900,00",
+     "old debt — check why"
+    ],
+    [
+     "Total",
+     "15.000,00",
+     ""
+    ]
+   ],
+   "numerice": [
+    2
+   ],
+   "total": true,
+   "nota": "The figures are those calculated by the application on the book's example. The third row calls for an explanation: either it's a disputed invoice, or a forgotten one."
+  },
+  {
+   "tip": "p",
+   "text": "An old debt to a supplier isn't necessarily a bad sign — it could be an invoice under dispute, or one for which a long term was agreed. It becomes a problem when no one knows anymore which of the two it is, and that happens within a few months."
+  },
+  {
+   "tip": "h",
+   "text": "The Two Aging Schedules, Read Together"
+  },
+  {
+   "tip": "p",
+   "text": "The real information emerges from the comparison. If you collect on average in 60 days and pay in 30, you finance the activity from your own money; if it's the reverse, you finance it from supplier credit."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What the Ratio Between Them Says",
+   "cap": [
+    "Situation",
+    "What It Means",
+    "What Can Be Done"
+   ],
+   "randuri": [
+    [
+     "you collect faster than you pay",
+     "the activity self-finances",
+     "volume can grow without new capital"
+    ],
+    [
+     "you collect slower than you pay",
+     "every new order needs cash",
+     "either better terms or advance payments"
+    ],
+    [
+     "both long",
+     "chain of delays",
+     "risk is passed further down the chain"
+    ]
+   ],
+   "nota": "None of the three shows up in the income statement. A company can be profitable in any of them."
+  },
+  {
+   "tip": "p",
+   "text": "From the average age of receivables, a simple indicator is calculated: the average collection period, i.e., the client balance divided by daily sales. At 156,000 lei receivables and sales of 30,000 lei per month, it is approximately 156 days — a number that says more than any discussion about \"clients who pay late.\""
+  },
+  {
+   "tip": "cheie",
+   "text": "Receivables and payables are read together. Separately, each shows a list of names; together, they show whether the company is financing its growth or paying for it."
+  },
+  {
+   "tip": "recap",
+   "titlu": "To Remember From This Chapter",
+   "puncte": [
+    "A receivable's balance says nothing without its age: 200,000 lei that is recent and 200,000 lei that is two years old look identical in the trial balance.",
+    "The aging schedule breaks each partner's balance into age intervals: 0–30, 31–60, 61–90, and over 90 days.",
+    "Payments settle invoices in order of age — the prudent convention and, absent other instructions, the natural one.",
+    "Transfers between accounts in the same family (418 → 4111, 408 → 401) double the figures if the mechanism counts them as new transactions.",
+    "The warning sign is simple: if the aging schedule doesn't give the same total as the account balance, the aging schedule is wrong.",
+    "It is used for three decisions: whom to call, to whom to keep delivering, and whether the company is financing itself from supplier credit or the other way around."
+   ]
+  }
+ ]
+}

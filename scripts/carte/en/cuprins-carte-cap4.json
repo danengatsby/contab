@@ -1,0 +1,214 @@
+{
+ "parte": "Part I · Why accounting looks the way it does",
+ "nr": "4",
+ "titlu": "Who is responsible for the numbers",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "So far the book has been about mechanism: what questions accounting answers, why every sum is written twice, in which drawers. This chapter has no formula and no accounting scheme. Instead, it has the one question for which a wrong answer costs real money: who is responsible for what is written there."
+  },
+  {
+   "tip": "p",
+   "text": "It's a question nobody asks at the start of a collaboration, because the answer seems obvious to each of the two parties — and, usually, different. The business owner believes he has paid an accountant to have peace of mind. The accountant knows he works with the documents someone gives him. Both are half right, and the missing half only becomes visible during an inspection."
+  },
+  {
+   "tip": "h",
+   "text": "What the law says, briefly and without detours"
+  },
+  {
+   "tip": "p",
+   "text": "Responsibility for organizing and running the accounting rests with the company's administrator. Not the accountant, not the software, not the accounting firm. The fact that the work is outsourced does not move the responsibility outside: it can be outsourced as execution, not as responsibility."
+  },
+  {
+   "tip": "p",
+   "text": "At the same time, the annual financial statements cannot be signed by the administrator alone. The Accounting Law requires a second, qualified signature — an accountant with higher economic studies or a CECCAR member (art. 10 and 28). The current monthly filings, however, can also be submitted by the administrator alone."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Who signs what",
+   "cap": [
+    "Document",
+    "Administrator",
+    "Qualified accountant"
+   ],
+   "randuri": [
+    [
+     "Monthly filings (VAT, payroll, informative statements)",
+     "can do alone",
+     "usually still does it"
+    ],
+    [
+     "Annual financial statements (balance sheet, income statement)",
+     "mandatory",
+     "mandatory"
+    ],
+    [
+     "The company's supporting documents",
+     "is responsible for their authenticity",
+     "records them, does not confirm them"
+    ]
+   ],
+   "nota": "The third row is the one least often understood — and the one from which most misunderstandings between business owner and accountant arise."
+  },
+  {
+   "tip": "cheie",
+   "text": "Execution can be outsourced. Responsibility cannot."
+  },
+  {
+   "tip": "h",
+   "text": "What only one knows and what only the other knows"
+  },
+  {
+   "tip": "p",
+   "text": "The division of labor between business owner and accountant is not a matter of internal organization, but stems from something deeper: each of them holds information that the other has no way of having."
+  },
+  {
+   "tip": "p",
+   "text": "Only the business owner knows whether the transaction actually happened. Whether the goods on the invoice actually entered the warehouse. Whether the consulting service was actually performed. Whether the car registered to the company is also used for personal purposes, and to what extent. An accountant, however good, cannot learn these things from paper: paper says only what is written on it."
+  },
+  {
+   "tip": "p",
+   "text": "Only the accountant knows how the transaction translates into accounting and what tax consequences it has. Whether an expense is deductible or not. Whether the VAT is deducted in full, in half, or not at all. Whether an asset is expensed now or depreciated over five years. A business owner, however smart, has no way of knowing this without doing the job himself."
+  },
+  {
+   "tip": "p",
+   "text": "That is why collaboration is not a luxury but a structural necessity. The document is the place where the two kinds of knowledge meet: the business owner affirms that the transaction behind it is real, the accountant gives it its correct accounting form."
+  },
+  {
+   "tip": "h",
+   "text": "The two ways of getting it wrong"
+  },
+  {
+   "tip": "p",
+   "text": "When one of the two does the other's job, the result is predictable, and both variants are seen often."
+  },
+  {
+   "tip": "p",
+   "text": "The business owner who \"manages on his own\" keeps accounting that looks formally correct but says something different from the reality of the business: personal expenses booked to the company because \"that's how it's done,\" unrecorded revenue because \"it was a small amount,\" a trial balance that closes perfectly on figures that describe nothing. Double-entry bookkeeping, as seen in chapter 2, is perfectly happy with false data, as long as it is symmetrical."
+  },
+  {
+   "tip": "p",
+   "text": "The accountant who receives a stack of papers at year-end and records everything he was given, without asking anything, is also doing only half the job. He cannot know what is missing from the stack. And what was never recorded at all — a lost invoice, an unreported receipt — throws nothing out of balance and appears in no report."
+  },
+  {
+   "tip": "p",
+   "text": "Both failures have the same cause: someone assumed that the other's responsibility also covered them. It does not. During an inspection, the administrator is responsible for the company's accounting, and the accountant is professionally responsible for what he has signed."
+  },
+  {
+   "tip": "h",
+   "text": "What a working collaboration means, in practice"
+  },
+  {
+   "tip": "p",
+   "text": "No complicated procedures are needed. Three habits cover almost everything."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The three habits",
+   "cap": [
+    "Habit",
+    "Why it matters"
+   ],
+   "randuri": [
+    [
+     "Documents arrive on time, all of them, not just the convenient ones",
+     "what doesn't arrive isn't recorded, and the gap doesn't show up in any check"
+    ],
+    [
+     "The business owner states the context, not just the amount",
+     "the same invoice is recorded differently depending on whether the item is for the company, for resale, or for mixed use"
+    ],
+    [
+     "The accountant asks when something doesn't fit",
+     "a question asked in February costs a minute; the same question during an inspection costs something else"
+    ]
+   ],
+   "nota": "A good software helps with the first habit — it gathers everything in one place and shows what's missing — but it cannot replace the other two."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "The distinction between the administrator's responsibility for organizing and running the accounting and the professional responsibility of the person who prepares and signs the financial statements is what sets the boundaries of the engagement. Outsourcing to a CECCAR-authorized person transfers execution and brings its own professional liability — including disciplinary and, where applicable, civil liability — but does not discharge the administrator. In practice, two things are worth putting in writing from the start: the scope of the engagement (what is and isn't included — for example, whether it covers verifying the economic reality of transactions, which in any case cannot be fully assumed) and the manner of document handover, with deadlines. The second prevents the classic situation where documents arrive after the period has closed, and the correction requires a reversal in a period already reported. Refusing to record a document that does not meet the conditions of a supporting document is not an act of ill will toward the client, but exactly the substance of the profession: the signature at the end covers everything that was recorded along the way."
+  },
+  {
+   "tip": "h",
+   "text": "And where does the software fit into all this"
+  },
+  {
+   "tip": "p",
+   "text": "Accounting software calculates and checks. It applies the rules without tiring, keeps track of deadlines, refuses an entry that doesn't balance, shows which documents are missing from a month. All of this is real and belongs to the execution side."
+  },
+  {
+   "tip": "p",
+   "text": "It does not, however, decide whether an expense belongs to the company or to you. It doesn't know whether an invoice corresponds to a delivery that actually took place. It doesn't sign the balance sheet and answers to no one. A software that claimed otherwise would be selling a peace of mind it cannot back up."
+  },
+  {
+   "tip": "p",
+   "text": "With that, the roles are clear: the business owner brings the reality, the accountant brings the rule, the software does the work between them. One thing remains before moving into practice — the order in which all this happens, month by month. That's the map of the book, and it's the next chapter."
+  },
+  {
+   "tip": "h",
+   "text": "Three situations where responsibility is established concretely"
+  },
+  {
+   "tip": "p",
+   "text": "The principles in this chapter seem abstract until the day a problem appears. It is worth, therefore, running them through three cases that happen often."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Who is responsible, in practice",
+   "cap": [
+    "Situation",
+    "Who is responsible",
+    "Why"
+   ],
+   "randuri": [
+    [
+     "Consulting invoice without a real service",
+     "the administrator",
+     "the reality of the transaction cannot be verified from the document"
+    ],
+    [
+     "Expense recorded to the wrong account",
+     "the accountant",
+     "classification is a professional decision"
+    ],
+    [
+     "Late-filed declaration",
+     "the administrator, but fault is shared",
+     "the obligation belongs to the company; the deadline is known to both"
+    ]
+   ],
+   "nota": "The split is not a loophole: the administrator is responsible for organization and for reality, the accountant for compliance in preparation. Neither can answer in the other's place."
+  },
+  {
+   "tip": "p",
+   "text": "The second row deserves nuance, as it is the most often wrongly invoked. The accountant is responsible for classification if he had all the information. If the document did not state what was purchased, and no one clarified it, responsibility shifts to whoever should have clarified it — which is why a question asked in writing is worth more than any explanation given afterward."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 4.1 — who signs what",
+   "enunt": [
+    "An administrator asks the accountant to record on the company an invoice of 8,000 lei for furniture, saying it's for the office. The accountant later finds out, by chance, that the furniture was delivered to the administrator's home.",
+    "What must the accountant do, and what changes from a tax perspective?"
+   ],
+   "rezolvare": [
+    "For tax purposes, the expense has no economic purpose: it is not deductible, and the related VAT is not deducted. If the item was used personally, the transaction takes on the nature of a benefit granted to the administrator, with consequences for income tax and contributions.",
+    "The accountant cannot certify the reality of the service — he did not order it and did not receive the goods. What he can and must do: flag it in writing, ask for clarification, and, if confirmed, record the transaction in its correct form, not the convenient one.",
+    "What doesn't protect him: the fact that he received the instruction verbally. What protects him: the written note and the document showing what he flagged and when.",
+    "The practical conclusion, valid beyond this case: in accounting, the question asked in writing is the cheapest form of professional insurance."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key takeaways from this chapter",
+   "puncte": [
+    "Responsibility for organizing and running the accounting rests with the administrator and cannot be outsourced.",
+    "The annual financial statements require a second signature, from a qualified accountant (art. 10 and 28, Law 82/1991); the current filings can also be submitted by the administrator.",
+    "Only the business owner knows whether the transaction was real; only the accountant knows how it translates into accounting and tax terms. Neither kind of knowledge replaces the other.",
+    "The two typical failures — the business owner who manages on his own and the accountant who records without asking — have the same cause: assuming that the other's responsibility covers you too.",
+    "Software applies the rules and flags gaps, but it does not confirm economic reality and it signs nothing."
+   ]
+  }
+ ]
+}

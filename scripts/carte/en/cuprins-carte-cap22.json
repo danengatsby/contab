@@ -1,0 +1,280 @@
+{
+ "parte": "Part V · What you have, what you produce, who works · phases 4–6",
+ "nr": "22",
+ "titlu": "Rights That Are Lost If You Don't Claim Them",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "This chapter was written after an incident, and the incident is worth telling, because it's more instructive than the rule it illustrates."
+  },
+  {
+   "tip": "p",
+   "text": "In an accounting program, the employee's file had a field called \"Dependents.\" The field appeared filled in with zero — the digit zero was there, gray, in the box. In reality it was empty: the zero was only a visual placeholder, not a value. And the program only granted the personal deduction if that field had been filled in."
+  },
+  {
+   "tip": "p",
+   "text": "The result: employees whose files had been filled out normally, without anyone touching that field, received no deduction at all. At a gross salary of 5,000 lei, that means 43 lei extra in tax every month. Over 500 lei a year, per employee, paid to the state without being owed — and deducted from the net pay of people who had no way of finding out."
+  },
+  {
+   "tip": "cheie",
+   "text": "A right granted \"if requested\" is a right that gets lost. Not out of bad faith, but because no one checks what they weren't alerted to."
+  },
+  {
+   "tip": "h",
+   "text": "What the Personal Deduction Is"
+  },
+  {
+   "tip": "p",
+   "text": "The personal deduction is a part of salary income that is not taxed. It's not an amount received on top, but a reduction of the base — its effect in money is 10% of the deduction's value, i.e. exactly the tax that is no longer paid."
+  },
+  {
+   "tip": "p",
+   "text": "It is granted at the basic function, i.e. at the main workplace, and its size depends on two things: how many dependents the employee has and how large their salary is."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "How the Deduction Decreases with Salary",
+   "cap": [
+    "Gross salary",
+    "Deduction",
+    "Tax saved"
+   ],
+   "randuri": [
+    [
+     "at the level of the minimum wage",
+     "maximum",
+     "10% of it"
+    ],
+    [
+     "above minimum, below cap",
+     "decreases proportionally",
+     "proportional"
+    ],
+    [
+     "above minimum wage + 2,000 lei",
+     "zero",
+     "zero"
+    ]
+   ],
+   "nota": "The decrease is linear: the closer the salary gets to the cap, the closer the deduction gets to zero. Above the cap it is no longer granted at all."
+  },
+  {
+   "tip": "p",
+   "text": "At a salary of 5,000 lei, with the minimum wage at 4,050 and no dependents, the deduction is 430 lei — and the tax drops from 325 to 282. With two dependents, the deduction rises to 640, and the tax drops to 261."
+  },
+  {
+   "tip": "h",
+   "text": "Zero Doesn't Mean \"None\""
+  },
+  {
+   "tip": "p",
+   "text": "The core of the incident lies in a confusion that occurs often, not just in software: between \"I have zero dependents\" and \"I didn't fill in the field.\""
+  },
+  {
+   "tip": "p",
+   "text": "These are different things. An employee with zero dependents is entitled to the base deduction — the smallest of the variants, but not zero. An unfilled field says nothing about their situation; it only says that someone wrote nothing there."
+  },
+  {
+   "tip": "p",
+   "text": "A system that treats them the same silently chooses the variant that disadvantages the person. And if no one looks at the \"deduction\" line on the payslip — and usually no one does, because the net looks plausible — the mistake can last for years."
+  },
+  {
+   "tip": "h",
+   "text": "How to Check, in Two Minutes"
+  },
+  {
+   "tip": "p",
+   "text": "The check doesn't require specialized knowledge. Open the month's payslip and look at the deduction column."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What You Should See",
+   "cap": [
+    "Employee's situation",
+    "The deduction should be"
+   ],
+   "randuri": [
+    [
+     "salary below or at minimum wage level, basic function",
+     "maximum"
+    ],
+    [
+     "salary between minimum and minimum + 2,000",
+     "between maximum and zero"
+    ],
+    [
+     "salary above minimum + 2,000",
+     "zero — correct"
+    ],
+    [
+     "second job",
+     "zero — correct"
+    ]
+   ],
+   "nota": "If you see zero where it shouldn't be, the question isn't \"why,\" but \"since when.\""
+  },
+  {
+   "tip": "p",
+   "text": "The last column of the table also contains the only case in which zero is the correct answer: the second job. The deduction is granted only once, at the basic function — and if an employee receives it at two jobs at the same time, the difference will be reclaimed."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the Accountant",
+   "text": "The personal deduction is granted under art. 77 of the Fiscal Code at the place where the basic function is held, for monthly gross income up to the level of the minimum wage plus 2,000 lei, decreasing progressively as income rises; it comprises the base deduction, set as a percentage of the minimum wage depending on the number of dependents, and additional deductions — for young employees and for children in education. Two practical observations. First: the absence of information about dependents does not equal the absence of the right; in the absence of the employee's declaration, the deduction corresponding to the situation with no dependents is granted, not zero — and the employee's self-declaration, together with supporting documents, must be kept in the personnel file, as it is the basis for deductions above the base level. Second: changes in situation — a person entering or leaving dependent status, turning 26, a child finishing their studies — take effect starting the month following the communication, and failure to update them generates differences that must be regularized, in both directions, with an impact on D112 forms already filed."
+  },
+  {
+   "tip": "h",
+   "text": "The General Rule, Beyond This Case"
+  },
+  {
+   "tip": "p",
+   "text": "The personal deduction is the most costly example, but the pattern is broader. Everywhere a right is granted \"upon request\" or \"if filled in,\" it is lost for those who don't know they must ask for it — that is, exactly for those who would need it most."
+  },
+  {
+   "tip": "p",
+   "text": "That's why, for any system that calculates entitlements, the right question isn't \"what happens if I check the box,\" but \"what happens if I check nothing.\" A poorly chosen default costs real money, silently, every time it runs."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 22.1 — The Two-Minute Check",
+   "enunt": [
+    "In a payslip, three employees earn the minimum wage, two earn 5,000 lei gross at their basic function, and one earns 5,000 at a second job. The \"personal deduction\" column shows zero for all six.",
+    "How many of the six zeros are correct?"
+   ],
+   "rezolvare": [
+    "Only one: the one for the second job. The deduction is granted at the basic function, so there zero is the correct answer.",
+    "The other five are wrong. The three earning the minimum wage are entitled to the maximum deduction. The two earning 5,000 lei gross are below the minimum wage plus 2,000 cap, so they are entitled to a reduced deduction, but not a zero one.",
+    "The cost of the error, for the two earning 5,000 lei: about 43 lei per month each, i.e. over 500 lei per year per person. For the three earning the minimum wage, more.",
+    "How to catch it: not by recalculating the entire payroll, but by looking at a single column. Zero where it shouldn't be is a question to ask immediately — and the question isn't \"why,\" but \"since when.\""
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "The Curve, in Numbers"
+  },
+  {
+   "tip": "p",
+   "text": "The chapter said that the deduction decreases proportionally with salary. It's worth seeing the whole curve, because it produces an effect that neither the employee nor the business owner suspects."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Deduction for an employee with no dependents (minimum wage 4,050)",
+   "cap": [
+    "Gross salary",
+    "Deduction",
+    "Tax saved"
+   ],
+   "randuri": [
+    [
+     "4.050",
+     "810",
+     "81,00"
+    ],
+    [
+     "4.300",
+     "710",
+     "71,00"
+    ],
+    [
+     "4.800",
+     "510",
+     "51,00"
+    ],
+    [
+     "5.300",
+     "310",
+     "31,00"
+    ],
+    [
+     "5.800",
+     "110",
+     "11,00"
+    ],
+    [
+     "6,050 and above",
+     "0",
+     "0,00"
+    ]
+   ],
+   "numerice": [
+    1,
+    2,
+    3
+   ],
+   "nota": "The decrease is linear: every 250 additional lei of gross pay cuts exactly 100 lei from the deduction, up to the cap of minimum wage plus 2,000."
+  },
+  {
+   "tip": "h",
+   "text": "The Effect No One Sees"
+  },
+  {
+   "tip": "p",
+   "text": "Because the deduction decreases along with salary, a raise granted within the phase-out band reaches the employee in a smaller proportion than one granted above it. This isn't an impression — it can be measured."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "The Same 250 Lei Gross Raise, in Two Places",
+   "cap": [
+    "From … to",
+    "The deduction",
+    "Net increases by",
+    "Reaches the employee"
+   ],
+   "randuri": [
+    [
+     "5.000 → 5.250",
+     "430 → 330",
+     "136,25",
+     "54,5%"
+    ],
+    [
+     "7.000 → 7.250",
+     "0 → 0",
+     "146,25",
+     "58,5%"
+    ]
+   ],
+   "numerice": [
+    3,
+    4
+   ],
+   "nota": "Same gross amount, same cost to the company — but four percentage points less in the employee's hand, because the raise also cuts into the deduction."
+  },
+  {
+   "tip": "p",
+   "text": "The difference is small on a single raise and becomes visible in a negotiation: an employee earning 5,000 lei gross who asks for \"200 more in hand\" needs a bigger raise than one earning 7,000, even though the request sounds identical. Whoever calculates the gross needed using the usual formula — net divided by 58.5% — gets it wrong exactly in the band where most salaries sit."
+  },
+  {
+   "tip": "cheie",
+   "text": "Between the minimum wage and the minimum wage plus 2,000, every leu of raise brings less into hand than above the threshold. It's the only zone in the pay scale where the effective rate is higher than the legal one."
+  },
+  {
+   "tip": "h",
+   "text": "When the Situation Changes During the Year"
+  },
+  {
+   "tip": "p",
+   "text": "The deduction isn't set once and for all. It depends on the number of dependents, and that changes — a child is born, a parent becomes dependent, a child turns 26 or finishes their studies."
+  },
+  {
+   "tip": "p",
+   "text": "The rule is that the change takes effect starting the MONTH FOLLOWING the one in which it was communicated, based on the employee's declaration and supporting documents. Two practical things follow from this: the change must be communicated, not assumed; and a delay in communication cannot be recovered retroactively indefinitely."
+  },
+  {
+   "tip": "p",
+   "text": "The consequence for the employer is a filing obligation, not a calculation one: the self-declaration and the documents must be kept in the personnel file, since they are the basis for any deduction above the base level. Without them, in an audit, the deduction granted turns into tax owed."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key Takeaways from This Chapter",
+   "puncte": [
+    "The personal deduction reduces the taxable base, it is not received in cash; its effect is 10% of the deduction's value.",
+    "It is granted at the basic function and decreases progressively, down to zero above minimum wage plus 2,000 lei.",
+    "Zero dependents does NOT mean zero deduction — the employee is entitled to the base deduction.",
+    "An unfilled field is not information; systems that treat it as \"no right\" silently disadvantage the employee.",
+    "The check takes two minutes, by looking at the deduction column on the payslip.",
+    "The general rule: for any right granted \"upon request,\" ask what happens when you request nothing."
+   ]
+  }
+ ]
+}

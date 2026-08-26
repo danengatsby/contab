@@ -2,7 +2,7 @@
 
 // Autentificare UI: login/2FA, inscriere + preturi, parola uitata/reset, invitatii, schimbarea fortata a parolei.
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, fmt, toast, api, setOn402, legaCompletareCui } from './core.js';
+import { $$, $, H, toast, api, setOn402, legaCompletareCui } from './core.js';
 import { clearFormFlowDrafts } from './formflow.js';
 
 const D = { init: null, goTab: null, promptFirmaSubscribe: null };
@@ -77,9 +77,11 @@ $('#registerCancel') && $('#registerCancel').addEventListener('click', () => {
 // văzut produsul. De aceea nu mai există „alege un plan plătit acum și plătește după înregistrare":
 // mecanismul care reținea planul până la crearea contului a fost scos, nu doar ascuns.
 /** Ce control primește un plan în panoul public. PUR, ca să poată fi verificat fără DOM. */
-export function ctaPlanPublic(plan, canRegister) {
+export function ctaPlanPublic(plan, canRegister, platiSuspendate) {
   if (!canRegister) return { fel: 'text', text: 'Autentifică-te pentru a alege planul' };
   if (plan.trial) return { fel: 'buton', text: 'Începe proba gratuită', activ: true };
+  if (platiSuspendate) return { fel: 'buton', text: 'Indisponibil momentan', activ: false,
+    titlu: 'Abonamentele plătite nu pot fi activate momentan. Proba gratuită rămâne disponibilă.' };
   return { fel: 'buton', text: 'Disponibil după probă', activ: false,
     titlu: 'Începe cu proba gratuită de 30 de zile. Planul plătit îl alegi din aplicație, când proba se apropie de final.' };
 }
@@ -91,8 +93,11 @@ async function showPricing() {
   let data; try { data = await (await fetch('/api/plans')).json(); } catch (e) { box.innerHTML = '<p class="status err">Nu s-au putut încărca prețurile.</p>'; return; }
   let canRegister = false;
   try { const r = await fetch('/api/register'); if (r.ok) canRegister = !!(await r.json()).enabled; } catch (e) { /* optional */ }
-  box.innerHTML = (data.plans || []).map((p) => {
-    const d = ctaPlanPublic(p, canRegister);
+  const suspendate = data.platiSuspendate
+    ? `<div class="notice warning pricing-notice" role="status"><span class="notice-icon">ℹ️</span><span><b>Plățile sunt oprite momentan.</b> ${H(data.motivPlatiSuspendate || 'Proba gratuită rămâne disponibilă și nu cerem card.')}</span></div>`
+    : '';
+  box.innerHTML = suspendate + (data.plans || []).map((p) => {
+    const d = ctaPlanPublic(p, canRegister, data.platiSuspendate);
     const cta = d.fel === 'text'
       ? `<div class="muted" data-u="u17">${H(d.text)}</div>`
       : (d.activ
@@ -101,9 +106,9 @@ async function showPricing() {
     return `<div class="plan-card${p.recomandat ? ' recomandat' : ''}">
       ${p.recomandat ? '<div class="plan-badge">Recomandat</div>' : ''}
       <h3>${H(p.nume)}</h3>
-      <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + fmt(p.pret) + '</b> ' + p.moneda}<span>${p.pret === 0 ? '' : '/ ' + p.perioada}</span></div>
+      <div class="plan-price">${p.pret === 0 ? 'Gratuit' : '<b>' + H(p.pret) + '</b> <span>' + H(p.moneda + '/' + p.perioada) + '</span>'}</div>
       <p class="plan-desc">${H(p.descriere || '')}</p>
-      <ul class="plan-feat">${(p.features || []).map((f) => `<li>${f}</li>`).join('')}</ul>
+      <ul class="plan-feat">${(p.features || []).map((f) => `<li>${H(f)}</li>`).join('')}</ul>
       <div class="plan-action">${cta}</div>
     </div>`;
   }).join('');
@@ -162,6 +167,10 @@ export function aplicaTipCont() {
   $('#regHintPatron').classList.toggle('hidden', contabil);
   $('#regHintContabil').classList.toggle('hidden', !contabil);
   if (f.nume) f.nume.required = !contabil;
+  f.querySelectorAll('[name="tvaPlatitor"]').forEach((r) => {
+    r.required = !contabil;
+    r.disabled = contabil;
+  });
   const btn = $('#regSubmit');
   if (btn) btn.textContent = contabil ? 'Creează contul de contabil' : 'Creează firma și contul';
   // Ce fel de cont se face se spune in TITLUL ecranului, nu in sigla: sigla e marca produsului si
@@ -171,13 +180,17 @@ export function aplicaTipCont() {
 }
 $$('#registerForm [name="tipCont"]').forEach((r) => r.addEventListener('change', aplicaTipCont));
 
-// Completarea dupa CUI, la inscriere. E locul cu cel mai mare castig din cele trei: aici omul
-// tasteaza denumirea, CUI-ul, Reg. Com., adresa, orasul si judetul intr-un formular pe care il
-// vede prima data in viata. Nu se atinge caseta „Platitoare de TVA" — o bifa schimbata sub deget
-// ar fi o decizie fiscala luata de aplicatie; starea reala din registru se SPUNE, in schimb, sub
-// camp (vezi `legaCompletareCui`), si omul decide.
+// Completarea dupa CUI, la inscriere. Regimul TVA nu are valoare implicita: registrul ANAF poate
+// propune raspunsul numai dupa un CUI gasit, iar omul vede alegerea si o poate corecta.
 legaCompletareCui($('#registerForm'), {
   nume: 'denumire', regCom: 'nrRegCom', adresa: 'adresa', oras: 'localitate', judet: 'judet',
+}, {
+  dupa: (reg) => {
+    if (!reg || typeof reg.tvaPlatitor !== 'boolean') return;
+    if ($('#registerForm [name="tvaPlatitor"]:checked')) return;
+    const propus = $('#registerForm [name="tvaPlatitor"][value="' + (reg.tvaPlatitor ? 'true' : 'false') + '"]');
+    if (propus) propus.checked = true;
+  },
 });
 
 $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) => {
@@ -185,8 +198,10 @@ $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) =>
   const f = e.target; $('#registerErr').textContent = '';
   const contabil = regTip() === 'contabil';
   const body = contabil
-    ? { tipCont: 'contabil', disponibilContabil: f.disponibilContabil.checked, username: f.username.value, password: f.password.value, email: f.email.value }
-    : { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value, tvaPlatitor: f.tvaPlatitor.checked, tipEntitate: f.tipEntitate.value, username: f.username.value, password: f.password.value, email: f.email.value };
+    ? { tipCont: 'contabil', disponibilContabil: f.disponibilContabil.checked, username: f.username.value, password: f.password.value, email: f.email.value, acceptLegal: f.acceptLegal.checked }
+    : { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value,
+      tvaPlatitor: f.querySelector('[name="tvaPlatitor"]:checked').value === 'true',
+      tipEntitate: f.tipEntitate.value, username: f.username.value, password: f.password.value, email: f.email.value, acceptLegal: f.acceptLegal.checked };
   try {
     await api('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     f.password.value = '';

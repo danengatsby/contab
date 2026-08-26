@@ -12,7 +12,7 @@ const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit, buildEntry } = ctx;
-  const deps = { buildEntry };
+  const deps = (req) => ({ buildEntry, actor: req.user });
 
   // Erorile de business poarta `status` (400/403/404); restul urca la handlerul global (500 + log).
   const run = (res, fn) => {
@@ -85,13 +85,13 @@ module.exports = function register(app, ctx) {
   });
 
   app.post('/api/stat-plata', (req, res) => run(res, () => {
-    const r = svc.postStatPlata(activeId(req), req.query.period, deps);
+    const r = svc.postStatPlata(activeId(req), req.query.period, deps(req));
     logAudit('stat.plata', req.query.period + ' (' + r.angajati + ' ang., net ' + r.totals.net + ')', { req });
     return { ok: true, totals: r.totals, entry: r.entry };
   }));
   // Plata efectiva a salariilor: rest de plata -> 421 = 5121/5311
   app.post('/api/stat-plata/pay', (req, res) => run(res, () => {
-    const r = svc.paySalaries(activeId(req), req.query.period, req.query.cont, deps);
+    const r = svc.paySalaries(activeId(req), req.query.period, req.query.cont, deps(req));
     logAudit('plata.salarii', req.query.period + ' ' + r.suma + ' din ' + r.cont, { req });
     return { ok: true, suma: r.suma, cont: r.cont, entry: r.entry };
   }));

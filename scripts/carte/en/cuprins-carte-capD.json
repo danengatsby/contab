@@ -1,0 +1,875 @@
+{
+ "parte": "Appendices · to use, not to read",
+ "nr": "D",
+ "titlu": "Glossary: accounting term ↔ plain speech",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The glossary is arranged alphabetically and written for someone hearing the term for the first time. The definitions are deliberately short: their purpose is to unblock a sentence, not to replace a chapter."
+  },
+  {
+   "tip": "p",
+   "text": "The terms most often confused are treated together — expense and payment, revenue and cash receipt, receivable and creditor, scrapping and disposal. Where the definition alone isn't enough, the chapter that clarifies it is referenced."
+  },
+  {
+   "tip": "cheie",
+   "text": "Half of the misunderstandings between an accountant and a business owner come from four pairs of words: revenue and cash receipt, expense and payment, profit and cash, debit and liability."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "A",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "intra-Community acquisition",
+     "Purchase of goods from a supplier in another EU member state. Taxed via reverse charge, at the buyer."
+    ],
+    [
+     "letter of credit",
+     "Sum blocked at the bank in favor of a supplier, until a condition is met."
+    ],
+    [
+     "asset",
+     "Everything the company owns: goods, inventory, receivables, cash. The left side of the balance sheet."
+    ],
+    [
+     "trade markup",
+     "The difference between the selling price and the purchase cost of merchandise."
+    ],
+    [
+     "impairment adjustment",
+     "Recognition of the fact that an asset is worth less than what's recorded. It doesn't remove it — it sets alongside it the probably lost value."
+    ],
+    [
+     "depreciation",
+     "Spreading the cost of a good over the years it's used. An expense that isn't paid."
+    ],
+    [
+     "sub-ledger (analytic)",
+     "Breaking down an account into details: by each customer, by each stock location. The sum of the sub-ledger entries must exactly match the general ledger account."
+    ],
+    [
+     "accrual (accrual accounting)",
+     "The principle by which revenue and expense are recognized when they occur, not when cash is received or paid."
+    ],
+    [
+     "append-only",
+     "The property of a journal in which you can only add entries, never rewrite them."
+    ],
+    [
+     "approval (of the month)",
+     "The act by which someone explicitly takes responsibility that the period is correct and can be reported."
+    ],
+    [
+     "accounting entry",
+     "A complete record: which account is debited, which account is credited, for what amount. In plain speech, \"a journal entry\"."
+    ],
+    [
+     "self-invoice",
+     "An invoice the company issues to itself, in place of the supplier, when the law requires it."
+    ],
+    [
+     "advance",
+     "Money paid or received before delivery. It's neither an expense nor revenue."
+    ],
+    [
+     "delivery note",
+     "Document accompanying goods delivered before invoicing."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "B",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "trial balance",
+     "The list of all accounts with balances and movements, with four pairs of equal totals. Done monthly."
+    ],
+    [
+     "tax base",
+     "The amount to which a rate is applied. For VAT, the value excluding tax; for corporate income tax, the taxable result."
+    ],
+    [
+     "bifunctional (account)",
+     "An account that can have a balance on either side, depending on the situation (121, 117, 581)."
+    ],
+    [
+     "balance sheet",
+     "A snapshot of the company's assets and liabilities at a given date: what the company has and where it came from."
+    ],
+    [
+     "period lock",
+     "Closing a month against any subsequent modification."
+    ],
+    [
+     "materials issue slip",
+     "Document that takes materials out of inventory to be used."
+    ],
+    [
+     "gross (salary)",
+     "Salary before withholdings. It's neither what the employee receives nor what it costs the company."
+    ],
+    [
+     "capital good",
+     "A fixed asset for which deducted VAT is adjusted over 5 or 20 years, if its use changes."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "C",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "CAM",
+     "The labor insurance contribution, 2.25%, owed by the employer."
+    ],
+    [
+     "equity",
+     "The shareholders' net worth: assets minus liabilities. What would remain if everything were paid off."
+    ],
+    [
+     "general ledger",
+     "The register with the same transactions as the journal, grouped by account."
+    ],
+    [
+     "CAS",
+     "The social security contribution (pension), withheld from salary."
+    ],
+    [
+     "scrapping",
+     "Retiring a good that's no longer useful to anyone, without a sale price."
+    ],
+    [
+     "CASS",
+     "The health insurance social contribution, withheld from salary."
+    ],
+    [
+     "disposal",
+     "The sale of a fixed asset. Different from scrapping, which is retirement without a price."
+    ],
+    [
+     "expense",
+     "Value consumed during the period. Not to be confused with payment."
+    ],
+    [
+     "prepaid expense",
+     "An amount paid now for future periods (account 471). It's an asset, not an expense."
+    ],
+    [
+     "net turnover",
+     "Sales of goods and services, minus discounts granted. Does not include other revenues."
+    ],
+    [
+     "offsetting",
+     "The mutual extinguishing of a receivable and a payable with the same partner."
+    ],
+    [
+     "reconciliation (agreement)",
+     "A check whereby two statements about the same thing must yield the same figure."
+    ],
+    [
+     "account",
+     "A \"drawer\" in which amounts of the same kind are gathered. It has a code and a name."
+    ],
+    [
+     "general ledger account (synthetic account)",
+     "The account from the general chart of accounts (371, 401). Its opposite is the sub-ledger account."
+    ],
+    [
+     "weighted average cost",
+     "Method of releasing inventory: each outflow at the weighted average value of inflows."
+    ],
+    [
+     "rate",
+     "The percentage applied to a base: 21% for VAT, 16% for corporate income tax."
+    ],
+    [
+     "receivable",
+     "The right to receive money from someone. For a company, usually from customers."
+    ],
+    [
+     "credit (side of an account)",
+     "The right-hand side of an account. Not related to bank credit."
+    ],
+    [
+     "creditor",
+     "The one you owe. Not to be confused with the \"credit\" side of an account."
+    ],
+    [
+     "cut-off",
+     "The correct delineation between periods: each transaction in the month to which it belongs."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "D",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "D100",
+     "The declaration regarding payment obligations to the state budget."
+    ],
+    [
+     "D101",
+     "The annual corporate income tax declaration."
+    ],
+    [
+     "D112",
+     "The declaration regarding social contributions and income tax."
+    ],
+    [
+     "D205",
+     "The informative declaration regarding tax withheld at source."
+    ],
+    [
+     "D300",
+     "The value added tax return."
+    ],
+    [
+     "D390",
+     "The recapitulative declaration regarding intra-Community transactions."
+    ],
+    [
+     "D394",
+     "The informative declaration regarding domestic supplies and acquisitions."
+    ],
+    [
+     "D406",
+     "The SAF-T informative declaration."
+    ],
+    [
+     "liability",
+     "The obligation to give money or goods to someone else."
+    ],
+    [
+     "debit (side of an account)",
+     "The left-hand side of an account."
+    ],
+    [
+     "debtor",
+     "The one who owes you."
+    ],
+    [
+     "VAT return",
+     "The declaration in which output VAT and deductible VAT for the period are totaled (D300)."
+    ],
+    [
+     "personal deduction",
+     "Part of the salary not subject to tax. Granted at the primary job."
+    ],
+    [
+     "deductible",
+     "Something that can be subtracted: from the tax base (an expense) or from the VAT owed (a tax paid)."
+    ],
+    [
+     "time delimitation",
+     "Allocating an amount to the periods to which it belongs (accounts 471 and 472)."
+    ],
+    [
+     "inventory release",
+     "Removing sold merchandise from stock, at its cost. The line most often forgotten."
+    ],
+    [
+     "dividend",
+     "The part of profit distributed to shareholders, after approval of the financial statements."
+    ],
+    [
+     "supporting document",
+     "The paper or file that proves a transaction took place. Without it, nothing is recorded."
+    ],
+    [
+     "normal useful life",
+     "The number of years over which a good is depreciated, chosen from an official range."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "E",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "e-Invoice (e-Factura)",
+     "The system through which invoices are transmitted electronically via the tax administration's platform."
+    ],
+    [
+     "e-Transport",
+     "The system for reporting transports of goods with high fiscal risk; it generates a UIT code."
+    ],
+    [
+     "balance (of an entry)",
+     "The equality between total debits and total credits. Necessary, not sufficient."
+    ],
+    [
+     "symmetric error",
+     "A mistake that affects both sides at once, thus passing any balance check."
+    ],
+    [
+     "financial year",
+     "The period for which financial statements are prepared — usually the calendar year."
+    ],
+    [
+     "chargeability",
+     "The moment from which the state can claim the tax. It doesn't always coincide with the chargeable event."
+    ],
+    [
+     "operating activity",
+     "The company's core activity, distinct from financial activity."
+    ],
+    [
+     "bank statement",
+     "The document issued by the bank showing account movements. It proves that money moved, not why."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "F",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "invoice",
+     "The document that attests a delivery or a service, containing the elements required by law."
+    ],
+    [
+     "chargeable event",
+     "The moment when the transaction is carried out. Chargeability usually follows from it."
+    ],
+    [
+     "FIFO",
+     "Method of releasing inventory: first in, first out."
+    ],
+    [
+     "account card",
+     "The page of an account from the general ledger: opening balance, movements, totals, closing balance."
+    ],
+    [
+     "payslip",
+     "The document showing the employee how the net was reached from the gross."
+    ],
+    [
+     "cash flow",
+     "A statement that tracks only cash, across three activities: operating, investing, financing."
+    ],
+    [
+     "forcing (a closing)",
+     "Closing over an unfinished step. Requires administrator rights and a written reason."
+    ],
+    [
+     "primary job",
+     "The main workplace, the only one at which the personal deduction is granted."
+    ],
+    [
+     "supplier",
+     "The one you buy from. Account 401."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "G",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "stock location (gestiune)",
+     "The place where inventory is kept and the person responsible for it."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "I",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "fixed asset",
+     "A good used for more than a year, with a value above the legal threshold. It is depreciated."
+    ],
+    [
+     "corporate income tax",
+     "16% applied to the taxable result, not the accounting one."
+    ],
+    [
+     "micro-enterprise income tax",
+     "A rate applied to revenues, regardless of profit. It's paid even in a loss."
+    ],
+    [
+     "charging (imputare)",
+     "Holding a person responsible for a shortage found during inventory count."
+    ],
+    [
+     "doubtful (customer)",
+     "A customer whose payment has become doubtful. Account 4118."
+    ],
+    [
+     "physical inventory",
+     "What was actually counted, as opposed to book records."
+    ],
+    [
+     "inventory count",
+     "The physical counting of assets and comparison with book records."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "J",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "journal (register)",
+     "The register with all transactions, in the order they occurred."
+    ],
+    [
+     "audit log",
+     "The record of human actions on the system: who, what, when."
+    ],
+    [
+     "VAT journal",
+     "A register for VAT purposes: one for sales, one for purchases. The return is compiled from them."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "L",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "finance lease",
+     "A form of financing in which the asset enters the user's balance sheet, along with the related liability."
+    ],
+    [
+     "operating lease",
+     "Renting: the installment is an expense, and the good remains with the owner."
+    ],
+    [
+     "liquidity",
+     "How quickly an asset can be converted into cash."
+    ],
+    [
+     "non-chargeable shortage",
+     "An inventory shortfall that cannot be charged to anyone. Triggers a VAT adjustment."
+    ],
+    [
+     "intra-Community supply",
+     "Sale of goods to a customer in another EU member state. Exempt, with the right of deduction."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "M",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "micro",
+     "The usual abbreviation for \"micro-enterprise\", i.e., a company taxed on revenues."
+    ],
+    [
+     "accounting treatment guide (monografie contabilă)",
+     "The vocabulary that links a real-life situation to the corresponding accounting entry."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "N",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "non-deductible",
+     "A real expense, paid from company funds, that the law does not allow to be subtracted from the tax base."
+    ],
+    [
+     "explanatory notes",
+     "The appendix explaining the policies, methods, and details behind the figures."
+    ],
+    [
+     "journal entry",
+     "See \"accounting entry\"."
+    ],
+    [
+     "credit note",
+     "A correction invoice that reduces or cancels a previous invoice."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "O",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "triangular transaction",
+     "Three companies, three states, a single movement of goods. A simplification measure."
+    ],
+    [
+     "payment order",
+     "The document ordering a bank payment."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "P",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "double-entry bookkeeping",
+     "The rule by which any amount is written twice, on two accounts, on opposite sides."
+    ],
+    [
+     "liabilities and equity (pasiv)",
+     "The right side of the balance sheet: where the resources came from — equity and liabilities."
+    ],
+    [
+     "fiscal period",
+     "The interval for which the VAT return is filed: the month or the quarter."
+    ],
+    [
+     "closed period",
+     "A month or quarter locked against modifications."
+    ],
+    [
+     "threshold",
+     "The limit up to which something is allowed or deductible. Beyond it, the regime changes."
+    ],
+    [
+     "cash register limit",
+     "The maximum amount that can remain in the cash register at the end of the day: 50,000 lei."
+    ],
+    [
+     "posting",
+     "The act by which an entry becomes final in the accounting records. After it, correction is done via reversal (storno)."
+    ],
+    [
+     "selling price",
+     "The price invoiced to the customer, excluding VAT."
+    ],
+    [
+     "prudence principle",
+     "The rule of not overvaluing assets and revenues, nor undervaluing liabilities."
+    ],
+    [
+     "pro-rata",
+     "The proportion in which VAT is deducted for companies with exempt transactions without the right of deduction."
+    ],
+    [
+     "work in progress",
+     "What has been started and not finished by the end of the period."
+    ],
+    [
+     "provision",
+     "The recognition of a probable obligation, of estimated size, arising from a past event."
+    ],
+    [
+     "bank reconciliation check",
+     "Matching the statement line by line with the accounting records."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "R",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "receipt confirmation",
+     "The electronic confirmation of receiving a declaration. The only proof that the obligation was fulfilled."
+    ],
+    [
+     "bank reconciliation",
+     "Comparing one's own records with the bank statement."
+    ],
+    [
+     "amending declaration",
+     "A declaration filed to correct a previous one."
+    ],
+    [
+     "foreign currency revaluation",
+     "Bringing foreign currency balances to the closing exchange rate."
+    ],
+    [
+     "special margin scheme",
+     "Taxing only the markup, for second-hand goods and similar items."
+    ],
+    [
+     "inventory register",
+     "The mandatory register in which inventory count results are recorded."
+    ],
+    [
+     "adjustment (regularizare)",
+     "An entry that doesn't come from an external document, but from the passage of time or from judgment."
+    ],
+    [
+     "legal reserve",
+     "The part of profit that must remain in the company: 5% of gross profit, up to 20% of capital."
+    ],
+    [
+     "accounting result",
+     "Revenues minus expenses. Measures economic performance."
+    ],
+    [
+     "taxable result",
+     "The accounting result adjusted with non-deductible items and deductions. The tax base."
+    ],
+    [
+     "retained earnings",
+     "Undistributed profit or uncovered loss from previous years. Account 117."
+    ],
+    [
+     "turnover (rulaj)",
+     "The total movements of an account over a period, on each side."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "S",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "SAF-T",
+     "The standard tax audit file, through which accounting data is submitted in a unified format (D406)."
+    ],
+    [
+     "aging schedule",
+     "The status of receivables and payables by partner and age."
+    ],
+    [
+     "exempt with deduction right",
+     "An operation with no VAT collected, but which retains the deduction right on inputs."
+    ],
+    [
+     "exempt without deduction right",
+     "An operation with no VAT collected, which does not give a deduction right. Generates pro-rata."
+    ],
+    [
+     "balance",
+     "The difference between the two sides of an account. Can be debit or credit."
+    ],
+    [
+     "opening balance",
+     "The balance the period begins with, carried over from the previous one."
+    ],
+    [
+     "solvency",
+     "The company's ability to cover its liabilities from its assets."
+    ],
+    [
+     "SPV",
+     "The Virtual Private Space — the electronic communication channel with the tax administration."
+    ],
+    [
+     "payroll statement",
+     "The monthly document with the salary entitlements of each employee."
+    ],
+    [
+     "inventory",
+     "Goods purchased or produced to be sold or consumed."
+    ],
+    [
+     "reversal (storno)",
+     "Canceling one entry with another, which remains linked to it. Nothing is deleted."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "T",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "reverse charge",
+     "Mechanism whereby the obligation to pay VAT passes from the supplier to the buyer."
+    ],
+    [
+     "third parties",
+     "Everyone outside the company that it has relations with: customers, suppliers, employees, the state."
+    ],
+    [
+     "traceability",
+     "The ability to trace any figure back to the document that produced it."
+    ],
+    [
+     "treasury",
+     "The company's money: bank accounts and cash register."
+    ],
+    [
+     "output VAT",
+     "The tax invoiced to customers. It is a liability to the state, not revenue."
+    ],
+    [
+     "input VAT",
+     "The tax paid to suppliers. It is recovered through the VAT return."
+    ],
+    [
+     "cash-basis VAT",
+     "A regime in which the tax becomes chargeable upon payment, not upon invoicing — on both sides."
+    ],
+    [
+     "deferred VAT",
+     "The tax that has not yet become due or deductible (account 4428)."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "U",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "UIT",
+     "The code obtained when reporting a transport in the e-Transport system."
+    ]
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "V",
+   "cap": [
+    "Term",
+    "What it means"
+   ],
+   "randuri": [
+    [
+     "validator",
+     "The official program that checks a declaration before submission."
+    ],
+    [
+     "net book value",
+     "The cost of an asset minus accumulated depreciation."
+    ],
+    [
+     "balance aging",
+     "The breakdown of receivables and payables into time intervals from the due date."
+    ],
+    [
+     "tax vector",
+     "The configuration of a company's reporting obligations, as recorded by the tax administration."
+    ],
+    [
+     "revenue",
+     "Value earned during the period. Not to be confused with cash collection."
+    ],
+    [
+     "deferred revenue",
+     "An amount collected now for future services (account 472). It is a liability."
+    ],
+    [
+     "internal transfers",
+     "The transit account through which money movements between the bank and the cash register pass (581)."
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Four pairs that get confused"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "They are not synonyms",
+   "cap": [
+    "Don't confuse",
+    "With",
+    "The difference"
+   ],
+   "randuri": [
+    [
+     "revenue",
+     "cash collection",
+     "the first arises at invoicing, the second at receipt of the money"
+    ],
+    [
+     "expense",
+     "payment",
+     "the first at the consumption of the resource, the second at the outflow of money"
+    ],
+    [
+     "profit",
+     "money in the account",
+     "the first is a measure, the second a state — see chapter 1"
+    ],
+    [
+     "debit",
+     "liability",
+     "debit is a side of an account; a liability is an obligation"
+    ],
+    [
+     "write-off",
+     "disposal",
+     "the first is taking out of use, the second is selling"
+    ],
+    [
+     "reversal in red",
+     "reversal in black",
+     "the first keeps the turnover figures correct — see chapter 29"
+    ]
+   ],
+   "nota": "The last two pairs produce errors that don't unbalance anything, so they don't flag themselves."
+  },
+  {
+   "tip": "p",
+   "text": "The glossary includes 154 terms. It is not exhaustive, nor does it aim to be: these are the words that actually come up in an ordinary conversation between an accountant and a small business owner."
+  }
+ ]
+}

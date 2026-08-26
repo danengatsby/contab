@@ -2,8 +2,7 @@
 
 // VALUTA/DIF. CURS + PROVIZIOANE + ASOCIATI + DIVIDENDE + SUBVENTII + AVANSURI 471/472 + EFECTE/ACREDITIVE — vezi index.js pentru contractul tipurilor.
 
-const { L, F, TROZ, TVAL } = require('./helpers');
-const fiscal = require('../fiscal');
+const { L, F, TROZ, TVAL, rate } = require('./helpers');
 const ajust = require('../ajustari'); // harta cont activ -> cont de ajustare (sursa unica)
 const { round2 } = require('../util');
 
@@ -248,10 +247,11 @@ module.exports = [
     entitate: 'srl', // PFA nu distribuie dividende — intreprinzatorul isi retrage sumele direct
     fields: [F.data, F.document,
       { name: 'brut', label: 'Dividende brute', type: 'number', required: true },
-      { name: 'cota', label: 'Cota impozit dividende (%)', type: 'number', default: fiscal.FISCAL.impozitDividende },
+      { name: 'cota', label: 'Cota impozit dividende (%)', type: 'number', default: 0, fiscalRate: 'impozitDividende' },
       { name: 'contSursa', label: 'Sursa (117 reportat / 121 curent)', type: 'select', options: [{ value: '117', label: '117 Rezultat reportat' }, { value: '121', label: '121 Profit curent' }], default: '117' }],
     build: (d) => {
-      const impozit = round2((Number(d.brut) || 0) * (Number(d.cota) || 0) / 100);
+      const cota = Number(d.cota) || rate(d, 'impozitDividende');
+      const impozit = round2((Number(d.brut) || 0) * cota / 100);
       const lines = [L(d.contSursa || '117', '457', d.brut, 'Repartizare profit la dividende')];
       if (impozit > 0) lines.push(L('457', '446', impozit, 'Impozit pe dividende reținut la sursă'));
       return lines;

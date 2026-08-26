@@ -2,6 +2,25 @@
 
 const fs = require('fs');
 const path = require('path');
+const globalChain = require('./globalChain');
+const auditLog = require('./auditLog');
+
+function graphFromFile(dbFile) {
+  let parsed;
+  try { parsed = JSON.parse(fs.readFileSync(dbFile, 'utf8')); } catch (e) {
+    const err = new Error('Baza nu poate fi verificată înainte de backup: ' + e.message); err.status = 409; throw err;
+  }
+  return parsed;
+}
+
+function integrityFor(graph, dataDir) {
+  let audit;
+  try { audit = auditLog.verifyDirectory(path.join(dataDir, 'audit')); } catch (e) {
+    const err = new Error('Jurnalul durabil nu poate fi citit înainte de backup: ' + e.message);
+    err.status = 409; err.code = 'GLOBAL_CHAIN_UNAVAILABLE'; throw err;
+  }
+  return globalChain.assertGraph(graph, { auditResult: audit, requireAudit: true });
+}
 
 function backupDir(dataDir) {
   const dir = path.join(dataDir, 'backups');
@@ -54,6 +73,7 @@ function prunePreRestoreBackups(dataDir, keep) {
 /** Copiaza db.json intr-o arhiva datata; pastreaza ultimele `keep` copii. */
 function backupNow(dbFile, dataDir, keep) {
   if (!fs.existsSync(dbFile)) throw new Error('Baza de date nu exista inca.');
+  const integrity = integrityFor(graphFromFile(dbFile), dataDir);
   const dir = backupDir(dataDir);
   const name = 'db-' + stamp() + '.json';
   fs.copyFileSync(dbFile, path.join(dir, name));
@@ -64,7 +84,7 @@ function backupNow(dbFile, dataDir, keep) {
   // igiena radacinii data/: nu lasa backup-urile ad-hoc db.json.bak-* sa se acumuleze la nesfarsit
   try { pruneStrayBackups(dataDir, Number(process.env.CONTAB_BACKUP_KEEP_ADHOC) || 10); } catch (_) { /* ignora */ }
   try { prunePreRestoreBackups(dataDir, Number(process.env.CONTAB_BACKUP_KEEP_PRE_RESTORE) || 10); } catch (_) { /* ignora */ }
-  return { name, count: Math.min(list.length, max) };
+  return { name, count: Math.min(list.length, max), integrity };
 }
 
 /** Lista copiilor (cea mai noua prima). */
@@ -91,6 +111,8 @@ function backupPath(dataDir, name) {
  */
 function fullBackup(dbFile, dataDir, keep) {
   const AdmZip = require('adm-zip');
+  if (!fs.existsSync(dbFile)) throw new Error('Baza de date nu exista inca.');
+  const integrity = integrityFor(graphFromFile(dbFile), dataDir);
   const dir = backupDir(dataDir);
   const ts = stamp();
   const name = 'full-' + ts + '.zip';
@@ -134,6 +156,9 @@ function fullBackup(dbFile, dataDir, keep) {
   // jurnalul de audit DURABIL (append-only) — proba pentru control intern, offsite cu backupul
   const auditDir = path.join(dataDir, 'audit');
   if (fs.existsSync(auditDir)) zip.addLocalFolder(auditDir, 'audit');
+  // Dovada este în interiorul arhivei. La verificare se recalculează din db.json + copiile
+  // jurnalului din ZIP; simpla înlocuire a acestui raport nu poate face date alterate valide.
+  zip.addFile('integrity/global-chain.json', Buffer.from(JSON.stringify(integrity, null, 2), 'utf8'));
   zip.writeZip(path.join(dir, name));
   try { fs.chmodSync(path.join(dir, name), 0o600); } catch (_) { /* best-effort */ }
   if (snap) { try { fs.unlinkSync(snap); } catch (_) { /* ignora */ } }
@@ -146,7 +171,8 @@ function fullBackup(dbFile, dataDir, keep) {
     .sort((a, b) => b.mtime - a.mtime);
   for (const z of zips.slice(keep || 14)) { try { fs.unlinkSync(path.join(dir, z.name)); } catch (_) { /* ignora */ } }
 
-  return { name, path: path.join(dir, name), size: fs.statSync(path.join(dir, name)).size };
+  return { name, path: path.join(dir, name), size: fs.statSync(path.join(dir, name)).size,
+    integrityRoot: integrity.rootHash, integrity };
 }
 
 /** Arhivele complete (full-*.zip) din data/backups, cele mai noi primele. Folosita de drill-ul
@@ -167,14 +193,52 @@ function verifyArchive(zipPath) {
   const AdmZip = require('adm-zip');
   try {
     const zip = new AdmZip(zipPath);
-    const je = zip.getEntry('db.json');
-    if (!je) return { ok: false, motiv: 'db.json lipseste din arhiva' };
+    const dbEntries = zip.getEntries().filter((entry) => !entry.isDirectory && entry.entryName === 'db.json');
+    if (dbEntries.length !== 1) return { ok: false, motiv: dbEntries.length ? 'db.json apare de mai multe ori în arhivă' : 'db.json lipseste din arhiva' };
+    const je = dbEntries[0];
     const d = JSON.parse(zip.readAsText(je));
     if (!Array.isArray(d.firme)) return { ok: false, motiv: 'db.json nu contine lista de firme' };
+    const auditEntries = zip.getEntries().filter((entry) => !entry.isDirectory
+      && /^audit\/audit-\d{4}-\d{2}\.ndjson$/.test(entry.entryName))
+      .map((entry) => ({ name: path.basename(entry.entryName), content: entry.getData() }));
+    const audit = auditLog.verifyContents(auditEntries);
+    const integrity = globalChain.verifyGraph(d, { auditResult: audit, requireAudit: true });
+    if (!integrity.ok) {
+      const first = integrity.issues[0];
+      return { ok: false, motiv: 'lanț global invalid: ' + (first ? first.message : 'integritate necunoscută'), integrity };
+    }
+    const proofEntries = zip.getEntries().filter((entry) => !entry.isDirectory
+      && entry.entryName === 'integrity/global-chain.json');
+    if (proofEntries.length > 1) return { ok: false, motiv: 'dovada global-chain.json apare de mai multe ori', integrity };
+    const proofEntry = proofEntries[0] || null;
+    if (proofEntry) {
+      let proof;
+      try { proof = JSON.parse(zip.readAsText(proofEntry)); } catch (e) {
+        return { ok: false, motiv: 'dovada global-chain.json nu este JSON valid', integrity };
+      }
+      if (Number(proof.schemaVersion) !== globalChain.SCHEMA_VERSION || proof.rootHash !== integrity.rootHash) {
+        return { ok: false, motiv: 'rădăcina globală recalculată nu coincide cu dovada din arhivă', integrity };
+      }
+    }
     const sq = zip.getEntry('contab.sqlite');
     const size = fs.statSync(zipPath).size;
-    return { ok: true, firme: d.firme.length, sqlite: !!(sq && sq.header.size > 0), size };
+    return { ok: true, firme: d.firme.length, annualArchives: (d.annualArchives || []).length,
+      cashForecastSnapshots: (d.cashForecastSnapshots || []).length,
+      sqlite: !!(sq && sq.header.size > 0), size, integrityRoot: integrity.rootHash,
+      integrity, proofPresent: !!proofEntry };
   } catch (e) { return { ok: false, motiv: e.message }; }
 }
 
-module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups, prunePreRestoreBackups, verifyArchive, listFullArchives };
+/** Verifică un backup JSON înainte de descărcare. Nu îi atașează jurnalul viu, care poate fi
+ * mai nou decât fotografia bazei; lanțul complet db+jurnal există în arhivele full-*.zip. */
+function verifyJsonBackup(filePath) {
+  try {
+    const graph = graphFromFile(filePath);
+    const integrity = globalChain.verifyGraph(graph);
+    return integrity.ok ? { ok: true, integrity, integrityRoot: integrity.rootHash }
+      : { ok: false, motiv: integrity.issues[0] && integrity.issues[0].message, integrity };
+  } catch (e) { return { ok: false, motiv: e.message }; }
+}
+
+module.exports = { backupNow, listBackups, backupPath, fullBackup, pruneStrayBackups, prunePreRestoreBackups,
+  verifyArchive, verifyJsonBackup, listFullArchives };

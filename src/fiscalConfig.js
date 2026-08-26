@@ -1,14 +1,11 @@
 'use strict';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  SURSA UNICA, DATATA, A PARAMETRILOR FISCALI
-//  Actualizarea anuala (sau la modificari legislative) se face DOAR aici — nu prin
-//  vanatoare de valori prin cod. Fisierul NU contine logica, doar date; fiscal.js
-//  le consuma. La orice schimbare: modifica valoarea, apoi `AN` + `DATA_ACTUALIZARE`
-//  si nota din `SURSE`. Referintele legale sunt orientative (verifica textul in vigoare).
-//
-//  ⚠️  Cotele din `RATES` sunt SUPRASCRIABILE de utilizator (Setari → Cote fiscale);
-//      valorile de aici sunt cele implicite / de referinta pentru anul `AN`.
+//  NOMENCLATORUL PARAMETRILOR FISCALI + DEFINITIILE TEMPORALE INCORPORATE
+//  `RATES` defineste forma completa si fotografia curenta de compatibilitate. Calculele NU au
+//  voie sa o citeasca direct: ele rezolva un FiscalRuleSet prin fiscal.rulesAt(dataOperatiunii).
+//  Versiunile efective sunt `RULE_SET_DEFINITIONS`, normalizate si sigilate cu SHA-256 de
+//  src/fiscalRules.js. O versiune publicata nu se modifica; se adauga o definitie noua.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AN = 2026;
@@ -36,6 +33,11 @@ const RATES = {
   salariuMinimConstructii: 4582,
   neimpozabilS1: 300, // lei neimpozabili din salariul minim (S1)
   neimpozabilS2: 200, // lei neimpozabili din salariul minim (S2)
+  // Campurile active exista pe fiecare FiscalRuleSet. Cele S1/S2 raman numai pentru afisarea
+  // fotografiei anuale si compatibilitatea exporturilor; motoarele citesc exclusiv campul activ.
+  salariuMinim: 4325,
+  neimpozabilMinim: 200,
+  neimpozabilPlafonBrut: 4600,
   // Plafonul CUMULAT al avantajelor neimpozabile (art. 76 alin. (4^1)): 33% din salariul de BAZA
   // corespunzator locului de munca ocupat. Limitele individuale ale fiecarei categorii stau in
   // `BENEFICII` mai jos — asta e doar capacul comun, si e ultimul care se aplica.
@@ -268,5 +270,88 @@ const SURSE = {
     + 'primite de la prestatori din AFARA UE se taxeaza invers (art. 307 alin. (2)) dar NU se declara',
 };
 
+// Surse oficiale, adresabile si arhivabile. Acoperirea de mai jos este intentionat limitata la
+// 2024-2026: o operatie in afara intervalului este refuzata de motor in loc sa primeasca tacit
+// fotografia anului 2026. `approvalId:null` spune adevarul: definitiile incorporate sunt inca in
+// poarta de revizie fiscala externa; publicarea din API cere obligatoriu o aprobare identificabila.
+const LEGAL = {
+  salariu3300: { title: 'HG 900/2023 — salariul minim 3.300 lei', url: 'https://legislatie.just.ro/Public/DetaliiDocument/274843' },
+  salariu3700: { title: 'HG 598/2024 — salariul minim 3.700 lei', url: 'https://legislatie.just.ro/Public/DetaliiDocumentAfis/283807' },
+  salariu4050: { title: 'HG 1506/2024 — salariul minim 4.050 lei', url: 'https://legislatie.just.ro/Public/DetaliiDocumentAfis/291450' },
+  salariu4325: { title: 'HG 146/2026 — salariul minim 4.325 lei', url: 'https://legislatie.just.ro/Public/FormaPrintabila/00000G0UWAJQDLM8S3J00SPP9LDAJLOY' },
+  neimpozabil2024: { title: 'OUG 115/2023 — facilitate salariu minim 2024', url: 'https://legislatie.just.ro/Public/DetaliiDocumentAfis/277404' },
+  neimpozabilIulie2024: { title: 'OUG 59/2024 — 300 lei din iulie 2024', url: 'https://legislatie.just.ro/Public/DetaliiDocumentAfis/283852' },
+  fiscal2025: { title: 'OUG 156/2024 — masuri fiscale 2025', url: 'https://legislatie.just.ro/Public/DetaliiDocument/296081' },
+  tva2025: { title: 'Legea 141/2025 — TVA si dividende', url: 'https://legislatie.just.ro/Public/DetaliiDocument/300333' },
+  plafonTva2025: { title: 'OG 22/2025 — plafon scutire TVA 395.000 lei', url: 'https://legislatie.just.ro/Public/DetaliiDocumentAfis/301801' },
+  fiscal2026: { title: 'OUG 89/2025 — facilitate salariu minim 2026', url: 'https://legislatie.just.ro/Public/DetaliiDocument/307679' },
+  intrastat2026: { title: 'Ordin INS 1604/2025 — praguri Intrastat 2026', url: 'https://legislatie.just.ro/public/DetaliiDocument/303985' },
+};
+
+function fotografie(overrides) { return Object.assign({}, RATES, overrides); }
+function definitie(id, validFrom, validTo, publishedAt, legalSources, overrides) {
+  return { id, validFrom, validTo, publishedAt, legalSources, approvalId: null,
+    rates: fotografie(overrides) };
+}
+
+const RULE_SET_DEFINITIONS = [
+  definitie('ro-2024-h1', '2024-01-01', '2024-06-30', '2023-12-15T00:00:00.000Z',
+    [LEGAL.neimpozabil2024, LEGAL.salariu3300], {
+      an: 2024, salariuMinim: 3300, salariuMinimS1: 3300, salariuMinimS2: 3700,
+      neimpozabilMinim: 200, neimpozabilS1: 200, neimpozabilS2: 300,
+      neimpozabilPlafonBrut: 4000, tvaStandard: 19, tvaRedus: 9,
+      impozitDividende: 8, plafonMicroEur: 500000, plafonScutireTvaLei: 300000,
+      tichetMasaMaxLei: 40.18, castigSalarialMediuBrut: 7567,
+    }),
+  definitie('ro-2024-h2', '2024-07-01', '2024-12-31', '2024-06-06T00:00:00.000Z',
+    [LEGAL.salariu3700, LEGAL.neimpozabilIulie2024], {
+      an: 2024, salariuMinim: 3700, salariuMinimS1: 3300, salariuMinimS2: 3700,
+      neimpozabilMinim: 300, neimpozabilS1: 200, neimpozabilS2: 300,
+      neimpozabilPlafonBrut: 4300, tvaStandard: 19, tvaRedus: 9,
+      impozitDividende: 8, plafonMicroEur: 500000, plafonScutireTvaLei: 300000,
+      tichetMasaMaxLei: 40.18, castigSalarialMediuBrut: 7567,
+    }),
+  definitie('ro-2025-01', '2025-01-01', '2025-07-31', '2024-12-31T00:00:00.000Z',
+    [LEGAL.salariu4050, LEGAL.fiscal2025], {
+      an: 2025, salariuMinim: 4050, salariuMinimS1: 4050, salariuMinimS2: 4050,
+      neimpozabilMinim: 300, neimpozabilS1: 300, neimpozabilS2: 300,
+      neimpozabilPlafonBrut: 4300, tvaStandard: 19, tvaRedus: 9,
+      impozitDividende: 10, plafonMicroEur: 250000, plafonScutireTvaLei: 300000,
+      tichetMasaMaxLei: 40.18, castigSalarialMediuBrut: 8620,
+    }),
+  definitie('ro-2025-08', '2025-08-01', '2025-08-31', '2025-07-25T00:00:00.000Z',
+    [LEGAL.salariu4050, LEGAL.fiscal2025, LEGAL.tva2025], {
+      an: 2025, salariuMinim: 4050, salariuMinimS1: 4050, salariuMinimS2: 4050,
+      neimpozabilMinim: 300, neimpozabilS1: 300, neimpozabilS2: 300,
+      neimpozabilPlafonBrut: 4300, tvaStandard: 21, tvaRedus: 11,
+      impozitDividende: 10, plafonMicroEur: 250000, plafonScutireTvaLei: 300000,
+      tichetMasaMaxLei: 40.18, castigSalarialMediuBrut: 8620,
+    }),
+  definitie('ro-2025-09', '2025-09-01', '2025-10-31', '2025-08-30T00:00:00.000Z',
+    [LEGAL.salariu4050, LEGAL.fiscal2025, LEGAL.tva2025, LEGAL.plafonTva2025], {
+      an: 2025, salariuMinim: 4050, salariuMinimS1: 4050, salariuMinimS2: 4050,
+      neimpozabilMinim: 300, neimpozabilS1: 300, neimpozabilS2: 300,
+      neimpozabilPlafonBrut: 4300, tvaStandard: 21, tvaRedus: 11,
+      impozitDividende: 10, plafonMicroEur: 250000, plafonScutireTvaLei: 395000,
+      tichetMasaMaxLei: 40.18, castigSalarialMediuBrut: 8620,
+    }),
+  definitie('ro-2025-11', '2025-11-01', '2025-12-31', '2025-10-17T00:00:00.000Z',
+    [LEGAL.salariu4050, LEGAL.fiscal2025, LEGAL.tva2025, LEGAL.plafonTva2025], {
+      an: 2025, salariuMinim: 4050, salariuMinimS1: 4050, salariuMinimS2: 4050,
+      neimpozabilMinim: 300, neimpozabilS1: 300, neimpozabilS2: 300,
+      neimpozabilPlafonBrut: 4300, tvaStandard: 21, tvaRedus: 11,
+      impozitDividende: 10, plafonMicroEur: 250000, plafonScutireTvaLei: 395000,
+      tichetMasaMaxLei: 45, castigSalarialMediuBrut: 8620,
+    }),
+  definitie('ro-2026-h1', '2026-01-01', '2026-06-30', '2025-12-31T00:00:00.000Z',
+    [LEGAL.salariu4050, LEGAL.fiscal2026, LEGAL.tva2025, LEGAL.plafonTva2025, LEGAL.intrastat2026], {
+      an: 2026, salariuMinim: 4050, neimpozabilMinim: 300, neimpozabilPlafonBrut: 4300,
+    }),
+  definitie('ro-2026-h2', '2026-07-01', '2026-12-31', '2026-03-12T00:00:00.000Z',
+    [LEGAL.salariu4325, LEGAL.fiscal2026, LEGAL.tva2025, LEGAL.plafonTva2025, LEGAL.intrastat2026], {
+      an: 2026, salariuMinim: 4325, neimpozabilMinim: 200, neimpozabilPlafonBrut: 4600,
+    }),
+];
+
 module.exports = { AN, DATA_ACTUALIZARE, RATES, DEDUCERE, BENEFICII, PFA, CAEN_MICRO_3,
-  TARI_UE, TARI_UE_BUNURI, SURSE };
+  TARI_UE, TARI_UE_BUNURI, SURSE, RULE_SET_DEFINITIONS };

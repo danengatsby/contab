@@ -21,6 +21,7 @@ const { ARRAY_COLLS } = require('./store');
 const { naturalCompare } = require('./util');
 const backup = require('./backup');
 const identitate = require('./identitate');
+const legal = require('./legalCompliance');
 const { cuiKey } = identitate;
 const { allowedFirme, isDemoUser } = require('./session');
 
@@ -28,6 +29,14 @@ const { allowedFirme, isDemoUser } = require('./session');
 // interfata. Textul mesajului nu e contract: se rescrie oricand, si o potrivire pe el ar
 // pica tacut la prima reformulare.
 function fail(status, message, code) { const e = new Error(message); e.status = status; if (code) e.code = code; throw e; }
+
+function reqOperationalFirma(firma, action) {
+  const state = legal.firmState(firma);
+  if (!state.operational) {
+    fail(428, (action || 'Operațiunea') + ' este blocată până când proprietarul declară regimul datelor firmei.', state.reason);
+  }
+  return state;
+}
 
 /** Conturile demo (public, partajate) nu adauga si nu gestioneaza firme. */
 function reqNotDemo(user) {
@@ -74,27 +83,18 @@ function reqCuiLiber(cui, exceptId) {
   if (firmaDupaCui(cui, exceptId)) fail(409, CUI_DUPLICAT);
 }
 
-/** CNP-ul patronului, obligatoriu ca sa poti detine firme: proprietarul e o PERSOANA identificata,
- *  nu doar un nume de utilizator. Fara el nu s-ar sti pe cine intreaba aplicatia la cererile de acces. */
-function reqCnp(user) {
-  if (user.role === 'admin') return;
-  const cnp = ((user.profil || {}).cnp) || '';
-  if (!identitate.validCNP(cnp)) {
-    fail(400, 'Ca să înscrii o firmă, completează-ți întâi CNP-ul — firmele se înregistrează pe o '
-      + 'persoană identificată, iar ea aprobă cine primește acces la ele.', 'CNP_LIPSA');
-  }
-}
-
 function createFirma(user, b) {
   reqNotDemo(user); b = b || {};
-  // Formularul din aplicatie inscrie firme PROPRII: CUI obligatoriu si valid (cifra de control),
-  // liber, si patron identificat. La inscrierea publica (authRoutes) CUI-ul ramane optional —
-  // acolo se creeaza contul si firma deodata, iar cerinta ar rupe intrarea in aplicatie.
+  // Formularul din aplicatie inscrie firme PROPRII: CUI obligatoriu, valid si liber. In etapa de
+  // test NU cerem CNP-ul real al patronului — ar contrazice interdictia de a introduce date reale.
+  // Proprietarul este contul autentificat. La inscrierea publica CUI-ul ramane optional.
   if (user.role !== 'admin') {
-    reqCnp(user);
     if (!identitate.validCUI(b.cui)) fail(400, 'CUI invalid. Scrie codul fiscal al firmei (ex. RO14399840) — cifra de control nu se potrivește.');
     reqCuiLiber(b.cui);
   } else if (b.cui) { reqCuiLiber(b.cui); }
+  if (b.confirmFictitious !== true) {
+    fail(400, 'Confirmă că firma nouă va conține exclusiv date fictive în etapa de test.', 'TEST_DATA_DECLARATION_REQUIRED');
+  }
   const d = db.get();
   const id = db.nextFirmaId();
   const f = Object.assign(db.defaultFirma(id), {
@@ -107,6 +107,7 @@ function createFirma(user, b) {
   // conturi (contabili care preiau firma). Pana acum accesul era o simpla lista `user.firme`, in
   // care toti membrii erau egali si nu exista pe cine intreba.
   if (user.role !== 'admin') f.ownerId = user.id;
+  f.legalAcceptance = legal.acceptanceRecord('test-data', user, { declaration: 'fictitious-only' });
   // Billing per-firma: firma noua a unui utilizator porneste cu proba de 30 de zile (apoi abonament).
   // Firmele create de admin sunt active direct (adminul nu e taxat).
   f.subscription = user.role === 'admin'
@@ -179,6 +180,7 @@ function decideCerere(user, id, aprob) {
   // garda esentiala: proprietarul, nu „oricine are acces" — altfel un colaborator adaugat ieri
   // ar putea da mai departe acces la datele patronului
   if (f.ownerId !== user.id) fail(403, 'Doar proprietarul firmei poate decide cererile de acces.');
+  if (aprob) reqOperationalFirma(f, 'Acordarea accesului');
   r.status = aprob ? 'aprobata' : 'respinsa';
   r.decidedBy = user.id; r.decidedAt = new Date().toISOString();
   if (aprob) {
@@ -293,6 +295,7 @@ function decideServicii(user, id, accept) {
   if (r.contabilId !== user.id) fail(403, 'Doar contabilul căruia i-ai trimis cererea poate răspunde.');
   const f = db.getFirma(r.firmaId);
   if (!f) fail(404, 'Firma nu mai există.');
+  if (accept) reqOperationalFirma(f, 'Acordarea accesului');
   r.status = accept ? 'acceptata' : 'refuzata';
   r.decidedAt = new Date().toISOString();
   if (accept) {
@@ -349,6 +352,12 @@ function importBundle(user, bundle, opts) {
   if (!targetFid && user) {
     const nf = db.getFirma(newFid);
     if (nf) {
+      // Regimul juridic vine exclusiv din confirmarea cererii curente, niciodata din pachetul
+      // controlat de utilizator. Pentru replace, campurile juridice ale tintei sunt pastrate.
+      nf.dataMode = o.dataMode || 'unclassified';
+      if (o.legalAcceptance) nf.legalAcceptance = o.legalAcceptance;
+      else delete nf.legalAcceptance;
+      nf.aiProcessing = { enabled: false };
       nf.subscription = user.role === 'admin'
         ? { status: 'active', plan: 'grandfathered', since: new Date().toISOString() }
         : plans.firmaTrialSub();
@@ -420,10 +429,23 @@ function testClone(user, id) {
   reqAccess(user, id);
   try {
     const src = db.getFirma(id) || {};
-    const newFid = db.importFirma(db.exportFirma(id), { deferSave: true });
+    const state = reqOperationalFirma(src, 'Clonarea');
+    if (state.mode !== 'test') {
+      fail(400, 'O firmă cu date reale nu poate fi etichetată drept copie fictivă fără anonimizare.', 'REAL_DATA_TEST_CLONE_FORBIDDEN');
+    }
+    const testBundle = db.exportFirma(id);
+    // Dosarele anuale sunt semnate pentru identitatea firmei-sursă, iar fotografiile de
+    // backtesting indică sursele istorice ale acelei identități. Copia [TEST] primește datele de
+    // lucru, nu dovezile imuabile/auditul managerial al originalului.
+    testBundle.annualArchives = [];
+    testBundle.cashForecastSnapshots = [];
+    const newFid = db.importFirma(testBundle, { deferSave: true });
     const nf = db.getFirma(newFid);
     if (nf) {
       nf.nume = '[TEST] ' + String(src.nume || 'Firma').replace(/^\[TEST\]\s*/, ''); nf.test = true;
+      nf.dataMode = 'test';
+      nf.legalAcceptance = legal.acceptanceRecord('test-data', user, { declaration: 'fictitious-only', source: 'test-clone' });
+      nf.aiProcessing = { enabled: false };
       nf.subscription = Object.assign({}, src.subscription || (user.role === 'admin'
         ? { status: 'active', plan: 'grandfathered', since: new Date().toISOString() }
         : plans.firmaTrialSub()));
@@ -484,6 +506,8 @@ function addDemoFirma(user) {
   const nf = db.getFirma(newFid);
   if (nf) {
     nf.demo = true;
+    nf.dataMode = 'test';
+    nf.aiProcessing = { enabled: false };
     nf.nume = 'FIRMA DEMO (exemplu de lucru)';
     // Abonamentul: aceleasi conditii ca la orice firma noua — altfel ar lovi paywall-ul imediat.
     if (!nf.subscription) {
@@ -492,7 +516,10 @@ function addDemoFirma(user) {
         : plans.firmaTrialSub();
     }
   }
-  if (user.role !== 'admin') { user.firme = user.firme || []; if (!user.firme.includes(newFid)) user.firme.push(newFid); }
+  if (user.role !== 'admin') {
+    user.firme = user.firme || []; if (!user.firme.includes(newFid)) user.firme.push(newFid);
+    user.firmaRoluri = Object.assign({}, user.firmaRoluri || {}, { [newFid]: 'aprobator' });
+  }
   user.firmaActiva = newFid;
   db.save();
   return { firmaId: newFid, nume: nf ? nf.nume : '' };
@@ -546,6 +573,7 @@ function updateFirma(user, id, body) {
   reqAccess(user, id);
   const f = db.getFirma(id);
   if (!f) fail(404, 'Firma inexistenta');
+  reqOperationalFirma(f, 'Modificarea firmei');
   // fara asta poarta se ocolea in doi pasi: creezi firma fara CUI, apoi ii pui CUI-ul altei firme
   if (body && body.cui != null && cuiKey(body.cui) !== cuiKey(f.cui)) reqCuiLiber(body.cui, f.id);
   // allowlist de profil — la fel ca updateCompany; campurile sensibile au rute dedicate
@@ -691,7 +719,7 @@ function deleteFirmaFiles(files) {
 // Gestionarea echipei este o decizie a PROPRIETARULUI, nu a oricarui membru. Rolul per firma
 // separa vizualizarea/operarea/verificarea/aprobarea fara sa schimbe rolul global al contului.
 const COLLAB_ROLES = new Set(['vizualizare', 'operator', 'verificator', 'aprobator']);
-function collaboratorRole(role) { return COLLAB_ROLES.has(role) ? role : 'aprobator'; }
+function collaboratorRole(role) { return COLLAB_ROLES.has(role) ? role : 'vizualizare'; }
 function canManageCollaborators(user, fid, allowDemo) {
   const f = db.getFirma(Number(fid));
   return !!(f && user && ((user.role === 'admin') || Number(f.ownerId) === Number(user.id) || allowDemo));
@@ -708,7 +736,7 @@ function listCollaborators(fid) {
   return capList(db.get().users
     .filter((u) => u.role !== 'admin' && Array.isArray(u.firme) && u.firme.includes(fid))
     .map((u) => ({ id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending,
-      rol: f && Number(f.ownerId) === Number(u.id) ? 'proprietar' : ((u.firmaRoluri || {})[String(fid)] || 'aprobator') })),
+      rol: f && Number(f.ownerId) === Number(u.id) ? 'proprietar' : ((u.firmaRoluri || {})[String(fid)] || 'vizualizare') })),
   0, 'colaboratori').items;
 }
 
@@ -716,6 +744,7 @@ function listCollaborators(fid) {
 function addExistingCollaborator(user, fid, b, allowDemo) {
   fid = Number(fid); b = b || {};
   reqManageCollaborators(user, fid, allowDemo);
+  reqOperationalFirma(db.getFirma(fid), 'Acordarea accesului');
   const key = String(b.username || b.email || '').trim().toLowerCase();
   if (!key) fail(400, 'Completează utilizatorul sau emailul colaboratorului.');
   const d = db.get();
@@ -736,6 +765,7 @@ function addExistingCollaborator(user, fid, b, allowDemo) {
 function inviteCollaborator(user, fid, b, allowDemo) {
   fid = Number(fid); b = b || {};
   reqManageCollaborators(user, fid, allowDemo);
+  reqOperationalFirma(db.getFirma(fid), 'Invitarea unui colaborator');
   const username = String(b.username || '').trim();
   if (!username) fail(400, 'Alege un nume de utilizator pentru invitație.');
   const d = db.get();
@@ -784,7 +814,7 @@ function setCollaboratorRole(user, fid, uid, role, allowDemo) {
 
 module.exports = {
   trialDinNou, cerereAcces, cereriPrimite, decideCerere,
-  firmaDupaCui, reqCuiLiber, reqCnp, CUI_DUPLICAT,
+  firmaDupaCui, reqCuiLiber, CUI_DUPLICAT,
   listaContabili, contabilPublic, cerereServicii, cereriServicii, decideServicii, retrageServicii,
   reqNotDemo, reqAccess, reqAdmin,
   createFirma, importBundle, importZip, testClone, addDemoFirma,

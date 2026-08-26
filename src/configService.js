@@ -12,17 +12,37 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const fiscal = require('./fiscal');
+const fiscalProfile = require('./fiscalProfile');
+const balanceCategory = require('./balanceCategory');
 const { reqFirma, ensureDocSeries } = require('./stocksService');
+const { validIsoDate } = require('./util');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
+
+function storedFiscalHistory(fid) {
+  return fiscalProfile.historyFor(db.get(), fid);
+}
+
+function replaceFiscalHistory(fid, rows) {
+  const d = db.get();
+  d.fiscal_profile_history = (d.fiscal_profile_history || []).filter((r) => Number(r.firmaId) !== Number(fid))
+    .concat((rows || []).map((r) => Object.assign({}, r, { firmaId: Number(fid) })));
+}
 
 /** Actualizeaza datele de PROFIL ale firmei (allowlist strict: db.pickFirmaFields). Campurile
  *  sensibile — lockedUntil, subscription, anaf, logoFile — NU se pot scrie de aici; au rute
  *  dedicate (period-lock/admin, billing, anaf/config, upload de logo validat). */
-function updateCompany(fid, b) {
+function updateCompany(fid, b, actor) {
   fid = reqFirma(fid);
   const f = db.getFirma(fid);
   const fields = db.pickFirmaFields(b);
+  if (Object.prototype.hasOwnProperty.call(fields, 'categorieRaportare')) {
+    const categorie = String(fields.categorieRaportare || '').trim().toLowerCase();
+    if (!['', 'micro', 'mic', 'mare'].includes(categorie)) {
+      fail(400, 'Categoria contabila pentru situatiile financiare trebuie sa fie micro, mic sau mare.');
+    }
+    fields.categorieRaportare = categorie;
+  }
   const veche = String(f.metodaEvaluareStoc || 'cmp').toLowerCase() === 'fifo' ? 'fifo' : 'cmp';
   const metodaCeruta = String(fields.metodaEvaluareStoc || veche).toLowerCase();
   if (Object.prototype.hasOwnProperty.call(fields, 'metodaEvaluareStoc') && !['cmp', 'fifo'].includes(metodaCeruta)) {
@@ -33,9 +53,85 @@ function updateCompany(fid, b) {
     fail(409, 'Metoda de evaluare a stocului nu se poate schimba dupa prima iesire/transfer: ar recalcula retroactiv costurile deja inregistrate. Configureaz-o inainte de operarea stocului.');
   }
   if (Object.prototype.hasOwnProperty.call(fields, 'metodaEvaluareStoc')) fields.metodaEvaluareStoc = noua;
+  const today = new Date().toISOString().slice(0, 10);
+  const beforeFiscal = fiscalProfile.snapshot(fiscalProfile.companyAt(db.scoped(fid), today));
+  const fiscalChanges = {};
+  for (const key of fiscalProfile.HISTORIC_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(fields, key)) fiscalChanges[key] = fields[key];
+  }
   Object.assign(f, fields, { id: f.id });
+  const afterFiscal = fiscalProfile.snapshot(Object.assign({}, beforeFiscal, fiscalChanges));
+  const fiscalChanged = fiscalProfile.HISTORIC_FIELDS.some((k) => JSON.stringify(beforeFiscal[k]) !== JSON.stringify(afterFiscal[k]));
+  let revision = null;
+  if (fiscalChanged) {
+    // Clientii legacy ai /api/company nu aveau conceptul de data efectiva: pentru ei schimbarea
+    // ramane retroactiva (1900). UI-ul nou trimite explicit fiscalValidFrom=today, iar reviziile
+    // istorice/future folosesc ruta dedicata. Astfel nu rupem integrari vechi, dar nici nu le
+    // atribuim tacit o data pe care n-au declarat-o.
+    const effective = validIsoDate(b && b.fiscalValidFrom) ? b.fiscalValidFrom : '1900-01-01';
+    const recordedAt = new Date().toISOString();
+    let history = storedFiscalHistory(fid);
+    if (!history.length) {
+      history = [{ id: db.nextId('fpr'), firmaId: fid, validFrom: '1900-01-01', validTo: null, values: beforeFiscal,
+        note: 'Fotografie initiala creata automat', recordedAt, createdAt: recordedAt,
+        recordedAtSource: 'baseline-on-first-revision', createdBy: actor && actor.id || null }];
+    }
+    const r = fiscalProfile.addRevision(f, effective, fiscalChanges, {
+      id: db.nextId('fpr'), userId: actor && actor.id, firmaId: fid, history,
+      note: 'Actualizare din formularul firmei', recordedAt,
+    });
+    replaceFiscalHistory(fid, r.history);
+    delete f.fiscalHistory;
+    Object.assign(f, r.currentValues);
+    revision = r.revision;
+  }
   db.save();
-  return { company: f };
+  return { company: f, revision };
+}
+
+/** Revizie fiscala datata, append-only. Campurile de identitate si configurarea tehnica nu pot
+ *  intra pe aceasta cale; `fiscalProfile.addRevision` accepta numai allowlist-ul fiscal. */
+function addFiscalRevision(fid, body, actor) {
+  fid = reqFirma(fid);
+  const f = db.getFirma(fid);
+  const b = body && typeof body === 'object' ? body : {};
+  const changes = b.changes && typeof b.changes === 'object' && !Array.isArray(b.changes) ? b.changes : {};
+  if (!Object.keys(changes).length) fail(400, 'Revizia trebuie sa contina cel putin un camp fiscal.');
+  const r = fiscalProfile.addRevision(f, b.validFrom, changes, {
+    id: db.nextId('fpr'), userId: actor && actor.id, note: b.note,
+    firmaId: fid, history: storedFiscalHistory(fid), recordedAt: new Date().toISOString(),
+  });
+  replaceFiscalHistory(fid, r.history);
+  delete f.fiscalHistory;
+  // Campurile plate raman o oglinda a profilului valabil AZI pentru codul legacy si exporturi.
+  Object.assign(f, r.currentValues);
+  db.save();
+  return { company: f, revision: r.revision, history: r.history };
+}
+
+/** Confirma anual categoria situatiilor financiare. Reviziile sunt append-only: o reconfirmare
+ *  marcheaza decizia precedenta drept supersedata, fara sa-i stearga indicatorii/actorul/hash-ul. */
+function confirmBalanceCategory(fid, body, actor, permissionRole) {
+  fid = reqFirma(fid);
+  const d = db.get();
+  const view = db.scoped(fid);
+  const record = balanceCategory.buildConfirmation(view, body, actor, db.nextId('bch'), permissionRole);
+  d.balance_category_history = Array.isArray(d.balance_category_history) ? d.balance_category_history : [];
+  const previous = balanceCategory.confirmationFor(
+    d.balance_category_history.filter((x) => Number(x.firmaId) === fid), record.year);
+  if (previous) {
+    previous.supersededBy = record.id;
+    previous.supersededAt = record.confirmedAt;
+  }
+  d.balance_category_history.push(record);
+  db.save();
+  return {
+    confirmation: record,
+    assessment: balanceCategory.assess(db.scoped(fid), record.year, {
+      averageEmployees: record.indicatorOverrides && record.indicatorOverrides.numarMediuSalariati,
+    }),
+    history: balanceCategory.activeRows(d.balance_category_history.filter((x) => Number(x.firmaId) === fid)),
+  };
 }
 
 /** Seteaza logo-ul firmei din fisierul deja salvat de multer: doar PNG/JPEG (validate pe
@@ -114,21 +210,17 @@ function updateSettings(b, isAdmin) {
   return { settings: safe };
 }
 
-/** Cotele fiscale configurabile (admin): doar cheile din DEFAULTS, numerice; `reset` revine
- *  la valorile standard. Configul se aplica imediat (fiscal.applyConfig). */
+/** Publica append-only un FiscalRuleSet. Nu exista update/reset: o corectie devine o versiune
+ * noua si pastreaza astfel rezultatele si arhivele vechi verificabile dupa hash. */
 function setFiscalConfig(b) {
   const d = db.get();
-  b = b || {};
-  let reset = false;
-  if (b.reset) { delete d.settings.fiscal; fiscal.applyConfig({}); reset = true; }
-  else {
-    const cfg = Object.assign({}, d.settings.fiscal || {});
-    for (const k of Object.keys(fiscal.DEFAULTS)) { if (b[k] != null && b[k] !== '' && Number.isFinite(Number(b[k]))) cfg[k] = Number(b[k]); }
-    d.settings.fiscal = cfg;
-    fiscal.applyConfig(cfg);
-  }
+  if (b && b.reset) { const e = new Error('FiscalRuleSet-urile publicate sunt imuabile si nu pot fi resetate.'); e.status = 409; throw e; }
+  const ruleSet = fiscal.createRuleSet(b || {});
+  d.fiscalRuleSets = Array.isArray(d.fiscalRuleSets) ? d.fiscalRuleSets : [];
+  d.fiscalRuleSets.push(JSON.parse(JSON.stringify(ruleSet)));
   db.save();
-  return { current: fiscal.FISCAL, reset };
+  fiscal.configureRuleSets(d.fiscalRuleSets);
+  return { ruleSet, current: fiscal.rulesAt(ruleSet.validFrom).rates };
 }
 
-module.exports = { updateCompany, setLogo, deleteLogo, assignChitanta, updateSettings, setFiscalConfig };
+module.exports = { updateCompany, addFiscalRevision, confirmBalanceCategory, setLogo, deleteLogo, assignChitanta, updateSettings, setFiscalConfig };
