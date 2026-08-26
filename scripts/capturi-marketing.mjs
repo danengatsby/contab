@@ -27,7 +27,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const B = process.env.BASE_URL || 'http://127.0.0.1:18099';
-const INITIAL_PW = process.env.CAPTURI_INITIAL_PW || 'admin';
+const INITIAL_PW = process.env.CAPTURI_INITIAL_PW || 'ParolaCapturi2026x!';
 const PW = process.env.CAPTURI_PW || 'ParolaDemo2026x!';
 const OUT = process.env.CAPTURI_OUTPUT || process.cwd();
 fs.mkdirSync(OUT, { recursive: true });

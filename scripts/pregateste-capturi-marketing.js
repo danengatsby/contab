@@ -12,8 +12,10 @@ if (process.env.CONTAB_CAPTURI_IZOLAT !== '1' || !process.env.CONTAB_DB_FILE || 
 const db = require('../src/db');
 const declaratii = require('../src/declarations');
 const crypto = require('crypto');
+const passwordAuth = require('../src/auth');
 
 const PERIOD = process.env.CAPTURI_PERIOD || new Date().toISOString().slice(0, 7);
+const INITIAL_PASSWORD = process.env.CAPTURI_INITIAL_PW || 'ParolaCapturi2026x!';
 const TODAY = PERIOD + '-16'; // în interiorul lunii: nicio obligație a lunii nu este restantă
 const NUME = [
   'Atelier Nord SRL', 'Cabinet Meridian SRL', 'Distribuție Verde SRL',
@@ -82,6 +84,18 @@ function marcheazaGenerata(d, firmaId, tip, period) {
 
 Promise.resolve(db.load()).then(async () => {
   const d = db.get();
+  // Producția pornește acum fail-closed, cu admin inutilizabil până la bootstrap și apoi cu 2FA
+  // obligatoriu. Fixture-ul efemer folosește aceeași identitate numai ca utilizator contabil de
+  // vizualizare, limitat explicit la firmele sintetice; astfel nu ocolește poarta privilegiată.
+  const adminUser = d.users.find((user) => user.username === 'admin');
+  if (!adminUser) throw new Error('Seed-ul nu conține contul admin pentru captura izolată.');
+  const credentials = passwordAuth.hashPassword(INITIAL_PASSWORD);
+  Object.assign(adminUser, credentials, {
+    role: 'user', tipCont: 'contabil', bootstrapPending: false, mustChange: false,
+    subscription: { status: 'active', plan: 'pro', since: PERIOD + '-01T00:00:00.000Z' },
+    profil: { numeComplet: 'Contabil Fixture', telefon: '0700000000' },
+  });
+
   const baza = d.firme[0];
   if (!baza) throw new Error('Seed-ul nu conține firma exemplu.');
   baza.createdAt = PERIOD.slice(0, 4) + '-01-01T00:00:00.000Z';
@@ -128,8 +142,9 @@ Promise.resolve(db.load()).then(async () => {
     });
   });
 
-  const admin = (d.users || []).find((u) => u.username === 'admin');
-  if (admin) admin.firmaActiva = baza.id;
+  adminUser.firme = d.firme.map((firma) => firma.id);
+  adminUser.firmaRoluri = Object.fromEntries(d.firme.map((firma) => [String(firma.id), 'vizualizare']));
+  adminUser.firmaActiva = baza.id;
   d.firmaActiva = baza.id;
   const portofoliu = declaratii.portfolio(d, d.firme.map((f) => db.scoped(f.id)), PERIOD, TODAY);
   if (portofoliu.firms.length !== 7 || portofoliu.conformitate < 70 || portofoliu.conformitate > 90 || portofoliu.tot.restante !== 0) {

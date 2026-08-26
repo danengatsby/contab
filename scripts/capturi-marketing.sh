@@ -47,6 +47,7 @@ docker run --rm --network host \
   -v "$RADACINA/scripts/capturi-marketing.mjs:/w/capturi.mjs:ro" \
   -v "$OUT:/out" \
   -e BASE_URL="http://127.0.0.1:$PORT" -e CAPTURI_OUTPUT=/out \
+  -e CAPTURI_INITIAL_PW="${CAPTURI_INITIAL_PW:-ParolaCapturi2026x!}" \
   -w /w "$IMAGINE" \
   sh -c "npm i --no-save playwright@1.58.2 >/dev/null 2>&1 && node capturi.mjs"
 
