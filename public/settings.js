@@ -20,12 +20,12 @@ export function render2FA() {
   const recoveryCount = Number(USER && USER.twofaRecoveryCount) || 0;
   status.textContent = on ? ('✔ 2FA este activat pe contul tău. Coduri de rezervă disponibile: ' + recoveryCount + '.')
     : (USER && USER.twofaRequired
-      ? '2FA este obligatorie pentru contul de administrator. Restul aplicației rămâne blocat până la activare.'
+      ? '2FA este obligatorie pentru acest cont privilegiat. Restul aplicației rămâne blocat până la activare.'
       : '2FA este dezactivat.');
   const start = $('#twofaStart'); const setup = $('#twofaSetup'); const disable = $('#twofaDisableWrap'); const recoveryManage = $('#twofaRecoveryManage');
   if (start) start.classList.toggle('hidden', on);
   if (on && setup) setup.classList.add('hidden');
-  if (disable) disable.classList.toggle('hidden', !on || (USER && USER.role === 'admin'));
+  if (disable) disable.classList.toggle('hidden', !on || (USER && USER.twofaMandatory));
   if (recoveryManage) recoveryManage.classList.toggle('hidden', !on);
 }
 

@@ -114,6 +114,7 @@ const DEFAULT_DB = {
   bankStatements: [],  // identitatea extrasului: fisier/hash, IBAN, moneda, interval si solduri
   bankTransactions: [], // liniile extrasului cu stare propusa/punctata/postata/exclusa si articol legat
   audit: [],           // { id, ts, userId, username, firmaId, action, detail }
+  auditOutbox: [],     // evenimente legate tranzactional de mutatiile contabile, replicate ulterior in NDJSON
   messages: [],        // { id, userId, fromAdmin, text, author, createdAt, readByUser, readByAdmin } - suport user<->admin
   recurringInvoices: [], // { id, firmaId, tip, partener, cuiPartener, fields, frecventa, ziua, activ, startDate, lastGenerated } - facturi recurente
   cursuriBnr: [],      // { id: 'YYYY-MM-DD', cursuri: { EUR: 5.231, ... } } - curs oficial BNR, GLOBAL (nu per firma)
@@ -238,6 +239,7 @@ function migrate(d) {
     delete d.settings.anaf;
   }
   if (!Array.isArray(d.audit)) d.audit = [];
+  if (!Array.isArray(d.auditOutbox)) d.auditOutbox = [];
   if (!Array.isArray(d.messages)) d.messages = [];
   if (!Array.isArray(d.recipes)) d.recipes = [];
   if (!Array.isArray(d.budgets)) d.budgets = [];
@@ -311,18 +313,11 @@ function migrate(d) {
     d.fiscal_profile_history = other.concat(own);
   }
   if (!d.users.length) {
-    const configured = process.env.CONTAB_INITIAL_ADMIN_PASSWORD;
-    if (configured) {
-      const invalid = auth.validatePassword(configured, { username: 'admin' });
-      if (invalid) throw new Error('CONTAB_INITIAL_ADMIN_PASSWORD este invalidă: ' + invalid);
-    }
-    // Nu exista credential implicit predictibil. Instalatorul poate furniza parola o singura
-    // data prin env; altfel se genereaza una aleatoare si se afiseaza numai la bootstrap.
-    const initialPassword = configured || crypto.randomBytes(24).toString('base64url');
-    const { salt, hash } = auth.hashPassword(initialPassword);
-    d.users.push({ id: 1, username: 'admin', salt, hash, role: 'admin', firme: [], firmaActiva: d.firmaActiva, mustChange: true });
-    if (configured) console.log('[contab] utilizator initial creat: admin (parola bootstrap din CONTAB_INITIAL_ADMIN_PASSWORD; schimbare obligatorie).');
-    else console.log('[contab] utilizator initial creat: admin / ' + initialPassword + ' — parola bootstrap aleatoare, schimbare obligatorie.');
+    // Hash-ul initial nu corespunde unei parole comunicate operatorului. Contul se activeaza
+    // exclusiv cu tokenul unic, local si temporar emis mai jos.
+    const unusable = auth.hashPassword(crypto.randomBytes(48).toString('base64url'));
+    d.users.push({ id: 1, username: 'admin', salt: unusable.salt, hash: unusable.hash, role: 'admin',
+      firme: [], firmaActiva: d.firmaActiva, bootstrapPending: true, mustChange: false });
   }
   // Securitate: orice cont care are INCA parola implicita „admin" este obligat sa o schimbe
   // (re-armeaza flagul chiar daca a fost stins candva fara schimbarea reala a parolei).
@@ -335,6 +330,7 @@ function migrate(d) {
   // Dupa normalizarea de baza (idempotenta), aplica pasii de migrare VERSIONATI (o singura data,
   // urmariti prin d.schemaVersion). migrate() e apelat pe toate caile de load -> un singur hook.
   migrations.runMigrations(d);
+  require('./adminBootstrap').issueIfNeeded(d);
   sealSecrets(d);
   return d;
 }
@@ -482,6 +478,8 @@ function save(hint) {
 function flushStore() {
   return DRIVER === 'pg' ? store.flush() : Promise.resolve();
 }
+
+function drainAuditOutbox() { return require('./auditOutbox').drain(); }
 
 // Restaurare dintr-un fisier JSON (folosita de ruta /api/restore): seteaza in memorie + persista in driver.
 function validateRestoreGraph(parsed) {
@@ -682,6 +680,9 @@ function pushEntry(entry, o) {
     };
   }
   get().entries.push(entry);
+  require('./auditOutbox').enqueue(get(), 'accounting.entry.insert', entry, o && o.actor,
+    String(o && o.context || 'articol contabil') + ' · ' + String(entry.tipNume || entry.tip || '')
+      + (entry.document ? ' · ' + String(entry.document) : ''));
   return entry;
 }
 
@@ -1419,7 +1420,7 @@ async function trialFisaContSql(fid, cont, period) {
 
 module.exports = {
   get, save, load, migrate, nextId, pushEntry, assertEntryBasics, assertEntryUnique, conturiNecunoscute, entryShapeProblem, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
-  getUser, getUserByName, nextUserId, exportFirma, importFirma, validateFirmaBundle, validateRestoreGraph, restoreFromJson, flushMirror, flushStore,
+  getUser, getUserByName, nextUserId, exportFirma, importFirma, validateFirmaBundle, validateRestoreGraph, restoreFromJson, flushMirror, flushStore, drainAuditOutbox,
   canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, persistStats, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };

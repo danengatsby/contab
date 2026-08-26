@@ -94,11 +94,14 @@ export function calitateHtml(cal, autoCiorna) {
 async function uploadFile(file) {
   const st = $('#uploadStatus'); st.className = 'status'; st.textContent = 'Se citește „' + file.name + '”…';
   const fd = new FormData(); fd.append('file', file);
+  const docAi = $('#documentAiToggle');
+  fd.append('aiMode', docAi && docAi.checked && !docAi.disabled ? 'allow' : 'deny');
   try {
     const res = await api('/api/upload', { method: 'POST', body: fd });
     st.className = 'status ok';
     const via = res.source === 'ai'
-      ? '🤖 AI' + (res.incredere != null ? ' (încredere ' + res.incredere + '%)' : '')
+      ? '🤖 AI ' + H(res.provider || '—') + '/' + H(res.model || '—')
+        + (res.incredere != null ? ' (încredere ' + res.incredere + '%)' : '')
       : '⚙️ reguli locale';
     st.innerHTML = 'Extras din „' + res.fileName + '” prin ' + via + '. CUI: ' + ((res.cuis || []).join(', ') || '—')
       + (res.motiv ? '<br><span class="muted">' + H(res.motiv) + '</span>' : '')

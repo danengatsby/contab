@@ -251,6 +251,23 @@ pg.on('request', (r) => { if (r.url().includes('/api/preview')) previewReq.push(
 await pg.evaluate(() => goTab('documente'));
 await pg.waitForTimeout(800);
 await pg.evaluate(() => document.querySelectorAll('#welcomeOverlay,.toast,#fwWizard,.op-wizard').forEach((e) => e.remove()));
+ok('optiunea AI per document este vizibila in fluxul real de upload', (await pg.locator('#documentAiToggle').count()) === 1);
+let uploadMultipart = '';
+await pg.route('**/api/upload', async (route) => {
+  uploadMultipart = (route.request().postDataBuffer() || Buffer.alloc(0)).toString('utf8');
+  await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+    documentId: 'e2e-ai-choice', fileName: 'optiune-ai.pdf', suggestedType: 'nota_contabila', fields: {}, cuis: [],
+    source: 'heuristic', aiDecision: { mode: 'deny', transmitted: false }, needsReview: true,
+    calitate: { scor: 0, decizie: 'revizuire', controale: [], motive: ['test browser'] },
+    autoCiorna: { entryId: 'e2e-fara-scriere' },
+  }) });
+});
+await pg.evaluate(() => { const x = document.querySelector('#documentAiToggle'); x.checked = false; });
+await pg.locator('#file').setInputFiles({ name: 'optiune-ai.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') });
+await pg.waitForFunction(() => /reguli locale/i.test(document.querySelector('#uploadStatus')?.textContent || ''));
+await pg.unroute('**/api/upload');
+ok('browserul trimite alegerea per document in multipart, nu o lasa doar in UI',
+  /name="aiMode"\r?\n\r?\ndeny/.test(uploadMultipart));
 ok('navigația ciclului nu este duplicată în conținut', (await pg.locator('.cyclemap,.cyclestep,.cyclearrow').count()) === 0);
 ok('pagina de introducere este clasificată compact în bara contextuală',
   /înregistrare/i.test(await pg.locator('.app-context-kicker').textContent()));

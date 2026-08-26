@@ -898,7 +898,8 @@ async function loadStatements() {
       ${cr('= Numerar net din finanțare', cf.fin_net, 'total')}
       ${cr('VARIAȚIA NETĂ A NUMERARULUI', cf.variatie, 'bold')}
       ${cs('Numerar la începutul exercițiului', cf.numerarInitial)}${cs('Numerar la sfârșitul exercițiului', cf.numerarFinal)}</table>
-      <p class="${cf.echilibrat ? '' : 'status err'}" data-u="u35">${cf.echilibrat ? '✔ Control: variația = numerar final − inițial (' + fmt(cf.variatieControl) + ')' : '✘ Variația calculată diferă de variația soldurilor de numerar'}</p>`;
+      <p class="${cf.echilibrat ? '' : 'status err'}" data-u="u35">${cf.echilibrat ? '✔ Control: variația = numerar final − inițial (' + fmt(cf.variatieControl) + ')' : '✘ Variația calculată diferă de variația soldurilor de numerar'}</p>
+      ${(cf.classification?.materialUnmapped || []).length ? `<div class="notice warning"><b>Contrapartide materiale rămase în „altele”</b><br><span class="muted">Prag ${fmt(cf.classification.threshold)} lei. Configurează taxonomia înainte de aprobarea situației.</span><ul>${cf.classification.materialUnmapped.map((r) => `<li>Cont ${H(r.account)}: ${fmt(r.net)} lei · ${H(r.operations)} operațiuni</li>`).join('')}</ul></div>` : ''}`;
   }).catch(() => { $('#cashflowView').innerHTML = ''; });
   api('/api/statements/equity?year=' + y).then((eq) => {
     const er = (r, cls) => `<tr class="${cls || ''}"><td>${H(r.nume)}</td><td class="num">${fmt(r.soldI)}</td><td class="num">${fmt(r.cresteri)}</td><td class="num">${fmt(r.reduceri)}</td><td class="num">${fmt(r.soldF)}</td></tr>`;

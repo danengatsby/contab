@@ -13,8 +13,9 @@
 #  fisierul. Validarea saptamanala prinde driftul de schema, dar prinde regresia
 #  proprie abia dupa merge — adica prea tarziu.
 #
-#  Poarta se aplica DOAR cand s-a atins ceva fiscal (lista CAI_FISCALE de mai jos):
-#  o schimbare de CSS nu asteapta un container Java.
+#  Poarta se aplica la ORICE schimbare din src/, server.js, scheme ori generatoare. Acesta este
+#  perimetrul fail-safe: graful dinamic si scrierile de articole fac fragila orice lista manuala
+#  de dependinte fiscale, in timp ce o schimbare exclusiv vizuala ramane in afara portii.
 #
 #  Folosire:
 #    scripts/poarta-fiscala.sh                 fata de origin/main (implicit)
@@ -53,6 +54,8 @@ AICI=$(dirname "$0")
 # schimba continutul unei declaratii. Nu adauga comentarii INAUNTRUL listei: fiecare linie de
 # acolo e citita ca o cale, iar poarta „fiecare cale exista pe disc" le raporteaza ca lipsa.
 CAI_FISCALE='
+src/
+server.js
 src/xml.js
 src/saft.js
 src/etransport.js

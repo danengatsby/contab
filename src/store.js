@@ -91,6 +91,7 @@ const ARRAY_COLLS = [
   { key: 'bankStatements', firma: true, hasId: true },
   { key: 'bankTransactions', firma: true, hasId: true },
   { key: 'audit', firma: true, hasId: true },
+  { key: 'auditOutbox', firma: true, hasId: true },
   { key: 'customAccounts', firma: false, hasId: false },
   // Catalogul duratelor HG 2139/2004: GLOBAL, ca planul de conturi — acelasi pentru toate firmele.
   { key: 'catalogDurate', firma: false, hasId: false },

@@ -259,11 +259,62 @@ export async function api(url, opts) {
     if (!r.ok) {
       // Firma de proba expirata: propune abonarea in loc de o simpla eroare
       if (r.status === 402 && data && data.firmaTrialExpired && on402TrialExpired) on402TrialExpired(data);
+      // Serverul decide scopul si opreste operatia INAINTE de mutatie. Clientul cere parola +
+      // TOTP, obtine o autorizare scurta legata de sesiune, apoi reia exact o data cererea.
+      if (r.status === 428 && data && data.stepUpRequired && !(opts && opts._stepUpAttempted)) {
+        const confirmed = await stepUpAuthentication(data.stepUpScope);
+        if (!confirmed) { const cancelled = new Error('Reautentificarea a fost anulată.'); cancelled.cancelled = true; throw cancelled; }
+        return api(url, Object.assign({}, opts || {}, { _stepUpAttempted: true }));
+      }
       const err = new Error((data && data.error) || ('Eroare ' + r.status)); err.status = r.status; err.data = data; throw err;
     }
     return data;
   } finally { if (!quiet) setLoad(false); }
 }
+
+const STEP_UP_LABELS = {
+  restore: 'restaurare',
+  'bulk-export': 'export masiv',
+  filing: 'depunere fiscală',
+  impersonation: 'impersonare',
+};
+
+/** Reautentificare privilegiata comuna tuturor ecranelor. Codurile de rezerva nu sunt acceptate. */
+export async function stepUpAuthentication(scope) {
+  const label = STEP_UP_LABELS[scope] || 'operațiune privilegiată';
+  const password = await promptAction('Confirmă identitatea înainte de ' + label + '.', {
+    title: 'Reautentificare necesară', label: 'Parola curentă', inputType: 'password', required: true,
+    confirmLabel: 'Continuă',
+  });
+  if (password == null) return false;
+  const code = await promptAction('Introdu codul curent din aplicația TOTP. Codurile de rezervă nu sunt acceptate aici.', {
+    title: 'Confirmă 2FA', label: 'Cod TOTP', inputType: 'text', required: true,
+    pattern: /^\d{6}$/, patternMessage: 'Codul TOTP trebuie să aibă 6 cifre.', confirmLabel: 'Autorizează',
+  });
+  if (code == null) return false;
+  await api('/api/step-up', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scope, password, code }), _stepUpAttempted: true,
+  });
+  return true;
+}
+
+// Linkurile de export nu trec prin api(), deci nu pot interpreta raspunsul 428. Le oprim inainte
+// de navigare, obtinem grantul, apoi relansam acelasi link o singura data.
+if (typeof document !== 'undefined') document.addEventListener('click', async (event) => {
+  const a = event.target && event.target.closest && event.target.closest('a[href]');
+  if (!a || a.dataset.stepUpReady === '1') { if (a) delete a.dataset.stepUpReady; return; }
+  let path = '';
+  try { path = new URL(a.href, location.href).pathname; } catch (_) { return; }
+  const bulkExport = path === '/api/firme/export-all' || /^\/api\/firme\/\d+\/export(?:-zip)?$/.test(path)
+    || path.startsWith('/api/backup/file/') || path === '/api/dosar-anual' || path === '/xml/saft';
+  if (!bulkExport) return;
+  event.preventDefault();
+  try {
+    if (!await stepUpAuthentication('bulk-export')) return;
+    a.dataset.stepUpReady = '1'; a.click();
+  } catch (e) { toast(e.message, true); }
+});
 
 // Citeste un fisier de import: .xlsx/.xls/.dbf -> convertit la CSV pe server; .csv -> citit direct.
 // Partajat de importurile de parteneri, produse, stoc initial si plan de conturi.

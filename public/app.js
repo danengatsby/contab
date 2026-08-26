@@ -338,19 +338,9 @@ async function impersonate(userId) {
     placeholder: 'ex. SUP-1842', confirmLabel: 'Continuă',
   });
   if (ticket == null) return;
-  const password = await promptAction('Reautentifică-te înainte de accesul privilegiat.', {
-    title: 'Confirmă parola', label: 'Parola de administrator', inputType: 'password', required: true,
-    confirmLabel: 'Continuă',
-  });
-  if (password == null) return;
-  const code = await promptAction('Introdu un cod curent din aplicația TOTP. Codurile de rezervă nu sunt acceptate pentru impersonare.', {
-    title: 'Confirmă 2FA', label: 'Cod TOTP', inputType: 'text', required: true,
-    pattern: /^\d{6}$/, patternMessage: 'Codul TOTP trebuie să aibă 6 cifre.', confirmLabel: 'Intră pentru 15 minute',
-  });
-  if (code == null) return;
   try {
     await api('/api/impersonate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, reason, ticket, password, code, durationMinutes: 15 }) });
+      body: JSON.stringify({ userId, reason, ticket }) });
     await init(); onTab('dashboard'); toast('Ai intrat pe contul utilizatorului');
   } catch (e) { toast(e.message, true); }
 }
@@ -626,6 +616,15 @@ function renderAI() {
     help.textContent = 'Pentru a activa extragerea cu AI, pornește serverul cu cheia setată:\n\n  ANTHROPIC_API_KEY=sk-ant-... npm start';
   }
   toggle.checked = !!ai.enabled;
+  const documentToggle = $('#documentAiToggle');
+  if (documentToggle) {
+    documentToggle.checked = !!ai.enabled;
+    documentToggle.disabled = !ai.enabled;
+    const choice = $('#documentAiChoice');
+    if (choice) choice.title = ai.enabled
+      ? 'Poți opri AI separat pentru fiecare document.'
+      : 'Activează mai întâi opt-in-ul AI al firmei în Setări.';
+  }
   const legalFirm = (META.legal && META.legal.firm) || {};
   toggle.disabled = !ai.available || ai.platformEnabled === false || !legalFirm.operational || !legalFirm.canManage || isDemo();
   if (!legalFirm.canManage && ai.available) st.textContent += ' · decizia aparține proprietarului firmei';

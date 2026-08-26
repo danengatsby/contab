@@ -185,6 +185,27 @@ const nz = aiExtractor.normalizeazaRaspuns;
   ok('raspuns null nu arunca', !!nz(null) && nz(null).fields.cota === 0);
 }
 
+section('Contract API formal + validare runtime (src/apiContract.js)');
+{
+  const apiContract = require('../src/apiContract');
+  ok('OpenAPI 3.1 publica operatiunile critice de guvernanta', apiContract.openapi().openapi === '3.1.0'
+    && !!apiContract.openapi().paths['/api/upload']
+    && !!apiContract.openapi().paths['/api/fiscal/micro/adjustments']
+    && !!apiContract.openapi().paths['/api/cash-flow/classification']);
+  ok('payload cash-flow valid trece aceeasi schema publicata', apiContract.validate(
+    apiContract.schemas.CashFlowClassification,
+    { rules: [{ id: 'r1', category: 'fin_capital', prefixes: ['456'] }], materialityAmount: 1000, materialityPercent: 5 }).length === 0);
+  ok('campurile necunoscute sunt respinse fail-closed', apiContract.validate(
+    apiContract.schemas.MicroAdjustment,
+    { period: '2026-03', direction: 'subtract', amount: 10, category: 'x', legalBasis: 'Art. 53', reason: 'motiv complet', totalOverride: 1 })
+    .some((e) => /camp necunoscut/.test(e.message)));
+  ok('tipul si perioada sunt verificate, nu doar prezenta campurilor', apiContract.validate(
+    apiContract.schemas.MicroAdjustment,
+    { period: 'martie', direction: 'subtract', amount: '10', category: 'x', legalBasis: 'Art. 53', reason: 'motiv complet' }).length >= 2);
+  ok('optiunea AI per document are enumeratie inchisa', apiContract.validate(apiContract.schemas.DocumentAiMode, 'deny').length === 0
+    && apiContract.validate(apiContract.schemas.DocumentAiMode, 'poate').length === 1);
+}
+
 const v = scopedSeed();
 
 section('Balanta de verificare (2026-06)');
@@ -656,8 +677,9 @@ section('Scadentar / aging (FIFO, la 2026-06-25)');
 const ag = analytic.aging(v, '2026-06-25');
 const alfa = ag.furnizori.find((f) => /ALFA/.test(f.partener));
 eq('ALFA total datorie', alfa.total, 15000);
-eq('ALFA 0-30 zile', alfa.b0_30, 12100);
-eq('ALFA >90 zile', alfa.b90plus, 2900);
+eq('ALFA fara scadente confirmate nu intra artificial in 0-30 zile', alfa.b0_30, 0);
+eq('ALFA fara scadente confirmate nu intra artificial in >90 zile', alfa.b90plus, 0);
+eq('ALFA ramane integral in controlul separat al scadentelor lipsa', alfa.dueDateMissing, 15000);
 eq('clienti restanti (BETA achitat)', ag.clienti.length, 0);
 
 section('Registrul central al documentelor deschise (scadente + stingeri partiale)');
@@ -698,7 +720,14 @@ section('Registrul central al documentelor deschise (scadente + stingeri partial
   const faraDue = { entries: [invoice('oi3', '2025-01-01', null, 100, { openItem: undefined })], openingAnalytic: [], openItemAllocations: [] };
   const aFara = oi.groupedAging(faraDue, '2026-03-10');
   eq('documentul istoric fara scadenta este semnalat, nu inventat', aFara.totalClienti.dueDateMissing, 100);
+  eq('fara scadenta confirmata nu intra in banda >90', aFara.totalClienti.b90plus, 0);
+  eq('fara scadenta confirmata nu intra in nicio banda de restanta',
+    aFara.totalClienti.b0_30 + aFara.totalClienti.b31_60 + aFara.totalClienti.b61_90 + aFara.totalClienti.b90plus, 0);
+  eq('soldul cu scadenta necunoscuta ramane in totalul reconciliat', aFara.totalClienti.total, 100);
   eq('fara scadenta confirmata nu intra in pragul fiscal >270', aFara.totalClienti.b270plus, 0);
+  const docFara = aFara.registry.openDocuments.find((d) => d.id === 'oi3');
+  ok('registrul expune starea si zilele necunoscute fara data documentului deghizata in scadenta',
+    docFara.status === 'scadenta-necunoscuta' && docFara.overdueDays === null && docFara.daysToDue === null);
 
   const dataOi = { entries: vOi.entries, openingAnalytic: [], openItemAllocations: [] }; let oiSeq = 0;
   const repl = oi.replaceAllocations(dataOi, 1, 'op1', [{ documentId: 'oi2', amount: 250 }], { id: 7, username: 'contabil' }, () => 'new-oia-' + (++oiSeq));
@@ -1893,6 +1922,23 @@ ok('F10 echilibrat dupa clasificarea explicita a datoriei', f10lt.echilibrat);
   // invariantul de control ramane (era adevarat si INAINTE de reparatie — de asta n-o putea prinde)
   eq('variatia de numerar = fluxul net', cf2.variatie, cf2.variatieControl);
   ok('fluxul se declara echilibrat', cf2.echilibrat);
+
+  const cfCfg = stmt.cashFlow({ company: { cashFlowClassification: {
+    materialityAmount: 500, materialityPercent: 0,
+    rules: [{ id: 'grant', label: 'Grant de investitii', category: 'inv_imobilizari', prefixes: ['7588'] }],
+  } }, openingBalances: {}, entries: [
+    { id: 'cfg1', data: '2026-03-01', period: '2026-03', document: 'Grant', lines: [{ debit: '5121', credit: '7588', suma: 2000 }] },
+    { id: 'cfg2', data: '2026-03-02', period: '2026-03', document: 'Necunoscut', lines: [{ debit: '5121', credit: '473', suma: 700 }] },
+    { id: 'cfg3', data: '2026-03-03', period: '2026-03', cashFlowCategory: 'fin_capital', lines: [{ debit: '5121', credit: '462', suma: 300 }] },
+  ] }, 2026);
+  eq('regula configurata per firma bate fallback-ul „altele"', cfCfg.inv_imobilizari, 2000);
+  eq('taxonomia explicita per tranzactie bate prefixele', cfCfg.fin_capital, 300);
+  eq('doar contrapartida nemapata ramane in „altele"', cfCfg.ex_altele, 700);
+  ok('raportul material expune contul, suma si exemplele operatiunilor ramase nemapate',
+    cfCfg.classification.materialUnmapped.length === 1
+      && cfCfg.classification.materialUnmapped[0].account === '473'
+      && cfCfg.classification.materialUnmapped[0].absolute === 700
+      && cfCfg.classification.materialUnmapped[0].examples[0].entryId === 'cfg2');
 }
 
 section('Calcul salarial (payroll, brut 5000)');
@@ -4375,6 +4421,20 @@ section('Autofactura art. 320 — TVA exigibil fara factura');
   ok('7581 ramane in baza, cu nota explicita',
     micro.baza({ 7581: { d: 0, c: 900 } }, {}).baza === 900
     && micro.baza({ 7581: { d: 0, c: 900 } }, {}).note.length === 1);
+  const taxEntry = { id: 'mic-tax-1', data: '2026-03-02', period: '2026-03', document: 'DAUNA',
+    lines: [{ debit: '461', credit: '7581', suma: 900 }], fiscalTaxonomy: { micro: {
+      code: 'insurance_compensation_own_assets', amount: 900, sourceAccount: '7581',
+      reason: 'Despagubire conform politei', legalBasis: 'Art. 53(1)(g)',
+    } } };
+  const taxRows = micro.taxonomyForEntries([taxEntry]);
+  const taxBase = micro.baza({ 7581: { d: 0, c: 900 } }, { taxonomies: taxRows });
+  eq('taxonomia per tranzactie scade despagubirea ambigua din baza', taxBase.baza, 0);
+  ok('7581 clasificat integral nu mai produce avertisment fals', taxBase.note.length === 0
+    && taxBase.unresolved.account7581 === 0 && taxBase.scaderi.some((x) => x.entryId === 'mic-tax-1'));
+  const taxReg = micro.baza({ 704: { d: 0, c: 1000 } }, { adjustments: [{ id: 'mta-1',
+    direction: 'subtract', amount: 125, category: 'Corectie documentata', legalBasis: 'Art. 53', reason: 'test' }] });
+  eq('registrul explicit al ajustarilor modifica baza cu rand identificabil', taxReg.baza, 875);
+  ok('desfasurarea bazei pastreaza id-ul ajustarii', taxReg.scaderi.some((x) => x.adjustmentId === 'mta-1'));
 
   // ── Diferenta de curs: scazuta in T1-T3, reintrodusa CUMULAT in ultimul trimestru ──
   const cursEnt = [
@@ -7133,6 +7193,16 @@ section('Matricea centrala de permisiuni (src/permissions.js)');
   ok('lipsa rolului după migrare înseamnă numai vizualizare',
     perm.can(faraRol, 44, 'read', firma) && !perm.can(faraRol, 44, 'entry.post', firma)
       && perm.roleFor(faraRol, 44, firma) === 'vizualizare');
+  const graph2fa = { firme: [firma, { id: 45, ownerId: 20 }, { id: 46, demo: true, ownerId: 21 }] };
+  ok('2FA este obligatorie pentru administratori și proprietari',
+    perm.requiresTwoFactor({ id: 1, role: 'admin' }, graph2fa)
+      && perm.requiresTwoFactor({ id: 5, role: 'user' }, graph2fa));
+  ok('2FA este obligatorie pentru rolurile care depun sau exportă',
+    perm.requiresTwoFactor(aprobator, graph2fa)
+      && perm.requiresTwoFactor({ id: 11, role: 'user', firmaRoluri: { 44: 'verificator' } }, graph2fa));
+  ok('operatorul fără depunere/export și conturile demo nu sunt forțate la 2FA',
+    !perm.requiresTwoFactor(operator, graph2fa)
+      && !perm.requiresTwoFactor({ id: 21, role: 'user', username: 'demo', firmaRoluri: { 46: 'aprobator' } }, graph2fa));
   ok('restrictia readonly bate matricea rolului', !perm.can({ id: 8, role: 'user', firmaRoluri: { 44: 'aprobator' }, drepturi: { readonly: true } }, 44, 'annual.manage', firma));
   ok('catalog ruta: import banca cere treasury.approve', perm.requiredActions('POST', '/api/bank/import', {}).includes('treasury.approve'));
   ok('catalog ruta: punctajul document-cu-document cere treasury.write',
@@ -7155,6 +7225,53 @@ section('Matricea centrala de permisiuni (src/permissions.js)');
     const a = perm.requiredActions('GET', '/pdf/cash-forecast-13-weeks', {}); return a.includes('treasury.read') && a.includes('data.export');
   })());
   ok('contractul expus UI are toate actiunile pentru toate rolurile', perm.describe().roles.every((r) => r.actions.length === perm.ACTIONS.length));
+}
+
+section('Bootstrap local, step-up și transactional outbox');
+{
+  const adminBootstrap = require('../src/adminBootstrap');
+  const token = 'token-unic-de-test'; const now = Date.now();
+  const bootstrapGraph = {
+    users: [{ id: 1, role: 'admin', bootstrapPending: true }],
+    settings: { adminBootstrap: {
+      tokenHash: adminBootstrap.tokenHash(token),
+      createdAt: new Date(now).toISOString(), expiresAt: new Date(now + 60 * 1000).toISOString(),
+    } },
+  };
+  ok('bootstrap păstrează doar hashul și verifică tokenul în intervalul său',
+    !JSON.stringify(bootstrapGraph).includes(token) && adminBootstrap.matches(bootstrapGraph, token, now));
+  ok('bootstrap refuză tokenul greșit sau expirat',
+    !adminBootstrap.matches(bootstrapGraph, 'alt-token', now)
+      && !adminBootstrap.matches(bootstrapGraph, token, now + 61 * 1000));
+  const direct = { socket: { remoteAddress: '127.0.0.1' }, headers: { host: '127.0.0.1:3000' } };
+  ok('bootstrap acceptă numai conexiunea locală directă', adminBootstrap.localDirectRequest(direct)
+    && !adminBootstrap.localDirectRequest({ socket: direct.socket, headers: { host: 'contab.example' } })
+    && !adminBootstrap.localDirectRequest({ socket: direct.socket,
+      headers: { host: '127.0.0.1:3000', 'x-forwarded-for': '203.0.113.4' } }));
+  adminBootstrap.consume(bootstrapGraph);
+  ok('consumarea tokenului elimină materialul de bootstrap', !bootstrapGraph.settings.adminBootstrap);
+
+  const stepUp = require('../src/stepUp');
+  const principal = { id: 7, sessions: [{ id: 'sess-step' }] };
+  const stepReq = { user: principal, _sessId: 'sess-step' };
+  ok('step-up nu este valabil înainte de reconfirmare', !stepUp.valid(stepReq, 'filing', now));
+  const grant = stepUp.grant(stepReq, 'filing', now);
+  ok('grantul step-up este legat de sesiune și de scop', stepUp.valid(stepReq, 'filing', now + 1)
+    && !stepUp.valid(stepReq, 'restore', now + 1) && Date.parse(grant.expiresAt) === now + stepUp.TTL_MS);
+  ok('grantul step-up expiră fail-closed', !stepUp.valid(stepReq, 'filing', now + stepUp.TTL_MS));
+
+  const outbox = require('../src/auditOutbox');
+  const outGraph = { auditOutbox: [] };
+  const entity = { id: 'e-outbox', firmaId: 44, data: '2026-08-26', lines: [{ debit: '628', credit: '401', suma: 10 }] };
+  const row1 = outbox.enqueue(outGraph, 'accounting.entry.insert', entity, { id: 7, username: 'operator' }, 'test atomic');
+  const row2 = outbox.enqueue(outGraph, 'accounting.entry.status', entity, { id: 8, username: 'aprobator' }, 'test status');
+  ok('outbox-ul păstrează actorul, firma, entitatea și amprenta SHA-256', row1.record.userId === 7
+    && row1.firmaId === 44 && row1.record.entityId === 'e-outbox' && /^[a-f0-9]{64}$/.test(row1.record.entitySha256));
+  ok('fiecare eveniment outbox are cheie idempotentă unică', row1.id !== row2.id
+    && row1.record.outboxId === row1.id && row2.record.outboxId === row2.id);
+  row1.deliveredAt = new Date(now).toISOString();
+  ok('compactarea outbox nu elimină niciodată evenimentele nelivrate',
+    outbox.trimDelivered(outGraph.auditOutbox).some((r) => r.id === row2.id && !r.deliveredAt));
 }
 
 section('Revizia fiscală externă — poartă fail-closed (src/fiscalReview.js)');
@@ -8195,24 +8312,24 @@ section('Inchidere lunara: garzile serviciului (src/monthlyCloseService.js)');
   eq('tip de declaratie necunoscut la validare -> 400', errS(() => mcs.validateDeclaration(fidReal, '2026-06', 'dXXX', null)), 400);
   eq('retragerea unei aprobari inexistente -> 400', errS(() => mcs.unapprove(fidReal, '2026-06')), 400);
   const actor = { id: 987654, username: 'operator-sod', role: 'user', firmaRoluri: { [fidReal]: 'aprobator' } };
-  mcs.setStep(fidReal, '2098-06', 'documente', { nota: 'Pregatit de operator' }, actor);
+  mcs.setStep(fidReal, '2026-11', 'documente', { nota: 'Pregatit de operator' }, actor);
   ok('cockpitul pastreaza autorul si detecteaza contributia proprie la luna de aprobat',
-    mcs.monthContributions(fidReal, '2098-06', actor).some((x) => x.kind === 'step' && x.id === 'documente'));
-  const ownApproval = (() => { try { mcs.approvalException(fidReal, '2098-06', actor, {}); return {}; } catch (e) { return e; } })();
+    mcs.monthContributions(fidReal, '2026-11', actor).some((x) => x.kind === 'step' && x.id === 'documente'));
+  const ownApproval = (() => { try { mcs.approvalException(fidReal, '2026-11', actor, {}); return {}; } catch (e) { return e; } })();
   ok('pregatitorul nu isi poate aproba propria luna: 409 cu cod si urmele concrete',
     ownApproval.status === 409 && ownApproval.code === 'SELF_APPROVAL_REQUIRED'
       && ownApproval.details.contributions.some((x) => x.id === 'documente'));
   eq('aprobatorul obisnuit nu poate transforma auto-aprobarea in override',
-    errS(() => mcs.approvalException(fidReal, '2098-06', actor, { override: true, motiv: 'Motiv suficient pentru exceptie' })), 403);
+    errS(() => mcs.approvalException(fidReal, '2026-11', actor, { override: true, motiv: 'Motiv suficient pentru exceptie' })), 403);
   const adminOverride = { id: 987655, username: 'admin-sod', role: 'admin' };
-  mcs.setStep(fidReal, '2098-06', 'banca', { nota: 'Remediere administrativa' }, adminOverride);
-  const exception = mcs.approvalException(fidReal, '2098-06', adminOverride,
+  mcs.setStep(fidReal, '2026-11', 'banca', { nota: 'Remediere administrativa' }, adminOverride);
+  const exception = mcs.approvalException(fidReal, '2026-11', adminOverride,
     { override: true, motiv: 'Continuitate operationala documentata' });
   ok('derogarea administrativa cere motiv si pastreaza contributiile in dosar',
     exception.type === 'self_approval' && exception.motiv === 'Continuitate operationala documentata'
       && exception.contributions.some((x) => x.id === 'banca'));
   eq('un aprobator nu poate forta inchiderea fara rolul distinct de exceptie',
-    errS(() => mcs.close(fidReal, '2098-06', actor, { force: true, motiv: 'Motiv suficient pentru exceptie' })), 403);
+    errS(() => mcs.close(fidReal, '2026-11', actor, { force: true, motiv: 'Motiv suficient pentru exceptie' })), 403);
 }
 
 section('XSS: escaparea datelor externe la randare (public/app.js)');
@@ -8568,6 +8685,7 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
     // schimbare in ele nu are ce valida DUKIntegrator. `sepa.js` (pain.001) pleaca la BANCA, si
     // e acoperit de poarta de escapare XML din acest fisier — alt mecanism, alt perimetru.
     'src/anaf.js', 'src/secretbox.js', 'src/zipGuard.js', 'src/sepa.js']);
+  const acoperit = (f) => lista.some((c) => f === c || f.startsWith(c));
   const neacoperite = new Set();
   for (const f of lista) {
     const abs = pth.join(root, f);
@@ -8575,7 +8693,7 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
     for (const m of fsx.readFileSync(abs, 'utf8').matchAll(/require\('\.\/([a-zA-Z0-9_]+)'\)/g)) {
       const dep = 'src/' + m[1] + '.js';
       if (!fsx.existsSync(pth.join(root, dep))) continue;
-      if (lista.includes(dep) || INFRA.has(dep)) continue;
+      if (acoperit(dep) || INFRA.has(dep)) continue;
       neacoperite.add(dep);
     }
   }
@@ -8606,7 +8724,6 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
     ['src/accounting.js', 'src/fxreval.js', 'src/production.js'].every((f) => monografii.includes(f)));
   ok('detectia NU confunda o harta de coloane cu o monografie (bank.js)', !monografii.includes('src/bank.js'));
 
-  const acoperit = (f) => lista.some((c) => f === c || f.startsWith(c));
   const monoLipsa = monografii.filter((f) => !acoperit(f));
   ok('fiecare modul care SCRIE articole contabile e in perimetru'
     + (monoLipsa.length ? ' — LIPSESC: ' + monoLipsa.join(', ') : ''), monoLipsa.length === 0);
@@ -8619,7 +8736,7 @@ section('Poarta fiscala: perimetrul acopera toate generatoarele ANAF (fara drift
   ok('fiecare cale din perimetru exista pe disc' + (inexistente.length ? ' — INEXISTENTE: ' + inexistente.join(', ') : ''), inexistente.length === 0);
 
   // poarta trebuie sa POATA pica: un generator inventat, in afara perimetrului, e detectat
-  ok('poarta detecteaza un generator din afara perimetrului', !acoperit('src/declaratieNoua.js'));
+  ok('poarta detecteaza un generator din afara perimetrului', !acoperit('extensii/declaratieNoua.js'));
 
   // Schema e-Transport e versionata in repo, ca poarta sa fie reproductibila oriunde (runnerul
   // de CI e efemer — o variabila cu o CALE de pe server n-ar indica nimic acolo).

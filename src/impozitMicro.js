@@ -23,15 +23,85 @@
 //  D100 si pentru linia comparativa din registrul de evidenta fiscala — cat timp erau doua
 //  formule, registrul arata alt impozit micro decat declaratia.
 //
-//  CE NU MODELEAZA, deliberat: art. 53 alin. (1) mai are litere care nu se pot deduce din codul
+//  CE NU GHICESTE, deliberat: art. 53 alin. (1) mai are litere care nu se pot deduce din codul
 //  contului — despagubirile de la asigurari (lit. g) stau pe 7581 amestecate cu amenzile si
 //  penalitatile INCASATE, care raman in baza; veniturile impozitate deja in strainatate (lit. m)
-//  nu au cont propriu. Raman in baza si se semnaleaza prin `note`, fiindca o scadere ghicita ar
-//  micsora un impozit datorat, iar asta nu se vede la nicio verificare aritmetica.
+//  nu au cont propriu. Taxonomia pe tranzactie si registrul de ajustari le modeleaza explicit;
+//  partea neclasificata ramane prudent in baza si este semnalata in `note`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { round2 } = require('./util');
 const cfgFiscal = require('./fiscalConfig');
+
+// Cazurile care nu se pot deduce sigur din cont. `effect` este diferenta fata de baza contabila:
+// confirm = ramane asa cum a intrat, subtract/add = ajustare fiscala explicita. Codurile sunt
+// stabile pentru API si export; etichetele pot evolua fara sa rescrie tranzactiile istorice.
+const TAXONOMY = Object.freeze({
+  taxable_confirmed: { effect: 'confirm', label: 'Venit impozabil confirmat', legalBasis: 'Art. 53 Cod fiscal' },
+  insurance_compensation_own_assets: { effect: 'subtract', label: 'Despagubire de asigurare pentru stocuri/active proprii', legalBasis: 'Art. 53(1)(g)' },
+  foreign_income_taxed: { effect: 'subtract', label: 'Venit din strainatate impozitat acolo', legalBasis: 'Art. 53(1)(m)' },
+  other_legal_subtraction: { effect: 'subtract', label: 'Alta scadere documentata din baza micro', legalBasis: '' },
+  other_legal_addition: { effect: 'add', label: 'Alta adaugare documentata la baza micro', legalBasis: '' },
+});
+
+function taxonomyError(message) { const e = new Error(message); e.status = 400; throw e; }
+function entryRevenue(entry) {
+  return round2((entry && entry.lines || []).reduce((s, line) => {
+    const q = Number(line.suma) || 0; let delta = 0;
+    if (String(line.credit || '').startsWith('7')) delta += q;
+    if (String(line.debit || '').startsWith('7')) delta -= q;
+    return s + delta;
+  }, 0));
+}
+function entryRevenueAccounts(entry) {
+  return [...new Set((entry && entry.lines || []).flatMap((line) => {
+    const out = [];
+    if (String(line.credit || '').startsWith('7')) out.push(String(line.credit));
+    if (String(line.debit || '').startsWith('7')) out.push(String(line.debit));
+    return out;
+  }))];
+}
+function normalizeTaxonomy(value, entry) {
+  const raw = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const code = String(raw.code || ''); const category = TAXONOMY[code];
+  if (!category) taxonomyError('Categoria fiscala micro „' + code + '” nu exista.');
+  const derived = entryRevenue(entry);
+  const amount = round2(raw.amount == null || raw.amount === '' ? Math.abs(derived) : Number(raw.amount));
+  if (!(amount > 0)) taxonomyError('Taxonomia fiscala micro trebuie sa aiba o suma pozitiva.');
+  const reason = String(raw.reason || '').trim();
+  if (reason.length < 5 || reason.length > 500) taxonomyError('Taxonomia fiscala micro cere un motiv de 5-500 caractere.');
+  const legalBasis = String(raw.legalBasis || category.legalBasis || '').trim().slice(0, 160);
+  if (!legalBasis) taxonomyError('Categoria fiscala micro aleasa cere un temei legal explicit.');
+  const accounts = entryRevenueAccounts(entry);
+  return { code, label: category.label, effect: category.effect, amount, reason, legalBasis,
+    sourceAccount: String(raw.sourceAccount || (accounts.length === 1 ? accounts[0] : '')).slice(0, 30) };
+}
+
+function taxonomyForEntries(entries) {
+  const rows = [];
+  for (const entry of entries || []) {
+    const raw = entry && entry.fiscalTaxonomy && entry.fiscalTaxonomy.micro;
+    if (!raw) continue;
+    try {
+      rows.push(Object.assign({ entryId: entry.id || null, data: entry.data || null,
+        period: entry.period || String(entry.data || '').slice(0, 7), document: entry.document || '' }, normalizeTaxonomy(raw, entry)));
+    } catch (e) {
+      rows.push({ entryId: entry.id || null, data: entry.data || null, period: entry.period || '',
+        document: entry.document || '', invalid: true, error: e.message, amount: 0, effect: 'confirm', sourceAccount: '' });
+    }
+  }
+  return rows;
+}
+
+function activeAdjustments(company, periods) {
+  const wanted = periods ? new Set(periods.map(String)) : null;
+  return (company && Array.isArray(company.microTaxAdjustments) ? company.microTaxAdjustments : [])
+    .filter((x) => x && x.active !== false && (!wanted || wanted.has(String(x.period))))
+    .map((x) => ({ id: String(x.id), period: String(x.period), entryId: x.entryId || null,
+      direction: String(x.direction), amount: round2(Number(x.amount) || 0), category: String(x.category || ''),
+      legalBasis: String(x.legalBasis || ''), reason: String(x.reason || ''), createdAt: x.createdAt || null,
+      createdBy: x.createdBy || null, createdByName: x.createdByName || '' }));
+}
 
 /** Soldul creditor net al conturilor care incep cu `prefix` (venituri). */
 function venit(rulaj, prefix) {
@@ -106,6 +176,23 @@ function baza(rulaj, opts) {
     if (suma > 0) adaugari.push({ cont: a.prefix, nume: a.nume, temei: a.temei, suma });
   }
 
+  // Taxonomia pe tranzactie si registrul de ajustari sunt RANDURI, nu un „override de total".
+  // Astfel baza poate fi refacuta pana la articol, document, temei si actor.
+  const taxonomies = Array.isArray(opts.taxonomies) ? opts.taxonomies : [];
+  const registerAdjustments = Array.isArray(opts.adjustments) ? opts.adjustments : [];
+  for (const row of taxonomies.filter((x) => !x.invalid && (x.effect === 'subtract' || x.effect === 'add'))) {
+    const out = { cont: row.sourceAccount || ('articol ' + row.entryId), nume: row.label,
+      temei: row.legalBasis, suma: round2(row.amount), source: 'transaction-taxonomy', entryId: row.entryId || null };
+    if (row.effect === 'subtract') scaderi.push(out); else adaugari.push(out);
+  }
+  for (const row of registerAdjustments) {
+    const out = { cont: row.entryId ? ('articol ' + row.entryId) : ('registru ' + row.id),
+      nume: row.category || row.reason, temei: row.legalBasis, suma: round2(row.amount),
+      source: 'adjustment-register', adjustmentId: row.id };
+    if (row.direction === 'subtract') scaderi.push(out);
+    else if (row.direction === 'add') adaugari.push(out);
+  }
+
   // Ultimul trimestru: diferenta favorabila de curs a ANULUI reintra in baza. Se calculeaza pe
   // rulajul anual, nu pe cel al trimestrului — legea spune „cumulat de la inceputul anului".
   if (opts.ultimulTrimestru) {
@@ -125,13 +212,19 @@ function baza(rulaj, opts) {
   const rezultat = round2(venitClasa7 - totalScaderi + totalAdaugari);
 
   const note = [];
-  if (venit(r, '7581') > 0) {
-    note.push('Contul 7581 (' + venit(r, '7581') + ' lei) a rămas ÎN bază: despăgubirile de la '
+  const invalidTaxonomies = taxonomies.filter((x) => x.invalid);
+  for (const row of invalidTaxonomies) note.push('Taxonomia fiscală a articolului ' + row.entryId + ' este invalidă: ' + row.error);
+  const classified7581 = round2(taxonomies.filter((x) => !x.invalid && String(x.sourceAccount).startsWith('7581'))
+    .reduce((s, x) => s + (Number(x.amount) || 0), 0));
+  const unresolved7581 = round2(Math.max(0, venit(r, '7581') - classified7581));
+  if (unresolved7581 > 0) {
+    note.push('Din contul 7581 au rămas neclasificați fiscal ' + unresolved7581 + ' lei: despăgubirile de la '
       + 'asigurări pentru stocuri și active proprii se scad (art. 53(1)(g)), dar amenzile și '
       + 'penalitățile încasate NU — iar cele două stau pe același cont. Verifică și, dacă e cazul, '
-      + 'ajustează manual.');
+      + 'atașează taxonomia tranzacției.');
   }
-  return { venitClasa7, scaderi, totalScaderi, adaugari, totalAdaugari, baza: Math.max(0, rezultat), note };
+  return { venitClasa7, scaderi, totalScaderi, adaugari, totalAdaugari, baza: Math.max(0, rezultat), note,
+    taxonomies, registerAdjustments, unresolved: { account7581: unresolved7581 } };
 }
 
 /**
@@ -195,4 +288,5 @@ function cotaAplicabila(i, cfg) {
       + (pragLei > 0 ? ' (~' + pragLei + ' lei)' : '') + ' și în afara codurilor CAEN de la art. 51.' };
 }
 
-module.exports = { baza, cotaAplicabila, SCADERI, ADAUGARI, PERECHI_CURS };
+module.exports = { baza, cotaAplicabila, SCADERI, ADAUGARI, PERECHI_CURS, TAXONOMY,
+  normalizeTaxonomy, taxonomyForEntries, activeAdjustments, entryRevenue };

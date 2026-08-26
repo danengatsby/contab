@@ -35,7 +35,7 @@ trap curata EXIT
 echo "── instanta izolata pe portul $PORT (date in $TMP)"
 export CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE="$DBF" CONTAB_DATA_DIR="$DATA"
 export CONTAB_DEV=1                 # instanta de test: fara secretele de productie (vezi secretsGuard)
-node "$RADACINA/scripts/seed.js" >/dev/null 2>&1
+node "$RADACINA/scripts/seed.js" >"$TMP/seed.log" 2>&1
 
 PORT=$PORT HOST=127.0.0.1 CONTAB_JSON_MIRROR=0 STRIPE_SECRET_KEY='' \
   CONTAB_RATE_API=100000 CONTAB_RATE_UPLOAD=1000 CONTAB_RATE_IMPORT=1000 CONTAB_HIBP=0 \
@@ -45,13 +45,29 @@ timeout 40 bash -c "until curl -sf http://127.0.0.1:$PORT/api/health >/dev/null;
   || { echo "serverul nu a pornit:"; tail -20 "$TMP/server.log"; exit 1; }
 
 # ── pregatire out-of-band: lucruri pe care browserul nu le poate face singur ──
-# 1. parola de admin (contul de seed porneste cu admin/admin + mustChange)
+# 1. Prima instalare nu mai are parola comuna admin/admin. Citim tokenul EFEMER din logul
+# instantei izolate, initializam local contul si activam 2FA: administratorul nu poate pregati
+# fixture-urile privilegiate pana la inrolare. Scenariul browser primeste secretul acestei instante;
+# fluxul complet activare -> login -> oprire este verificat separat pe un cont neprivilegiat.
 API="http://127.0.0.1:$PORT"
-C=$(curl -s -D - -o /dev/null -X POST "$API/api/login" -H 'Content-Type: application/json' \
-     -d '{"username":"admin","password":"admin"}' | grep -i '^set-cookie' | sed 's/^[Ss]et-[Cc]ookie: //' | cut -d';' -f1)
+BOOT=$(sed -n 's/.*INITIALIZARE ADMIN.*local: //p' "$TMP/seed.log" "$TMP/server.log" | tail -1)
+[ -n "$BOOT" ] || { echo "tokenul de initializare nu a aparut in log"; tail -20 "$TMP/seed.log"; tail -20 "$TMP/server.log"; exit 1; }
+C=$(curl -s -D - -o /dev/null -X POST "$API/api/bootstrap/initialize" -H 'Content-Type: application/json' \
+     -d "{\"token\":\"$BOOT\",\"password\":\"$PAROLA\"}" | grep -i '^set-cookie' | sed 's/^[Ss]et-[Cc]ookie: //' | cut -d';' -f1)
+[ -n "$C" ] || { echo "initializarea administratorului nu a emis sesiune"; exit 1; }
 TOK=$(curl -s -H "Cookie: $C" "$API/api/me" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).csrf||"")}catch(e){console.log("")}})')
-curl -s -X POST "$API/api/change-password" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" \
-  -H 'Content-Type: application/json' -d "{\"oldPassword\":\"admin\",\"newPassword\":\"$PAROLA\"}" >/dev/null
+SETUP_2FA=$(curl -s -X POST "$API/api/2fa/setup" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" -H 'Content-Type: application/json' -d '{}')
+SECRET_2FA=$(printf '%s' "$SETUP_2FA" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(JSON.parse(s).secret||"")}catch(e){}})')
+[ -n "$SECRET_2FA" ] || { echo "configurarea temporara 2FA a esuat: $SETUP_2FA"; exit 1; }
+CODE_2FA=$(node -e 'process.stdout.write(require(process.argv[1]).codeForCounter(process.argv[2],Math.floor(Date.now()/1000/30)))' "$RADACINA/src/totp.js" "$SECRET_2FA")
+ENABLE_2FA=$(curl -s -X POST "$API/api/2fa/enable" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" \
+  -H 'Content-Type: application/json' -d "{\"code\":\"$CODE_2FA\"}")
+printf '%s' "$ENABLE_2FA" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{if(!JSON.parse(s).ok)process.exit(1)}catch(e){process.exit(1)}})' \
+  || { echo "activarea temporara 2FA a esuat: $ENABLE_2FA"; exit 1; }
+LEGAL_MODE=$(curl -s -X POST "$API/api/legal/mode" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" \
+  -H 'Content-Type: application/json' -d '{"mode":"test","confirmFictitious":true}')
+printf '%s' "$LEGAL_MODE" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{if(!JSON.parse(s).operational)process.exit(1)}catch(e){process.exit(1)}})' \
+  || { echo "declararea regimului de date al fixture-ului a esuat: $LEGAL_MODE"; exit 1; }
 
 # 2. SMTP „configurat" (altfel /api/forgot-password nu genereaza token, prin proiectare) + email pe cont
 curl -s -X POST "$API/api/smtp" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" -H 'Content-Type: application/json' \
@@ -68,10 +84,15 @@ UTILIZ=$(curl -s -X POST "$API/api/users" -H "Cookie: $C" -H "X-CSRF-Token: $TOK
 [ -n "$UTILIZ" ] && curl -s -X POST "$API/api/users/$UTILIZ" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" \
   -H 'Content-Type: application/json' -d '{"drepturi":{"faraSalarii":true}}' >/dev/null || true
 
+# cont neprivilegiat dedicat fluxului 2FA; politica fail-closed interzice dezactivarea factorului
+# administratorului, ceea ce este corect si nu trebuie ocolit doar pentru test.
+curl -s -X POST "$API/api/users" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" -H 'Content-Type: application/json' \
+  -d "{\"username\":\"doifa-e2e\",\"password\":\"$PAROLA\",\"role\":\"user\",\"firme\":[1]}" >/dev/null
+
 # 3b. cont demo local pentru scenariul UX general. Instanța este izolată, deci nu depindem de
 # contul demo live și testăm exact codul backend încărcat în procesul de mai sus.
 curl -s -X POST "$API/api/users" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" -H 'Content-Type: application/json' \
-  -d "{\"username\":\"demo\",\"password\":\"$PAROLA\",\"role\":\"user\",\"firme\":[1]}" >/dev/null
+  -d "{\"username\":\"demo\",\"password\":\"$PAROLA\",\"role\":\"user\",\"firme\":[1],\"firmaRoluri\":{\"1\":\"operator\"}}" >/dev/null
 
 # 4. token de resetare: se cere prin API, apoi se citeste din baza (browserul n-are cum — pleaca pe email)
 curl -s -X POST "$API/api/forgot-password" -H 'Content-Type: application/json' \
@@ -89,7 +110,7 @@ try {
   db.close();
 } catch (e) { process.stdout.write(""); }' "$TMP/db.sqlite")
 if [ -n "$RESET" ]; then RESET_STARE=prezent; else RESET_STARE=ABSENT; fi
-echo "── pregatire: admin ok | utilizator limitat id=${UTILIZ:-?} | token resetare: $RESET_STARE"
+echo "── pregatire: admin initializat + 2FA activ | utilizator limitat id=${UTILIZ:-?} | token resetare: $RESET_STARE"
 
 echo "── scenarii in browser (Docker)"
 set +e
@@ -97,8 +118,12 @@ docker run --rm --network host \
   -v "$RADACINA/scripts/e2e-izolat.mjs:/w/e2e.mjs:ro" \
   -v "$RADACINA/scripts/e2e.mjs:/w/e2e-ux.mjs:ro" \
   -e BASE_URL="http://127.0.0.1:$PORT" -e E2E_PAROLA="$PAROLA" -e E2E_RESET="$RESET" \
+  -e E2E_ADMIN_TOTP_SECRET="$SECRET_2FA" -e E2E_UX_ONLY="${E2E_UX_ONLY:-0}" \
   -w /w "$IMG" \
-  sh -c "npm i --no-save playwright@1.58.2 >/dev/null 2>&1 && node e2e.mjs && node e2e-ux.mjs"
+  sh -c 'npm i --no-save playwright@1.58.2 >/dev/null 2>&1 || exit $?;
+    node e2e-ux.mjs; ux=$?; [ "$E2E_UX_ONLY" = 1 ] && exit "$ux";
+    node e2e.mjs; izolat=$?;
+    [ "$ux" -eq 0 ] && [ "$izolat" -eq 0 ]'
 COD=$?
 set -e
 exit $COD

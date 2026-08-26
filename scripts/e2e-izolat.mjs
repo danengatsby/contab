@@ -18,6 +18,7 @@ import crypto from 'node:crypto';
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:18777';
 const PAROLA = process.env.E2E_PAROLA || 'E2E-Izolat-2026!';
 const RESET = process.env.E2E_RESET || '';
+const ADMIN_TOTP_SECRET = process.env.E2E_ADMIN_TOTP_SECRET || '';
 
 let pass = 0; let fail = 0;
 const ok = (name, cond) => { if (cond) { pass++; console.log('  ✓', name); } else { fail++; console.error('  ✗', name); } };
@@ -54,8 +55,12 @@ async function login(page, user, parola, cod) {
   // in pagina exista TREI campuri name=username (login, inscriere, admin) — scopam pe formular
   await page.fill('#loginForm input[name=username]', user);
   await page.fill('#loginForm input[name=password]', parola);
-  if (cod) { await page.fill('#loginForm input[name=code]', cod); }
   await page.click('#loginForm button.primary');
+  if (cod) {
+    await page.waitForFunction(() => !document.querySelector('#codeRow')?.classList.contains('hidden'));
+    await page.fill('#loginForm input[name=code]', cod);
+    await page.click('#loginForm button.primary');
+  }
   await page.waitForTimeout(1800);
   return page.evaluate(() => {
     const el = document.querySelector('#userBadge');
@@ -74,7 +79,7 @@ async function apiIn(page, url, opts) {
 
 // ─────────────────────────── 1. ROLURI SI DREPTURI ───────────────────────────
 sect('1. Roluri si drepturi granulare');
-ok('admin se autentifica prin interfata', await login(pg, 'admin', PAROLA));
+ok('admin se autentifica prin interfata', await login(pg, 'admin', PAROLA, totpCode(ADMIN_TOTP_SECRET)));
 // Ascunderea cardului se comanda prin clasa `.hidden` (app.js: classList.toggle), nu prin stil
 // inline. Varianta veche citea `el.style.display`, care e '' in AMBELE cazuri — deci aserttiunea
 // pozitiva („adminul vede") trecea din motivul gresit, iar cea negativa („limitatul nu vede") nu
@@ -123,7 +128,7 @@ if (RESET) {
   // iar prea multe incercari gresite blocheaza contul si fac sa pice si verificarile CORECTE.
   // Deci intai confirmam ca parola noua merge, abia apoi ca cea veche nu.
   pgNou = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
-  ok('parola NOUA merge', await login(pgNou, 'admin', PAROLA2));
+  ok('parola NOUA merge', await login(pgNou, 'admin', PAROLA2, totpCode(ADMIN_TOTP_SECRET)));
   ok('parola VECHE nu mai merge', !(await login(await (await b.newContext()).newPage(), 'admin', PAROLA)));
   const reuse = await (await b.newContext()).newPage();
   await reuse.goto(BASE + '/?reset=' + RESET, { waitUntil: 'networkidle' });
@@ -136,7 +141,6 @@ if (RESET) {
   ok('acelasi token NU se poate refolosi', !(await login(await (await b.newContext()).newPage(), 'admin', 'AltaParola-2026!')));
   await reuse.close();
 }
-const PAROLA_ADMIN = RESET ? PAROLA2 : PAROLA;
 // de aici incolo lucram pe o sesiune de admin VALIDA (resetarea a invalidat-o pe cea initiala)
 const adm = pgNou || pg;
 
@@ -146,23 +150,27 @@ const adm = pgNou || pg;
 // de login nu poate primi codul, iar campul nu ramane un control mort fara configurare in Cont.
 sect('3. Autentificare in doi pasi (2FA) — flux complet prin interfata');
 {
-  await adm.evaluate(() => window.goTab('cont'));
-  ok('Setari ofera configurarea 2FA', (await adm.locator('#twofaStart:visible').count()) === 1);
+  // Administratorul ramane obligatoriu protejat cu factorul pregatit de launcher. Exercitam
+  // activarea si dezactivarea pe un cont neprivilegiat dedicat, unde ambele tranzitii sunt valide.
+  const factorPage = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+  const factorLogin = await login(factorPage, 'doifa-e2e', PAROLA);
+  await factorPage.evaluate(() => window.goTab('cont'));
+  ok('Setari ofera configurarea 2FA', factorLogin && (await factorPage.locator('#twofaStart:visible').count()) === 1);
   // Resetarea autentifica direct si poate deschide bun-venitul peste pagina Cont.
-  await adm.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
-  await adm.click('#twofaStart');
-  await adm.waitForFunction(() => document.querySelector('#twofaSecret')?.textContent?.length >= 16);
-  const secret = (await adm.locator('#twofaSecret').innerText()).trim();
+  await factorPage.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
+  await factorPage.click('#twofaStart');
+  await factorPage.waitForFunction(() => document.querySelector('#twofaSecret')?.textContent?.length >= 16);
+  const secret = (await factorPage.locator('#twofaSecret').innerText()).trim();
   ok('configurarea afiseaza cheia TOTP', /^[A-Z2-7]{16,}$/.test(secret));
   ok('configurarea afiseaza QR-ul intr-o sursa inerta',
-    /^data:image\/svg\+xml/.test(await adm.locator('#twofaQr').getAttribute('src') || ''));
-  await adm.fill('#twofaCode', totpCode(secret));
-  await adm.click('#twofaEnable');
-  await adm.waitForFunction(() => /este activat/i.test(document.querySelector('#twofaStatus')?.textContent || ''));
+    /^data:image\/svg\+xml/.test(await factorPage.locator('#twofaQr').getAttribute('src') || ''));
+  await factorPage.fill('#twofaCode', totpCode(secret));
+  await factorPage.click('#twofaEnable');
+  await factorPage.waitForFunction(() => /este activat/i.test(document.querySelector('#twofaStatus')?.textContent || ''));
   ok('codul corect activeaza 2FA din interfata',
-    /este activat/i.test(await adm.locator('#twofaStatus').innerText()));
-  await adm.waitForFunction(() => !document.querySelector('#twofaRecovery')?.classList.contains('hidden'));
-  const recoveryCodes = (await adm.locator('#twofaRecoveryCodes').inputValue()).split(/\s+/).filter(Boolean);
+    /este activat/i.test(await factorPage.locator('#twofaStatus').innerText()));
+  await factorPage.waitForFunction(() => !document.querySelector('#twofaRecovery')?.classList.contains('hidden'));
+  const recoveryCodes = (await factorPage.locator('#twofaRecoveryCodes').inputValue()).split(/\s+/).filter(Boolean);
   ok('activarea afiseaza o singura data cele 8 coduri de rezerva', recoveryCodes.length === 8
     && recoveryCodes.every((x) => /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(x)));
 
@@ -172,8 +180,8 @@ sect('3. Autentificare in doi pasi (2FA) — flux complet prin interfata');
   ok('campul de cod exista si este activ', (await camp.count()) === 1 && !(await camp.isDisabled()));
   ok('campul ramane ascuns pana cand parola corecta cere al doilea pas',
     await p2.locator('#codeRow').evaluate((el) => el.classList.contains('hidden')));
-  await p2.fill('#loginForm input[name=username]', 'admin');
-  await p2.fill('#loginForm input[name=password]', PAROLA_ADMIN);
+  await p2.fill('#loginForm input[name=username]', 'doifa-e2e');
+  await p2.fill('#loginForm input[name=password]', PAROLA);
   await p2.click('#loginForm button.primary');
   await p2.waitForFunction(() => !document.querySelector('#codeRow')?.classList.contains('hidden'));
   ok('parola corecta cere codul fara sa creeze sesiune',
@@ -191,6 +199,7 @@ sect('3. Autentificare in doi pasi (2FA) — flux complet prin interfata');
   ok('2FA se poate dezactiva tot din interfata, cu un cod valid',
     /este dezactivat/i.test(await p2.locator('#twofaStatus').innerText()));
   await p2.close();
+  await factorPage.close();
 
   // Vector fix RFC 4226/6238, ca generatorul folosit de test sa fie el insusi verificat.
   const c1t = totpCode('GEZDGNBVGY3TQOJQ', 59000);

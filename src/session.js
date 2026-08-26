@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const authlib = require('./auth');
 const plans = require('./plans');
+const permissions = require('./permissions');
 
 // Cheia de semnare a token-urilor: env-ul (CONTAB_AUTH_SECRET) e AUTORITATEA daca e setat
 // (nu sta in baza/backup, nu e scriabil din aplicatie); altfel fallback-ul aleator din baza.
@@ -65,10 +66,12 @@ function tipCont(u) {
 
 function publicUser(u) {
   const p = u.profil || {};
+  const twofaMandatory = permissions.requiresTwoFactor(u, db.get());
   return {
     id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), tipCont: tipCont(u), firme: allowedFirme(u),
     drepturi: u.drepturi || {}, firmaRoluri: u.firmaRoluri || {},
-    mustChange: !!u.mustChange, twofa: !!u.twofa, twofaRequired: u.role === 'admin' && !u.twofa,
+    mustChange: !!u.mustChange, twofa: !!u.twofa,
+    twofaMandatory, twofaRequired: twofaMandatory && !u.twofa,
     twofaRecoveryCount: u.twofa && Array.isArray(u.twofaRecoveryHashes) ? u.twofaRecoveryHashes.length : 0,
     profilComplet: !!(p.numeComplet && p.telefon), // datele personale minime sunt completate?
     // conditie ca sa poti inscrie firme proprii; interfata o anunta INAINTE de a incerca,

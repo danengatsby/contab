@@ -149,7 +149,9 @@ section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara creste
   // IP (CONTAB_RATE_CUI), memo in anafRegistru si un raspuns redus la campurile de formular.
   // `/api/legal-status` este public fiindca acceptarea de la inscriere trebuie sa poata numi
   // versiunile curente INAINTE sa existe cont; raspunsul contine doar versiuni/stare, nu secrete.
-  const ASTEPTAT = ['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password',
+  // `/api/bootstrap/initialize` este public doar la nivelul middleware-ului: handlerul cere
+  // cumulativ socket loopback, Host local, lipsa proxy-ului și tokenul unic cu TTL.
+  const ASTEPTAT = ['/api/health', '/api/login', '/api/logout', '/api/me', '/api/bootstrap/initialize', '/api/forgot-password',
     '/api/register', '/api/legal-status', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest',
     '/api/client-error', '/api/registru-anaf'];
   const inPlus = publice.filter((p) => !ASTEPTAT.includes(p));
@@ -598,7 +600,7 @@ section('Interfata bilingva RO/EN');
   ok('formatarea numerelor si datelor foloseste locale-ul UI',
     /export const uiLocale/.test(fsI.readFileSync(pI.join(pub, 'core.js'), 'utf8')));
   ok('shell-ul offline include catalogul de limba si are versiune noua',
-    sw.includes("'/i18n.js'") && /contab-shell-v31/.test(sw));
+    sw.includes("'/i18n.js'") && /contab-shell-v32/.test(sw));
 }
 
 section('Plafon general de API (uploadGuard.generalLimit)');
@@ -1714,6 +1716,26 @@ section('Poarta: orice articol contabil intra prin `db.pushEntry` (planul de con
   eq('...cu status 400 (eroare de business, nu 500)', aruncat && aruncat.status, 400);
   ok('...numind contul vinovat', aruncat && /2819/.test(aruncat.message));
   ok('...si contextul, ca sa se stie de unde vine articolul', aruncat && /proba/.test(aruncat.message));
+
+  // Mutatia si evenimentul de siguranta trebuie sa ajunga in ACELASI graf inainte de save();
+  // storePg va fotografia apoi ambele colectii in aceeasi tranzactie.
+  const graphAtomic = dbE.get();
+  const atomicId = 'entry-outbox-test-' + process.pid;
+  const outboxBefore = (graphAtomic.auditOutbox || []).length;
+  try {
+    dbE.pushEntry({ id: atomicId, firmaId: 987654, data: '2026-08-26', period: '2026-08',
+      tip: 'nota_contabila', document: 'OUTBOX-TEST', lines: [{ debit: '628', credit: '401', suma: 10 }] },
+    { context: 'proba transactional outbox', allowClosedPeriod: true,
+      actor: { id: 77, username: 'operator-test' } });
+    const row = graphAtomic.auditOutbox[graphAtomic.auditOutbox.length - 1];
+    ok('pushEntry adauga atomic articolul si evenimentul outbox in acelasi graf',
+      graphAtomic.entries.some((e) => e.id === atomicId) && graphAtomic.auditOutbox.length === outboxBefore + 1
+        && row.record.action === 'accounting.entry.insert' && row.record.entityId === atomicId
+        && row.record.userId === 77 && /^[a-f0-9]{64}$/.test(row.record.entitySha256));
+  } finally {
+    graphAtomic.entries = graphAtomic.entries.filter((e) => e.id !== atomicId);
+    graphAtomic.auditOutbox = (graphAtomic.auditOutbox || []).filter((r) => r.record && r.record.entityId !== atomicId);
+  }
 
   // Aceeasi poarta pazeste CRONOLOGIA si sumele. Un text cu forma de data nu este neaparat o
   // data reala, iar `period` trebuie sa fie derivat din ea — altfel jurnalul si declaratiile ar

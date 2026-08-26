@@ -178,10 +178,14 @@ function registry(view, asOf) {
   }
 
   for (const d of documents) {
-    d.overdueDays = Math.max(0, daysBetween(d.dueDate, raw.asOf));
-    d.daysToDue = Math.max(0, daysBetween(raw.asOf, d.dueDate));
-    d.status = d.residual > TOL ? (d.dueDate > raw.asOf ? 'nescadent' : 'restant') : 'stins';
-    d.termClass = addDays(raw.asOf, 365) < d.dueDate ? 'peste1an' : 'sub1an';
+    // Data documentului ramane numai cheia determinista de FIFO pentru documentele legacy.
+    // Nu este o scadenta economica: pana la confirmare nu calculam zile si nu numim soldul
+    // „restant". Altfel un document vechi fara termen ajunge artificial in >90 zile.
+    d.overdueDays = d.dueKnown ? Math.max(0, daysBetween(d.dueDate, raw.asOf)) : null;
+    d.daysToDue = d.dueKnown ? Math.max(0, daysBetween(raw.asOf, d.dueDate)) : null;
+    d.status = d.residual <= TOL ? 'stins'
+      : (!d.dueKnown ? 'scadenta-necunoscuta' : (d.dueDate > raw.asOf ? 'nescadent' : 'restant'));
+    d.termClass = !d.dueKnown ? 'necunoscut' : (addDays(raw.asOf, 365) < d.dueDate ? 'peste1an' : 'sub1an');
   }
   const openDocuments = documents.filter((d) => d.residual > TOL);
   const openPayments = payments.filter((p) => p.unallocated > TOL);
@@ -203,7 +207,9 @@ function groupedAging(view, asOf) {
       const r = by.get(d.partnerKey) || { partener: d.partener, cui: d.cui, total: 0, nescadent: 0,
         b0_30: 0, b31_60: 0, b61_90: 0, b90plus: 0, b270plus: 0, dueDateMissing: 0, documents: [] };
       r.total = round2(r.total + d.residual); r.documents.push(d);
-      if (!d.dueKnown) r.dueDateMissing = round2(r.dueDateMissing + d.residual);
+      // Necunoscutele sunt o categorie mutual exclusiva. Raman in total si in controlul separat,
+      // dar nu polueaza nici „nescadent", nici benzile de restanta.
+      if (!d.dueKnown) { r.dueDateMissing = round2(r.dueDateMissing + d.residual); by.set(d.partnerKey, r); continue; }
       if (d.dueDate > reg.asOf) r.nescadent = round2(r.nescadent + d.residual);
       else if (d.overdueDays <= 30) r.b0_30 = round2(r.b0_30 + d.residual);
       else if (d.overdueDays <= 60) r.b31_60 = round2(r.b31_60 + d.residual);

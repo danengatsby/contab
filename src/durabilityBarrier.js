@@ -41,6 +41,10 @@ function createDurabilityBarrier(db, log) {
 
       Promise.resolve()
         .then(() => db.flushStore())
+        // Outbox-ul se dreneaza numai DUPA commitul mutatiei; apoi confirmam si marcajul
+        // `deliveredAt`. Mock-urile de contract pot omite functia fara sa depinda de baza reala.
+        .then(() => (typeof db.drainAuditOutbox === 'function' ? db.drainAuditOutbox() : null))
+        .then(() => db.flushStore())
         .then(() => Reflect.apply(originalEnd, res, args))
         .catch((err) => {
           if (res.headersSent) return Reflect.apply(originalEnd, res, args);

@@ -97,6 +97,26 @@ function verdict(user, fid, requestedAction, firma) {
 
 function can(user, fid, action, firma) { return verdict(user, fid, action, firma).ok; }
 
+/** 2FA devine obligatorie din CAPABILITATE, nu numai din rolul global. Un utilizator care
+ *  poate depune ori exporta pe oricare firma trebuie sa-si protejeze contul chiar daca firma
+ *  activa curenta este alta. Proprietarii si administratorii sunt privilegiati prin definitie. */
+function requiresTwoFactor(user, graph) {
+  if (!user) return false;
+  // Conturile demonstrative sunt publice, resetate si blocate in service layer de la operatii
+  // de cont/administrare; nu pot avea un dispozitiv TOTP comun fara a publica secretul.
+  if (user.username === 'demo' || user.username === 'demo-contabil') return false;
+  if (user.role === 'admin') return true;
+  const d = graph || {}; const firme = Array.isArray(d.firme) ? d.firme : [];
+  if (firme.some((f) => !f.demo && Number(f.ownerId) === Number(user.id))) return true;
+  const roles = user.firmaRoluri || {};
+  return Object.keys(roles).some((fid) => {
+    const firma = firme.find((f) => Number(f.id) === Number(fid));
+    if (firma && firma.demo) return false;
+    const role = roles[fid]; const rights = matrix[role];
+    return !!(rights && (rights.has('declaration.submit') || rights.has('data.export')));
+  });
+}
+
 function assert(user, fid, action, firma) {
   const v = verdict(user, fid, action, firma);
   if (!v.ok) { const e = new Error(v.reason); e.status = 403; e.permission = canonical(action); throw e; }
@@ -124,6 +144,7 @@ function requiredActions(method, path, body) {
   if (!safe && (path === '/api/open-items/allocate' || path === '/api/reconcile/link')) add('treasury.write');
   if (/^\/api\/(?:cashbook|cash-valuta|cash-control)(?:\/|$)/.test(path)) add('treasury.read');
   if (/^\/api\/cash-forecast(?:\/|$)/.test(path)) add(safe ? 'treasury.read' : 'treasury.write');
+  if (/^\/api\/cash-flow\/classification(?:\/|$)/.test(path)) add(safe ? 'treasury.read' : 'treasury.approve');
   if (path === '/pdf/cash-forecast-13-weeks') add('treasury.read');
   if (path === '/xml/pain001' || path === '/api/stat-plata/pay') add('treasury.approve');
 
@@ -139,6 +160,8 @@ function requiredActions(method, path, body) {
   if (/^\/api\/etransport\/send(?:\/|$)/.test(path)) add('declaration.submit');
   if (/^\/api\/etransport\/(?:validate|status)(?:\/|$)/.test(path)) add('declaration.prepare');
   if (!safe && /^\/api\/(?:fiscal-profile|balance-category)(?:\/|$)/.test(path)) add('fiscal.manage');
+  if (!safe && (/^\/api\/fiscal\/micro(?:\/|$)/.test(path)
+    || /^\/api\/entries\/[^/]+\/fiscal-taxonomy\/micro$/.test(path))) add('fiscal.manage');
   if (!safe && /^\/api\/balance-sheet-mappings(?:\/|$)/.test(path)) add('fiscal.manage');
   if (!safe && /^\/api\/balance-sheet-adjustments(?:\/|$)/.test(path)) add('declaration.approve');
 
@@ -160,4 +183,4 @@ function describe() {
   };
 }
 
-module.exports = { ACTIONS, ROLES, roleFor, verdict, can, assert, requiredActions, describe };
+module.exports = { ACTIONS, ROLES, roleFor, verdict, can, assert, requiresTwoFactor, requiredActions, describe };

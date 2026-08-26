@@ -269,6 +269,7 @@ function profitLossF20(db, year) {
  * intre conturi de trezorerie se ignora. Prin constructie: variatia = numerar final - numerar initial.
  */
 function cashFlow(db, year) {
+  const classification = require('./cashFlowClassification');
   const y = String(year);
   const Y0 = String(Number(y) - 1);
   const isCash = (c) => /^(512|531|541|542|5125|5114)/.test(String(c));
@@ -283,27 +284,8 @@ function cashFlow(db, year) {
     inv_imobilizari: 0, inv_dobanziDiv: 0, fin_credite: 0, fin_capital: 0, fin_dividende: 0,
   };
   const addB = (k, v) => { b[k] = round2(b[k] + v); };
-  const cls = (cont) => {
-    const c = String(cont);
-    if (/^(20|21|22|23|26|27|404|405)/.test(c)) return 'inv_imobilizari';
-    if (/^(761|762|763|764|765)/.test(c)) return 'inv_dobanziDiv';
-    // (269 nu apare aici: e prins mai sus de `26` — varsaminte pentru imobilizari financiare =
-    //  activitate de INVESTITII, nu de finantare. Il pastram acolo, dar il scoatem din lista asta,
-    //  unde era oricum umbrit si sugera o clasificare pe care codul n-o face.)
-    if (/^(16|159|519|455|509)/.test(c)) return 'fin_credite';
-    if (/^(101|102|103|104|105|108|456)/.test(c)) return 'fin_capital';
-    if (/^457/.test(c)) return 'fin_dividende';
-    // 419 (avansuri incasate de la CLIENTI) sta la incasari de la clienti, nu la plati: e bani
-    // INTRATI de la un client. Grupat cu 40x, un avans incasat aparea ca suma POZITIVA pe linia de
-    // plati catre furnizori si angajati — o linie de plati nu poate fi pozitiva. 409 (avansuri
-    // PLATITE furnizorilor) ramane unde e, acolo chiar sunt bani iesiti.
-    if (/^419/.test(c)) return 'ex_clienti';
-    if (/^(40|42|43)/.test(c)) return 'ex_furnizoriAngajati';
-    if (/^44/.test(c)) return 'ex_impozite';
-    if (/^(666|518)/.test(c)) return 'ex_dobanzi';
-    if (/^(41|418|70)/.test(c)) return 'ex_clienti';
-    return 'ex_altele';
-  };
+  const config = classification.normalizeConfig((db.company || {}).cashFlowClassification);
+  const unmapped = new Map(); let absoluteCashMovement = 0;
 
   const ents = postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y));
   for (const e of ents) {
@@ -311,7 +293,18 @@ function cashFlow(db, year) {
       const dCash = isCash(ln.debit); const cCash = isCash(ln.credit);
       if (dCash === cCash) continue; // ambele trezorerie (transfer intern) sau niciuna
       const sign = dCash ? 1 : -1;   // numerar in cont => incasare; numerar in credit => plata
-      addB(cls(dCash ? ln.credit : ln.debit), round2(sign * round2(ln.suma)));
+      const account = String(dCash ? ln.credit : ln.debit);
+      const amount = round2(sign * round2(ln.suma));
+      absoluteCashMovement = round2(absoluteCashMovement + Math.abs(amount));
+      const verdict = classification.classify(account, e, ln, config);
+      addB(verdict.category, amount);
+      if (verdict.source === 'unmapped') {
+        const row = unmapped.get(account) || { account, net: 0, absolute: 0, operations: 0, examples: [] };
+        row.net = round2(row.net + amount); row.absolute = round2(row.absolute + Math.abs(amount)); row.operations += 1;
+        if (row.examples.length < 5) row.examples.push({ entryId: e.id || null, data: e.data || null,
+          document: e.document || '', amount });
+        unmapped.set(account, row);
+      }
     }
   }
 
@@ -320,9 +313,16 @@ function cashFlow(db, year) {
   const fin_net = round2(b.fin_credite + b.fin_capital + b.fin_dividende);
   const variatie = round2(ex_net + inv_net + fin_net);
   const variatieControl = round2(numerarFinal - numerarInitial);
+  const threshold = round2(classification.materialityThreshold(config, absoluteCashMovement));
+  const otherRows = [...unmapped.values()].sort((a, z) => z.absolute - a.absolute || a.account.localeCompare(z.account));
   return Object.assign({ year: y, numerarInitial, numerarFinal }, b, {
     ex_net, inv_net, fin_net, variatie, variatieControl,
     echilibrat: Math.abs(variatie - variatieControl) < 0.01,
+    classification: { version: config.version, materialityAmount: config.materialityAmount,
+      materialityPercent: config.materialityPercent, absoluteCashMovement, threshold,
+      unmappedTotal: round2(otherRows.reduce((s, r) => s + r.net, 0)),
+      unmappedAbsolute: round2(otherRows.reduce((s, r) => s + r.absolute, 0)),
+      materialUnmapped: otherRows.filter((r) => r.absolute >= threshold), unmapped: otherRows },
   });
 }
 

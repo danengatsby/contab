@@ -280,6 +280,14 @@ function cashFlowBody(doc, cf) {
   doc.moveDown(0.2);
   doc.fillColor(C.muted).font('Helvetica').fontSize(8)
     .text('Metoda directa (OMFP 1802/2014). Valorile pozitive = incasari, negative = plati.', { width: 500 });
+  const material = cf.classification && cf.classification.materialUnmapped || [];
+  if (material.length) {
+    doc.moveDown(0.4);
+    doc.fillColor(C.danger).font('Helvetica-Bold').fontSize(9)
+      .text('Contrapartide materiale ramase in „altele” (prag ' + fmt(cf.classification.threshold) + ' lei):');
+    doc.fillColor(C.ink).font('Helvetica').fontSize(8)
+      .text(material.map((r) => r.account + ': ' + fmt(r.net) + ' lei (' + r.operations + ' operatiuni)').join(' · '), { width: 500 });
+  }
 }
 
 function cashFlowPdf(res, company, cf) {

@@ -355,7 +355,8 @@ function d100micro(db, period, cota, opts) {
   const ruleSet = fiscal.rulesAt(period); const rates = ruleSet.rates;
   const q0 = m ? m - ((m - 1) % 3) : 0;
   const luni = m ? [q0, q0 + 1, q0 + 2].map((x) => y + '-' + String(x).padStart(2, '0')) : [];
-  const lines = acc.resultLines(acc.postedEntries(db).filter((e) => luni.includes(String(e.period || periodOf(e.data)))));
+  const trimEntries = acc.postedEntries(db).filter((e) => luni.includes(String(e.period || periodOf(e.data))));
+  const lines = acc.resultLines(trimEntries);
   const r = acc.accumulate(lines);
   // Semnal de eligibilitate micro (art. 47 Cod fiscal): plafonul de venituri (EUR, configurabil)
   // si conditia de salariat. Doar AVERTIZEAZA — incadrarea finala ramane la contribuabil.
@@ -368,15 +369,22 @@ function d100micro(db, period, cota, opts) {
   // Baza art. 53 a trimestrului. Ultimul trimestru (T4) reintroduce diferenta favorabila de curs
   // cumulata pe an, deci primeste si rulajul anual.
   const trimestru = m ? Math.ceil(m / 3) : 0;
-  const bz = micro.baza(r, { ultimulTrimestru: trimestru === 4, rulajAn: rAn });
+  const bz = micro.baza(r, { ultimulTrimestru: trimestru === 4, rulajAn: rAn,
+    taxonomies: micro.taxonomyForEntries(trimEntries),
+    adjustments: micro.activeAdjustments(db.company, luni) });
   const venit = bz.baza;
   // Cota, pe veniturile cumulate PANA LA FINALUL trimestrului raportat: art. 51 alin. (4) comuta
   // de la trimestrul depasirii, nu de la anul urmator, deci contorul nu poate fi nici cel al
   // trimestrului singur, nici cel al anului intreg (care ar include luni viitoare).
   const pana = m ? y + '-' + String(q0 + 2).padStart(2, '0') : y + '-12';
-  const rCum = acc.accumulate(acc.resultLines(acc.postedEntries(db)
-    .filter((e) => { const p = String(e.period || periodOf(e.data)); return p.startsWith(y) && p <= pana; })));
-  const venitCumulatLei = micro.baza(rCum, {}).baza;
+  const cumEntries = acc.postedEntries(db)
+    .filter((e) => { const p = String(e.period || periodOf(e.data)); return p.startsWith(y) && p <= pana; });
+  const rCum = acc.accumulate(acc.resultLines(cumEntries));
+  // Registrul poate contine o ajustare intr-o luna fara articole contabile; lista perioadelor
+  // vine din calendarul pana la trimestru, nu numai din lunile gasite in jurnal.
+  const cumPeriods = Array.from({ length: q0 + 2 }, (_, i) => y + '-' + String(i + 1).padStart(2, '0'));
+  const venitCumulatLei = micro.baza(rCum, { taxonomies: micro.taxonomyForEntries(cumEntries),
+    adjustments: micro.activeAdjustments(db.company, cumPeriods) }).baza;
   // Cursul plafonului vine de la BNR, din ultima zi a exercitiului precedent — nu din valoarea
   // rotunda de configurare. La 5,0 in loc de ~5,08, plafonul de 100.000 EUR iese 500.000 in loc de
   // ~508.000, iar o firma cu 505.000 lei era declarata gresit iesita din regimul micro.
@@ -453,6 +461,7 @@ function d100micro(db, period, cota, opts) {
     // Desfasurarea bazei (art. 53) si a cotei (art. 51), pentru raport si pentru revizie.
     venitClasa7: bz.venitClasa7, scaderi: bz.scaderi, totalScaderi: bz.totalScaderi,
     adaugari: bz.adaugari, totalAdaugari: bz.totalAdaugari,
+    taxonomies: bz.taxonomies, adjustmentRegister: bz.registerAdjustments, unresolvedTaxonomy: bz.unresolved,
     cotaMotiv: cotaManuala ? 'Cotă impusă manual (' + rate + '%).' : ct.motiv,
     cotaPrin: cotaManuala ? 'manual' : ct.prin,
     pragMicro3Lei: ct.pragLei, venitCumulatLei };
@@ -1178,7 +1187,11 @@ function registruFiscal(db, year, cota, opts) {
   // Linia comparativa „cat ar fi iesit pe micro". Trecea `pl.venitTotal` (toata clasa 7) printr-o
   // cota scrisa `* 1` in cod — deci nici baza art. 53, nici cota art. 51, si nici macar cota din
   // configuratie. Aceeasi sursa ca D100, altfel registrul si declaratia dau doua cifre.
-  const bzMicro = micro.baza(r, { ultimulTrimestru: true, rulajAn: r });
+  const yearEntries = acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(String(year)));
+  const yearPeriods = Array.from({ length: 12 }, (_, i) => String(year) + '-' + String(i + 1).padStart(2, '0'));
+  const bzMicro = micro.baza(r, { ultimulTrimestru: true, rulajAn: r,
+    taxonomies: micro.taxonomyForEntries(yearEntries),
+    adjustments: micro.activeAdjustments(db.company, yearPeriods) });
   const ctMicro = micro.cotaAplicabila({ an: Number(year), venitCumulatLei: bzMicro.baza,
     curs: bnr.cursPlafonMicro(db.cursuriBnr, Number(year), rates.cursPlafonMicro).curs,
     caen: (db.company || {}).caen }, rates);
@@ -1187,6 +1200,7 @@ function registruFiscal(db, year, cota, opts) {
     year, rezultatContabil, cheltNeded, totalNeded, venituriList, venituriNeimpozabile, mentiuni,
     rezultatFiscal, rateProfit, impozitProfit, impozitMicro, venitTotal: pl.venitTotal,
     rateMicro: ctMicro.cota, bazaMicro: bzMicro.baza, // cota nu mai e mereu 1%, deci se si afiseaza
+    taxonomiiMicro: bzMicro.taxonomies, registruAjustariMicro: bzMicro.registerAdjustments,
     // Aditiv: randurile cu plafon si totalul lor, separate de procentele fixe.
     ajustariPlafon: dedRez.randuriPlafon, totalPlafoane,
     ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,

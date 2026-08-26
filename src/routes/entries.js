@@ -81,7 +81,7 @@ module.exports = function register(app, ctx) {
   });
 
   app.delete('/api/entries/:id', (req, res) => run(res, () => {
-    const r = svc.deleteEntry(req.params.id, activeId(req), (fid) => canAccess(req, fid));
+    const r = svc.deleteEntry(req.params.id, activeId(req), (fid) => canAccess(req, fid), req.user);
     // in spiritul jurnalului append-only: stergerea (permisa doar in perioade deschise)
     // pastreaza in audit INTREAGA inregistrare — reconstructibila, nu doar un titlu
     if (r.entry) logAudit('entry.delete', r.entry.tipNume + ' ' + (r.entry.document || '') + ' :: ' + JSON.stringify(r.entry), { req, firmaId: r.entry.firmaId });

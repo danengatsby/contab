@@ -1,6 +1,7 @@
 'use strict';
 
-// Verifica sintaxa tuturor fisierelor .js si .mjs (node --check). Folosit in `npm run lint` si CI.
+// Verifica sintaxa tuturor fisierelor .js si .mjs (node --check). Control rapid pentru prestart;
+// poarta locala completa este `npm run verify` (teste functionale + ESLint).
 
 const fs = require('fs');
 const path = require('path');

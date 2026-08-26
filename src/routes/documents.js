@@ -21,6 +21,7 @@ const fiscal = require('../fiscal');
 const { getType } = require('../documentTypes');
 const { round2, period: periodOf } = require('../util');
 const { sendList } = require('../paginate');
+const apiContract = require('../apiContract');
 
 // Detaliul de audit al unui upload: DOAR metadate (nume, dimensiune) — niciodata continut.
 const uploadDetail = (f) => f.originalname + ' (' + Math.max(1, Math.round(f.size / 1024)) + ' KB)';
@@ -46,6 +47,11 @@ module.exports = function register(app, ctx) {
 
   app.post('/api/upload', upload.single('file'), ctx.wrap(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Niciun fisier primit.' });
+    const aiMode = String((req.body || {}).aiMode || 'firm-default');
+    try { apiContract.assertSchema(apiContract.schemas.DocumentAiMode, aiMode, 'multipart.aiMode'); } catch (e) {
+      try { fs.unlinkSync(req.file.path); } catch (_) { /* fisier temporar deja absent */ }
+      return res.status(400).json({ error: e.message, code: e.code });
+    }
     const d = db.get();
     const ownCui = (db.getFirma(activeId(req)) || {}).cui;
     const buf = fs.readFileSync(req.file.path);
@@ -57,9 +63,13 @@ module.exports = function register(app, ctx) {
     let extra = {};
     const firma = db.getFirma(activeId(req));
     const aiConfigured = ai.aiAvailable() && d.settings.useAI !== false;
-    const aiWanted = aiConfigured && legal.aiAllowed(firma);
+    // Alegerea documentului poate RESTRANGE opt-in-ul firmei, niciodata extinde: `allow` fara
+    // consimtamantul firmei ramane local. Clientii vechi pastreaza comportamentul prin default.
+    const documentAllowsAI = aiMode !== 'deny';
+    const aiWanted = aiConfigured && legal.aiAllowed(firma) && documentAllowsAI;
     const useAI = aiWanted && aiQuotaLeft(req.user) > 0;
     if (aiConfigured && !aiWanted) warning = 'Documentul nu a fost trimis către AI: opt-in-ul firmei lipsește sau nu mai corespunde documentelor juridice curente. S-au folosit regulile locale.';
+    if (legal.aiAllowed(firma) && !documentAllowsAI) warning = 'AI a fost dezactivat explicit pentru acest document. S-au folosit regulile locale.';
     if (aiWanted && !useAI) warning = 'Limita zilnica de extrageri AI a fost atinsa — s-au folosit regulile locale.';
     if (useAI) {
       bumpAiUsage(req.user); // numara si incercarile esuate (apelul se factureaza oricum)
@@ -70,7 +80,7 @@ module.exports = function register(app, ctx) {
         const r = await ai.extractWithAI(buf, ownCui);
         extracted = { suggestedType: r.suggestedType, fields: r.fields, cuis: r.cuis, text: '' };
         source = 'ai';
-        extra = { incredere: r.incredere, motiv: r.motiv, model: r.model };
+        extra = { incredere: r.incredere, motiv: r.motiv, model: r.model, provider: r.provider };
         metrics.aiCall(Date.now() - t0, true);
         log.info('extragere AI reusita', log.ctx(req, { ms: Date.now() - t0, kb: Math.round(buf.length / 1024), tip: r.suggestedType, incredere: r.incredere }));
       } catch (e) {
@@ -123,6 +133,15 @@ module.exports = function register(app, ctx) {
         // Modelul care a produs `incredere`. `null` la regulile locale — acolo nu exista model,
         // iar un sir inventat („local") ar fi facut ca „nu se aplica" sa arate ca o valoare.
         model: extra.model || null,
+        provider: extra.provider || null,
+        aiDecision: {
+          mode: aiMode,
+          firmConsent: legal.aiAllowed(firma),
+          transmitted: source === 'ai',
+          provider: extra.provider || null,
+          model: extra.model || null,
+          transmittedAt: source === 'ai' ? new Date().toISOString() : null,
+        },
         suggestedType: extracted.suggestedType,
         fields: extracted.fields,
         scor: calitate.scor,
@@ -132,7 +151,10 @@ module.exports = function register(app, ctx) {
       },
     });
     logAudit('document.upload', uploadDetail(req.file) + ', extragere: ' + source
-      + ', calitate: ' + calitate.scor + '% ' + calitate.decizie, { req });
+      + ', optiune AI document: ' + aiMode + ', calitate: ' + calitate.scor + '% ' + calitate.decizie, { req });
+    logAudit(source === 'ai' ? 'document.ai.transmitted' : 'document.ai.not_transmitted',
+      docId + ' · ' + (source === 'ai' ? (extra.provider + '/' + extra.model) : ('mod ' + aiMode))
+        + ' · scop extragere campuri · ' + Math.max(1, Math.round(req.file.size / 1024)) + ' KB', { req });
     db.save();
 
     // POSTARE AUTOMATA — doar daca firma a cerut-o EXPLICIT si toate controalele blocante trec.
@@ -163,6 +185,9 @@ module.exports = function register(app, ctx) {
       fields: extracted.fields,
       cuis: extracted.cuis,
       source,
+      provider: extra.provider || null,
+      model: extra.model || null,
+      aiDecision: { mode: aiMode, transmitted: source === 'ai' },
       warning,
     }, extra));
   }));

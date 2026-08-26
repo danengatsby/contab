@@ -274,7 +274,9 @@ function platformaProces(ctx) {
   eq('taxePfa: salariul minim implicit = S1 (martie)', pfaCfg.salariuMinim, fconf.RATES.salariuMinimS1);
   // tipul „import vamal" isi ia cota TVA din config, nu dintr-un 21 hardcodat
   const vam = getType('import_vamal');
-  eq('import vamal: cota TVA implicita = tvaStandard', (vam.fields.find((f) => f.name === 'cota') || {}).default, fiscal.FISCAL.tvaStandard);
+  const cotaVam = vam.fields.find((f) => f.name === 'cota') || {};
+  ok('import vamal: cota TVA este legata dinamic de tvaStandard, nu fotografiata in catalog',
+    cotaVam.fiscalRate === 'tvaStandard' && cotaVam.default === 0);
   // poarta negativa: TVA-ul standard nu mai e hardcodat ca 21 in documentTypes
   ok('documentTypes: fara cota TVA hardcodata (default: 21 / || 21)', !/default: 21\b/.test(dtSrc) && !/\|\| 21\)/.test(dtSrc));
   // ...si generalizarea ei: NICIO cota din fiscalConfig nu are voie sa apara ca numar scris de mana.

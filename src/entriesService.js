@@ -219,7 +219,7 @@ function inregistreazaInterventia(fid, b, entry, campuriSalvate) {
 /** Sterge un articol dupa id. `canFid(firmaId)` decide accesul apelantului la firma articolului
  *  (404 identic pentru inexistent in firma si strain); perioada inchisa blocheaza stergerea.
  *  Un id negasit NU e eroare: intoarce removed=0 (contract istoric al rutei). */
-function deleteEntry(id, fallbackFid, canFid) {
+function deleteEntry(id, fallbackFid, canFid, actor) {
   const d = db.get();
   const e = d.entries.find((x) => x.id === id);
   if (e && !canFid(e.firmaId == null ? d.firmaActiva : e.firmaId)) fail(404, 'Inregistrare inexistenta.');
@@ -235,6 +235,8 @@ function deleteEntry(id, fallbackFid, canFid) {
   }
   const n = d.entries.length;
   d.entries = d.entries.filter((x) => x.id !== id);
+  if (e) require('./auditOutbox').enqueue(d, 'accounting.entry.delete-draft', e, actor,
+    'ciornă ștearsă · ' + String(e.tipNume || e.tip || '') + (e.document ? ' · ' + e.document : ''));
   db.save();
   return { removed: n - d.entries.length, entry: e || null };
 }
@@ -298,8 +300,10 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno, actor) {
   };
   markEntryActor(se, actor, 'postat');
   se.postedBy = actorId(actor); se.postedAt = new Date().toISOString();
-  db.pushEntry(se, { context: 'stornare articol' });
+  db.pushEntry(se, { context: 'stornare articol', actor });
   e.stornat = true; e.stornoBy = se.id; e.stornoData = stornoData;
+  require('./auditOutbox').enqueue(d, 'accounting.entry.storno-link', e, actor,
+    'articol ' + e.id + ' legat de nota storno ' + se.id);
   // Fotografia salariala ramane in jurnal pentru audit, dar nu mai alimenteaza registrele,
   // fluturasii, mediile istorice sau D112 dupa stornarea articolului care a produs-o.
   payrollHistory.markStornat(d.payrollHistory, e, se);
@@ -373,6 +377,8 @@ function setEntryStatus(id, fallbackFid, canFid, target, actor) {
   e.status = target;
   e.statusHistory = Array.isArray(e.statusHistory) ? e.statusHistory : [];
   e.statusHistory.push({ status: target, by: aid, username: actorName(actor), at });
+  require('./auditOutbox').enqueue(d, 'accounting.entry.status', e, actor,
+    'articol ' + e.id + ' → ' + target);
   db.save();
   return { entry: e, status: target };
 }
@@ -426,7 +432,7 @@ function generateRecurring(fid, period, deps) {
       entry.dedupeKey = 'recurent:' + t.id + ':' + period;
       if (makerCheckerRequired(fid)) entry.status = 'ciorna';
       markEntryActor(entry, deps && deps.actor, entryState(entry));
-      db.pushEntry(entry, { context: 'sablon recurent' });
+      db.pushEntry(entry, { context: 'sablon recurent', actor: deps && deps.actor });
       deps.upsertPartner(fid, entry);
       t.lastGenerated = period;
       created.push({ id: entry.id, tip: entry.tipNume, partener: t.partener });
@@ -480,7 +486,7 @@ function tvaExigibilitate(fid, b, deps) {
   if (gViol) fail(400, gViol); // neplatitor nu poate exigibiliza TVA colectata
   // baza aferenta TVA-ului devenit exigibil (pentru D300 in perioada exigibilitatii — TVA la incasare)
   entry.tvaExig = { baza: round2(brut - tva), cota, side: b.tip === 'deductibila' ? 'deductibila' : 'colectata' };
-  db.pushEntry(entry, { context: 'sablon recurent' });
+  db.pushEntry(entry, { context: 'exigibilitate TVA', actor: deps && deps.actor });
   db.save();
   return { tva, brut, cota, entry };
 }

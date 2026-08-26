@@ -973,7 +973,7 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
   eq('contractul de leasing are contract, finanțare și costuri', stepCount('lcForm'), 3);
   eq('mișcarea de stoc separă operațiunea, gestiunile și cantitatea', stepCount('movementForm'), 3);
   eq('partenerul separă identificarea de adresa documentelor', stepCount('partnerForm'), 2);
-  eq('configurația fiscală separă contribuțiile, taxele, plafoanele și salariile', stepCount('fiscalForm'), 4);
+  eq('configurația fiscală separă metadatele, contribuțiile, taxele, plafoanele și salariile', stepCount('fiscalForm'), 5);
   eq('factura recurentă separă partenerul, valoarea și calendarul', stepCount('recForm'), 3);
   eq('seriile separă recepția/consumul de livrare/încasare', stepCount('docSeriesForm'), 2);
   eq('producția separă produsul, costul și materialele', stepCount('prodForm'), 3);

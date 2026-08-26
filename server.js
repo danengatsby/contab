@@ -5,6 +5,7 @@
 // upsertPartner (folosite de mai multe rute), apoi joburile periodice (src/jobs.js),
 // handlerul global de erori (src/serverErrors.js) si ciclul de viata (src/lifecycle.js).
 const bootstrap = require('./src/bootstrap');
+const crypto = require('crypto');
 bootstrap.loadDotEnv(__dirname); // inainte de orice require care citeste variabile (cheie AI etc.)
 // Secretele obligatorii, IMEDIAT dupa .env si INAINTE de a atinge baza: altfel o pornire fara
 // ele apuca sa creeze fisierul bazei (cu un authSecret generat) inainte sa refuze.
@@ -72,7 +73,9 @@ function logAudit(action, detail, opts) {
   // unde `auditLog.append` scrie inregistrarea intreaga.
   const ip = o.ip || (o.req ? String(o.req.ip || '') : '');
   const record = {
-    id: (d.audit[d.audit.length - 1] || {}).id + 1 || 1,
+    // Evenimentele livrate din outbox au ID-uri UUID. Concatenarea veche `last.id + 1`
+    // transforma următoarele ID-uri în șiruri tot mai lungi; folosim un ID autonom și stabil.
+    id: 'audit-' + crypto.randomUUID(),
     ts: new Date().toISOString(),
     userId: o.userId != null ? o.userId : (o.req && o.req.user && o.req.user.id),
     username: o.username || (o.req && o.req.user && o.req.user.username) || '',
@@ -162,6 +165,8 @@ const { registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts } = req
 
 // Starea publica a cadrului juridic + declararea modului de date si opt-in AI per firma.
 require('./src/routes/legal')(app, { activeId, logAudit });
+// Contract OpenAPI incremental; aceleasi scheme valideaza payloadurile la runtime.
+require('./src/routes/apiContract')(app);
 
 // ───────────────────────────── FIRME ─────────────────────────────
 function canAccess(req, id) { return allowedFirme(req.user).includes(Number(id)); }
@@ -186,6 +191,10 @@ require('./src/routes/access')(app, { requireAdmin, wrap });
 
 // Configurare (companie, logo, chitanta, setari, cote fiscale): src/routes/config.js
 require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, upload });
+// Taxonomia configurabila a fluxurilor de trezorerie si pragul raportului „altele".
+require('./src/routes/cashFlowClassification')(app, { activeId, logAudit });
+// Taxonomie fiscala per articol si registrul explicit de ajustari ale bazei micro.
+require('./src/routes/microTax')(app, { activeId, logAudit });
 
 // Nomenclatoare (parteneri, import CSV, conversie XLSX/XLS/DBF) + solduri initiale: src/routes/partners.js
 require('./src/routes/partners')(app, { upload, S, activeId, logAudit, requireAdmin, wrap });

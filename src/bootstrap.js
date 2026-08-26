@@ -242,7 +242,7 @@ function applySecurityGuards(app, ctx) {
   });
 
   // Orice ruta de API/livrabile (pdf/xml/csv/efactura) cere sesiune, cu exceptia celor publice.
-  const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/forgot-password', '/api/register', '/api/legal-status', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest', '/api/client-error', '/api/registru-anaf']);
+  const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/bootstrap/initialize', '/api/forgot-password', '/api/register', '/api/legal-status', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest', '/api/client-error', '/api/registru-anaf']);
   app.use((req, res, next) => {
     if (PUBLIC_PATHS.has(req.path) || req.path.startsWith('/api/invite/') || req.path.startsWith('/api/reset/')) return next();
     if (/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) {
@@ -251,6 +251,17 @@ function applySecurityGuards(app, ctx) {
       req.user = u;
     }
     next();
+  });
+
+  // Impersonarea este o sesiune de diagnostic READ-ONLY. Nicio ruta noua nu poate deveni
+  // accidental mutanta sub impersonare: exceptiile sunt numai iesirile sigure din sesiune.
+  app.use((req, res, next) => {
+    if (!req.impersonating || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+        || req.path === '/api/impersonate/stop' || req.path === '/api/logout') return next();
+    return res.status(403).json({
+      error: 'Impersonarea este read-only. Ieși din impersonare pentru orice modificare.',
+      impersonationReadOnly: true,
+    });
   });
 
   // Fail-closed pentru operatiunile mutante: verificam atat dreptul de scriere, cat si lantul
@@ -291,9 +302,9 @@ function applySecurityGuards(app, ctx) {
   const ADMIN_2FA_ALLOW = /^\/api\/(?:me|meta|logout|change-password|2fa(?:\/|$))/;
   app.use((req, res, next) => {
     const principal = req.realUser || req.user;
-    if (principal && principal.role === 'admin' && !principal.twofa && !ADMIN_2FA_ALLOW.test(req.path)) {
+    if (principal && permissions.requiresTwoFactor(principal, db.get()) && !principal.twofa && !ADMIN_2FA_ALLOW.test(req.path)) {
       return res.status(428).json({
-        error: 'Activează autentificarea în doi pași înainte de a folosi contul de administrator.',
+        error: 'Activează autentificarea în doi pași înainte de a folosi acest cont privilegiat.',
         twofaRequired: true,
       });
     }
@@ -304,7 +315,7 @@ function applySecurityGuards(app, ctx) {
   // Pana cand proprietarul alege explicit, scrierile de lucru sunt oprite. Firmele de test merg,
   // iar firmele reale cer atat readiness global, cat si acceptarea versiunii DPA curente.
   const legal = require('./legalCompliance');
-  const LEGAL_WRITE_EXEMPT = /^\/api\/(logout|me|meta|legal(?:\/|$)|profile|account|change-password|sessions|2fa|messages|plans|subscription|checkout|stripe|impersonate|firme(?:\/|$))/;
+  const LEGAL_WRITE_EXEMPT = /^\/api\/(logout|me|meta|legal(?:\/|$)|profile|account|change-password|sessions|2fa|step-up|messages|plans|subscription|checkout|stripe|impersonate|firme(?:\/|$))/;
   app.use((req, res, next) => {
     if (!req.user || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) || LEGAL_WRITE_EXEMPT.test(req.path)) return next();
     if (!/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) return next();
@@ -326,7 +337,7 @@ function applySecurityGuards(app, ctx) {
   // implicit salarii, trezorerie, depuneri, profil fiscal, inchideri ori exporturi. Catalogul
   // de rute sensibile este unic in permissions.requiredActions si se aplica inclusiv pe GET-urile
   // cu efect (XML fiscal) sau cu risc de exfiltrare (PDF/CSV).
-  const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|messages|subscription|checkout|stripe)/;
+  const RO_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|step-up|messages|subscription|checkout|stripe)/;
   const RO_ALLOW = /^\/api\/firme(?:\/demo)?$|^\/api\/firme\/\d+\/activate$/;
   // Crearea primei firme / a firmei demo nu are inca un context de firma pe care sa existe
   // dreptul `write`; serviciul valideaza separat contul si operatia. Activarea ramane o citire.
@@ -345,13 +356,33 @@ function applySecurityGuards(app, ctx) {
     next();
   });
 
+  // Step-up pe operatiile cu raza mare. Se aplica DUPA drepturi: un utilizator neautorizat
+  // primeste 403, nu un indiciu ca ar putea debloca actiunea doar prin reautentificare.
+  const stepUp = require('./stepUp');
+  app.use((req, res, next) => {
+    if (!req.user || req.path === '/api/step-up') return next();
+    const activeFirma = db.getFirma(activeId(req));
+    if (req.user.role !== 'admin' && activeFirma && plans.firmaLocked(activeFirma)) return next();
+    const actions = permissions.requiredActions(req.method, req.path, req.body);
+    let scope = actions.includes('declaration.submit') ? 'filing' : null;
+    if (req.path === '/api/restore'
+        || ((req.path === '/api/firme/import' || req.path === '/api/firme/import-zip') && req.query.mode === 'replace')) scope = 'restore';
+    const bulkExport = req.path === '/api/firme/export-all'
+      || /^\/api\/firme\/\d+\/export(?:-zip)?$/.test(req.path)
+      || req.path === '/api/backup' || req.path.startsWith('/api/backup/file/')
+      || req.path === '/api/dosar-anual' || req.path === '/xml/saft';
+    if (bulkExport) scope = 'bulk-export';
+    if (scope && !stepUp.valid(req, scope)) return stepUp.requiredResponse(res, scope);
+    next();
+  });
+
   // ── Billing STRICT per-firma: fiecare firma are propriul abonament. Scrierile pe FIRMA ACTIVA
   // sunt permise doar daca firma are abonament activ sau proba nefinalizata; altfel read-only pana
   // la abonare (plata pe firma). Citirile si rutele de cont/gestionare firma raman libere.
   // `impersonate` e exceptat: altfel adminul care impersoneaza un user cu firma expirata ar fi
   // BLOCAT in impersonare (402 chiar pe /api/impersonate/stop). Paywall-ul ramane pe restul
   // rutelor si sub impersonare — adminul vede exact ce vede utilizatorul.
-  const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe|trial))?$|^\/api\/firme\/\d+$|^\/api\/firme\/(cerere-acces|cereri\/[\w-]+|contabili|servicii|servicii\/[\w-]+(\/retrage)?)$/;
+  const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|step-up|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe|trial))?$|^\/api\/firme\/\d+$|^\/api\/firme\/(cerere-acces|cereri\/[\w-]+|contabili|servicii|servicii\/[\w-]+(\/retrage)?)$/;
   app.use((req, res, next) => {
     if (!req.user || req.user.role === 'admin') return next();
     if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere

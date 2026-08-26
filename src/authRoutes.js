@@ -34,9 +34,41 @@ const csrfLib = require('./csrf');
 const sessionLib = require('./session');
 const auditLog = require('./auditLog');
 const globalChain = require('./globalChain');
+const adminBootstrap = require('./adminBootstrap');
+const stepUp = require('./stepUp');
 
 module.exports = function registerAuthRoutes(app, ctx) {
   const { logAudit, wrap, requireAdmin, activeId, S } = ctx;
+
+  // Prima instalare: endpoint intentionat public, dar acceptat numai DIRECT pe loopback.
+  // Un reverse proxy local are tot o conexiune loopback spre Node, de aceea verificam cumulativ
+  // socketul, Host-ul si absenta antetelor Forwarded; domeniul public nu poate folosi tokenul.
+  app.post('/api/bootstrap/initialize', wrap(async (req, res) => {
+    if (!adminBootstrap.localDirectRequest(req)) {
+      return res.status(403).json({ error: 'Inițializarea administratorului este disponibilă numai prin conexiune locală directă.' });
+    }
+    const d = db.get(); const body = req.body || {};
+    const admin = adminBootstrap.pendingAdmin(d);
+    if (!admin || !adminBootstrap.matches(d, body.token)) {
+      return res.status(401).json({ error: 'Tokenul de inițializare este invalid sau a expirat.' });
+    }
+    const password = String(body.password || '');
+    const pwErr = authlib.validatePassword(password, { username: admin.username });
+    if (pwErr) return res.status(400).json({ error: pwErr });
+    const breachErr = await authlib.breachCheck(password);
+    if (breachErr) return res.status(400).json({ error: breachErr });
+    const h = await authlib.hashPasswordAsync(password);
+    // Tokenul se consuma numai dupa toate verificarile si calculul hash-ului; un esec temporar
+    // de retea la HIBP nu poate lasa instalarea fara calea de initializare.
+    admin.salt = h.salt; admin.hash = h.hash; admin.bootstrapPending = false; admin.mustChange = false;
+    adminBootstrap.consume(d);
+    startSession(req, res, admin); req.user = admin; req.realUser = admin;
+    logAudit('admin.bootstrap', 'contul administrator a fost inițializat local; urmează înrolarea 2FA', {
+      req, userId: admin.id, username: admin.username, firmaId: null,
+    });
+    db.save();
+    return res.json({ ok: true, user: withSessionState(req, admin) });
+  }));
 
   // Imbogateste obiectul public al utilizatorului cu starea de impersonare si mesajele necitite.
   function withSessionState(req, u) {
@@ -104,7 +136,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const esec = (motiv) => logAudit('login.failed', motiv, {
       req, userId: (u && u.id) || null, username: String(username || '').slice(0, 60), firmaId: null,
     });
-    if (!await authlib.verifyUserPasswordAsync(u && !u.pending ? u : null, password)) {
+    if (!await authlib.verifyUserPasswordAsync(u && !u.pending && !u.bootstrapPending ? u : null, password)) {
       bumpFail(req); esec('utilizator sau parola gresita'); db.save();
       return res.status(401).json({ error: 'Utilizator sau parola gresita.' });
     }
@@ -502,6 +534,35 @@ module.exports = function registerAuthRoutes(app, ctx) {
     res.json(withSessionState(req, u));
   });
 
+  // Reautentificare recenta, legata de sesiune si de SCOP. Codurile de rezerva sunt excluse:
+  // step-up-ul protejeaza operatii cu raza mare, nu fluxul de recuperare a accesului.
+  app.post('/api/step-up', wrap(async (req, res) => {
+    if (req.impersonating) return res.status(403).json({ error: 'Ieși din impersonare înainte de reautentificarea privilegiată.' });
+    const principal = req.realUser || req.user; const body = req.body || {};
+    const scope = String(body.scope || '');
+    if (!stepUp.SCOPES.has(scope)) return res.status(400).json({ error: 'Scop step-up invalid.' });
+    if (!principal || !principal.twofa) {
+      return res.status(428).json({ error: 'Activează 2FA înainte de această operațiune.', twofaRequired: true });
+    }
+    const passwordOk = await authlib.verifyUserPasswordAsync(principal, body.password);
+    const factor = accountSvc.verifySecondFactor(principal, body.code, { allowRecovery: false });
+    if (!passwordOk || !factor.ok) {
+      bumpFail(req);
+      logAudit('auth.step-up.denied', 'reautentificare eșuată · scop ' + scope, {
+        req, userId: principal.id, username: principal.username, firmaId: null,
+      });
+      db.save();
+      return res.status(401).json({ error: 'Reautentificare eșuată. Verifică parola și codul TOTP.' });
+    }
+    clearFails(req);
+    const grant = stepUp.grant(req, scope);
+    logAudit('auth.step-up', 'scop ' + scope + ' · valabil până la ' + grant.expiresAt, {
+      req, userId: principal.id, username: principal.username, firmaId: null,
+    });
+    db.save();
+    return res.json({ ok: true, scope, expiresAt: grant.expiresAt });
+  }));
+
   // ───────────────────────── IMPERSONARE (admin intra pe cont de user) ─────────────────────────
   // Adminul real (chiar daca impersoneaza deja pe cineva) e principalul care detine sesiunea.
   function adminPrincipal(req) {
@@ -517,15 +578,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const ticket = String(body.ticket || '').trim().slice(0, 120);
     if (reason.length < 10) return res.status(400).json({ error: 'Motivul impersonării trebuie să aibă cel puțin 10 caractere.' });
     if (ticket.length < 3) return res.status(400).json({ error: 'Indică tichetul sau referința solicitării.' });
-    const passwordOk = await authlib.verifyUserPasswordAsync(admin, body.password);
-    const factor = accountSvc.verifySecondFactor(admin, body.code, { allowRecovery: false });
-    if (!passwordOk || !factor.ok) {
-      logAudit('impersonate.denied', 'reautentificare eșuată · tichet ' + ticket, {
-        req, userId: admin.id, username: admin.username, firmaId: null,
-      });
-      db.save();
-      return res.status(401).json({ error: 'Reautentificare eșuată. Verifică parola și codul TOTP.' });
-    }
+    if (!stepUp.valid(req, 'impersonation')) return stepUp.requiredResponse(res, 'impersonation');
     const d = db.get();
     const target = d.users.find((x) => x.id === Number(body.userId));
     if (!target) return res.status(404).json({ error: 'Utilizator inexistent.' });
@@ -534,14 +587,33 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (target.pending) return res.status(400).json({ error: 'Contul nu e finalizat (invitatie in asteptare).' });
     const sess = (admin.sessions || []).find((s) => s.id === req._sessId);
     if (!sess) return res.status(400).json({ error: 'Sesiune invalida.' });
-    const requestedMinutes = Number(body.durationMinutes);
-    const durationMinutes = Number.isFinite(requestedMinutes) ? Math.max(1, Math.min(30, Math.floor(requestedMinutes))) : 15;
     const startedAt = new Date().toISOString();
-    const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
     sess.impersonating = { userId: target.id, reason, ticket, startedAt, expiresAt };
     logAudit('impersonate.start', admin.username + ' a intrat pe contul ' + target.username
       + ' · tichet ' + ticket + ' · motiv: ' + reason + ' · expiră ' + expiresAt,
     { req, userId: admin.id, username: admin.username, firmaId: null });
+
+    // Notificarea ajunge atat la tinta, cat si la proprietarii firmelor pe care aceasta le poate
+    // vedea. Mesajul in-app este durabil; emailul este best-effort si nu poate anula accesul deja
+    // consemnat daca furnizorul extern este indisponibil.
+    const targetFids = new Set([...(target.firme || []),
+      ...(d.firme || []).filter((f) => Number(f.ownerId) === Number(target.id)).map((f) => f.id)]
+      .map(Number));
+    const recipients = new Map([[target.id, target]]);
+    for (const f of d.firme || []) if (targetFids.has(Number(f.id)) && f.ownerId != null) {
+      const owner = d.users.find((u) => Number(u.id) === Number(f.ownerId));
+      if (owner) recipients.set(owner.id, owner);
+    }
+    const notice = 'Notificare de securitate: administratorul ' + admin.username
+      + ' a deschis acces read-only pe contul ' + target.username + ' până la ' + expiresAt
+      + '. Tichet: ' + ticket + '. Motiv: ' + reason;
+    for (const recipient of recipients.values()) {
+      d.messages = d.messages || [];
+      d.messages.push(messages.newMessage(db.nextId('m'), recipient.id, true, notice, 'Sistem Contabo'));
+      if (recipient.email) sendNotifMail(recipient.email, '[Contab] Acces administrativ temporar pe cont', notice)
+        .catch((e) => log.warn('notificare email impersonare eșuată', { userId: recipient.id, err: e }));
+    }
     db.save();
     res.json({ ok: true, user: publicUser(target), expiresAt });
   }));

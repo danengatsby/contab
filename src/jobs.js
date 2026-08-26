@@ -201,6 +201,12 @@ function stop() {
 function start(ctx) {
   const { doBackup, resetDemo, registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts } = ctx;
 
+  // Plasa pentru mutatiile din joburi/cai fara raspuns HTTP. Bariera HTTP dreneaza imediat;
+  // intervalul garanteaza progresul si dupa un crash intre COMMIT si append-ul NDJSON.
+  safeInterval('audit-outbox', () => db.drainAuditOutbox().then((r) => {
+    if (r.delivered) metrics.jobResult('audit-outbox', r.delivered + ' evenimente replicate în NDJSON');
+  }), 10 * 1000);
+
   // Backup automat zilnic (daca e activat)
   safeInterval('backup', () => {
     const s = db.get().settings.backup || {};

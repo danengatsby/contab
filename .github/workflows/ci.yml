@@ -53,9 +53,9 @@ jobs:
         run: sh scripts/verifica-worktree.sh "$GITHUB_SHA"
 
   # ANALIZA STATICA (ESLint). Job SEPARAT, nu parte din `npm test`: `npm test` ruleaza la
-  # `prestart`, adica pe serverul de PRODUCTIE la fiecare pornire, iar ESLint e o dependinta de
-  # dezvoltare — cu `npm ci --omit=dev` nici n-ar exista acolo. Un linter nu are voie sa
-  # impiedice pornirea aplicatiei de contabilitate.
+  # poarta functionala, iar `prestart` ruleaza numai `verify:startup`; ESLint e o dependinta de
+  # dezvoltare — cu `npm ci --omit=dev` nici n-ar exista. Local, verdictul combinat al joburilor
+  # `test` + `lint` se obtine explicit prin `npm run verify`.
   lint:
     runs-on: ubuntu-latest
     steps:

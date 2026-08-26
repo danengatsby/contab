@@ -341,14 +341,19 @@ const esvc = require('../../src/entriesService');
 // serverul); stub-uri minimale, serviciul e testat pe gardele si scrierile proprii
 let partnerCalls = 0;
 const stubDeps = {
-  buildEntry: (tip, f, fileId, fid) => ({
-    id: db.nextId('e'), firmaId: fid, data: f.data || '2026-06-15', period: String(f.data || '2026-06-15').slice(0, 7),
-    tip, tipNume: 'Stub ' + tip, document: f.document || '', partener: f.partener || '', partenerCui: f.cuiPartener || '',
-    explicatie: '', fileId: fileId || null, system: false,
-    // Punctul unic de scriere refuză articolele fără linii; dublura trebuie să respecte același
-    // contract minim ca buildEntry-ul real, altfel testul probează un obiect imposibil în aplicație.
-    lines: [{ debit: '5311', credit: '5121', suma: 1, explicatie: 'Linie stub serviciu' }],
-  }),
+  buildEntry: (tip, f, fileId, fid) => {
+    const data = f.data || '2026-06-15';
+    const fiscalRef = require('../../src/fiscal').ruleReferenceAt(data, { allowUncovered: true });
+    return {
+      id: db.nextId('e'), firmaId: fid, data, period: String(data).slice(0, 7),
+      tip, tipNume: 'Stub ' + tip, document: f.document || '', partener: f.partener || '', partenerCui: f.cuiPartener || '',
+      explicatie: '', fileId: fileId || null, system: false,
+      ruleSetId: fiscalRef.ruleSetId, fiscalRulesHash: fiscalRef.fiscalRulesHash,
+      // Punctul unic de scriere refuză articolele fără linii; dublura trebuie să respecte același
+      // contract minim ca buildEntry-ul real, altfel testul probează un obiect imposibil în aplicație.
+      lines: [{ debit: '5311', credit: '5121', suma: 1, explicatie: 'Linie stub serviciu' }],
+    };
+  },
   upsertPartner: () => { partnerCalls += 1; },
 };
 const throwDeps = { buildEntry: () => { throw new Error('tip invalid'); }, upsertPartner: () => {} };
@@ -647,20 +652,43 @@ eq('setare GLOBALA (useAI) fara rol de admin -> 403', errStatusCfg(() => cfsvc.u
 eq('setare GLOBALA (useAI) CU rol de admin -> permisa', (cfsvc.updateSettings({ useAI: false }, true), dCfg.settings.useAI), false);
 eq('selfRegister CU rol de admin -> permisa', (cfsvc.updateSettings({ selfRegister: true }, true), dCfg.settings.selfRegister), true);
 ok('raspunsul nu contine authSecret (fara leak)', !('authSecret' in cfsvc.updateSettings({ useAI: true }, true).settings));
-const prevFiscalCfg = dCfg.settings.fiscal;
-const fc1 = cfsvc.setFiscalConfig({ tvaStandard: 19, invalid: 'abc', necunoscut: 5 });
-ok('cota valida aplicata imediat, cheile necunoscute ignorate', fc1.current.tvaStandard === 19 && dCfg.settings.fiscal.necunoscut === undefined);
-const fc2 = cfsvc.setFiscalConfig({ reset: true });
-ok('reset: custom sters + valorile standard revin', fc2.reset && dCfg.settings.fiscal === undefined && fc2.current.tvaStandard === fiscalT.DEFAULTS.tvaStandard);
-if (prevFiscalCfg !== undefined) { dCfg.settings.fiscal = prevFiscalCfg; fiscalT.applyConfig(prevFiscalCfg); } // restaurare
+const fiscalRulesT = require('../../src/fiscalRules');
+const prevFiscalRuleSets = JSON.parse(JSON.stringify(dCfg.fiscalRuleSets || []));
+const baseFiscal = fiscalT.rulesAt('2026-08-26');
+const fc1 = cfsvc.setFiscalConfig({ baseRuleSetId: baseFiscal.id, validFrom: '2026-12-01', validTo: '2026-12-31',
+  approvalId: 'REV-FISCAL-TEST-2026', legalSources: [{ title: 'Sursă oficială test', url: 'https://legislatie.just.ro/' }],
+  rates: { tvaStandard: 19 } });
+ok('FiscalRuleSet-ul aprobat este publicat append-only și aplicat pe intervalul său',
+  fc1.ruleSet.approvalId === 'REV-FISCAL-TEST-2026' && fc1.current.tvaStandard === 19
+    && dCfg.fiscalRuleSets.some((r) => r.id === fc1.ruleSet.id));
+eq('parametrii fiscali necunoscuți sunt refuzați, nu ignorați', errStatusCfg(() => cfsvc.setFiscalConfig({
+  baseRuleSetId: baseFiscal.id, validFrom: '2026-11-01', approvalId: 'REV-FISCAL-TEST-INVALID',
+  legalSources: [{ title: 'Sursă oficială test', url: 'https://legislatie.just.ro/' }], rates: { necunoscut: 5 },
+})), 400);
+eq('FiscalRuleSet-urile publicate nu pot fi resetate', errStatusCfg(() => cfsvc.setFiscalConfig({ reset: true })), 409);
+dCfg.fiscalRuleSets = prevFiscalRuleSets;
+fiscalT.configureRuleSets(prevFiscalRuleSets);
+ok('fixture-ul fiscal este restaurat după probă', fiscalRulesT.byId(fc1.ruleSet.id) === null);
 
 section('Service layer inchideri fiscale (src/closingsService.js)');
 const clsvc = require('../../src/closingsService');
 const firmaCl = db.getFirma(fidOk);
+// Scenariile folosesc deliberat ani sintetici 2035–2043 ca să nu se ciocnească de seed. Motorul
+// fiscal este fail-closed în afara acoperirii, deci publicăm explicit un set TEST pentru interval.
+const prevClosingRuleSets = JSON.parse(JSON.stringify(db.get().fiscalRuleSets || []));
+const closingTestRule = fiscalRulesT.create({ baseRuleSetId: fiscalT.rulesAt('2026-08-26').id,
+  validFrom: '2034-01-01', validTo: '2043-12-31', approvalId: 'REV-FISCAL-TEST-CLOSINGS',
+  legalSources: [{ title: 'Sursă oficială test', url: 'https://legislatie.just.ro/' }], rates: {} },
+{ publishedAt: '2026-08-26T00:00:00.000Z' });
+db.get().fiscalRuleSets = prevClosingRuleSets.concat(JSON.parse(JSON.stringify(closingTestRule)));
+fiscalT.configureRuleSets(db.get().fiscalRuleSets);
+const fiscalReviewFixtureCl = require('./fiscalReviewFixture');
+fiscalReviewFixtureCl.writeApproved(process.env.CONTAB_FISCAL_REVIEW_FILE, process.env.CONTAB_FISCAL_REVIEW_TRUST_FILE);
 const prevLockCl = firmaCl.lockedUntil || null;
 const prevLossCl = firmaCl.pierdereFiscala;
 const prevAnnualHistoryCl = firmaCl.annualCloseHistory;
 const prevProfitHistoryCl = firmaCl.profitTaxHistory;
+const prevInventoryControlsCl = firmaCl.annualInventoryControls;
 firmaCl.lockedUntil = null;
 // gardele de firma si de format
 eq('inchidere TVA pe firma inexistenta -> 403', errStatus(() => clsvc.closeVat(9999, '2026-06')), 403);
@@ -677,6 +705,19 @@ firmaCl.lockedUntil = '2034-11';
 eq('regularizarea nu modifica nici un blocaj existent', clsvc.closeVat(fidOk, '2034-12').lockedUntil, '2034-11');
 firmaCl.lockedUntil = null;
 // inchiderea anuala se executa numai dupa blocarea lui decembrie, prin perioada tehnica 13
+eq('inchiderea anuală refuză matricea de inventariere incompletă', errStatus(() => clsvc.closeYear(fidOk, '2035')), 409);
+const annualInventoryCl = require('../../src/annualInventory');
+const inventoryPayloadCl = {
+  categories: Object.fromEntries(annualInventoryCl.CATEGORIES.map((c) => [c.key,
+    { status: 'confirmat', evidence: 'Dosar inventar 2035 — ' + c.key, note: '' }])),
+  reconciliation: { differenceAmount: 0, evidence: 'Centralizator inventar–contabilitate 2035',
+    note: '', adjustmentEntryIds: [] },
+  governance: { committee: ['Ana Pop', 'Ion Ionescu'], minutesRef: 'PV-INV-2035',
+    minutesDate: '2036-01-10', signedBy: ['Ana Pop', 'Ion Ionescu'],
+    signatureEvidence: 'Proces-verbal semnat' },
+};
+annualInventoryCl.save(firmaCl, '2035', inventoryPayloadCl, { id: 1, username: 'admin' });
+annualInventoryCl.approve(db.scoped(fidOk), '2035', { id: 1, username: 'admin' });
 eq('inchiderea anuala inainte de blocarea lui decembrie -> 400', errStatus(() => clsvc.closeYear(fidOk, '2035')), 400);
 firmaCl.lockedUntil = '2035-12';
 ok('an fara rulaje: posted=false, fara nota', clsvc.closeYear(fidOk, '2035').posted === false && !db.get().entries.some((e) => e.firmaId === fidOk && e.tip === 'inchidere_an' && e.period === '2035-12'));
@@ -758,11 +799,23 @@ firmaCl.lockedUntil = prevLockCl;
 if (prevLossCl === undefined) delete firmaCl.pierdereFiscala; else firmaCl.pierdereFiscala = prevLossCl;
 if (prevAnnualHistoryCl === undefined) delete firmaCl.annualCloseHistory; else firmaCl.annualCloseHistory = prevAnnualHistoryCl;
 if (prevProfitHistoryCl === undefined) delete firmaCl.profitTaxHistory; else firmaCl.profitTaxHistory = prevProfitHistoryCl;
+if (prevInventoryControlsCl === undefined) delete firmaCl.annualInventoryControls; else firmaCl.annualInventoryControls = prevInventoryControlsCl;
+db.get().fiscalRuleSets = prevClosingRuleSets;
+fiscalT.configureRuleSets(prevClosingRuleSets);
+fiscalReviewFixtureCl.writeApproved(process.env.CONTAB_FISCAL_REVIEW_FILE, process.env.CONTAB_FISCAL_REVIEW_TRUST_FILE);
 
 section('Service layer salarizare (src/payrollService.js)');
 const paysvc = require('../../src/payrollService');
 const payrollDomain = require('../../src/payroll');
 const payrollHistoryDomain = require('../../src/payrollHistory');
+const prevPayrollRuleSets = JSON.parse(JSON.stringify(db.get().fiscalRuleSets || []));
+const payroll2027Rule = fiscalRulesT.create({ baseRuleSetId: fiscalT.rulesAt('2026-08-26').id,
+  validFrom: '2027-01-01', validTo: '2027-12-31', approvalId: 'REV-FISCAL-TEST-PAYROLL',
+  legalSources: [{ title: 'Sursă oficială test', url: 'https://legislatie.just.ro/' }], rates: {} },
+{ publishedAt: '2026-08-26T00:00:00.000Z' });
+db.get().fiscalRuleSets = prevPayrollRuleSets.concat(JSON.parse(JSON.stringify(payroll2027Rule)));
+fiscalT.configureRuleSets(db.get().fiscalRuleSets);
+fiscalReviewFixtureCl.writeApproved(process.env.CONTAB_FISCAL_REVIEW_FILE, process.env.CONTAB_FISCAL_REVIEW_TRUST_FILE);
 // firma dedicata, ca testele sa nu depinda de angajatii din seed
 db.get().firme.push({ id: 7788, nume: 'PAY SRL', cui: '7788' });
 // gardele
@@ -864,9 +917,9 @@ eq('stat de plata cu luna imposibila -> 400', errStatus(() => paysvc.postStatPla
 const spR = paysvc.postStatPlata(7788, '2026-06', stubDeps);
 ok('avansul intra ca retinere 421=425 in articolul agregat', spR.entry.lines.some((l) => l.debit === '421' && l.credit === '425' && l.suma === 500));
 eq('instantaneul lunar e salvat in payrollHistory', db.get().payrollHistory.filter((h) => h.firmaId === 7788 && h.period === '2026-06').length, 1);
-ok('instantaneul salarial v3 este legat de articol si pastreaza randul complet pentru audit/D112', (() => {
+ok('instantaneul salarial v4 este legat de articol si pastreaza randul complet pentru audit/D112', (() => {
   const h = db.get().payrollHistory.find((x) => x.firmaId === 7788 && x.period === '2026-06');
-  return h && h.formatVersion === 3 && h.entryId === spR.entry.id && h.rows[0].angajatId === angR.id
+  return h && h.formatVersion === 4 && h.entryId === spR.entry.id && h.rows[0].angajatId === angR.id
     && h.rows[0].bazaCas != null && h.rows[0].zileLucratoare != null;
 })());
 // REGRESIE. Aserțiunea de aici verifica doar ca INSTANTANEUL nu se dubleaza la repostare — si era
@@ -937,6 +990,9 @@ dPay.angajati = dPay.angajati.filter((a) => a.firmaId !== 7788);
 dPay.entries = dPay.entries.filter((e) => e.firmaId !== 7788);
 dPay.payrollHistory = dPay.payrollHistory.filter((h) => h.firmaId !== 7788);
 dPay.firme = dPay.firme.filter((f) => f.id !== 7788);
+dPay.fiscalRuleSets = prevPayrollRuleSets;
+fiscalT.configureRuleSets(prevPayrollRuleSets);
+fiscalReviewFixtureCl.writeApproved(process.env.CONTAB_FISCAL_REVIEW_FILE, process.env.CONTAB_FISCAL_REVIEW_TRUST_FILE);
 
 section('Protectie upload: continut pe magic bytes + plafon per utilizator (src/uploadGuard.js)');
 const ug = require('../../src/uploadGuard');
@@ -1837,7 +1893,9 @@ section('Migrari DB versionate (src/migrations.js)');
   const bootstrapAdmin = dMig.users.find((u) => u.role === 'admin');
   ok('instalarea nouă nu mai creează credentialul predictibil admin/admin',
     bootstrapAdmin && !require('../../src/auth').verifyPassword('admin', bootstrapAdmin.salt, bootstrapAdmin.hash)
-      && bootstrapAdmin.mustChange === true);
+      && bootstrapAdmin.bootstrapPending === true && bootstrapAdmin.mustChange === false
+      && /^[a-f0-9]{64}$/.test(dMig.settings.adminBootstrap.tokenHash)
+      && Date.parse(dMig.settings.adminBootstrap.expiresAt) > Date.now());
 }
 
 {

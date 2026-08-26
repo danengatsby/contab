@@ -93,7 +93,7 @@ var PANEL_INFO = [
   ['Backup baza de date', 'Copii de siguranță: manuale sau zilnice automate, cu restaurare dintr-un fișier. O arhivă completă pleacă zilnic și offsite.'],
   ['Firme', 'Firmele gestionate în aceeași instanță: adaugi, activezi, exporți sau imporți o firmă întreagă.'],
   ['Datele firmei active', 'CUI, adresă, regim TVA — folosite în declarații, e-Factura și rapoarte.'],
-  ['⚖️ Cote fiscale', 'Cotele folosite în calcule (TVA, CAS, impozite). Implicit sunt cele legale 2026; le poți suprascrie manual.'],
+  ['⚖️ Reguli fiscale versionate', 'Versiunile publicate ale cotelor și plafoanelor fiscale, cu interval, sursă legală, aprobare și hash verificabil.'],
   ['🔒 Blocare perioadă', 'Blochează lunile deja declarate: nu se mai pot adăuga sau modifica înregistrări în ele.'],
   ['Extragere cu AI', 'Citirea automată a documentelor încărcate (PDF/poze) cu Claude API; se poate opri de aici.'],
   ['Trimitere în SPV', 'Conexiunea OAuth cu ANAF pentru e-Factura și serviciile SPV; necesită aplicație înregistrată și certificat digital.'],

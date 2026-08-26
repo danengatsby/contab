@@ -8,7 +8,9 @@
     "start": "node server.js",
     "seed": "node scripts/seed.js",
     "test": "node scripts/run-all.js",
-    "test:startup": "node scripts/check-syntax.js",
+    "verify": "node scripts/verify-local.js",
+    "verify:startup": "node scripts/check-syntax.js",
+    "test:startup": "npm run verify:startup",
     "test:marketing": "node test/marketing.js",
     "test-pg": "sh scripts/test-pg.sh",
     "revizie-fiscala": "node scripts/revizie-fiscala.js",
@@ -18,7 +20,7 @@
     "offsite-check": "node scripts/offsite-check.js",
     "offsite-retentie": "node scripts/offsite-retentie.js",
     "lint": "eslint .",
-    "prestart": "npm run test:startup",
+    "prestart": "npm run verify:startup",
     "e2e": "bash scripts/e2e.sh",
     "e2e-izolat": "bash scripts/e2e-izolat.sh",
     "capturi-marketing": "bash scripts/capturi-marketing.sh",
@@ -35,23 +37,23 @@
     "node": ">=22.13"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.115.0",
+    "@anthropic-ai/sdk": "0.121.0",
     "adm-zip": "^0.6.0",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
-    "openai": "^6.49.0",
+    "openai": "7.5.0",
     "pdf2json": "^4.0.3",
-    "pdfkit": "^0.19.1",
+    "pdfkit": "0.20.1",
     "pg": "^8.22.0",
     "qrcode-svg": "^1.1.0",
-    "stripe": "^22.3.0",
+    "stripe": "22.5.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.8.1",
-    "globals": "^16.5.0"
+    "eslint": "10.9.1",
+    "globals": "17.11.0"
   }
 }

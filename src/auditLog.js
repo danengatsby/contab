@@ -164,4 +164,15 @@ function listFiles() {
   return filesAscending().reverse();
 }
 
-module.exports = { append, listFiles, auditDir, fileFor, probeWritable, verify, verifyDirectory, verifyContents, hashRecord };
+/** Deduplicare crash-safe pentru outbox: daca procesul a cazut dupa append, dar inainte sa
+ *  marcheze randul livrat in baza, restartul gaseste ID-ul in WORM si nu dubleaza evenimentul. */
+function containsOutboxId(id) {
+  const needle = '"outboxId":' + JSON.stringify(String(id || ''));
+  for (const name of filesAscending()) {
+    try { if (fs.readFileSync(path.join(auditDir(), name), 'utf8').includes(needle)) return true; }
+    catch (_) { /* append/probe va raporta separat indisponibilitatea jurnalului */ }
+  }
+  return false;
+}
+
+module.exports = { append, containsOutboxId, listFiles, auditDir, fileFor, probeWritable, verify, verifyDirectory, verifyContents, hashRecord };

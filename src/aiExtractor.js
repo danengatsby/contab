@@ -244,6 +244,7 @@ async function extractWithAI(buffer, ownCui) {
     fields: n.fields,
     cuis: n.cuis,
     source: 'ai',
+    provider: providerInfo.provider,
     // CE model a produs cifrele de mai jos. `incredere` e o AUTO-RAPORTARE a modelului, deci
     // scala ei ii apartine lui, nu documentului: masurat pe acelasi set de 6 documente,
     // claude-sonnet-5 raporteaza ~13 puncte mai putin decat claude-sonnet-4-6 la acuratete

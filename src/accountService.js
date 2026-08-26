@@ -16,6 +16,7 @@ const authlib = require('./auth');
 const plans = require('./plans');
 const identitate = require('./identitate');
 const { isDemoUser } = require('./session');
+const permissions = require('./permissions');
 const QRCode = require('qrcode-svg');
 const fs = require('fs');
 const path = require('path');
@@ -102,7 +103,9 @@ function enable2fa(u, code) {
 
 function disable2fa(u, code) {
   reqNotDemo(u);
-  if (u && u.role === 'admin') fail(403, '2FA este obligatorie pentru conturile de administrator și nu poate fi dezactivată.');
+  if (permissions.requiresTwoFactor(u, db.get())) {
+    fail(403, '2FA este obligatorie pentru acest cont privilegiat și nu poate fi dezactivată cât timp rolul permite aprobare, depunere sau export.');
+  }
   if (!u.twofa) fail(400, '2FA nu este activat.');
   if (!verifySecondFactor(u, code).ok) fail(400, 'Cod TOTP sau cod de rezerva gresit.');
   u.twofa = false; delete u.totpSecret; delete u.pending2fa;
