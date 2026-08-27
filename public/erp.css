@@ -503,7 +503,7 @@ body.erp .company-picker-manage {
   font-weight: 700;
 }
 body.erp .company-picker-manage:hover { background: color-mix(in srgb, var(--card) 82%, var(--app-clay) 18%); }
-body.erp .app-context .curgroup { display: inline-flex; align-items: center; gap: 4px; }
+body.erp .app-context .curgroup { position: relative; display: inline-flex; align-items: center; gap: 4px; }
 body.erp .app-context .curnav,
 body.erp .app-context .curperiod {
   display: inline-flex;
@@ -526,6 +526,94 @@ body.erp .app-context .curnav:hover:not([disabled]),
 body.erp .app-context .curperiod:hover { color: var(--app-clay); border-color: #d9a48f; background: #fcf4ef; }
 body.dark.erp .app-context .curnav:hover:not([disabled]),
 body.dark.erp .app-context .curperiod:hover { background: rgba(194,97,60,.12); }
+body.erp .global-period-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 40px;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 9px;
+  width: min(310px, calc(100vw - 24px));
+  padding: 12px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  box-shadow: 0 18px 48px rgba(45,39,29,.2);
+}
+body.erp .global-period-panel.hidden { display: none; }
+body.erp .global-period-panel label {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+body.erp .global-period-panel input { min-width: 0; height: 40px; }
+
+/* Perioada este globală. Excepțiile reale (de ex. un raport pe tot anul) sunt compacte,
+   închise implicit și spun explicit că se abat de la contextul persistent de sus. */
+body.erp .period-override { position: relative; flex: 0 0 auto; margin: 0; }
+body.erp .period-override > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 10px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--card) 92%, var(--app-clay) 8%);
+  border: 1px dashed var(--line-strong);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  list-style: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+body.erp .period-override > summary::-webkit-details-marker { display: none; }
+body.erp .period-override > summary::after { content: "⌄"; font-size: 14px; line-height: 1; }
+body.erp .period-override[open] > summary::after { transform: rotate(180deg); }
+body.erp .period-override.active > summary {
+  color: var(--app-clay-dark);
+  background: color-mix(in srgb, var(--card) 78%, var(--app-clay) 22%);
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--line) 55%, var(--app-clay) 45%);
+}
+body.erp .period-override-value {
+  max-width: 150px;
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.erp .period-override-controls {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 90;
+  display: grid;
+  grid-template-columns: minmax(120px,1fr) minmax(90px,.7fr);
+  gap: 9px;
+  width: min(390px, calc(100vw - 24px));
+  padding: 12px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(45,39,29,.18);
+}
+body.erp .period-override-controls label {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+body.erp .period-override-controls select,
+body.erp .period-override-controls input { width: 100%; min-width: 0; height: 40px; }
+body.erp .period-override-reset { grid-column: 1 / -1; justify-self: stretch; }
 body.erp .app-online {
   display: inline-flex;
   align-items: center;
@@ -793,6 +881,14 @@ body.erp.compact h3 { font-size: 18px; }
   body.erp .company-picker-panel { right: auto; left: 0; }
   body.erp .app-context .curperiod { min-width: 106px; padding-inline: 6px; font-size: 13px; }
   body.erp .app-context .curnav { min-width: 36px; width: 36px; padding: 0; }
+  body.erp .global-period-panel { right: 0; }
+  body.erp .period-override-controls {
+    position: fixed;
+    top: 132px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
 }
 
 /* La limita minimă suportată, firma și perioada primesc fiecare rândul ei.

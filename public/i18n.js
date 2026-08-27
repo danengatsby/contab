@@ -268,6 +268,8 @@
     'Spațiu de lucru': 'Workspace',
     'Firmă': 'Company',
     'Perioadă': 'Period',
+    'Perioada globală': 'Global period',
+    'Se aplică perioadei globale alese în bara de sus.': 'Uses the global period selected in the top bar.',
     'Conectat': 'Online',
     'Fără conexiune': 'Offline',
     'Conectat ca': 'Signed in as',

@@ -169,6 +169,31 @@ periods.setWorkMonth('stricat');
 ok('workMonth cade pe luna curenta cand valoarea salvata e invalida', /^\d{4}-\d{2}$/.test(periods.workMonth()));
 periods.setWorkMonth('2026-03');
 
+section('Perioada globală și suprascrierile locale');
+{
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  const js = fs.readFileSync(path.join(PUB, 'periods.js'), 'utf8');
+  const css = fs.readFileSync(path.join(PUB, 'erp.css'), 'utf8');
+  ok('bara persistentă are un singur selector global de lună',
+    /id="currentPeriod"[^>]*aria-haspopup="dialog"/.test(html)
+    && (html.match(/id="globalPeriodInput"/g) || []).length === 1);
+  ok('ecranele lunare nu mai au selectori lună/an obligatorii duplicați',
+    !/luna-req/.test(html)
+    && !/id="(?:vc|livrabile|saft|portofoliu|mf|sp|stoc)(?:Luna|An)"/.test(html));
+  ok('rapoartele locale sunt decorate explicit ca suprascrieri închise implicit',
+    /\$\$\('select\.luna'\)\.forEach\(setupPairOverride\)/.test(js)
+    && /Suprascrie perioada/.test(js)
+    && /\.period-override > summary/.test(css));
+  const localHandler = js.slice(js.indexOf('function onPeriodChange'), js.indexOf('function fillPeriods'));
+  ok('schimbarea unui filtru local nu mai rescrie perioada globală',
+    /addEventListener\('change', fn\)/.test(localHandler)
+    && !/setWorkMonth|applyWorkMonth/.test(localHandler));
+  ok('revenirea din excepție sincronizează din nou controlul cu perioada globală',
+    /function resetPeriodOverride/.test(js)
+    && /syncOverrideToGlobal\(box\)/.test(js)
+    && /Folosește perioada globală/.test(js));
+}
+
 section('Inregistrari: clasificarea intrare/iesire');
 setMeta([{ id: 'x_custom', grup: 'Vanzari' }, { id: 'y_custom', grup: 'Cumparari' }, { id: 'z_custom', grup: 'Trezorerie' }]);
 eq('grupul Vanzari din META da iesire', entries.entryDir('x_custom'), 'out');
@@ -807,7 +832,7 @@ section('Uneltele globale: în navigatorul unic, fără panou separat');
     !/<nav class="side-tools"/.test(html) && !/id="(?:toolsBtn|moreToolsBtn)"/.test(html));
 
   const bara = html.slice(cap, meniu);
-  const PERMISE = new Set(['prevMonth', 'nextMonth', 'navToggleBtn', 'logoutBtn', 'imperStop']);
+  const PERMISE = new Set(['prevMonth', 'currentPeriod', 'nextMonth', 'globalPeriodCurrent', 'navToggleBtn', 'logoutBtn', 'imperStop']);
   const inBara = [...bara.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
   const intruse = inBara.filter((id) => !PERMISE.has(id));
   ok('primul rând al antetului păstrează doar navigarea, ieșirea și revenirea din impersonare'

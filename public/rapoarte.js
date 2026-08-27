@@ -3,7 +3,7 @@
 // Rapoarte contabile: jurnal, cartea mare, banca/casa, balanta, TVA/D300, inchideri, situatii. Extras din app.js (Etapa: spargerea fisierului mare).
 import { $$, $, H, fmt, toast, api, META, USER, setMeta, fiscalPct, ac, applyFiscalDefaults, plural } from './core.js';
 import { renderBudget } from './dashboard.js';
-import { pget, workMonth, lunaLabel, onPeriodChange } from './periods.js';
+import { pget, workMonth, lunaLabel, onPeriodChange, isPeriodOverrideActive, setPeriodOverrideActive } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 import { stare, controaleHtml, leaga } from './paginare.js';
 import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved } from './formflow.js';
@@ -413,9 +413,12 @@ async function loadClosings() {
   const m = workMonth();
   if ($('#vcLuna')) $('#vcLuna').value = m.slice(5);
   if ($('#vcAn') && [...$('#vcAn').options].some((o) => o.value === m.slice(0, 4))) $('#vcAn').value = m.slice(0, 4);
-  // Anul din cardul de inventariere urmeaza luna de lucru, ca restul pasilor de inchidere.
-  if ($('#invAn')) $('#invAn').value = m.slice(0, 4);
-  if ($('#annualCockpitYear')) $('#annualCockpitYear').value = m.slice(0, 4);
+  // Cockpitul urmează anul global până când contabilul îl suprascrie explicit. Toate acțiunile
+  // anuale din același cockpit folosesc apoi același an, ca să nu apară divergențe ascunse.
+  const cockpitYear = $('#annualCockpitYear');
+  if (cockpitYear && !isPeriodOverrideActive(cockpitYear)) cockpitYear.value = m.slice(0, 4);
+  const annualYear = (cockpitYear && cockpitYear.value) || m.slice(0, 4);
+  ['#invAn', '#ptYear', '#yearInput', '#distYear'].forEach((id) => { if ($(id)) $(id).value = annualYear; });
   if ($('#distDate') && !$('#distDate').value) $('#distDate').value = defaultDistributionDate($('#distYear').value);
   previewVat(); previewProfitTax(); previewYear(); previewDistribution(); renderRegistruInventar(); renderAnnualCockpit();
 }
@@ -774,7 +777,9 @@ $('#fxRevalPost') && $('#fxRevalPost').addEventListener('click', async () => {
 // fara ca nimic sa spuna de ce — o divergenta tacuta intre doua ecrane care se citesc impreuna.
 $('#stmtYear').addEventListener('change', loadStatements);
 $('#anexeYear') && $('#anexeYear').addEventListener('change', () => {
-  $('#stmtYear').value = $('#anexeYear').value; loadStatements();
+  $('#stmtYear').value = $('#anexeYear').value;
+  setPeriodOverrideActive($('#stmtYear'), isPeriodOverrideActive($('#anexeYear')));
+  loadStatements();
 });
 $('#bugetYear') && $('#bugetYear').addEventListener('change', loadBuget);
 $('#regfiscalYear') && $('#regfiscalYear').addEventListener('change', loadRegFiscal);
@@ -854,7 +859,10 @@ async function loadStatements() {
   // necontabilii isi depun singuri declaratiile, dar bilantul cere semnatura calificata (L82/1991)
   $('#bilantWarn').classList.toggle('hidden', USER.tip !== 'necontabil');
   const y = $('#stmtYear').value;
-  if ($('#anexeYear')) $('#anexeYear').value = y;
+  if ($('#anexeYear')) {
+    $('#anexeYear').value = y;
+    setPeriodOverrideActive($('#anexeYear'), isPeriodOverrideActive($('#stmtYear')));
+  }
   $('#plPdf').href = '/pdf/pl?year=' + y;
   $('#bilantPdf').href = '/pdf/bilant?period=' + y + '-12';
   $('#situatiiPdf').href = '/pdf/situatii?year=' + y;

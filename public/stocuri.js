@@ -2,7 +2,7 @@
 
 // Stocuri si gestiune: situatii, fise de magazie, documente de stoc, inventariere, productie. Extras din app.js (Etapa: spargerea fisierului mare).
 import { $$, $, H, fmt, toast, api, fileToCsv, round2, confirmAction, META } from './core.js';
-import { pget, workMonth, onPeriodChange } from './periods.js';
+import { pget, workMonth, onPeriodChange, resetPeriodOverride } from './periods.js';
 import { loadEntries } from './entries.js'; // apelat mai jos; fara import = ReferenceError
 import { registerFormFlow, formFlowFlush, formFlowLoaded, formFlowSaved, refreshFormFlow } from './formflow.js';
 
@@ -50,7 +50,13 @@ function renderStockMovements() {
 }
 ['#mvfTip', '#mvfGest', '#mvfLuna'].forEach((s) => $(s).addEventListener('change', renderStockMovements));
 $('#mvfText').addEventListener('input', renderStockMovements);
-$('#mvfReset').addEventListener('click', () => { $('#mvfTip').value = ''; $('#mvfGest').value = ''; $('#mvfText').value = ''; $('#mvfLuna').value = ''; renderStockMovements(); });
+$('#mvfReset').addEventListener('click', () => {
+  $('#mvfTip').value = ''; $('#mvfGest').value = ''; $('#mvfText').value = '';
+  // „Resetează” revine la contextul global, nu la o listă fără limită temporală ascunsă.
+  resetPeriodOverride($('#mvfLuna'), false);
+  $('#mvfLuna').value = workMonth();
+  renderStockMovements();
+});
 async function loadStocks() {
   // Selecturile de produs și gestiune sunt reconstruite din răspunsul serverului. Finalizăm
   // întâi debounce-ul, apoi restaurăm ciorna peste noile opțiuni, ca valorile să nu sară la primul

@@ -136,6 +136,13 @@ ok('selectorul din navigator revine complet la română', await pg.evaluate(() =
   && document.querySelector('#navToggleBtn .nav-toggle-label').textContent.trim() === 'Restrânge'
   && document.querySelector('#dashboardSecondary .dashboard-secondary-head h3').textContent.trim() === 'Analize secundare'
   && document.querySelector('#toolGhid').textContent.trim() === 'Ghid'));
+await pg.click('#currentPeriod');
+ok('perioada globală se alege din controlul unic și persistent',
+  await pg.locator('#globalPeriodPanel').isVisible()
+  && /^\d{4}-\d{2}$/.test(await pg.locator('#globalPeriodInput').inputValue())
+  && await pg.locator('#currentPeriod').getAttribute('aria-expanded') === 'true');
+await pg.keyboard.press('Escape');
+ok('selectorul perioadei globale se închide cu Escape', !(await pg.locator('#globalPeriodPanel').isVisible()));
 ok('alertele au o singură pictogramă semantică, fără dublare după destinație', await pg.evaluate(() =>
   [...document.querySelectorAll('#dashAlerts .alert')].every((el) =>
     !el.querySelector(':scope > .app-icon') && !!el.querySelector(':scope > .al-ic .app-icon'))));
@@ -281,6 +288,27 @@ await pg.evaluate(() => goTab('tva'));
 await pg.waitForTimeout(1200);
 ok('tab-ul TVA se randeaza (sumar decont)', /TVA/.test(await pg.locator('#tab-tva').textContent()));
 ok('cardul pro-rata (art. 300) e prezent in tab-ul TVA', (await pg.locator('#proRataView').count()) === 1);
+const perioadaGlobalaInainte = (await pg.locator('#currentPeriod').textContent()).trim();
+const overrideTva = pg.locator('#tab-tva .period-override');
+ok('TVA și balanța nu repetă perioada; excepția locală este închisă și etichetată explicit',
+  await overrideTva.count() === 1
+  && (await overrideTva.locator('summary').textContent()).trim() === 'Suprascrie perioada'
+  && !(await overrideTva.locator('#tvaLuna').isVisible())
+  && await pg.locator('#tab-balanta .period-override').count() === 1
+  && await pg.locator('select.luna-req').count() === 0);
+await overrideTva.locator('summary').click();
+await pg.selectOption('#tvaLuna', '');
+await pg.waitForTimeout(500);
+ok('suprascrierea TVA rămâne locală și arată perioada activă',
+  (await pg.locator('#currentPeriod').textContent()).trim() === perioadaGlobalaInainte
+  && await overrideTva.getAttribute('data-period-override-active') === 'true'
+  && /toate lunile/.test(await overrideTva.locator('summary').textContent()));
+await overrideTva.locator('.period-override-reset').click();
+await pg.waitForTimeout(500);
+ok('revenirea din suprascriere restaurează perioada globală',
+  await overrideTva.getAttribute('data-period-override-active') === 'false'
+  && (await pg.locator('#tvaLuna').inputValue()) === (await pg.locator('#globalPeriodInput').inputValue()).slice(5)
+  && (await pg.locator('#currentPeriod').textContent()).trim() === perioadaGlobalaInainte);
 
 // 5b. Previzualizarea articolului contabil din formular. E singura verificare pe browser REAL a
 // caii: tastare -> pauza -> POST /api/preview -> randare. Logica e pe server (composeEntry, testat

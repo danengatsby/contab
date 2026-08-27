@@ -342,11 +342,17 @@
       </div>
     </div>
     <select id="firmaSelect" class="firma-select" title="Firma activă" aria-label="Firma activă"></select>
-    <span class="curgroup">
+    <div class="curgroup">
       <button id="prevMonth" class="curnav" title="Luna anterioară" aria-label="Luna anterioară">◀</button>
-      <span id="currentPeriod" class="curperiod" title="Luna de lucru: tot ce vezi în aplicație e pentru această lună. Click pentru a reveni la luna curentă."></span>
+      <button id="currentPeriod" class="curperiod" type="button" aria-haspopup="dialog" aria-expanded="false"
+        title="Perioada globală: toate ecranele folosesc această lună. Apasă pentru a alege altă lună."></button>
       <button id="nextMonth" class="curnav" title="Luna următoare" aria-label="Luna următoare">▶</button>
-    </span>
+      <div id="globalPeriodPanel" class="global-period-panel hidden" role="dialog" aria-label="Alege perioada globală">
+        <label for="globalPeriodInput">Perioada globală</label>
+        <input id="globalPeriodInput" type="month" />
+        <button id="globalPeriodCurrent" class="btn small ghost" type="button">Luna curentă</button>
+      </div>
+    </div>
     <div class="spacer" data-u="u46"></div>
     <!-- Același control restrânge bara laterală pe desktop și deschide ACELAȘI arbore #tabs
          într-un sertar pe telefon. Nu există o a doua listă de destinații. -->
@@ -1184,11 +1190,7 @@
       <div class="card">
         <h2>Regularizează TVA-ul lunii</h2>
         <p class="muted adv">Compensează TVA colectată (4427) cu TVA deductibilă (4426) și determină TVA de plată (4423) sau de recuperat (4424).</p>
-        <label>Luna de regularizat</label>
-        <div class="toolbar" data-u="u88">
-          <select id="vcLuna" class="period luna-req" aria-label="Luna"></select>
-          <select id="vcAn" class="period an" aria-label="Anul"></select>
-        </div>
+        <p class="muted">Se aplică perioadei globale alese în bara de sus.</p>
         <div id="vatPreview" class="preview"></div>
         <button id="closeVat" class="btn primary">Regularizează TVA-ul</button>
         <p class="muted">Luna rămâne deschisă. O blochezi numai după finalizarea tuturor pașilor din cockpit.</p>
@@ -1351,8 +1353,6 @@
         <h2>📤 Declarații ANAF</h2>
         <div class="spacer"></div>
       <div class="temei-slot" data-pas="trimestrial,registre"></div>
-        <select id="livrabileLuna" class="period luna-req" aria-label="Luna"></select>
-        <select id="livrabileAn" class="period an" aria-label="Anul"></select>
       </div>
       <div class="explain"><span class="ei">📤</span><p><b>Ultimul pas:</b> ce predai mai departe. Aici găsești declarațiile lunii pregătite pentru ANAF (D300, D394, D112, recapitulări) și borderoul — gata de descărcat și depus. Se generează automat din tot ce ai înregistrat în lună. <b>SAF-T (D406)</b> și <b>răspunsurile din SPV</b> au paginile lor, alături.</p></div>
       <div class="notice warning"><span class="notice-icon">⚠️</span><div><b>Înainte de depunere:</b> declarațiile (D112, D300, SAF-T…) sunt <b>ciorne</b>.
@@ -1396,8 +1396,6 @@
         <h2>🗄 SAF-T — Declarația informativă D406</h2>
         <div class="spacer"></div>
       <div class="temei-slot" data-pas="saft"></div>
-        <select id="saftLuna" class="period luna-req" aria-label="Luna"></select>
-        <select id="saftAn" class="period an" aria-label="Anul"></select>
       </div>
       <div class="descarcari">
         <span class="muted">Descarcă:</span>
@@ -1448,8 +1446,6 @@
       <div class="toolbar">
         <h2>Portofoliu — conformitate declarații</h2>
         <div class="spacer"></div>
-        <select id="portofoliuLuna" class="period luna-req" aria-label="Luna"></select>
-        <select id="portofoliuAn" class="period an" aria-label="Anul"></select>
       </div>
       <div class="explain"><span class="ei">🗂</span><p><b>Vedere peste toate firmele tale:</b> ce declarații are de depus fiecare firmă în luna selectată, ce s-a depus, unde sunt erori sau termene depășite. Stările se setează în tab-ul „Declarații ANAF" al fiecărei firme.</p></div>
       <div id="portoKpis" class="kpis"></div>
@@ -1542,8 +1538,6 @@
         <h2>🏢 Mijloace fixe (amortizare)</h2>
         <div class="spacer"></div>
       <div class="temei-slot" data-pas="amortizare"></div>
-        <select id="mfLuna" class="period luna-req" aria-label="Luna"></select>
-        <select id="mfAn" class="period an" aria-label="Anul"></select>
         <button id="mfDeprec" class="btn primary">Înregistrează amortizarea lunii</button>
       </div>
       <div class="descarcari">
@@ -1712,8 +1706,6 @@
       <div class="toolbar">
         <h2>👥 Statul de plată</h2>
         <div class="spacer"></div>
-        <select id="spLuna" class="period luna-req" aria-label="Luna"></select>
-        <select id="spAn" class="period an" aria-label="Anul"></select>
         <button id="spPost" class="btn primary">Înregistrează salariile lunii</button>
         <select id="spCont" class="period" title="Cont de plată"><option value="5121">Bancă (5121)</option><option value="5311">Casă (5311)</option></select>
         <button id="spPay" class="btn">Plătește salariile</button>
@@ -1928,8 +1920,6 @@
       <div class="toolbar">
         <h2>📦 Ce am pe stoc <span class="muted" data-u="u70">(cost mediu)</span></h2>
         <div class="spacer"></div>
-        <select id="stocLuna" class="period luna-req" aria-label="Luna"></select>
-        <select id="stocAn" class="period an" aria-label="Anul"></select>
       </div>
       <div class="descarcari">
         <span class="muted">Descarcă:</span>
