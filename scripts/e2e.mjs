@@ -72,7 +72,44 @@ await pg.waitForTimeout(1500);
 await pg.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((e) => e.remove()); });
 ok('login demo functioneaza (badge cu tipul)', /demo/.test(await pg.locator('#userBadge').textContent()));
 ok('panourile au explicatii (ⓘ injectate)', (await pg.locator('.cinfo').count()) > 50);
-ok('dashboardul are banda de alerte', (await pg.locator('#dashAlerts .alert').count()) > 0);
+const dashboardCompact = await pg.evaluate(() => {
+  const tab = document.querySelector('#tab-dashboard');
+  const panouri = [...document.querySelectorAll('#dashboardSecondary details[data-dashboard-panel]')];
+  return { height: tab.scrollHeight, alerts: document.querySelectorAll('#dashAlerts .alert').length,
+    kpis: document.querySelectorAll('#rezumatKpis .kpi').length, panels: panouri.length,
+    kpiColumns: getComputedStyle(document.querySelector('#rezumatKpis')).gridTemplateColumns.split(' ').length,
+    allClosed: panouri.every((p) => !p.open) };
+});
+ok(`dashboardul compact are sarcinile, 4 indicatori și analizele strânse (${dashboardCompact.height}px)`,
+  dashboardCompact.alerts > 0 && dashboardCompact.kpis === 4 && dashboardCompact.panels === 4
+    && dashboardCompact.kpiColumns === 4 && dashboardCompact.allClosed && dashboardCompact.height < 2100);
+await pg.click('#dashTrendsPanel > summary');
+await pg.waitForTimeout(150);
+await pg.reload({ waitUntil: 'networkidle' });
+await pg.waitForTimeout(900);
+await pg.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((e) => e.remove()); });
+const panouDashboardMemorat = await pg.locator('#dashTrendsPanel').evaluate((p) => p.open);
+if (panouDashboardMemorat) await pg.click('#dashTrendsPanel > summary');
+const carcasaDesktop = await pg.evaluate(() => {
+  const antet = document.querySelector('.topbar').getBoundingClientRect();
+  const meniu = document.querySelector('#tabs').getBoundingClientRect();
+  const principal = document.querySelector('.shell > main').getBoundingClientRect();
+  const context = document.querySelector('#appContext').getBoundingClientRect();
+  return { antet: Math.round(antet.height), meniu: Math.round(meniu.width), meniuSus: Math.round(meniu.top),
+    principal: Math.round(principal.left), context: Math.round(context.height), scroll: document.documentElement.scrollWidth };
+});
+ok('desktop: antet ≤64px, context compact și meniu lateral de 260px',
+  carcasaDesktop.antet <= 64 && carcasaDesktop.context <= 64 && carcasaDesktop.meniu === 260
+    && carcasaDesktop.meniuSus === 64 && carcasaDesktop.principal === 260
+    && carcasaDesktop.scroll <= 1441 && panouDashboardMemorat);
+await pg.click('#navToggleBtn');
+await pg.waitForTimeout(260);
+ok('desktop: meniul lateral se restrânge la 72px și mărește zona de lucru', await pg.evaluate(() =>
+  Math.round(document.querySelector('#tabs').getBoundingClientRect().width) === 72
+    && Math.round(document.querySelector('.shell > main').getBoundingClientRect().left) === 72
+    && document.querySelector('#navToggleBtn').getAttribute('aria-expanded') === 'false'));
+await pg.click('#navToggleBtn');
+await pg.waitForTimeout(260);
 await pg.locator('#tabs > .nav-language .language-switch').selectOption('en');
 ok('selectorul din navigator traduce shell-ul autentificat și lunile calendaristice', await pg.evaluate(() => {
   const nav = document.querySelector('#tabs');
@@ -80,6 +117,8 @@ ok('selectorul din navigator traduce shell-ul autentificat și lunile calendaris
   return document.documentElement.lang === 'en'
     && nav.querySelector('[data-tab="dashboard"]').textContent.trim() === 'Home'
     && nav.querySelector('#toolGhid').textContent.trim() === 'Guide'
+    && document.querySelector('#navToggleBtn .nav-toggle-label').textContent.trim() === 'Collapse'
+    && document.querySelector('#dashboardSecondary .dashboard-secondary-head h3').textContent.trim() === 'Secondary analyses'
     && document.querySelector('#appContextTitle').textContent.trim() === 'Home'
     && /January|February|March|April|May|June|July|August|September|October|November|December/.test(period.textContent);
 }));
@@ -94,6 +133,8 @@ await pg.locator('#tabs > .nav-language .language-switch').selectOption('ro');
 ok('selectorul din navigator revine complet la română', await pg.evaluate(() =>
   document.documentElement.lang === 'ro'
   && document.querySelector('#tabs [data-tab="dashboard"]').textContent.trim() === 'Acasă'
+  && document.querySelector('#navToggleBtn .nav-toggle-label').textContent.trim() === 'Restrânge'
+  && document.querySelector('#dashboardSecondary .dashboard-secondary-head h3').textContent.trim() === 'Analize secundare'
   && document.querySelector('#toolGhid').textContent.trim() === 'Ghid'));
 ok('alertele au o singură pictogramă semantică, fără dublare după destinație', await pg.evaluate(() =>
   [...document.querySelectorAll('#dashAlerts .alert')].every((el) =>
@@ -125,7 +166,7 @@ const clickTool = async (selector) => {
   await pg.click(selector);
 };
 
-// 3b. contrastul comenzilor utilitare directe și din dropdown. Poarta traieste AICI, nu in npm test:
+// 3b. contrastul comenzilor utilitare directe și din acordeon. Poarta traieste AICI, nu in npm test:
 // depinde de cascada reala + compunerea alpha, deci cere un browser. A prins o regresie reala —
 // `body:not(.dark) .btn{background:#efebe1}` lua fundalul inchis al butoanelor, dar lasa
 // `color:#fff` de la regula veche din u.css: alb pe crem, 1,19:1, exact pe Dictionar si pe
@@ -152,7 +193,7 @@ for (const tema of ['light', 'dark']) {
     });
   });
   const slab = masuri.reduce((m, x) => (x.k < m.k ? x : m));
-  ok(`contrast AA pe comenzile din antet (tema ${tema}; cel mai slab ${slab.sel} ${slab.k.toFixed(2)}:1)`, slab.k >= 4.5);
+  ok(`contrast AA pe comenzile din shell (tema ${tema}; cel mai slab ${slab.sel} ${slab.k.toFixed(2)}:1)`, slab.k >= 4.5);
 }
 await pg.emulateMedia({ colorScheme: null });
 
@@ -377,9 +418,15 @@ await pm.reload({ waitUntil: 'networkidle' });
 await pm.waitForTimeout(1500);
 await pm.evaluate(() => { document.querySelectorAll('#welcomeOverlay').forEach((e) => e.remove()); });
 ok('mobil: login demo functioneaza', /demo/.test(await pm.locator('#userBadge').textContent()));
-ok('mobil: dashboardul și contextul paginii se randează', (await pm.locator('#kpis .kpi').count()) > 0
+const dashboardMobil = await pm.evaluate(() => ({
+  height: document.querySelector('#tab-dashboard').scrollHeight,
+  kpiColumns: getComputedStyle(document.querySelector('#rezumatKpis')).gridTemplateColumns.split(' ').length,
+  actionColumns: getComputedStyle(document.querySelector('#quickActionsCard .quickacts-primary')).gridTemplateColumns.split(' ').length,
+}));
+ok(`mobil: dashboardul compact și contextul se randează (${dashboardMobil.height}px)`, (await pm.locator('#kpis .kpi').count()) > 0
   && (await pm.locator('#appContextTitle').isVisible()) && /Acasă/i.test(await pm.locator('#appContextTitle').textContent())
-  && (await pm.locator('.app-context-kicker').isVisible()));
+  && (await pm.locator('.app-context-kicker').isVisible())
+  && dashboardMobil.kpiColumns === 2 && dashboardMobil.actionColumns === 2 && dashboardMobil.height < 2400);
 ok('mobil: există o singură navigație, strânsă inițial', (await pm.locator('#bottomnav,#moreSheet').count()) === 0 && !(await pm.locator('#tabs').isVisible()));
 ok('mobil: dashboardul FARA scroll orizontal', await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 ok('mobil: nu mai există un panou Unelte în afara navigatorului',

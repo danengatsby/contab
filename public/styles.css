@@ -422,6 +422,11 @@ abbr[title]{text-decoration:underline dotted;text-underline-offset:2px;cursor:he
 .qa .d{font-size:12px;color:var(--muted)}
 .qa.in{border-left:5px solid var(--accent)}
 .qa.out{border-left:5px solid var(--danger)}
+.quickacts-more{margin-top:12px;border-top:1px solid var(--line);padding-top:9px}
+.quickacts-more>summary{width:max-content;max-width:100%;color:var(--accent);font-size:13px;font-weight:750;cursor:pointer}
+.quickacts-more>summary::marker{color:var(--muted)}
+.quickacts-more>.quickacts{margin-top:10px}
+.quickacts-more:not([open])>.quickacts{display:none!important}
 
 /* Modal de bun-venit (prima logare) */
 .welcome-box{background:#fff;border-radius:18px;padding:30px 32px;width:480px;max-width:94%;
@@ -729,6 +734,45 @@ body:not(.dark) .explain b{color:var(--head)}
    restanta) s-ar citi in zigzag in loc de sus-in-jos. */
 .dash-alerts.stack{flex-direction:column;margin-bottom:0}
 .dash-alerts.stack .alert{min-width:0}
+.dashboard-deadlines{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+#deFacutCount:empty{display:none}
+
+/* Acasă are două niveluri: un rezumat de lucru scurt și analize deschise la cerere. Starea
+   fiecărui `<details>` este memorată de dashboard.js, astfel încât pagina se adaptează rolului
+   utilizatorului fără să-i ascundă definitiv vreo analiză. */
+.dashboard-primary #rezumatKpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:12px}
+.dashboard-primary #rezumatFooter{font-size:13px;color:var(--muted)}
+.dashboard-secondary{margin-top:6px}
+.dashboard-secondary-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:4px 0 12px}
+.dashboard-secondary-head h3{margin:0 0 2px;font-size:18px;color:var(--head)}
+.dashboard-secondary-head p{margin:0}
+.dashboard-secondary-controls{display:flex;gap:7px;flex:0 0 auto}
+.dashboard-analysis{margin-bottom:10px;overflow:hidden;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.dashboard-analysis>summary{display:flex;align-items:center;gap:12px;min-height:58px;padding:11px 16px;list-style:none;cursor:pointer;user-select:none}
+.dashboard-analysis>summary::-webkit-details-marker{display:none}
+.dashboard-analysis>summary>span{display:flex;flex:1;flex-direction:column;min-width:0}
+.dashboard-analysis>summary b{color:var(--ink);font-size:14.5px}
+.dashboard-analysis>summary small{margin-top:2px;color:var(--muted);font-size:12px}
+.dashboard-analysis>summary::after{width:8px;height:8px;margin-right:4px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);content:"";transform:rotate(45deg);transition:transform .16s}
+.dashboard-analysis[open]>summary{background:var(--soft);border-bottom:1px solid var(--line)}
+.dashboard-analysis[open]>summary::after{transform:rotate(225deg)}
+.dashboard-analysis-body{padding:16px}
+.dashboard-analysis:not([open])>.dashboard-analysis-body{display:none!important}
+.dashboard-analysis-body>#kpis{margin-bottom:0}
+.dashboard-analysis-body>.card{box-shadow:none}
+.dashboard-analysis-body>:last-child,.dashboard-analysis-body>.grid2:last-child>.card{margin-bottom:0}
+@media(max-width:700px){
+  .dashboard-primary #rezumatKpis{grid-template-columns:1fr 1fr}
+  #quickActionsCard .quickacts{grid-template-columns:1fr 1fr;gap:8px}
+  #quickActionsCard .qa{min-height:78px;padding:11px}
+  #quickActionsCard .qa .ic{font-size:21px}
+  #quickActionsCard .qa .d{display:none}
+  .dashboard-secondary-head{align-items:flex-start;flex-direction:column;gap:9px}
+  .dashboard-secondary-controls{width:100%}
+  .dashboard-secondary-controls .btn{flex:1}
+  .dashboard-analysis>summary{min-height:54px;padding:9px 13px}
+  .dashboard-analysis-body{padding:11px}
+}
 /* quick-action proeminent (lansare wizard) */
 .qa.qa-primary{background:linear-gradient(135deg,rgba(194,97,60,.12),rgba(194,97,60,.03));border-color:var(--accent)}
 .qa.qa-primary .t{color:var(--accent)}

@@ -429,6 +429,34 @@ section('Dashboard: firma fără nicio înregistrare nu primește un ecran de ze
   ok('graficele nu se mai desenează pe firma goală', /if \(gol\) return;\s*\n\s*if \(c\) renderDashboardCharts/.test(dashSrc));
 }
 
+section('Dashboard: primul ecran rămâne scurt, iar analizele se personalizează');
+{
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  const inceput = html.indexOf('<div class="dashboard-primary"');
+  const sfarsit = html.indexOf('<!-- Ce se vede in locul panourilor', inceput);
+  const primaZona = html.slice(inceput, sfarsit);
+  ok('prima zonă conține numai ce e acționabil și cei patru indicatori', inceput > 0 && sfarsit > inceput
+    && primaZona.includes('id="deFacutCard"') && primaZona.includes('id="rezumatKpis"')
+    && primaZona.includes('id="quickActionsCard"') && !primaZona.includes('id="yoyCard"')
+    && !primaZona.includes('id="forecastCard"') && !primaZona.includes('id="openItemsView"'));
+  const rezumat = (dashSrc.match(/async function renderRezumat[\s\S]*?box\.innerHTML\s*=([\s\S]*?)\n\s*\$\$\('#rezumatKpis/) || [])[1] || '';
+  eq('rezumatul de lucru randează exact patru indicatori', (rezumat.match(/tile\('/g) || []).length, 4);
+  const actiuni = (primaZona.match(/<div class="quickacts quickacts-primary">([\s\S]*?)<\/div>/) || [])[1] || '';
+  eq('sunt patru acțiuni frecvente directe', (actiuni.match(/<button\b/g) || []).length, 4);
+  eq('analizele secundare sunt grupate în patru panouri native',
+    (html.match(/<details class="dashboard-analysis[^>]*data-dashboard-panel=/g) || []).length, 4);
+  ok('panourile pornesc strânse și conținutul nu poate forța afișarea',
+    !/<details class="dashboard-analysis[^>]*\sopen(?:\s|>)/.test(html)
+      && /\.dashboard-analysis:not\(\[open\]\)>\.dashboard-analysis-body\{display:none!important\}/.test(css));
+  ok('alegerea panourilor este memorată per utilizator',
+    /contabo:dashboard-panels:v1/.test(dashSrc) && /USER\.id \|\| USER\.username/.test(dashSrc)
+      && /localStorage\.setItem\(cheieCurenta\(\), JSON\.stringify\(stare\)\)/.test(dashSrc));
+  ok('mobilul păstrează KPI-urile și acțiunile într-o grilă 2×2',
+    /#quickActionsCard \.quickacts\{grid-template-columns:1fr 1fr/.test(css)
+      && /\.dashboard-primary #rezumatKpis\{grid-template-columns:1fr 1fr\}/.test(css));
+}
+
 section('Poartă: `display:…!important` nu are voie să bată `.hidden`');
 {
   // A PATRA oară aceeași capcană, de fiecare dată găsită prin efectul ei, nu prin regulă:
@@ -834,14 +862,17 @@ section('Carcasa aplicației: o singură navigație și context unic');
   const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
   const app = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
   const erpCssTop = fs.readFileSync(path.join(PUB, 'erp.css'), 'utf8');
-  ok('desktopul folosește toată lățimea: shell bloc, fără variabilă de sidebar',
-    /body\.erp \.shell\s*\{[^}]*display:\s*block/.test(erpCssTop) && !/--app-sidebar/.test(erpCssTop));
-  ok('arborele unic este banda de meniu de sus și se poate așeza pe mai multe rânduri',
-    /body\.erp \.topbar #tabs\s*\{[^}]*flex-wrap:\s*wrap/.test(erpCssTop)
-      && /body\.erp \.topbar\s*\{[^}]*width:\s*100%/.test(erpCssTop));
-  ok('submeniurile desktop sunt dropdownuri, nu acordeon lateral',
-    /body\.erp #tabs \.navmenu\s*\{[^}]*position:\s*absolute\s*!important/.test(erpCssTop)
-      && /top:\s*calc\(100% \+ 6px\)/.test(erpCssTop));
+  ok('desktopul rezervă o singură coloană laterală pliabilă',
+    /--app-sidebar-open:\s*260px/.test(erpCssTop)
+      && /--app-sidebar-closed:\s*72px/.test(erpCssTop)
+      && /body\.erp\.sidebar-collapsed\s*\{\s*--app-sidebar-w:/.test(erpCssTop));
+  ok('antetul este plafonat la 64px, iar arborele unic este vertical și fix',
+    /--app-header-h:\s*64px/.test(erpCssTop)
+      && /body\.erp \.topbar\s*\{[^}]*max-height:\s*var\(--app-header-h\)/.test(erpCssTop)
+      && /body\.erp \.topbar #tabs\s*\{[^}]*position:\s*fixed[^}]*flex-direction:\s*column/.test(erpCssTop));
+  ok('submeniurile desktop sunt acordeoane în navigatorul lateral',
+    /body\.erp #tabs \.navmenu\s*\{[^}]*position:\s*static\s*!important/.test(erpCssTop)
+      && /#tabs \.navgroup\.open > \.navmenu:not\(\.hidden\)\s*\{\s*display:\s*block\s*!important/.test(erpCssTop));
   ok('telefonul readuce același meniu în sertar vertical',
     /\.topbar\.nav-open #tabs\s*\{[^}]*flex-direction:\s*column/.test(erpCssTop)
       && /\.topbar\.nav-open #tabs \.navmenu\s*\{[^}]*position:\s*static\s*!important/.test(erpCssTop));
@@ -873,8 +904,19 @@ section('Carcasa aplicației: o singură navigație și context unic');
   ok('indiciul de derulare are regula proprie, pe containerul care NU deruleaza',
     /\.tablewrap\.are-derulare::after/.test(dsIndiciu) && /\.tablewrap \{ position: relative/.test(dsIndiciu));
   ok('bara contextuală este construită explicit', /function construiesteContext\(/.test(erp) && /bar\.id = 'appContext'/.test(erp));
-  ok('selectorul firmei este mutat, nu clonat', /firmaWrap\.appendChild\(firma\)/.test(erp) && !/cloneNode/.test(erp));
+  ok('selectorul firmei este mutat în componenta de căutare, nu clonat',
+    /selectorWrap\.appendChild\(firma\)/.test(erp)
+      && /firmaWrap\.appendChild\(construiesteSelectorFirma\(firma\)\)/.test(erp) && !/cloneNode/.test(erp));
   ok('selectorul perioadei este mutat, nu clonat', /perioadaWrap\.appendChild\(perioada\)/.test(erp));
+  ok('firma nu mai este repetată sub logo', !/id=["']companyName["']/.test(html)
+    && !/\$\('#companyName'\)/.test(app));
+  ok('selectorul unic are căutare după denumire și CUI, inclusiv fără diacritice',
+    /function construiesteSelectorFirma\(firma\)/.test(erp)
+      && /opt\.dataset\.companyName/.test(erp) && /opt\.dataset\.companyCui/.test(erp)
+      && /normalize\('NFD'\)/.test(erp) && /companyPickerSearchButton/.test(erp));
+  ok('alegerea din căutare folosește același eveniment de schimbare și aceeași activare persistentă',
+    /firma\.dispatchEvent\(new Event\('change'/.test(erp)
+      && /api\('\/api\/firme\/' \+ id \+ '\/activate'/.test(app));
   ok('pictogramele aplicației sunt un singur set SVG', /var ICONS = \{/.test(erp) && /<svg viewBox=/.test(erp));
   ok('setul SVG acoperă și controalele, linkurile și secțiunile extensibile',
     /'button', 'a', 'summary', 'label\.attach-btn', '\.emit-guided \.gt'/.test(erp));
@@ -927,9 +969,9 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
   const appSrc = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
   const erpCss = fs.readFileSync(path.join(PUB, 'erp.css'), 'utf8');
   const dsCss = fs.readFileSync(path.join(PUB, 'design-system.css'), 'utf8');
-  ok('pictograma contextuală își păstrează dimensiunea shell-ului', /\.app-context-icon\s*\{[\s\S]{0,180}display: inline-grid/.test(dsCss)
+  ok('pictograma contextuală își păstrează dimensiunea shell-ului compact', /\.app-context-icon\s*\{[\s\S]{0,180}display: inline-grid/.test(dsCss)
     && !/\.app-icon,\s*\nbody\.erp \.app-context-icon\s*\{/.test(dsCss)
-    && /\.app-context-icon\s*\{[\s\S]{0,120}width: 40px/.test(erpCss));
+    && /\.app-context-icon\s*\{[\s\S]{0,120}width: 36px/.test(erpCss));
   ok('alertele își mută acțiunea sub mesaj la 320px',
     /@media \(max-width: 360px\)[\s\S]{0,520}\.alert > \.al-cta\s*\{\s*grid-column:\s*2/.test(dsCss));
   const formBlock = (id) => {
@@ -1407,7 +1449,7 @@ section('Modul simplu filtrează LIMBAJUL, nu doar meniul');
     ok('...dar rămâne pentru contabil', html.includes(termen));
   }
   // Poarta trebuie să POATĂ pica: un termen chiar prezent în afara oricărui `.adv` e găsit.
-  ok('poarta chiar vede textul vizibil', vizibilInSimplu.includes('Ce vrei să faci?'));
+  ok('poarta chiar vede textul vizibil', vizibilInSimplu.includes('Acțiuni frecvente'));
 
   // Etichetele de stare din „Declarații ANAF": „recap (→ ANAF)" nu spune nimic unui patron, și
   // tocmai el se uită în listă ca să afle ce are de făcut luna asta.

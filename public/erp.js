@@ -201,6 +201,163 @@
     });
   }
 
+  function textCautare(txt) {
+    return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
+  }
+
+  /* Îmbunătățește SELECTORUL existent, fără să creeze un al doilea selector de firmă.
+     Selectul nativ rămâne sursa unică (și fallback-ul tastaturii/browserului), iar butonul
+     atașat deschide o căutare după denumire sau CUI pentru portofoliile multi-firmă. */
+  function construiesteSelectorFirma(firma) {
+    var selectorWrap = el('div', 'company-picker');
+    selectorWrap.id = 'companyPicker';
+    selectorWrap.appendChild(firma); // mutat, nu copiat
+
+    var cautaBtn = el('button', 'company-picker-search-button');
+    cautaBtn.id = 'companyPickerSearchButton';
+    cautaBtn.type = 'button';
+    cautaBtn.setAttribute('aria-haspopup', 'dialog');
+    cautaBtn.setAttribute('aria-expanded', 'false');
+    cautaBtn.setAttribute('aria-controls', 'companyPickerPanel');
+    cautaBtn.appendChild(icon('search', 'app-icon'));
+    selectorWrap.appendChild(cautaBtn);
+
+    var panel = el('div', 'company-picker-panel hidden');
+    panel.id = 'companyPickerPanel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'false');
+    var titluCautare = el('label', 'company-picker-search-label');
+    titluCautare.htmlFor = 'companyPickerSearch';
+    var input = document.createElement('input');
+    input.id = 'companyPickerSearch';
+    input.className = 'company-picker-search';
+    input.type = 'search';
+    input.autocomplete = 'off';
+    input.setAttribute('aria-controls', 'companyPickerResults');
+    titluCautare.appendChild(input);
+    panel.appendChild(titluCautare);
+    var rezultate = el('div', 'company-picker-results');
+    rezultate.id = 'companyPickerResults';
+    rezultate.setAttribute('role', 'listbox');
+    panel.appendChild(rezultate);
+    var manage = el('button', 'company-picker-manage');
+    manage.type = 'button';
+    panel.appendChild(manage);
+    selectorWrap.appendChild(panel);
+
+    function optiuniFirma() {
+      return Array.prototype.filter.call(firma.options, function (opt) { return opt.value !== '__add__'; });
+    }
+
+    function inchide(restaureazaFocus) {
+      if (panel.classList.contains('hidden')) return;
+      panel.classList.add('hidden');
+      cautaBtn.setAttribute('aria-expanded', 'false');
+      if (restaureazaFocus) cautaBtn.focus();
+    }
+
+    function alege(opt) {
+      if (!opt || String(opt.value) === String(firma.value)) { inchide(true); return; }
+      firma.value = opt.value;
+      inchide(false);
+      firma.dispatchEvent(new Event('change', { bubbles: true }));
+      firma.focus();
+    }
+
+    function randare() {
+      var toate = optiuniFirma();
+      var termen = textCautare(input.value);
+      var filtrate = toate.filter(function (opt) {
+        return !termen || textCautare([
+          opt.dataset.companyName,
+          opt.dataset.companyCui,
+          opt.textContent
+        ].join(' ')).indexOf(termen) !== -1;
+      });
+      rezultate.replaceChildren();
+      filtrate.forEach(function (opt) {
+        var rand = el('button', 'company-picker-option');
+        rand.type = 'button';
+        rand.setAttribute('role', 'option');
+        rand.setAttribute('aria-selected', String(String(opt.value) === String(firma.value)));
+        rand.dataset.value = opt.value;
+        var copie = el('span', 'company-picker-option-copy');
+        copie.appendChild(el('strong', '', opt.dataset.companyName || opt.textContent));
+        var detalii = [];
+        if (opt.dataset.companyCui) detalii.push('CUI ' + opt.dataset.companyCui);
+        if (opt.dataset.companyStatus) detalii.push(opt.dataset.companyStatus);
+        if (detalii.length) copie.appendChild(el('small', '', detalii.join(' · ')));
+        rand.appendChild(copie);
+        if (String(opt.value) === String(firma.value)) rand.appendChild(el('span', 'company-picker-check', '✓'));
+        rand.addEventListener('click', function () { alege(opt); });
+        rezultate.appendChild(rand);
+      });
+      if (!filtrate.length) rezultate.appendChild(el('p', 'company-picker-empty', trad('Nu am găsit nicio firmă.')));
+
+      var manageOpt = Array.prototype.find.call(firma.options, function (opt) { return opt.value === '__add__'; });
+      manage.classList.toggle('hidden', !manageOpt);
+      manage.textContent = trad('Adaugă / gestionează firme…');
+    }
+
+    function actualizeaza() {
+      var total = optiuniFirma().length;
+      selectorWrap.classList.toggle('single-company', total < 2);
+      cautaBtn.classList.toggle('hidden', total < 2);
+      firma.title = trad('Firma activă');
+      firma.setAttribute('aria-label', trad('Firma activă'));
+      cautaBtn.title = trad('Caută o firmă');
+      cautaBtn.setAttribute('aria-label', trad('Caută o firmă'));
+      input.placeholder = trad('Caută după nume sau CUI…');
+      panel.setAttribute('aria-label', trad('Caută o firmă'));
+      randare();
+      if (total < 2) inchide(false);
+    }
+
+    cautaBtn.addEventListener('click', function () {
+      var deschide = panel.classList.contains('hidden');
+      if (!deschide) { inchide(true); return; }
+      panel.classList.remove('hidden');
+      cautaBtn.setAttribute('aria-expanded', 'true');
+      input.value = '';
+      randare();
+      requestAnimationFrame(function () { input.focus(); });
+    });
+    input.addEventListener('input', randare);
+    manage.addEventListener('click', function () {
+      firma.value = '__add__';
+      inchide(false);
+      firma.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    input.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') { ev.preventDefault(); inchide(true); }
+      if (ev.key === 'ArrowDown') {
+        var primul = $('.company-picker-option', rezultate);
+        if (primul) { ev.preventDefault(); primul.focus(); }
+      }
+      if (ev.key === 'Enter') {
+        var unic = $$('.company-picker-option', rezultate);
+        if (unic.length === 1) { ev.preventDefault(); unic[0].click(); }
+      }
+    });
+    rezultate.addEventListener('keydown', function (ev) {
+      var randuri = $$('.company-picker-option', rezultate);
+      var index = randuri.indexOf(document.activeElement);
+      if (ev.key === 'Escape') { ev.preventDefault(); inchide(true); return; }
+      if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && index >= 0) {
+        ev.preventDefault();
+        randuri[(index + (ev.key === 'ArrowDown' ? 1 : -1) + randuri.length) % randuri.length].focus();
+      }
+    });
+    document.addEventListener('pointerdown', function (ev) {
+      if (!selectorWrap.contains(ev.target)) inchide(false);
+    });
+    firma.addEventListener('change', actualizeaza);
+    document.addEventListener('contab:language', actualizeaza);
+    new MutationObserver(actualizeaza).observe(firma, { childList: true, subtree: true });
+    actualizeaza();
+    return selectorWrap;
+  }
+
   function construiesteContext() {
     var main = $('.shell > main');
     if (!main || $('#appContext')) return;
@@ -223,9 +380,9 @@
     var firma = $('#firmaSelect');
     var perioada = $('.curgroup');
     if (firma) {
-      var firmaWrap = el('label', 'app-context-field');
+      var firmaWrap = el('div', 'app-context-field company-context-field');
       firmaWrap.appendChild(el('span', '', 'Firmă'));
-      firmaWrap.appendChild(firma); // mutat, nu copiat
+      firmaWrap.appendChild(construiesteSelectorFirma(firma));
       controls.appendChild(firmaWrap);
     }
     if (perioada) {
@@ -312,9 +469,9 @@
     }
   }
 
-  /* Pe telefon refolosim meniul superior real într-un sertar. Permisiunile,
-     modul simplu, starea activă și ordinea ciclului rămân astfel identice cu
-     desktopul; nu există o listă mobilă paralelă care să poată deriva. */
+  /* Același arbore este bară laterală pliabilă pe desktop și sertar pe telefon.
+     Permisiunile, modul simplu, starea activă și ordinea ciclului rămân identice;
+     nu există o listă mobilă paralelă care să poată deriva. */
   function monteazaNavigatiaMobila() {
     var bara = $('.topbar');
     var comutator = $('#navToggleBtn');
@@ -322,19 +479,71 @@
     var meniu = $('#tabs');
     if (!bara || !comutator || !fundal || !meniu) return;
 
+    var mediaMobil = window.matchMedia ? window.matchMedia('(max-width: 700px)') : { matches: false };
+    var cheieSidebar = 'contabo:sidebar-collapsed:v1';
+    var etichetaComutator = $('.nav-toggle-label', comutator);
+
+    /* În varianta restrânsă textul nu se vede, deci titlul devine eticheta accesibilă și
+       explicația la hover. Nu suprascriem titlurile mai detaliate existente. */
+    $$('#tabs > button, #tabs > a.navlink, #tabs .navlabel').forEach(function (nod) {
+      if (!nod.title) nod.title = eticheta(nod);
+    });
+    var limba = $('#tabs > .nav-language');
+    if (limba && !limba.title) limba.title = 'Limbă';
+
+    function actualizeazaComutator() {
+      var mobil = !!mediaMobil.matches;
+      var deschis = mobil ? bara.classList.contains('nav-open') : !document.body.classList.contains('sidebar-collapsed');
+      var textSursa = mobil ? (deschis ? 'Închide' : 'Meniu') : (deschis ? 'Restrânge' : 'Extinde');
+      var explicatieSursa = mobil
+        ? (deschis ? 'Închide meniul' : 'Deschide meniul')
+        : (deschis ? 'Restrânge meniul lateral' : 'Extinde meniul lateral');
+      var text = trad(textSursa);
+      var explicatie = trad(explicatieSursa);
+      if (etichetaComutator) etichetaComutator.textContent = text;
+      comutator.setAttribute('aria-expanded', String(deschis));
+      comutator.setAttribute('aria-label', explicatie);
+      comutator.title = explicatie;
+    }
+
+    function seteazaSidebarRestransa(stransa, persista) {
+      document.body.classList.toggle('sidebar-collapsed', stransa);
+      if (stransa) {
+        $$('.navgroup.open', meniu).forEach(function (grup) {
+          grup.classList.remove('open');
+          var et = $('.navlabel', grup);
+          if (et) et.setAttribute('aria-expanded', 'false');
+        });
+      }
+      if (persista) {
+        try { localStorage.setItem(cheieSidebar, stransa ? '1' : '0'); } catch (_) { /* mod privat */ }
+      }
+      actualizeazaComutator();
+      marcheazaTabeleDerulabile();
+      setTimeout(marcheazaTabeleDerulabile, 220);
+    }
+
     function inchide(restaureazaFocus) {
       var eraDeschis = bara.classList.contains('nav-open');
       bara.classList.remove('nav-open');
       document.body.classList.remove('mobile-nav-open');
-      comutator.setAttribute('aria-expanded', 'false');
+      actualizeazaComutator();
       if (eraDeschis && restaureazaFocus) comutator.focus();
     }
 
+    try {
+      seteazaSidebarRestransa(localStorage.getItem(cheieSidebar) === '1', false);
+    } catch (_) { seteazaSidebarRestransa(false, false); }
+
     comutator.addEventListener('click', function () {
+      if (!mediaMobil.matches) {
+        seteazaSidebarRestransa(!document.body.classList.contains('sidebar-collapsed'), true);
+        return;
+      }
       var deschide = !bara.classList.contains('nav-open');
       bara.classList.toggle('nav-open', deschide);
       document.body.classList.toggle('mobile-nav-open', deschide);
-      comutator.setAttribute('aria-expanded', String(deschide));
+      actualizeazaComutator();
       if (deschide) {
         var activ = $('button[data-tab].active', meniu) || $('button, a', meniu);
         if (activ) requestAnimationFrame(function () { activ.focus(); activ.scrollIntoView({ block: 'nearest' }); });
@@ -342,17 +551,24 @@
     });
     fundal.addEventListener('click', function () { inchide(true); });
     meniu.addEventListener('click', function (ev) {
-      if (ev.target.closest('button[data-tab], button.nav-action, a.navlink')) inchide(false);
+      if (mediaMobil.matches || !document.body.classList.contains('sidebar-collapsed')) return;
+      if (ev.target.closest('.navlabel, .nav-language')) seteazaSidebarRestransa(false, true);
+    }, true);
+    meniu.addEventListener('click', function (ev) {
+      if (mediaMobil.matches && ev.target.closest('button[data-tab], button.nav-action, a.navlink')) inchide(false);
     });
     document.addEventListener('keydown', function (ev) {
       if (ev.key === 'Escape' && bara.classList.contains('nav-open')) inchide(true);
     });
-    if (window.matchMedia) {
-      var mobil = window.matchMedia('(max-width: 700px)');
-      var laSchimbare = function (ev) { if (!ev.matches) inchide(false); };
-      if (mobil.addEventListener) mobil.addEventListener('change', laSchimbare);
-      else if (mobil.addListener) mobil.addListener(laSchimbare);
-    }
+    var laSchimbare = function (ev) {
+      if (!ev.matches) inchide(false);
+      else actualizeazaComutator();
+      marcheazaTabeleDerulabile();
+    };
+    if (mediaMobil.addEventListener) mediaMobil.addEventListener('change', laSchimbare);
+    else if (mediaMobil.addListener) mediaMobil.addListener(laSchimbare);
+    document.addEventListener('contab:language', actualizeazaComutator);
+    actualizeazaComutator();
   }
 
   function monteaza() {
@@ -372,7 +588,7 @@
       }
       sincronizeaza();
     });
-    ['#companyName', '#currentPeriod', '#userBadge', '#tabs', '.topbar', '.shell > main'].forEach(function (sel) {
+    ['#currentPeriod', '#userBadge', '#tabs', '.topbar', '.shell > main'].forEach(function (sel) {
       var n = $(sel);
       if (n) obs.observe(n, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     });

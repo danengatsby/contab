@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/u.css">
   <!-- Designul aplicației autentificate: același limbaj vizual modern ca loginul, cu un singur
-       meniu superior și o bară contextuală pentru pagină/firmă/perioadă. erp.js mută controalele
+       meniu lateral și o bară contextuală pentru pagină/firmă/perioadă. erp.js mută controalele
        reale în context (nu le copiază), transformă explicațiile în ajutor la cerere și aplică
        setul SVG unic; erp.css păstrează shell-ul, iar design-system.css este sursa unică pentru
        controale, carduri, dialoguri, feedback, ajutor contextual și fluxurile de formular. -->
@@ -329,7 +329,7 @@
   </div>
 
   <div class="shell">
-  <!-- Prima oprire de tastatura din aplicație: meniul superior are ~40 de destinații, pe care un
+  <!-- Prima oprire de tastatura din aplicație: meniul lateral are ~40 de destinații, pe care un
        utilizator care navigheaza cu Tab le parcurgea din nou la FIECARE pagina. Stau aici, nu la
        inceputul lui <body>: suprapunerile de login/inregistrare de deasupra sunt `display:none`
        dupa autentificare, deci nimic focalizabil nu ramane inaintea acestei legaturi. -->
@@ -339,7 +339,6 @@
       <span class="logo">▦</span>
       <div>
         <h1>Contabo</h1>
-        <small id="companyName">—</small>
       </div>
     </div>
     <select id="firmaSelect" class="firma-select" title="Firma activă" aria-label="Firma activă"></select>
@@ -349,15 +348,12 @@
       <button id="nextMonth" class="curnav" title="Luna următoare" aria-label="Luna următoare">▶</button>
     </span>
     <div class="spacer" data-u="u46"></div>
-    <!-- Pe telefon se deschide ACELAȘI arbore #tabs într-un sertar. Nu există o a doua listă
-         scurtată de destinații și nici o ierarhie mobilă întreținută separat. -->
-    <button id="navToggleBtn" class="btn small" type="button" aria-expanded="false" aria-controls="tabs">☰ Meniu</button>
+    <!-- Același control restrânge bara laterală pe desktop și deschide ACELAȘI arbore #tabs
+         într-un sertar pe telefon. Nu există o a doua listă de destinații. -->
+    <button id="navToggleBtn" class="btn small" type="button" aria-expanded="true" aria-controls="tabs"
+      title="Restrânge sau extinde meniul lateral">☰ <span class="nav-toggle-label">Restrânge</span></button>
     <span id="userBadge" class="userbadge"></span>
     <button id="logoutBtn" class="btn small">Ieși</button>
-    <div id="imperBanner" class="notice warning imper-banner hidden">
-      <div class="imper-copy"><span class="notice-icon">👤</span><span>Conectat ca <b id="imperName"></b><span id="imperExpiry"></span> <span class="imper-sub">Mod administrator — „intră pe cont”. Toate acțiunile sunt jurnalizate.</span></span></div>
-      <button id="imperStop" type="button" class="btn">↩ Revino la contul de admin</button>
-    </div>
     <nav class="tabs" id="tabs" aria-label="Meniu principal">
       <!-- ORDINEA GRUPURILOR = CICLUL CONTABIL, de sus în jos: înregistrezi documentele, urmărești
            banii, apoi ce mișcă lunar (stocuri, salarii, amortizare), verifici registrele, închizi
@@ -511,6 +507,13 @@
     <button id="navBackdrop" class="nav-backdrop" type="button" tabindex="-1" aria-label="Închide meniul"></button>
   </header>
 
+  <!-- Impersonarea este stare de lucru, nu conținut al antetului. În afara lui, antetul rămâne
+       plafonat la 64px inclusiv când administratorul lucrează temporar în alt cont. -->
+  <div id="imperBanner" class="notice warning imper-banner hidden">
+    <div class="imper-copy"><span class="notice-icon">👤</span><span>Conectat ca <b id="imperName"></b><span id="imperExpiry"></span> <span class="imper-sub">Mod administrator — „intră pe cont”. Toate acțiunile sunt jurnalizate.</span></span></div>
+    <button id="imperStop" type="button" class="btn">↩ Revino la contul de admin</button>
+  </div>
+
   <div id="testStageBanner" class="test-stage-banner" role="alert" data-test-stage-warning="app">
     <span class="test-stage-icon" aria-hidden="true">⚠️</span>
     <p><b>Folosește doar date fictive în etapa de test.</b>
@@ -541,51 +544,46 @@
     <!-- ─────────────── DASHBOARD ─────────────── -->
     <section id="tab-dashboard" class="tab active">
       <div class="toolbar"><h2>Acasă</h2><div class="spacer"></div><span id="dashYear" class="badge"></span></div>
-      <div id="dashAlerts" class="dash-alerts"></div>
-      <!-- „De facut acum" — restantele si termenele apropiate, sus pe Acasa. Continutul exista de
-           mult si e bun (ecranul 🔔 Notificari: sortat dupa urgenta, cu un buton pe fiecare rand),
-           dar statea sub un clopotel din meniu, in timp ce Acasa arata douasprezece carduri de
-           analiza si pomenea restantele intr-un rand gri din subsolul altui card. Intrebarea „am
-           intarziat cu ceva?" e prima a unui patron; raspunsul nu are voie sa fie cel mai ascuns
-           lucru de pe ecran. NU e `simple-only`: si contabilul vrea sa vada restantele intai. -->
-      <div class="card hidden" id="deFacutCard">
-        <div class="card-head">
-          <h3>⏰ De făcut acum <span id="deFacutCount" class="badge"></span></h3>
-          <button class="btn small" id="deFacutToate" type="button">Vezi toate termenele →</button>
+      <!-- Primul ecran răspunde numai la trei întrebări: ce trebuie rezolvat, cum stă firma în
+           patru cifre și care sunt operațiile uzuale. Analizele de profunzime sunt mai jos,
+           pliabile; astfel nu împing lucrul curent sub mai multe ecrane de grafice și tabele. -->
+      <div class="dashboard-primary" aria-label="Rezumatul de lucru">
+        <div class="card" id="deFacutCard">
+          <div class="card-head">
+            <h3>⏰ De făcut acum <span id="deFacutCount" class="badge"></span></h3>
+            <button class="btn small hidden" id="deFacutToate" type="button">Vezi toate termenele →</button>
+          </div>
+          <div id="dashAlerts" class="dash-alerts stack"></div>
+          <div id="deFacutTermene" class="dashboard-deadlines hidden">
+            <div id="deFacutList" class="dash-alerts stack"></div>
+          </div>
         </div>
-        <div id="deFacutList" class="dash-alerts stack"></div>
-      </div>
-      <div class="card hidden" id="primiiPasiCard">
-        <h3>🌱 Primii pași — pornește de aici</h3>
-        <p class="muted" data-u="u69">Nu trebuie să știi contabilitate: bifezi pașii de mai jos în ordinea ta, iar aplicația face înregistrările corecte în fundal.</p>
-        <div id="primiiPasiList" class="firststeps"></div>
-      </div>
-      <div class="card simple-only" id="rezumatCard">
-        <h3>📋 Situația firmei — pe scurt <span id="rezumatData" class="muted" data-u="u70"></span></h3>
-        <div id="rezumatKpis" class="kpis" data-u="u23"></div>
-        <div id="rezumatFooter" class="row" data-u="u71"></div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <h3>Registrul documentelor deschise</h3>
-          <span class="muted">sursa pentru aging, plăți, provizioane, Nota 5 și cash-flow</span>
+
+        <div class="card" id="rezumatCard">
+          <h3>📊 4 indicatori esențiali <span id="rezumatData" class="muted" data-u="u70"></span></h3>
+          <div id="rezumatKpis" class="kpis" data-u="u23"></div>
+          <div id="rezumatFooter" class="row" data-u="u71"></div>
         </div>
-        <p class="muted">Fiecare factură are scadență, sold rezidual și stingeri document-cu-document. Afilierea, garanțiile și litigiul se confirmă la nivelul creanței; modificările sunt versionate și auditate.</p>
-        <div id="openItemsControl"></div>
-        <div id="openItemsView" class="tablewrap"></div>
-      </div>
-      <div class="card">
-        <h3>⚡ Ce vrei să faci?</h3>
-        <div class="quickacts">
-          <button class="qa qa-primary" id="qaWizard"><span class="ic">🧭</span><span class="t">Înregistrează ghidat</span><span class="d">Nu știi ce tip? Te ghidez în câțiva pași simpli</span></button>
-          <button class="qa in" data-go="documente"><span class="ic">📥</span><span class="t">Adaugă document primit</span><span class="d">Factură furnizor, bon, chitanță — PDF sau poză</span></button>
-          <button class="qa out" data-go="emite"><span class="ic">📤</span><span class="t">Emite factură</span><span class="d">Factură către client + e-Factura</span></button>
-          <button class="qa" data-go="cashbook"><span class="ic">🏦</span><span class="t">Bancă / Casă</span><span class="d">Încasări, plăți, extras bancar</span></button>
-          <button class="qa adv" data-go="balanta"><span class="ic">⚖️</span><span class="t">Vezi balanța</span><span class="d">Soldurile tuturor conturilor</span></button>
-          <button class="qa" data-go="tva"><span class="ic">🧾</span><span class="t">Decont TVA</span><span class="d"><abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr> pe perioadă</span></button>
-          <button class="qa" data-go="ghid"><span class="ic">📖</span><span class="t">Ghid de folosire</span><span class="d">Cum lucrezi, pas cu pas</span></button>
+
+        <div class="card" id="quickActionsCard">
+          <h3>⚡ Acțiuni frecvente</h3>
+          <div class="quickacts quickacts-primary">
+            <button class="qa qa-primary" id="qaWizard"><span class="ic">🧭</span><span class="t">Înregistrează ghidat</span><span class="d">Nu știi ce tip? Te ghidez în câțiva pași simpli</span></button>
+            <button class="qa in" data-go="documente"><span class="ic">📥</span><span class="t">Adaugă document primit</span><span class="d">Factură furnizor, bon, chitanță — PDF sau poză</span></button>
+            <button class="qa out" data-go="emite"><span class="ic">📤</span><span class="t">Emite factură</span><span class="d">Factură către client + e-Factura</span></button>
+            <button class="qa" data-go="cashbook"><span class="ic">🏦</span><span class="t">Bancă / Casă</span><span class="d">Încasări, plăți, extras bancar</span></button>
+          </div>
+          <details class="quickacts-more">
+            <summary>Alte acțiuni</summary>
+            <div class="quickacts">
+              <button class="qa adv" data-go="balanta"><span class="ic">⚖️</span><span class="t">Vezi balanța</span><span class="d">Soldurile tuturor conturilor</span></button>
+              <button class="qa" data-go="tva"><span class="ic">🧾</span><span class="t">Decont TVA</span><span class="d"><abbr title="Decontul de TVA (lunar sau trimestrial)">D300</abbr> / <abbr title="Declarația informativă privind livrările și achizițiile pe teritoriul României">D394</abbr> pe perioadă</span></button>
+              <button class="qa" data-go="ghid"><span class="ic">📖</span><span class="t">Ghid de folosire</span><span class="d">Cum lucrezi, pas cu pas</span></button>
+            </div>
+          </details>
         </div>
       </div>
+
       <!-- Ce se vede in locul panourilor de analiza cat timp firma nu are nicio inregistrare.
            Cardurile de mai jos randau atunci toate acelasi lucru — 0,00, liniute, „fara date" —
            deci primul ecran al aplicatiei ii spunea unui om proaspat inscris ca nu se intampla
@@ -594,40 +592,82 @@
       <div class="card hidden" id="dashGolCard">
         <p class="muted" data-u="u69">Situația firmei, graficele și scadențarul apar aici după primul document înregistrat.</p>
       </div>
-      <div id="kpis" class="kpis"></div>
-      <div class="card" id="yoyCard">
-        <!-- „exercițiul precedent" → „anul trecut": aceeași informație, fără termenul pe care chiar
-             dicționarul aplicației îl explică drept „anul contabil al firmei… e același lucru".
-             Aici nu se pierde nimic pentru un contabil, deci nu e nevoie de două variante. -->
-        <h3>Comparație an-la-an <span class="muted" data-u="u70">(față de anul trecut)</span></h3>
-        <div id="yoyView"></div>
-      </div>
-      <div class="card" id="forecastCard">
-        <div class="card-head">
-          <h3>🔮 Cash-flow direct <span class="muted">(13 săptămâni)</span></h3>
-          <div class="row"><select id="fcScenario" class="period" aria-label="Scenariul previziunii">
-            <option value="base" selected>Scenariu de bază</option>
-            <option value="prudent">Scenariu prudent</option>
-            <option value="optimist">Scenariu optimist</option>
-          </select><a class="btn small" id="fcPdf" target="_blank">⬇ PDF 13 săptămâni</a><button class="btn small" id="fcSnapshot" type="button">Salvează fotografia</button></div>
+
+      <div class="dashboard-secondary" id="dashboardSecondary">
+        <div class="dashboard-secondary-head">
+          <div><h3>Analize secundare</h3><p class="muted">Deschide doar analizele de care ai nevoie. Alegerea rămâne memorată pe acest dispozitiv.</p></div>
+          <div class="dashboard-secondary-controls">
+            <button class="btn small" id="dashExpandAll" type="button">Extinde toate</button>
+            <button class="btn small ghost" id="dashCollapseAll" type="button">Restrânge toate</button>
+          </div>
         </div>
-        <div id="forecastView"></div>
-      </div>
-      <div class="card" id="lunarCard">
-        <h3>Evoluție lunară — venituri / cheltuieli / profit (<span id="chartYear"></span>)</h3>
-        <div id="chartMonthly"></div>
-      </div>
-      <div class="grid2" id="randSolduri">
-        <div class="card"><h3>Structura soldurilor (creanțe vs datorii)</h3><div id="chartAging"></div></div>
-        <div class="card"><h3>Top creanțe (clienți)</h3><div id="topCreante"></div></div>
-      </div>
-      <div class="grid2" id="randDatorii">
-        <div class="card"><h3>Top datorii (furnizori)</h3><div id="topDatorii"></div></div>
-        <div class="card"><h3><span class="adv">Aging — vechimea soldurilor</span><span class="simple-only-inline">Vechimea sumelor de încasat și de plătit</span></h3><div id="chartAgingBars"></div></div>
-      </div>
-      <div class="grid2" id="randOperatiuni">
-        <div class="card"><h3>🕘 Ultimele operațiuni</h3><div id="ultimeleOps"></div></div>
-        <div class="card hidden" id="stocValCard"><h3>📦 Stocuri valoroase (valoare contabilă)</h3><div id="stocuriValoroase"></div></div>
+
+        <details class="dashboard-analysis hidden" id="primiiPasiCard" data-dashboard-panel="start">
+          <summary><span><b>🌱 Primii pași — pornește de aici</b><small>Pași de configurare pentru o firmă nouă</small></span></summary>
+          <div class="dashboard-analysis-body">
+            <p class="muted" data-u="u69">Nu trebuie să știi contabilitate: bifezi pașii de mai jos în ordinea ta, iar aplicația face înregistrările corecte în fundal.</p>
+            <div id="primiiPasiList" class="firststeps"></div>
+          </div>
+        </details>
+
+        <details class="dashboard-analysis adv" id="dashAccountingPanel" data-dashboard-panel="accounting">
+          <summary><span><b>Indicatori contabili detaliați</b><small>Cele 8 solduri și rezultate contabile</small></span></summary>
+          <div class="dashboard-analysis-body"><div id="kpis" class="kpis"></div></div>
+        </details>
+
+        <details class="dashboard-analysis" id="dashTrendsPanel" data-dashboard-panel="trends">
+          <summary><span><b>Tendințe și previziuni</b><small>Comparații, evoluție lunară și cash-flow</small></span></summary>
+          <div class="dashboard-analysis-body">
+            <div class="card" id="yoyCard">
+              <!-- „exercițiul precedent" → „anul trecut": aceeași informație, fără termenul pe care chiar
+                   dicționarul aplicației îl explică drept „anul contabil al firmei… e același lucru". -->
+              <h3>Comparație an-la-an <span class="muted" data-u="u70">(față de anul trecut)</span></h3>
+              <div id="yoyView"></div>
+            </div>
+            <div class="card" id="forecastCard">
+              <div class="card-head">
+                <h3>🔮 Cash-flow direct <span class="muted">(13 săptămâni)</span></h3>
+                <div class="row"><select id="fcScenario" class="period" aria-label="Scenariul previziunii">
+                  <option value="base" selected>Scenariu de bază</option>
+                  <option value="prudent">Scenariu prudent</option>
+                  <option value="optimist">Scenariu optimist</option>
+                </select><a class="btn small" id="fcPdf" target="_blank">⬇ PDF 13 săptămâni</a><button class="btn small" id="fcSnapshot" type="button">Salvează fotografia</button></div>
+              </div>
+              <div id="forecastView"></div>
+            </div>
+            <div class="card" id="lunarCard">
+              <h3>Evoluție lunară — venituri / cheltuieli / profit (<span id="chartYear"></span>)</h3>
+              <div id="chartMonthly"></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="dashboard-analysis" id="dashOperationsPanel" data-dashboard-panel="operations">
+          <summary><span><b>Solduri, scadențe și operațiuni</b><small>Registrul deschis, aging și activitatea recentă</small></span></summary>
+          <div class="dashboard-analysis-body">
+            <div class="card">
+              <div class="card-head">
+                <h3>Registrul documentelor deschise</h3>
+                <span class="muted">sursa pentru aging, plăți, provizioane, Nota 5 și cash-flow</span>
+              </div>
+              <p class="muted">Fiecare factură are scadență, sold rezidual și stingeri document-cu-document. Afilierea, garanțiile și litigiul se confirmă la nivelul creanței; modificările sunt versionate și auditate.</p>
+              <div id="openItemsControl"></div>
+              <div id="openItemsView" class="tablewrap"></div>
+            </div>
+            <div class="grid2" id="randSolduri">
+              <div class="card"><h3>Structura soldurilor (creanțe vs datorii)</h3><div id="chartAging"></div></div>
+              <div class="card"><h3>Top creanțe (clienți)</h3><div id="topCreante"></div></div>
+            </div>
+            <div class="grid2" id="randDatorii">
+              <div class="card"><h3>Top datorii (furnizori)</h3><div id="topDatorii"></div></div>
+              <div class="card"><h3><span class="adv">Aging — vechimea soldurilor</span><span class="simple-only-inline">Vechimea sumelor de încasat și de plătit</span></h3><div id="chartAgingBars"></div></div>
+            </div>
+            <div class="grid2" id="randOperatiuni">
+              <div class="card"><h3>🕘 Ultimele operațiuni</h3><div id="ultimeleOps"></div></div>
+              <div class="card hidden" id="stocValCard"><h3>📦 Stocuri valoroase (valoare contabilă)</h3><div id="stocuriValoroase"></div></div>
+            </div>
+          </div>
+        </details>
       </div>
     </section>
 

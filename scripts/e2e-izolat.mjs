@@ -144,6 +144,54 @@ if (RESET) {
 // de aici incolo lucram pe o sesiune de admin VALIDA (resetarea a invalidat-o pe cea initiala)
 const adm = pgNou || pg;
 
+// ─────────────────────── 2b. SELECTOR MULTI-FIRMA ───────────────────────────
+// Îl rulăm înaintea scenariilor fiscale/backup: este o verificare de shell independentă, iar o
+// eroare ulterioară de generare nu trebuie să ascundă rezultatul acestei regresii de ergonomie.
+sect('2b. Selector unic, căutabil și persistent pentru multi-firmă');
+{
+  await adm.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await adm.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
+  ok('firma nu mai este repetată sub logo', (await adm.locator('#companyName,.brand small').count()) === 0
+    && (await adm.locator('.brand h1').innerText()).trim() === 'Contabo');
+
+  // Construim a doua firmă numai în instanța efemeră. Activarea este restaurată la firma
+  // inițială înainte de restul scenariilor.
+  const firmaInitiala = await adm.locator('#firmaSelect').inputValue();
+  const firmaCautare = await apiIn(adm, '/api/firme', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nume: 'Căutare Multi Firmă SRL', cui: 'RO90909090', confirmFictitious: true }),
+  });
+  ok('fixture multi-firmă a fost creat', firmaCautare.status === 200 && firmaCautare.body?.firma?.id);
+  await adm.reload({ waitUntil: 'networkidle' });
+  await adm.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
+  await adm.waitForFunction(() => document.querySelectorAll('#firmaSelect option:not([value="__add__"])').length >= 2);
+  ok('selectorul firmei rămâne unic și oferă căutarea când există mai multe firme',
+    (await adm.locator('#firmaSelect').count()) === 1
+      && (await adm.locator('#companyPicker').count()) === 1
+      && (await adm.locator('#companyPickerSearchButton').isVisible())
+      && await adm.locator('#firmaSelect').inputValue() === String(firmaCautare.body.firma.id));
+
+  await adm.click('#companyPickerSearchButton');
+  await adm.fill('#companyPickerSearch', 'cautare multi firma');
+  ok('căutarea ignoră majusculele și diacriticele',
+    (await adm.locator('.company-picker-option', { hasText: 'Căutare Multi Firmă SRL' }).count()) === 1);
+  const firmaInitialaDate = await adm.locator(`#firmaSelect option[value="${firmaInitiala}"]`).evaluate((opt) => ({
+    value: opt.value, query: opt.dataset.companyCui || opt.dataset.companyName,
+  }));
+  await adm.fill('#companyPickerSearch', firmaInitialaDate.query);
+  ok('firma poate fi găsită și după CUI',
+    (await adm.locator(`.company-picker-option[data-value="${firmaInitialaDate.value}"]`).count()) === 1);
+  const activare = adm.waitForResponse((res) => res.request().method() === 'POST'
+    && res.url().endsWith('/api/firme/' + firmaInitialaDate.value + '/activate'));
+  await adm.click(`.company-picker-option[data-value="${firmaInitialaDate.value}"]`);
+  await activare;
+  await adm.waitForFunction((id) => document.querySelector('#firmaSelect')?.value === id, firmaInitialaDate.value);
+  await adm.reload({ waitUntil: 'networkidle' });
+  ok('firma activă persistă server-side după reîncărcare',
+    await adm.locator('#firmaSelect').inputValue() === firmaInitialaDate.value);
+  await adm.evaluate(() => document.querySelector('#welcomeOverlay')?.classList.add('hidden'));
+}
+
 // ─────────────────────────── 3. 2FA ──────────────────────────────────────────
 // Flux complet prin interfata: configurare, confirmare TOTP, login in doi pasi si dezactivare.
 // Acesta leaga explicit cele doua jumatati ale functiei: nimeni nu poate activa 2FA daca formularul
@@ -842,25 +890,49 @@ sect('12. Carcasa are o singura navigare logica si un context unic');
     const antet = document.querySelector('.topbar').getBoundingClientRect();
     const meniu = document.querySelector('#tabs').getBoundingClientRect();
     const principal = document.querySelector('.shell > main').getBoundingClientRect();
-    return { antetStanga: antet.left, antetDreapta: antet.right, meniuSus: meniu.top,
-      principalStanga: principal.left, latime: innerWidth, scroll: document.documentElement.scrollWidth };
+    const avertisment = document.querySelector('#testStageBanner').getBoundingClientRect();
+    const context = document.querySelector('#appContext').getBoundingClientRect();
+    return { antetInaltime: antet.height, antetStanga: antet.left, antetDreapta: antet.right,
+      meniuSus: meniu.top, meniuStanga: meniu.left, meniuLatime: meniu.width,
+      principalStanga: principal.left, avertismentStanga: avertisment.left,
+      contextInaltime: context.height, latime: innerWidth, scroll: document.documentElement.scrollWidth };
   });
-  ok('desktop: meniul este sus, ocupă lățimea paginii și nu mai rezervă o coloană laterală',
-    topNav.antetStanga >= -0.5 && topNav.antetDreapta <= topNav.latime + 0.5
-      && topNav.meniuSus > 0 && topNav.principalStanga < 40 && topNav.scroll <= topNav.latime + 1);
+  ok('desktop: antetul are maximum 64px, iar meniul lateral aliniază avertismentul și conținutul',
+    topNav.antetInaltime <= 64 && topNav.antetStanga >= -0.5 && topNav.antetDreapta <= topNav.latime + 0.5
+      && Math.abs(topNav.meniuSus - 64) <= 1 && topNav.meniuStanga >= -0.5
+      && Math.abs(topNav.meniuLatime - 260) <= 1 && Math.abs(topNav.principalStanga - 260) <= 1
+      && Math.abs(topNav.avertismentStanga - 260) <= 1 && topNav.contextInaltime <= 64
+      && topNav.scroll <= topNav.latime + 1);
+
+  await adm.click('#navToggleBtn');
+  await adm.waitForTimeout(260);
+  const restrans = await adm.evaluate(() => ({
+    meniu: Math.round(document.querySelector('#tabs').getBoundingClientRect().width),
+    principal: Math.round(document.querySelector('.shell > main').getBoundingClientRect().left),
+    avertisment: Math.round(document.querySelector('#testStageBanner').getBoundingClientRect().left),
+    aria: document.querySelector('#navToggleBtn').getAttribute('aria-expanded'),
+    clasa: document.body.classList.contains('sidebar-collapsed'),
+  }));
+  ok('desktop: meniul se restrânge la 72px și cedează spațiul conținutului',
+    restrans.meniu === 72 && restrans.principal === 72 && restrans.avertisment === 72
+      && restrans.aria === 'false' && restrans.clasa);
+
+  // Clicul pe un grup din varianta cu pictograme extinde întâi bara, apoi deschide acordeonul.
   await adm.click('#tabs .navgroup:has(button[data-tab="documente"]) > .navlabel');
-  const dropdown = await adm.evaluate(() => {
+  await adm.waitForTimeout(260);
+  const acordeon = await adm.evaluate(() => {
     const g = document.querySelector('#tabs .navgroup:has(button[data-tab="documente"])');
     const l = g.querySelector('.navlabel').getBoundingClientRect();
     const m = g.querySelector('.navmenu').getBoundingClientRect();
     return { vizibil: getComputedStyle(g.querySelector('.navmenu')).display !== 'none',
-      subEticheta: m.top >= l.bottom, inEcran: m.left >= 0 && m.right <= innerWidth };
+      subEticheta: m.top >= l.bottom, inMeniu: m.left >= 0 && m.right <= 260,
+      extins: !document.body.classList.contains('sidebar-collapsed') };
   });
-  ok('desktop: grupurile se deschid ca dropdown sub etichetă, integral în ecran',
-    dropdown.vizibil && dropdown.subEticheta && dropdown.inEcran);
+  ok('desktop: grupurile se deschid ca acordeon în bara laterală extinsă',
+    acordeon.vizibil && acordeon.subEticheta && acordeon.inMeniu && acordeon.extins);
   await adm.click('#tabs button[data-tab="documente"]');
   await adm.waitForTimeout(250);
-  ok('desktop: alegerea unei pagini închide dropdownul și activează conținutul',
+  ok('desktop: alegerea unei pagini închide acordeonul și activează conținutul',
     !(await adm.locator('#tabs .navgroup:has(button[data-tab="documente"])').evaluate((g) => g.classList.contains('open')))
       && (await adm.locator('#tab-documente').isVisible()));
   await adm.evaluate(() => window.goTab('dashboard'));
@@ -895,7 +967,7 @@ sect('12. Carcasa are o singura navigare logica si un context unic');
     const adv = new Set();
     toate.filter((x) => x.classList.contains('adv') || (x.closest('.navgroup') && x.closest('.navgroup').classList.contains('adv')))
       .forEach((x) => adv.add(x.dataset.tab));
-    // dropdownurile se deschid integral înainte de citire, altfel ascunderea ar trece pe mulțime vidă
+    // acordeoanele se deschid integral înainte de citire, altfel ascunderea ar trece pe mulțime vidă
     document.querySelectorAll('#tabs .navgroup').forEach((g) => { if (viz(g)) g.classList.add('open'); });
     const lateral = [...document.querySelectorAll('#tabs button[data-tab]')].filter(viz).map((x) => x.dataset.tab);
     return {

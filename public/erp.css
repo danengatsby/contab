@@ -3,12 +3,16 @@
 
    Loginul și aplicația folosesc aceeași familie vizuală: suprafețe calde,
    accente teracotă, antet cărbune, spațiere generoasă și controale accesibile.
-   `#tabs` este meniul superior unic al ciclului contabil, iar `#appContext` reunește
-   pagina, firma, perioada și destinațiile globale.
+   `#tabs` este meniul lateral unic al ciclului contabil, iar `#appContext` reunește
+   pagina, firma și perioada într-un singur rând compact.
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 body.erp {
-  --app-context-h: 76px;
+  --app-header-h: 64px;
+  --app-sidebar-open: 260px;
+  --app-sidebar-closed: 72px;
+  --app-sidebar-w: var(--app-sidebar-open);
+  --app-context-h: 58px;
   --app-charcoal: #24231f;
   --app-charcoal-2: #2f2e2a;
   --app-cream: #fbfaf6;
@@ -22,6 +26,7 @@ body.erp {
   font-size: 15px;
   line-height: 1.5;
 }
+body.erp.sidebar-collapsed { --app-sidebar-w: var(--app-sidebar-closed); }
 
 /* ── Navigația unică ───────────────────────────────────────────────────────── */
 body.erp .shell {
@@ -33,15 +38,16 @@ body.erp .shell {
 body.erp .topbar {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 70;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 10px;
   width: 100%;
-  min-height: 70px;
-  height: auto;
-  padding: 10px 20px 0;
+  min-height: var(--app-header-h);
+  max-height: var(--app-header-h);
+  height: var(--app-header-h);
+  padding: 10px 18px;
   overflow: visible;
   color: #f7f3ea;
   background: var(--app-charcoal);
@@ -56,7 +62,7 @@ body.erp .topbar .brand {
   align-items: center;
   gap: 11px;
   min-height: 44px;
-  margin: 0 auto 0 0;
+  margin: 0;
   padding: 0;
   border: 0;
 }
@@ -71,55 +77,58 @@ body.erp .brand .logo {
   font-size: 21px;
 }
 body.erp .brand h1 { margin: 0; color: #fff; font-size: 21px; line-height: 1.1; }
-body.erp .brand small {
-  display: block;
-  max-width: 170px;
-  margin-top: 3px;
-  overflow: hidden;
-  color: #bdb8ac;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-body.erp .topbar .spacer,
 body.erp .topbar > .firma-select,
 body.erp .topbar > .curgroup { display: none; }
+body.erp .topbar .spacer { order: 3; display: block; flex: 1 1 auto; }
 
 body.erp .topbar #tabs {
-  order: 6;
+  position: fixed;
+  top: var(--app-header-h);
+  bottom: 0;
+  left: 0;
+  z-index: 60;
   display: flex;
-  flex: 1 0 100%;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 3px;
+  width: var(--app-sidebar-w);
+  min-width: var(--app-sidebar-w);
+  max-width: var(--app-sidebar-w);
   margin: 0;
-  padding: 7px 0 10px;
-  overflow: visible;
-  border-top: 1px solid rgba(255,255,255,.1);
+  padding: 12px 10px 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: #f7f3ea;
+  background: var(--app-charcoal);
+  border-top: 1px solid rgba(255,255,255,.08);
+  border-right: 1px solid rgba(255,255,255,.1);
+  box-shadow: 12px 0 28px rgba(36,35,31,.08);
+  transition: width .18s ease, min-width .18s ease, max-width .18s ease;
 }
 
 body.erp #tabs > button[data-tab]:not(.hidden),
 body.erp #tabs > button.nav-action:not(.hidden),
 body.erp #tabs > a.navlink:not(.hidden),
 body.erp #tabs > .nav-language:not(.hidden) {
-  display: inline-flex !important;
+  position: relative;
+  display: flex !important;
   flex: 0 0 auto;
   align-items: center;
   gap: 7px;
-  width: auto;
-  min-height: 36px;
-  padding: 7px 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
   color: #d8d3c8;
   background: transparent;
   border: 0;
   border-radius: 10px;
   font: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   line-height: 1.25;
-  text-align: center;
+  text-align: left;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
@@ -149,38 +158,38 @@ body.erp #tabs > .nav-language select {
 body.erp #tabs > button[data-tab].active {
   color: #fff;
   background: rgba(194,97,60,.22);
-  box-shadow: inset 0 -3px 0 var(--app-clay);
+  box-shadow: inset 3px 0 0 var(--app-clay);
 }
 body.erp #tabs > button[data-tab].active .app-icon { color: #eea589; }
 
 body.erp #tabs .navgroup:not(.hidden) {
-  position: relative !important;
-  display: inline-block !important;
+  position: static !important;
+  display: block !important;
   flex: 0 0 auto;
-  width: auto;
+  width: 100%;
 }
 body.erp #tabs .navlabel:not(.hidden) {
-  display: inline-flex !important;
+  display: flex !important;
   align-items: center;
   gap: 7px;
-  width: auto;
-  min-height: 36px;
-  padding: 7px 9px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
   color: #d1ccc1;
   background: transparent;
   border: 0;
   font: inherit;
-  font-size: 12.75px;
+  font-size: 13.5px;
   font-weight: 700;
   letter-spacing: .01em;
-  text-align: center;
+  text-align: left;
   white-space: nowrap;
   cursor: pointer;
 }
 body.erp #tabs .navlabel::after {
   width: 6px;
   height: 6px;
-  margin: -3px 0 0 2px;
+  margin: -3px 2px 0 auto;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   content: "";
@@ -192,41 +201,37 @@ body.erp #tabs .navlabel:hover { color: #fff; background: rgba(255,255,255,.08);
 body.erp #tabs .navlabel.active {
   color: #fff;
   background: rgba(194,97,60,.18);
-  box-shadow: inset 0 -3px 0 var(--app-clay);
+  box-shadow: inset 3px 0 0 var(--app-clay);
 }
 body.erp #tabs .navgroup.open > .navlabel { color: #f4d3c5; }
 body.erp #tabs .navgroup.open > .navlabel::after { transform: rotate(225deg); }
 body.erp #tabs .navmenu {
-  position: absolute !important;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 80;
+  position: static !important;
   display: none !important;
-  min-width: 260px;
-  max-width: 340px;
-  max-height: min(68vh, 560px);
-  padding: 7px;
-  overflow-y: auto;
-  background: var(--app-charcoal-2);
-  border: 1px solid rgba(255,255,255,.13);
-  border-radius: 12px;
-  box-shadow: 0 18px 42px rgba(0,0,0,.32);
+  min-width: 0;
+  max-width: none;
+  max-height: none;
+  padding: 2px 0 7px 17px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
-body.erp #tabs .navgroup:nth-last-child(-n+3) > .navmenu { right: 0; left: auto; }
-body.erp #tabs .navgroup.open > .navmenu:not(.hidden) { display: grid !important; }
+body.erp #tabs .navgroup.open > .navmenu:not(.hidden) { display: block !important; }
 body.erp #tabs .navmenu button:not(.hidden),
 body.erp #tabs .navmenu a.navlink:not(.hidden) {
   display: flex !important;
   align-items: center;
   gap: 9px;
   width: 100%;
-  min-height: 40px;
-  padding: 8px 11px;
+  min-height: 38px;
+  padding: 8px 10px;
   color: #cbc6bc;
   background: transparent;
   border: 0;
-  border: 0;
-  border-radius: 8px;
+  border-left: 1px solid rgba(255,255,255,.13);
+  border-radius: 0 9px 9px 0;
   font: inherit;
   font-size: 13.5px;
   font-weight: 500;
@@ -241,7 +246,8 @@ body.erp #tabs .navmenu a.navlink:focus-visible { outline-color: #fff; }
 body.erp #tabs .navmenu button.active {
   color: #fff;
   background: rgba(194,97,60,.18);
-  box-shadow: inset 3px 0 0 #eea589;
+  border-left-color: #eea589;
+  box-shadow: none;
   font-weight: 650;
 }
 body.erp #tabs #uiModeBtn.mod-expert {
@@ -271,19 +277,49 @@ body.erp .topbar #logoutBtn {
   box-shadow: none;
 }
 body.erp .topbar #logoutBtn:hover { color: #fff; background: rgba(255,255,255,.14); }
-body.erp .topbar #userBadge { order: 2; margin: 0 3px 0 0; color: #bdb8ac; font-size: 12.5px; }
-body.erp .topbar #logoutBtn { order: 3; width: auto; }
-body.erp .topbar > .imper-banner:not(.hidden) { order: 5; flex: 1 0 100%; margin: 0; }
-body.erp #navToggleBtn,
+body.erp .topbar #userBadge { order: 4; margin: 0 3px 0 0; color: #bdb8ac; font-size: 12.5px; }
+body.erp .topbar #logoutBtn { order: 5; width: auto; }
+body.erp #navToggleBtn {
+  order: 2;
+  display: inline-flex;
+  min-height: 38px;
+  color: #fff;
+  background: rgba(255,255,255,.09);
+  border-color: rgba(255,255,255,.18);
+}
+body.erp #navToggleBtn:hover { background: rgba(255,255,255,.14); }
 body.erp .nav-backdrop { display: none; }
+
+/* Stările persistente se aliniază cu zona de lucru, fără să intre în antet și fără să fie
+   acoperite de navigator. */
+body.erp .shell > .test-stage-banner,
+body.erp .shell > .luna-bar,
+body.erp .shell > #subExpiredBar,
+body.erp .shell > .imper-banner {
+  width: auto;
+  margin-left: var(--app-sidebar-w);
+  transition: margin-left .18s ease;
+}
+body.erp .shell > .imper-banner {
+  flex-direction: row;
+  align-items: center;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  padding: 9px 18px;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+body.erp .shell > .imper-banner .btn { width: auto; margin-left: auto; }
 
 /* ── Bara contextuală: pagină + firmă + perioadă ───────────────────────────── */
 body.erp .shell > main {
   min-width: 0;
   max-width: none;
-  margin: 0;
-  padding: 0 32px 56px;
+  margin: 0 0 0 var(--app-sidebar-w);
+  padding: 0 28px 56px;
   overflow-x: clip;
+  transition: margin-left .18s ease;
 }
 body.erp .shell > main > .tab { max-width: 1220px; margin: 0 auto; }
 
@@ -294,20 +330,20 @@ body.erp .app-context {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 24px;
+  gap: 6px 18px;
   min-height: var(--app-context-h);
-  margin: 0 -32px 28px;
-  padding: 10px 32px;
+  margin: 0 -28px 20px;
+  padding: 8px 28px;
   background: color-mix(in srgb, var(--card) 94%, transparent);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 8px 22px rgba(45,39,29,.045);
   backdrop-filter: blur(14px);
 }
-body.erp .app-context-title { display: flex; align-items: center; gap: 12px; min-width: 160px; }
+body.erp .app-context-title { display: flex; align-items: center; gap: 10px; min-width: 160px; }
 body.erp .app-context-icon {
-  width: 40px;
-  height: 40px;
-  padding: 9px;
+  width: 36px;
+  height: 36px;
+  padding: 8px;
   color: var(--app-clay);
   background: #f7e8df;
   border-radius: 12px;
@@ -316,7 +352,7 @@ body.dark.erp .app-context-icon { color: #eea589; background: rgba(194,97,60,.18
 body.erp .app-context-title > div { display: flex; flex-direction: column; min-width: 0; }
 body.erp .app-context-kicker {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 750;
   letter-spacing: .08em;
   line-height: 1.2;
@@ -327,18 +363,30 @@ body.erp #appContextTitle {
   overflow: hidden;
   color: var(--ink);
   font-family: Georgia, "Iowan Old Style", serif;
-  font-size: 21px;
+  font-size: 19px;
   font-weight: 600;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-body.erp .app-context-controls { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; }
+body.erp .app-context-controls { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
 body.erp .app-context-field { display: flex; align-items: center; gap: 7px; margin: 0; }
 body.erp .app-context-field > span:first-child {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+body.erp .company-context-field { position: relative; }
+body.erp .company-picker {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 260px) 40px;
+  width: 300px;
+  max-width: 100%;
+}
+body.erp .company-picker.single-company {
+  grid-template-columns: minmax(0, 260px);
+  width: 260px;
 }
 body.erp .app-context .firma-select {
   /* Eticheta optiunii e „NUME (CUI)" + eventual marcajul de abonament, deci depaseste
@@ -360,6 +408,101 @@ body.erp .app-context .firma-select {
   font-size: 14px;
   font-weight: 600;
 }
+body.erp .company-picker:not(.single-company) .firma-select {
+  border-radius: 10px 0 0 10px;
+}
+body.erp .company-picker-search-button {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--app-clay-dark);
+  background: color-mix(in srgb, var(--card) 88%, var(--app-clay) 12%);
+  border: 1px solid var(--line);
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  cursor: pointer;
+}
+body.erp .company-picker-search-button:hover,
+body.erp .company-picker-search-button[aria-expanded="true"] {
+  color: var(--app-clay-dark);
+  background: color-mix(in srgb, var(--card) 75%, var(--app-clay) 25%);
+}
+body.erp .company-picker-search-button .app-icon { width: 18px; height: 18px; }
+body.erp .company-picker-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 95;
+  width: min(390px, calc(100vw - 24px));
+  padding: 10px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  box-shadow: 0 18px 48px rgba(45,39,29,.2);
+}
+body.erp .company-picker-search-label { display: block; margin: 0 0 8px; }
+body.erp .company-picker-search {
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 11px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 14px;
+}
+body.erp .company-picker-results {
+  display: grid;
+  gap: 3px;
+  max-height: min(330px, 55vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+body.erp .company-picker-option,
+body.erp .company-picker-manage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+body.erp .company-picker-option:hover,
+body.erp .company-picker-option:focus-visible,
+body.erp .company-picker-option[aria-selected="true"] {
+  background: color-mix(in srgb, var(--card) 78%, var(--app-clay) 22%);
+}
+body.erp .company-picker-option-copy { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+body.erp .company-picker-option-copy strong,
+body.erp .company-picker-option-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.erp .company-picker-option-copy strong { font-size: 14px; font-weight: 700; }
+body.erp .company-picker-option-copy small { color: var(--muted); font-size: 12px; }
+body.erp .company-picker-check { flex: 0 0 auto; color: var(--good); font-weight: 800; }
+body.erp .company-picker-empty { margin: 12px 8px; color: var(--muted); font-size: 13px; text-align: center; }
+body.erp .company-picker-manage {
+  min-height: 40px;
+  margin-top: 7px;
+  padding-top: 9px;
+  color: var(--app-clay-dark);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 9px 9px;
+  font-size: 13px;
+  font-weight: 700;
+}
+body.erp .company-picker-manage:hover { background: color-mix(in srgb, var(--card) 82%, var(--app-clay) 18%); }
 body.erp .app-context .curgroup { display: inline-flex; align-items: center; gap: 4px; }
 body.erp .app-context .curnav,
 body.erp .app-context .curperiod {
@@ -416,7 +559,7 @@ body.erp .muted { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
 /* Modul compact afectează numai suprafețele cu densitate de date. Restul UI-ului
    rămâne la aceleași dimensiuni, astfel încât butoanele și formularele nu se micșorează. */
 body.erp.compact { font-size: 15px; line-height: 1.5; }
-body.erp.compact .shell > main { margin: 0; }
+body.erp.compact .shell > main { margin-left: var(--app-sidebar-w); }
 body.erp.compact h1 { font-size: inherit; }
 body.erp.compact h2 { font-size: 22px; }
 body.erp.compact h3 { font-size: 18px; }
@@ -424,15 +567,52 @@ body.erp.compact h3 { font-size: 18px; }
    utilizatorii care au o versiune HTML veche rămasă temporar în cache. */
 #erpChrome, #erpMenu, #erpTools, #erpStatus { display: none !important; }
 
+/* Bara restrânsă păstrează destinațiile directe ca pictograme. Un grup se extinde înainte de a
+   deschide acordeonul său (erp.js), astfel încât submeniurile nu sunt înghesuite în 72px. */
+@media (min-width: 701px) {
+  body.erp.sidebar-collapsed #tabs > button[data-tab]:not(.hidden),
+  body.erp.sidebar-collapsed #tabs > button.nav-action:not(.hidden),
+  body.erp.sidebar-collapsed #tabs > a.navlink:not(.hidden),
+  body.erp.sidebar-collapsed #tabs > .nav-language:not(.hidden),
+  body.erp.sidebar-collapsed #tabs .navlabel:not(.hidden) {
+    justify-content: center;
+    gap: 0;
+    padding-inline: 8px;
+    font-size: 0;
+  }
+  body.erp.sidebar-collapsed #tabs .navlabel::after { display: none; }
+  body.erp.sidebar-collapsed #tabs .navmenu,
+  body.erp.sidebar-collapsed #tabs .navgroup.open > .navmenu:not(.hidden) { display: none !important; }
+  body.erp.sidebar-collapsed #tabs > .nav-language > span:not(.app-icon),
+  body.erp.sidebar-collapsed #tabs > .nav-language > select { display: none; }
+  body.erp.sidebar-collapsed #tabs > button .app-icon,
+  body.erp.sidebar-collapsed #tabs > a .app-icon,
+  body.erp.sidebar-collapsed #tabs > .nav-language .app-icon,
+  body.erp.sidebar-collapsed #tabs .navlabel .app-icon { width: 22px; height: 22px; }
+  body.erp.sidebar-collapsed #tabs .navbadge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    margin: 0;
+    font-size: 10px;
+  }
+}
+
 /* ── Mobil: aceeași ierarhie, condensată ───────────────────────────────────── */
 @media (max-width: 900px) {
   body.erp .app-online,
   body.erp .app-context-field > span:first-child { display: none; }
+  body.erp .company-picker { grid-template-columns: minmax(0, 220px) 40px; width: 260px; }
+  body.erp .company-picker.single-company { grid-template-columns: minmax(0, 220px); width: 220px; }
   body.erp .app-context .firma-select { min-width: 160px; max-width: 220px; }
 }
 
 @media (max-width: 700px) {
-  body.erp { --app-context-h: auto; }
+  body.erp {
+    --app-sidebar-w: 0px;
+    --app-context-h: auto;
+  }
+  body.erp.sidebar-collapsed { --app-sidebar-w: 0px; }
   body.erp .shell { display: block; }
   body.erp .topbar {
     position: sticky;
@@ -443,7 +623,9 @@ body.erp.compact h3 { font-size: 18px; }
     flex-wrap: wrap;
     align-items: center;
     width: 100%;
-    height: auto;
+    min-height: 58px;
+    max-height: 64px;
+    height: 58px;
     padding: 9px 12px;
     overflow: visible;
     border-right: 0;
@@ -458,7 +640,7 @@ body.erp.compact h3 { font-size: 18px; }
   }
   body.erp .brand .logo { width: 34px; height: 34px; }
   body.erp .brand h1 { font-size: 18px; }
-  body.erp .topbar .brand small,
+  body.erp .topbar .spacer { display: none; }
   body.erp .topbar #tabs { display: none; }
   body.erp #navToggleBtn {
     order: 2;
@@ -470,7 +652,6 @@ body.erp.compact h3 { font-size: 18px; }
   }
   body.erp .topbar #userBadge { display: none; }
   body.erp .topbar #logoutBtn { order: 3; width: auto; }
-  body.erp .topbar > .imper-banner:not(.hidden) { order: 4; }
 
   /* Același arbore de navigație ca pe desktop, deschis ca sertar sub antet. */
   body.erp .topbar.nav-open #tabs {
@@ -483,6 +664,8 @@ body.erp.compact h3 { font-size: 18px; }
     align-items: stretch;
     gap: 3px;
     width: min(86vw, 320px);
+    min-width: min(86vw, 320px);
+    max-width: min(86vw, 320px);
     margin: 0;
     padding: 12px 10px calc(18px + env(safe-area-inset-bottom,0));
     overflow-y: auto;
@@ -563,7 +746,18 @@ body.erp.compact h3 { font-size: 18px; }
   }
   body.erp.mobile-nav-open { overflow: hidden; }
 
-  body.erp .shell > main { margin: 0; padding: 0 12px calc(84px + env(safe-area-inset-bottom,0)); }
+  body.erp .shell > .test-stage-banner,
+  body.erp .shell > .luna-bar,
+  body.erp .shell > #subExpiredBar,
+  body.erp .shell > .imper-banner { width: auto; margin-left: 0; }
+  body.erp .shell > .imper-banner {
+    flex-direction: column;
+    align-items: stretch;
+    margin: 0;
+  }
+  body.erp .shell > .imper-banner .btn { width: 100%; margin-left: 0; }
+
+  body.erp .shell > main { margin-left: 0; padding: 0 12px calc(84px + env(safe-area-inset-bottom,0)); }
   body.erp .app-context {
     position: relative;
     z-index: 1;
@@ -592,7 +786,11 @@ body.erp.compact h3 { font-size: 18px; }
   body.erp .app-context-controls { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; width: 100%; }
   body.erp .app-context-field { min-width: 0; }
   body.erp .app-context-field:first-child { width: 100%; }
+  body.erp .company-picker,
+  body.erp .company-picker.single-company { grid-template-columns: minmax(0,1fr) 40px; width: 100%; }
+  body.erp .company-picker.single-company { grid-template-columns: minmax(0,1fr); }
   body.erp .app-context .firma-select { width: 100%; min-width: 0; max-width: none; }
+  body.erp .company-picker-panel { right: auto; left: 0; }
   body.erp .app-context .curperiod { min-width: 106px; padding-inline: 6px; font-size: 13px; }
   body.erp .app-context .curnav { min-width: 36px; width: 36px; padding: 0; }
 }

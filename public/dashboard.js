@@ -82,6 +82,9 @@ function trendChip(pct, goodWhenUp) {
 // in lista, altfel ecranul gol ar ramane complet gol.
 export const PANOURI_ANALITICE = [
   '#rezumatCard',      // „Situatia firmei — pe scurt" (4 dale, toate 0,00)
+  '#dashAccountingPanel', // închide și sumarul secțiunii, nu lasă un acordeon gol
+  '#dashTrendsPanel',
+  '#dashOperationsPanel',
   '#kpis',             // cele 8 KPI-uri din modul expert
   '#yoyCard',          // comparatia an-la-an („fara baza")
   '#forecastCard',     // previziunea de cash-flow
@@ -90,6 +93,46 @@ export const PANOURI_ANALITICE = [
   '#randDatorii',      // top datorii + vechimea soldurilor
   '#randOperatiuni',   // ultimele operatiuni + stocuri valoroase
 ];
+
+// Analizele secundare sunt un spațiu de lucru personalizabil: utilizatorul lasă deschise numai
+// secțiunile pe care le urmărește, iar alegerea se păstrează per cont în browser. Folosim
+// `<details>` nativ — tastatura și cititoarele de ecran primesc gratuit starea expandat/închis.
+const DASHBOARD_PANELS_KEY = 'contabo:dashboard-panels:v1';
+function monteazaPanouriDashboard() {
+  const gazda = $('#dashboardSecondary');
+  if (!gazda) return;
+  const panouri = $$('details[data-dashboard-panel]', gazda);
+  const identitate = String(USER.id || USER.username || 'default');
+  const cheieCurenta = () => DASHBOARD_PANELS_KEY + ':' + String(USER.id || USER.username || 'default');
+  const salveaza = () => {
+    const stare = {};
+    panouri.forEach((p) => { stare[p.dataset.dashboardPanel] = p.open; });
+    try { localStorage.setItem(cheieCurenta(), JSON.stringify(stare)); } catch (_) { /* mod privat */ }
+  };
+  if (gazda.dataset.mounted !== '1') {
+    gazda.dataset.mounted = '1';
+    panouri.forEach((p) => p.addEventListener('toggle', salveaza));
+    const schimbaToate = (deschise) => {
+      panouri.filter((p) => !p.classList.contains('hidden') && getComputedStyle(p).display !== 'none')
+        .forEach((p) => { p.open = deschise; });
+      salveaza();
+    };
+    const extinde = $('#dashExpandAll');
+    const restrange = $('#dashCollapseAll');
+    if (extinde) extinde.addEventListener('click', () => schimbaToate(true));
+    if (restrange) restrange.addEventListener('click', () => schimbaToate(false));
+  }
+  // Impersonarea schimbă utilizatorul fără reload. Reîncărcăm preferințele noului cont, dar nu
+  // montăm încă o serie de ascultători peste cele existente.
+  if (gazda.dataset.dashboardOwner === identitate) return;
+  gazda.dataset.dashboardOwner = identitate;
+  let salvate = {};
+  try { salvate = JSON.parse(localStorage.getItem(cheieCurenta()) || '{}') || {}; } catch (_) { salvate = {}; }
+  panouri.forEach((p) => {
+    const nume = p.dataset.dashboardPanel;
+    p.open = Object.prototype.hasOwnProperty.call(salvate, nume) ? !!salvate[nume] : false;
+  });
+}
 /**
  * Tabloul de bord nu are ce arata: firma nu are NICIO inregistrare contabila. Functie PURA
  * (testata in test/frontend.mjs), pe acelasi camp din care se decide si wizardul de bun venit.
@@ -111,8 +154,11 @@ function aplicaTabloulGol(gol) {
   // altceva — acolo panourile dispar la fel, dar nota ar fi un sfat despre firma inexistenta.
   const nota = $('#dashGolCard');
   if (nota) nota.classList.toggle('hidden', !gol || !!USER.faraFirma);
+  const secundar = $('#dashboardSecondary');
+  if (secundar) secundar.classList.toggle('hidden', !!USER.faraFirma);
 }
 export async function loadDashboard() {
+  monteazaPanouriDashboard();
   let k; try { k = await api('/api/dashboard'); } catch (e) { return; }
   let c = null; try { c = await api('/api/dashboard-charts'); } catch (e) { /* grafice optionale */ }
   // „Exercițiul 2026" e termenul contabil corect, dar e prima etichetă de pe primul ecran al unui
@@ -203,13 +249,16 @@ export function deFacutHtml(items, azi) {
 function renderDeFacut(n) {
   const card = $('#deFacutCard'); if (!card) return;
   const items = (n && n.items) || [];
-  card.classList.toggle('hidden', !items.length);
-  if (!items.length) return;
-  $('#deFacutCount').textContent = items.length;
-  $('#deFacutList').innerHTML = deFacutHtml(items);
-  // „Vezi toate" apare doar când chiar mai sunt: altfel promite un ecran cu ceva în plus și nu e.
+  card.classList.remove('hidden');
+  const termene = $('#deFacutTermene');
+  if (termene) termene.classList.toggle('hidden', !items.length);
+  const count = $('#deFacutCount');
+  if (count) count.textContent = items.length ? items.length : '';
   const toate = $('#deFacutToate');
   if (toate) toate.classList.toggle('hidden', items.length <= DE_FACUT_MAX);
+  if (!items.length) { $('#deFacutList').innerHTML = ''; return; }
+  $('#deFacutList').innerHTML = deFacutHtml(items);
+  // „Vezi toate" apare doar când chiar mai sunt: altfel promite un ecran cu ceva în plus și nu e.
   $$('#deFacutList .alert[data-notif]').forEach((b) => b.addEventListener('click', () => rezolvaNotificare(items[Number(b.dataset.notif)])));
 }
 $('#deFacutToate') && $('#deFacutToate').addEventListener('click', () => deps.goTab && deps.goTab('notificari'));
@@ -306,8 +355,8 @@ function renderPrimiiPasi(p) {
     + `<div class="muted" data-u="u30">${gata} din ${pasi.length} pași făcuți · Nu știi ce tip de document ai? Folosește <b>🧭 Înregistrează ghidat</b> de mai jos.</div>`;
   wireSteps('#primiiPasiList');
 }
-// Rezumatul executiv (mod simplu): situația firmei în limbaj de business, cu drill-down —
-// bani disponibili, de încasat, de plătit, obligații stat & salarii, rezultat + termene.
+// Cei patru indicatori esențiali sunt comuni ambelor moduri: situația firmei în limbaj de
+// business, cu drill-down — bani disponibili, de încasat, de plătit, obligații stat & salarii.
 async function renderRezumat(k, notif) {
   const box = $('#rezumatKpis'); if (!box) return;
   $('#rezumatData').textContent = '· la zi, ' + new Date().toLocaleDateString(uiLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
@@ -337,12 +386,7 @@ async function renderRezumat(k, notif) {
   // arată pe fiecare, cu butonul care le rezolvă. Rămâne doar confirmarea că nu e nimic de făcut —
   // singurul caz în care cardul lipsește de pe ecran, deci singurul în care mai spune ceva nou.
   const termen = ((notif && notif.items) || []).length ? '' : ' · niciun termen fiscal în următoarele 7 zile';
-  f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span><span class="spacer"></span>
-    <button class="btn small" data-go="cashbook">Încasări & plăți →</button>
-    <button class="btn small" data-go="analitic">Scadențar →</button>
-    <button class="btn small" data-go="tva">TVA →</button>
-    <button class="btn small" data-go="livrabile">Declarații & termene →</button>`;
-  $$('#rezumatFooter [data-go]').forEach((b) => b.addEventListener('click', () => deps.goTab(b.dataset.go)));
+  f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span>`;
 }
 
 export async function renderBudget(year) {
@@ -470,8 +514,9 @@ function renderDashAlerts(k) {
   // „cumulat" explicit: tab-ul TVA arată decontul UNEI luni, deci fără cuvântul ăsta cele două
   // cifre („5.502" aici, „882" acolo) par să se contrazică.
   if (k.tvaDePlata > k.tvaDeRecuperat && k.tvaDePlata > 0) a.push({ ic: '🧾', tone: 'warn', txt: 'TVA de plată, <b>cumulat pe toate lunile</b>: <b>' + fmt(k.tvaDePlata) + '</b> lei', go: 'tva', cta: 'Decontul unei luni' });
-  if (k.soldFurnizori > 0) a.push({ ic: '🏭', tone: 'warn', txt: '<b>' + fmt(k.soldFurnizori) + '</b> lei de plătit furnizorilor', go: 'cashbook', cta: 'Plăți' });
-  if (k.soldClienti > 0) a.push({ ic: '👥', tone: 'info', txt: '<b>' + fmt(k.soldClienti) + '</b> lei de încasat de la clienți', go: 'analitic', cta: 'Scadențar' });
+  // Soldurile de clienți/furnizori sunt deja două dintre cele patru indicatoare esențiale.
+  // Repetarea lor aici transforma „De făcut" într-un al doilea rezumat financiar și adăuga două
+  // rânduri pe mobil fără să numească un termen sau o anomalie. Aici rămân numai acțiunile reale.
   if (k.profit < 0) a.push({ ic: '⚠️', tone: 'bad', txt: 'Rezultatul anului e <b>pierdere</b> (' + fmt(k.profit) + ' lei)', go: 'situatii', cta: 'Situații' });
   const gol = mesajFaraAlerte(k.primiiPasi, USER.faraFirma);
   box.innerHTML = a.length

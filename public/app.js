@@ -80,8 +80,8 @@ async function promptFirmaSubscribe(firmaId, firmaNume) {
 // ── Inscriere firma (pagina publica de pe login) ──
 
 
-// ───────────────────────── MENIU SUPERIOR (dropdownuri) ──────────────────────
-// Clic pe antet deschide submeniul și le închide pe celelalte: un singur dropdown deschis.
+// ───────────────────────── MENIU LATERAL (acordeoane) ────────────────────────
+// Clic pe grup deschide submeniul și le închide pe celelalte: un singur acordeon deschis.
 function closeMenus(except) {
   $$('#tabs .navgroup.open').forEach((g) => { if (g === except) return; g.classList.remove('open'); const l = g.querySelector('.navlabel'); if (l) l.setAttribute('aria-expanded', 'false'); });
 }
@@ -90,10 +90,10 @@ function openGroup(g) {
   closeMenus(g);
   g.classList.add('open');
   const l = g.querySelector('.navlabel'); if (l) l.setAttribute('aria-expanded', 'true');
-  // Pe telefon arborele devine sertar și își derulează singur conținutul. Aducem submeniul în
-  // cadru numai acolo; pe desktop dropdownul este poziționat sub eticheta din banda de sus.
+  // Atât bara laterală desktop, cât și sertarul mobil își derulează conținutul. După extindere,
+  // aducem capătul submeniului în cadru dacă a coborât sub marginea navigatorului.
   const meniu = g.querySelector('.navmenu');
-  if (!meniu || !window.matchMedia('(max-width: 700px)').matches) return;
+  if (!meniu) return;
   requestAnimationFrame(() => {
     const bara = g.closest('#tabs'); if (!bara) return;
     if (meniu.getBoundingClientRect().bottom > bara.getBoundingClientRect().bottom) {
@@ -112,7 +112,7 @@ $$('#tabs .navgroup').forEach((g) => {
     else openGroup(g);
   });
 });
-// Un meniu superior nu pornește cu un dropdown lăsat peste conținut.
+// Navigatorul nu pornește cu un acordeon deschis inutil.
 closeMenus();
 document.addEventListener('click', (ev) => {
   if (!ev.target.closest('#tabs .navgroup')) closeMenus();
@@ -245,10 +245,27 @@ function onTab(t) {
 const subTag = (f) => { const s = (f || {})._sub || {}; return s.status === 'trial' ? ' 🎁 probă ' + s.zileRamase + 'z' : s.status === 'expired' ? ' 🎁 expirată' : s.status === 'none' ? ' ⚠ fără abonament' : ''; };
 function fillFirmaSelect() {
   const sel = $('#firmaSelect');
-  const opts = (META.firme || []).map((f) => `<option value="${f.id}" ${f.id === META.firmaActiva ? 'selected' : ''}>${H(f.nume)}${f.cui ? ' (' + H(f.cui) + ')' : ''}${subTag(f)}</option>`).join('');
+  const opts = (META.firme || []).map((f) => {
+    const option = document.createElement('option');
+    option.value = String(f.id);
+    option.selected = String(f.id) === String(META.firmaActiva);
+    option.textContent = `${f.nume || ''}${f.cui ? ' (' + f.cui + ')' : ''}${subTag(f)}`;
+    // Selectorul vizibil rămâne nativ și unic; metadatele alimentează căutarea integrată
+    // fără să extragem fragil numele/CUI-ul din eticheta formatată pentru afișare.
+    option.dataset.companyName = f.nume || '';
+    option.dataset.companyCui = f.cui || '';
+    option.dataset.companyStatus = subTag(f).trim();
+    return option;
+  });
   // optiune de adaugare direct din selector (discoverability) — duce la Setari -> Firmele mele.
   // Contul demo nu adauga/gestioneaza firme (lucreaza doar pe firma demo, resetata periodic).
-  sel.innerHTML = opts + (isDemo() ? '' : '<option value="__add__">＋ Adaugă / gestionează firme…</option>');
+  if (!isDemo()) {
+    const manage = document.createElement('option');
+    manage.value = '__add__';
+    manage.textContent = '＋ Adaugă / gestionează firme…';
+    opts.push(manage);
+  }
+  sel.replaceChildren(...opts);
 }
 // Schimbarea firmei active, ca functie ASTEPTABILA. Handlerul de pe #firmaSelect e async, deci
 // cine il declanseaza cu dispatchEvent nu are cum sa astepte sfarsitul lui `init()`. Notificarile
@@ -507,7 +524,6 @@ async function init() {
     toast('Completează-ți datele personale (nume, telefon) în Setări → Contul meu.', true);
   }
   maybeWelcome();
-  $('#companyName').textContent = (META.company && META.company.nume) || '';
   fillFirmaSelect();
   setFormFlowCompany(META.firmaActiva);
   // Curăță valorile firmei precedente și restaurează numai ciorna firmei active.
@@ -1571,7 +1587,11 @@ $('#companyForm').addEventListener('submit', async (e) => {
   renderFiscalHistory();
   refreshBalanceCategory();
   renderBalanceCategoryHistory();
-  const cn = $('#companyName'); if (cn) cn.textContent = body.nume; // absent in modul simplu — nu bloca restul
+  // Numele firmei are o singură reprezentare în shell: selectorul persistent. Actualizează-l
+  // imediat după salvare, nu abia la următorul init/reload.
+  const firmaDinLista = (META.firme || []).find((firma) => String(firma.id) === String(META.firmaActiva));
+  if (firmaDinLista) Object.assign(firmaDinLista, { nume: body.nume, cui: body.cui });
+  fillFirmaSelect();
   formFlowSaved(f);
   window.dispatchEvent(new CustomEvent('contab:company-saved'));
   toast('Date firmă salvate' + (body.tvaLaIncasare ? ' · regim TVA la încasare ACTIV' : ''));
