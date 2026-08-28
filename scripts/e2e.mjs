@@ -125,7 +125,7 @@ ok('selectorul din navigator traduce shell-ul autentificat și lunile calendaris
 await pg.evaluate(() => goTab('documente'));
 await pg.waitForTimeout(350);
 ok('localizarea urmărește și conținutul paginilor create dinamic',
-  /Upload the received document/.test(await pg.locator('#tab-documente').textContent())
+  /Record a received document/.test(await pg.locator('#tab-documente').textContent())
   && (await pg.locator('#appContextTitle').textContent()).trim() === 'Add received document');
 await pg.evaluate(() => goTab('dashboard'));
 await pg.waitForTimeout(250);
@@ -229,6 +229,7 @@ await pg.evaluate(() => goTab('dashboard'));
 await pg.waitForTimeout(1000);
 ok('rezumatul executiv e vizibil in modul simplu', await pg.locator('#rezumatCard').isVisible());
 await pg.evaluate(() => goTab('documente'));
+await pg.click('#documentWorkbenchMore > summary');
 await pg.click('#manualBtn');
 await pg.selectOption('#tipSelect', 'factura_servicii_primita');
 await pg.waitForTimeout(300);
@@ -320,7 +321,18 @@ pg.on('request', (r) => { if (r.url().includes('/api/preview')) previewReq.push(
 await pg.evaluate(() => goTab('documente'));
 await pg.waitForTimeout(800);
 await pg.evaluate(() => document.querySelectorAll('#welcomeOverlay,.toast,#fwWizard,.op-wizard').forEach((e) => e.remove()));
-ok('optiunea AI per document este vizibila in fluxul real de upload', (await pg.locator('#documentAiToggle').count()) === 1);
+ok('workbench-ul pornește în Încarcă, iar opțiunile rare sunt pliate', await pg.evaluate(() => {
+  const wb = document.querySelector('#documentWorkbench');
+  const more = document.querySelector('#documentWorkbenchMore');
+  return wb?.dataset.step === 'upload' && !more?.open
+    && document.querySelector('[data-workbench-step="upload"]')?.getAttribute('aria-current') === 'step'
+    && !document.querySelector('#manualBtn')?.offsetParent;
+}));
+await pg.click('#documentWorkbenchMore > summary');
+const aiOption = pg.locator('#documentWorkbenchMore .workbench-option').filter({ hasText: 'Prelucrare AI' });
+await aiOption.locator(':scope > summary').click();
+ok('consimțământul AI există o singură dată și apare numai în meniul secundar',
+  (await pg.locator('#documentAiToggle').count()) === 1 && await pg.locator('#documentAiToggle').isVisible());
 let uploadMultipart = '';
 await pg.route('**/api/upload', async (route) => {
   uploadMultipart = (route.request().postDataBuffer() || Buffer.alloc(0)).toString('utf8');
@@ -328,7 +340,6 @@ await pg.route('**/api/upload', async (route) => {
     documentId: 'e2e-ai-choice', fileName: 'optiune-ai.pdf', suggestedType: 'nota_contabila', fields: {}, cuis: [],
     source: 'heuristic', aiDecision: { mode: 'deny', transmitted: false }, needsReview: true,
     calitate: { scor: 0, decizie: 'revizuire', controale: [], motive: ['test browser'] },
-    autoCiorna: { entryId: 'e2e-fara-scriere' },
   }) });
 });
 await pg.evaluate(() => { const x = document.querySelector('#documentAiToggle'); x.checked = false; });
@@ -337,11 +348,22 @@ await pg.waitForFunction(() => /reguli locale/i.test(document.querySelector('#up
 await pg.unroute('**/api/upload');
 ok('browserul trimite alegerea per document in multipart, nu o lasa doar in UI',
   /name="aiMode"\r?\n\r?\ndeny/.test(uploadMultipart));
+ok('după upload, workbench-ul intră în Verifică și păstrează verdictul extracției la vedere', await pg.evaluate(() =>
+  document.querySelector('#documentWorkbench')?.dataset.step === 'verify'
+    && /reguli locale/i.test(document.querySelector('#workbenchReviewStatus')?.textContent || '')
+    && document.querySelector('#workbenchReviewStatus')?.offsetParent));
 ok('navigația ciclului nu este duplicată în conținut', (await pg.locator('.cyclemap,.cyclestep,.cyclearrow').count()) === 0);
 ok('pagina de introducere este clasificată compact în bara contextuală',
   /înregistrare/i.test(await pg.locator('.app-context-kicker').textContent()));
+await pg.evaluate(() => document.querySelector('#cancelEntry')?.click());
+await pg.click('#documentWorkbenchMore > summary');
 await pg.click('#manualBtn');
 await pg.waitForTimeout(1000);
+ok('introducerea manuală intră în Verifică și închide opțiunile secundare', await pg.evaluate(() =>
+  document.querySelector('#documentWorkbench')?.dataset.step === 'verify'
+    && !document.querySelector('#documentWorkbenchMore')?.open
+    && document.querySelector('[data-workbench-step="verify"]')?.getAttribute('aria-current') === 'step'
+    && document.querySelector('#postEntry')?.textContent.trim() === 'Postează documentul'));
 ok('formularul manual folosește lățimea completă, nu o coloană îngustă în dreapta', await pg.evaluate(() => {
   const grid = document.querySelector('#tab-documente .grid2.pas12');
   return grid && getComputedStyle(grid).gridTemplateColumns.split(' ').length === 1;
@@ -376,6 +398,8 @@ let trimis = null;
 await pg.route('**/api/entries', async (route) => {
   if (route.request().method() !== 'POST') return route.continue();
   try { trimis = JSON.parse(route.request().postData() || '{}'); } catch (_) { trimis = null; }
+  // Păstrăm cererea suficient de mult în zbor ca să verificăm starea vizibilă „Postează".
+  await new Promise((resolve) => setTimeout(resolve, 250));
   await route.abort();
 });
 await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
@@ -403,6 +427,9 @@ await pg.waitForTimeout(1200);
 // „orice .primary" apăsa doar Continuă și pretindea apoi că submit-ul nu funcționează.
 await pg.click('#entryForm > .form-step:first-of-type .form-step-actions .btn.primary');
 await pg.click('#entryForm button[type="submit"]');
+await pg.waitForFunction(() => document.querySelector('#documentWorkbench')?.dataset.step === 'post');
+ok('în timpul trimiterii, workbench-ul marchează explicit etapa Postează',
+  await pg.locator('[data-workbench-step="post"]').getAttribute('aria-current') === 'step');
 await pg.waitForTimeout(1200);
 ok('formularul chiar trimite o cerere de salvare', !!trimis && trimis.tip === 'factura_vanzare_marfuri');
 const items = (trimis && trimis.fields && trimis.fields.items) || [];

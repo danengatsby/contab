@@ -14,6 +14,27 @@ let CURRENT = null; // { documentId, fields, suggestedType }
 // Context separat pentru autosave: apelanții schimbă CURRENT înainte de `openForm`, dar ciorna
 // formularului vechi trebuie finalizată cu documentId-ul vechi, nu cu cel tocmai selectat.
 let DRAFT_CONTEXT = null;
+const WORKBENCH_STEPS = ['upload', 'verify', 'post'];
+function setDocumentWorkbenchStep(step) {
+  const root = $('#documentWorkbench');
+  if (!root) return;
+  const active = WORKBENCH_STEPS.includes(step) ? step : 'upload';
+  const activeIndex = WORKBENCH_STEPS.indexOf(active);
+  root.dataset.step = active;
+  root.setAttribute('aria-busy', active === 'post' ? 'true' : 'false');
+  const uploadPane = $('#documentUploadPane');
+  const reviewPane = $('#documentReviewPane');
+  if (uploadPane) uploadPane.classList.toggle('hidden', active !== 'upload');
+  if (reviewPane) reviewPane.classList.toggle('hidden', active === 'upload');
+  $$('[data-workbench-step]', root).forEach((item) => {
+    const index = WORKBENCH_STEPS.indexOf(item.dataset.workbenchStep);
+    item.classList.toggle('is-active', index === activeIndex);
+    item.classList.toggle('is-complete', index < activeIndex);
+    if (index === activeIndex) item.setAttribute('aria-current', 'step');
+    else item.removeAttribute('aria-current');
+  });
+}
+setDocumentWorkbenchStep('upload');
 function fillTipSelect() {
   const sel = $('#tipSelect');
   const groups = {};
@@ -92,6 +113,7 @@ export function calitateHtml(cal, autoCiorna) {
 }
 
 async function uploadFile(file) {
+  setDocumentWorkbenchStep('upload');
   const st = $('#uploadStatus'); st.className = 'status'; st.textContent = 'Se citește „' + file.name + '”…';
   const fd = new FormData(); fd.append('file', file);
   const docAi = $('#documentAiToggle');
@@ -103,7 +125,7 @@ async function uploadFile(file) {
       ? '🤖 AI ' + H(res.provider || '—') + '/' + H(res.model || '—')
         + (res.incredere != null ? ' (încredere ' + res.incredere + '%)' : '')
       : '⚙️ reguli locale';
-    st.innerHTML = 'Extras din „' + res.fileName + '” prin ' + via + '. CUI: ' + ((res.cuis || []).join(', ') || '—')
+    st.innerHTML = 'Extras din „' + H(res.fileName) + '” prin ' + via + '. CUI: ' + ((res.cuis || []).map(H).join(', ') || '—')
       + (res.motiv ? '<br><span class="muted">' + H(res.motiv) + '</span>' : '')
       + (res.warning ? '<br><span data-u="u13">' + H(res.warning) + '</span>' : '')
       + ((res.checkWarnings || []).length
@@ -111,11 +133,15 @@ async function uploadFile(file) {
       + calitateHtml(res.calitate, res.autoCiorna);
     // Ciorna propusa exista deja in lista; nu cream un al doilea articol din acelasi document.
     if (res.autoCiorna) { CURRENT = null; loadEntries && loadEntries(); return; }
-    CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType, calitate: res.calitate };
+    CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType,
+      calitate: res.calitate, sourceLabel: res.fileName || file.name, reviewStatusHtml: st.innerHTML };
     openForm(res.suggestedType, res.fields);
   } catch (e) { st.className = 'status err'; st.textContent = e.message; }
 }
-$('#manualBtn').addEventListener('click', () => { CURRENT = { documentId: null, fields: {}, suggestedType: 'nota_contabila' }; openForm('nota_contabila', { data: new Date().toISOString().slice(0, 10) }); });
+$('#manualBtn').addEventListener('click', () => {
+  CURRENT = { documentId: null, fields: {}, suggestedType: 'nota_contabila', sourceLabel: 'Înregistrare manuală' };
+  openForm('nota_contabila', { data: new Date().toISOString().slice(0, 10) });
+});
 const WIZ = [
   { ic: '🛒', label: 'Am cumpărat ceva', desc: 'O factură primită de la furnizor', kids: [
     { ic: '📦', label: 'Marfă (pentru revânzare)', tip: 'factura_cumparare_marfuri' },
@@ -179,7 +205,7 @@ function pickWizardType(tip) {
   const real = tip === '__all__' ? 'nota_contabila' : tip;
   const dest = IESIRE_TIPS.test(real) ? 'emite' : 'documente';
   D.goTab(dest);
-  CURRENT = { documentId: null, fields: {}, suggestedType: real };
+  CURRENT = { documentId: null, fields: {}, suggestedType: real, sourceLabel: 'Înregistrare manuală' };
   openForm(real, { data: new Date().toISOString().slice(0, 10) }, dest);
   setTimeout(() => { const el = $('#entryForm'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (tip === '__all__') { const t = $('#tipSelect'); if (t) t.focus(); } }, 80);
 }
@@ -302,7 +328,9 @@ async function importFromSpv(msgId) {
   try {
     const res = await api('/api/anaf/import/' + msgId, { method: 'POST' });
     st.className = 'status ok'; st.textContent = 'Importat din SPV. Verifică și salvează.';
-    CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType, spvMsgId: res.msgId };
+    CURRENT = { documentId: res.documentId, fields: res.fields, suggestedType: res.suggestedType,
+      spvMsgId: res.msgId, sourceLabel: 'Factură importată din SPV',
+      reviewStatusText: 'Factura a fost importată din SPV. Confirmă datele înainte de postare.' };
     openForm(res.suggestedType, res.fields);
   } catch (e) { st.className = 'status err'; st.textContent = e.message; }
 }
@@ -355,6 +383,19 @@ const HOSTS = {
   cashbook: { host: '#formHostCash', gol: '#noDocCash' },
 };
 export function formHostSelector(host) { return (HOSTS[host] || HOSTS.documente).host; }
+function normalizedHost(host) { return HOSTS[host] ? host : 'documente'; }
+function activeFormHost(form = $('#entryForm')) {
+  const pair = Object.entries(HOSTS).find(([, value]) => form.parentElement === $(value.host));
+  return pair ? pair[0] : 'documente';
+}
+function updateSubmitButton(host, busy = false) {
+  const button = $('#postEntry');
+  if (!button) return;
+  const documentHost = host === 'documente';
+  button.disabled = busy;
+  button.textContent = busy ? (documentHost ? 'Se postează…' : 'Se salvează…')
+    : (documentHost ? 'Postează documentul' : 'Salvează');
+}
 function togglePlaceholders(ascunse) {
   Object.values(HOSTS).forEach(({ gol }) => { const el = $(gol); if (el) el.classList.toggle('hidden', ascunse); });
 }
@@ -365,10 +406,27 @@ function mountForm(host) {
 }
 function openForm(tipId, fields, host) {
   const form = $('#entryForm');
+  const targetHost = normalizedHost(host);
+  const wasDocumentHost = activeFormHost(form) === 'documente';
   formFlowFlush(form);
-  mountForm(host);
+  mountForm(targetHost);
+  if (wasDocumentHost && targetHost !== 'documente') setDocumentWorkbenchStep('upload');
   togglePlaceholders(true);
   form.classList.remove('hidden');
+  updateSubmitButton(targetHost);
+  if (targetHost === 'documente') {
+    const source = $('#workbenchSource');
+    if (source) source.textContent = 'Sursă: ' + ((CURRENT && CURRENT.sourceLabel) || 'document pregătit pentru verificare');
+    const reviewStatus = $('#workbenchReviewStatus');
+    if (reviewStatus) {
+      reviewStatus.className = 'status' + (CURRENT && (CURRENT.reviewStatusHtml || CURRENT.reviewStatusText) ? ' ok' : '');
+      if (CURRENT && CURRENT.reviewStatusHtml) reviewStatus.innerHTML = CURRENT.reviewStatusHtml;
+      else reviewStatus.textContent = (CURRENT && CURRENT.reviewStatusText) || '';
+    }
+    const more = $('#documentWorkbenchMore');
+    if (more) more.open = false;
+    setDocumentWorkbenchStep('verify');
+  }
   $('#tipSelect').value = tipId || 'nota_contabila';
   renderFields(fields || {});
   DRAFT_CONTEXT = CURRENT ? {
@@ -381,9 +439,11 @@ function openForm(tipId, fields, host) {
 }
 function closeForm(options = {}) {
   const form = $('#entryForm');
+  const documentHost = activeFormHost(form) === 'documente';
   if (options.discard !== false) formFlowDiscard(form);
   form.classList.add('hidden');
   togglePlaceholders(false);
+  if (documentHost) setDocumentWorkbenchStep('upload');
   CURRENT = null;
   DRAFT_CONTEXT = null;
 }
@@ -664,6 +724,13 @@ function updatePreview() {
   previewTimer = setTimeout(requestPreview, PREVIEW_DELAY);
 }
 async function submitEntry(ciorna) {
+  const form = $('#entryForm');
+  const host = activeFormHost(form);
+  const postingDocument = !ciorna && host === 'documente';
+  if (postingDocument) {
+    setDocumentWorkbenchStep('post');
+    updateSubmitButton(host, true);
+  }
   try {
     const payload = {
       tip: $('#tipSelect').value, fields: collectFields(),
@@ -686,7 +753,10 @@ async function submitEntry(ciorna) {
           minLength: 10, required: true, multiline: true, danger: true,
           confirmLabel: 'Aprobă derogarea și salvează' }
       );
-      if (reason == null) return;
+      if (reason == null) {
+        if (postingDocument) setDocumentWorkbenchStep('verify');
+        return;
+      }
       payload.duplicateOverride = { duplicateId: conflict.duplicateId, reason };
       res = await save();
     }
@@ -696,8 +766,8 @@ async function submitEntry(ciorna) {
     const warns = (res.stoc && res.stoc.warns) || [];
     if (warns.length) toast(warns.join(' '), true);
     else toast(ciorna ? 'Ciornă salvată: ' + res.entry.id + ' (o postezi din listă)' : 'Înregistrare salvată: ' + res.entry.id);
-    const eraCash = $('#entryForm').parentElement === $('#formHostCash');
-    formFlowSaved($('#entryForm'));
+    const eraCash = form.parentElement === $('#formHostCash');
+    formFlowSaved(form);
     closeForm({ discard: false });
     setMeta(await api('/api/meta')); fillPeriods();
     await loadEntries();
@@ -705,7 +775,12 @@ async function submitEntry(ciorna) {
     // acelasi sold negativ pe ecran si crede ca n-a mers. `loadEntries` reimprospateaza listele de
     // documente, nu si tabelul de aici — vine injectat, ca sa nu depindem de rapoarte.js.
     if (eraCash && D.refreshCashbook) await D.refreshCashbook();
-  } catch (err) { toast(err.message, true); }
+  } catch (err) {
+    if (postingDocument) setDocumentWorkbenchStep('verify');
+    toast(err.message, true);
+  } finally {
+    updateSubmitButton(host, false);
+  }
 }
 $('#entryForm').addEventListener('submit', (e) => { e.preventDefault(); submitEntry(false); });
 $('#saveDraft') && $('#saveDraft').addEventListener('click', () => submitEntry(true));
@@ -727,7 +802,8 @@ function restoreEntryDraft(form, draft) {
   renderFields(draft.fields || {});
   if ($('#motivRevizuire')) $('#motivRevizuire').value = draft.motivRevizuire || '';
   DRAFT_CONTEXT = draft.context || null;
-  CURRENT = Object.assign({ documentId: null, fields: draft.fields || {}, suggestedType: tip }, DRAFT_CONTEXT || {});
+  CURRENT = Object.assign({ documentId: null, fields: draft.fields || {}, suggestedType: tip,
+    sourceLabel: 'Ciornă locală restaurată' }, DRAFT_CONTEXT || {});
 }
 
 window.addEventListener('contab:company-context', () => {
@@ -736,6 +812,8 @@ window.addEventListener('contab:company-context', () => {
   togglePlaceholders(false);
   CURRENT = null;
   DRAFT_CONTEXT = null;
+  const more = $('#documentWorkbenchMore'); if (more) more.open = false;
+  setDocumentWorkbenchStep('upload');
   formFlowLoaded(form, 'nou', { restore: false });
 });
 

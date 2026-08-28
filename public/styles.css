@@ -376,6 +376,77 @@ main#main:focus{outline:none}
 .docband small{font-weight:500;opacity:.9}
 .docband.intrare{background:#eaf4ef;color:#0b6e4f;border-left:5px solid #0b6e4f}
 .docband.iesire{background:#fdeef0;color:#b00020;border-left:5px solid #b00020}
+
+/* Workbench documente: o singura suprafata si o singura actiune principala la un moment dat.
+   Importurile speciale raman aproape, dar nu concureaza vizual cu Incarca -> Verifica -> Posteaza. */
+.document-workbench{padding:0;overflow:hidden}
+.workbench-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px 24px 14px}
+.workbench-head h2{margin:3px 0 4px;font-size:22px}
+.workbench-head p{margin:0}
+.workbench-kicker{display:block;color:var(--accent);font-size:11px;font-weight:850;letter-spacing:.09em;text-transform:uppercase}
+.workbench-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:0;padding:15px 24px;
+  border-block:1px solid var(--line);background:var(--soft);list-style:none}
+.workbench-steps li{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;
+  min-width:0;color:var(--muted);font-size:13px}
+.workbench-steps li:not(:last-child)::after{content:"";position:absolute;z-index:0;left:calc(50% + 44px);right:calc(-50% + 44px);
+  top:50%;height:2px;background:var(--line-strong)}
+.workbench-steps li>span{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border:2px solid var(--line-strong);border-radius:50%;background:var(--card);font-weight:800}
+.workbench-steps li.is-active{color:var(--ink)}
+.workbench-steps li.is-active>span{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 0 4px rgba(194,97,60,.13)}
+.workbench-steps li.is-complete{color:var(--accent)}
+.workbench-steps li.is-complete>span{border-color:var(--accent);color:var(--accent)}
+.workbench-steps li.is-complete::after{background:var(--accent)}
+.workbench-pane{padding:24px;max-width:880px;margin:0 auto}
+.workbench-pane.hidden{display:none}
+.workbench-pane h3{margin:0 0 5px;font-size:18px}
+.workbench-pane>p{margin:0 0 14px}
+.workbench-pane-head{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.workbench-pane-head p{margin:3px 0 0}
+.document-workbench .drop{padding:32px 26px;background:var(--card);border-color:var(--line-strong)}
+.document-workbench .drop:hover,.document-workbench .drop:focus-within{border-color:var(--accent);background:var(--soft)}
+.document-workbench .drop p{font-size:15px;color:var(--ink)}
+.document-workbench .drop small{display:block;margin-top:6px;color:var(--muted)}
+.document-workbench #uploadStatus:not(:empty){margin-top:12px}
+.document-workbench #workbenchReviewStatus:not(:empty){margin-bottom:14px}
+.document-workbench #entryForm{margin-top:4px}
+.document-workbench #entryForm>.row:last-child{padding-top:5px}
+.workbench-more{border-top:1px solid var(--line);background:var(--soft)}
+.workbench-more>summary{display:flex;align-items:center;gap:7px;width:max-content;max-width:100%;padding:14px 24px;
+  color:var(--muted);cursor:pointer;font-size:13px;font-weight:750;list-style:none}
+.workbench-more>summary::-webkit-details-marker,.workbench-option>summary::-webkit-details-marker{display:none}
+.workbench-more>summary::before{content:"＋";font-size:15px;line-height:1}
+.workbench-more[open]>summary::before{content:"−"}
+.workbench-more>summary:hover{color:var(--accent)}
+.workbench-more:not([open])>.workbench-options{display:none}
+.workbench-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0 24px 24px}
+.workbench-option{min-width:0;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:none}
+.workbench-option>summary{padding:13px 14px;cursor:pointer;color:var(--ink);font-size:13px;font-weight:750;list-style:none}
+.workbench-option>summary::before{content:"›";display:inline-block;margin-right:7px;color:var(--muted);transition:transform .15s}
+.workbench-option[open]>summary::before{transform:rotate(90deg)}
+.workbench-option:not([open])>*:not(summary){display:none}
+.workbench-option[open]>*:not(summary){margin-inline:14px}
+.workbench-option[open]>*:last-child{margin-bottom:14px}
+.workbench-option-manual{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px}
+.workbench-option-manual h3{margin:0 0 2px;font-size:14px}
+.workbench-option-manual p{margin:0;font-size:12px}
+.workbench-option-manual .btn{flex:0 0 auto;margin:0}
+.workbench-option-wide{grid-column:1/-1}
+.workbench-option .check{font-size:12.5px;line-height:1.5}
+.workbench-option .row{flex-wrap:wrap}
+.workbench-option textarea{width:100%;margin-top:10px}
+.workbench-more summary:focus-visible,.workbench-option summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:8px}
+body.dark .workbench-steps li.is-active>span{box-shadow:0 0 0 4px rgba(92,187,141,.16)}
+@media(max-width:680px){
+  .workbench-head{padding:18px 16px 12px}.workbench-head h2{font-size:20px}
+  .workbench-steps{padding:13px 10px}.workbench-steps li{flex-direction:column;gap:4px;font-size:12px}
+  .workbench-steps li:not(:last-child)::after{left:calc(50% + 20px);right:calc(-50% + 20px);top:14px}
+  .workbench-pane{padding:20px 16px}.document-workbench .drop{padding:26px 14px}
+  .workbench-more>summary{padding-inline:16px}.workbench-options{grid-template-columns:1fr;padding:0 12px 16px}
+  .workbench-option-wide{grid-column:auto}.workbench-option-manual{align-items:flex-start;flex-direction:column}
+  .workbench-option-manual .btn{width:100%}
+  .document-workbench #entryForm>.row:last-child{align-items:stretch}.document-workbench #entryForm>.row:last-child .btn{width:100%}
+}
 .emitgrid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .emitgrid .emit{font-weight:800}
 /* Selector ghidat „ce vinzi?": intrebare in limbaj de afaceri -> tipul contabil corect */

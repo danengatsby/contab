@@ -698,10 +698,44 @@ section('Pașii numerotați vin în pereche: nu există „pasul 2" fără „pa
     ok('tab-' + nume + ': pașii încep de la 1 (are ' + nr.join(',') + ')', sortate[0] === 1);
     ok('tab-' + nume + ': pașii sunt consecutivi', sortate.every((v, i) => v === i + 1));
   }
-  ok('poarta chiar a găsit ecrane cu pași numerotați', cuPasi >= 2);
+  // Workbench-ul de documente folosește acum o listă semantică de progres, nu titluri „N ·";
+  // ecranul de emitere păstrează convenția cu titluri, deci mulțimea nu are voie să fie goală.
+  ok('poarta chiar a găsit ecrane cu pași numerotați', cuPasi >= 1);
   // Poarta trebuie să POATĂ pica: forma veche (doar „2 ·", fără „1 ·") o încalcă.
   const fals = [...'<h2>2 · Verifică</h2>'.matchAll(/<h[1-4][^>]*>\s*(\d+)\s*·/g)].map((m) => Number(m[1]));
   ok('poarta chiar respinge un „pasul 2" singur', fals.length === 1 && fals[0] !== 1);
+}
+
+section('Adaugă document este un workbench unic: Încarcă → Verifică → Postează');
+{
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  const js = fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8');
+  const inceput = html.indexOf('<section id="tab-documente"');
+  const sfarsit = html.indexOf('<section id="tab-emite"', inceput);
+  const ecran = html.slice(inceput, sfarsit);
+  eq('există un singur workbench de documente', (ecran.match(/id="documentWorkbench"/g) || []).length, 1);
+  const pasi = [...ecran.matchAll(/data-workbench-step="(upload|verify|post)"/g)].map((m) => m[1]);
+  eq('workbench-ul expune exact ordinea Încarcă → Verifică → Postează', pasi.join(' → '), 'upload → verify → post');
+  ok('doar încărcarea este vizibilă inițial', /id="documentWorkbench"[^>]*data-step="upload"/.test(ecran)
+    && /id="documentReviewPane"[^>]*class="[^"]*hidden/.test(ecran));
+
+  const pragSecundar = ecran.indexOf('<details id="documentWorkbenchMore"');
+  const principal = ecran.slice(0, pragSecundar);
+  const secundar = ecran.slice(pragSecundar);
+  ok('meniul secundar este pliat implicit', /<details id="documentWorkbenchMore"/.test(secundar)
+    && !/<details id="documentWorkbenchMore"[^>]*\bopen\b/.test(secundar));
+  for (const id of ['manualBtn', 'documentAiToggle', 'scannerBtn', 'bankFile', 'inboxRefresh', 'efImportFile']) {
+    ok('#' + id + ' este numai în zona secundară', !principal.includes('id="' + id + '"') && secundar.includes('id="' + id + '"'));
+  }
+  ok('zona principală păstrează doar uploadul și formularul unic de verificare',
+    principal.includes('id="drop"') && principal.includes('id="formHostDoc"') && principal.includes('id="entryForm"'));
+  ok('starea workbench-ului este legată de deschidere, postare, anulare și schimbarea firmei',
+    /setDocumentWorkbenchStep\('verify'\)/.test(js) && /setDocumentWorkbenchStep\('post'\)/.test(js)
+    && (js.match(/setDocumentWorkbenchStep\('upload'\)/g) || []).length >= 3
+    && /contab:company-context/.test(js));
+  ok('layout-ul workbench-ului se adaptează explicit pe mobil',
+    /@media\(max-width:680px\)[\s\S]*\.workbench-options\{grid-template-columns:1fr/.test(css));
 }
 
 section('Pagina nu derulează pe orizontală: convenția tabelelor ține la orice lățime');

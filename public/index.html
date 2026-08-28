@@ -719,114 +719,154 @@
 
     <!-- ─────────────── DOCUMENTE ─────────────── -->
     <section id="tab-documente" class="tab">
-      <div class="explain"><span class="ei">📥</span><p><b>Primul pas:</b> aici aduci în firmă documentele <b>primite</b> (de la furnizori, bancă, SPV) — le încarci, aplicația le citește și le contabilizează. Facturile către clienți le creezi în pagina <b>„🧾 Emite factură"</b>. Din documente se construiește automat tot restul contabilității.</p></div>
-      <div class="docband intrare" id="band-intrare"><b>📥 Documente de INTRARE</b><small>primite de la furnizori / bancă / <abbr title="Spațiul Privat Virtual — portalul ANAF unde se depun declarațiile și circulă e-Factura">SPV</abbr> — le încarci, aplicația extrage datele și le contabilizează</small></div>
       <div class="grid2 pas12">
-        <div class="card">
-          <h2>1 · Încarcă documentul primit (PDF sau imagine)</h2>
-          <p class="muted">Factură de cumpărare, chitanță, NIR, bon, stat de plată… Aplicația extrage automat datele (CUI, nr./dată, bază, TVA, total) — din PDF sau dintr-o <b>poză</b> a documentului.</p>
-          <div class="test-stage-warning compact" role="note" data-test-stage-warning="upload">
-            <span class="test-stage-icon" aria-hidden="true">⚠️</span>
-            <p><b>Folosește doar un document fictiv.</b> Fișierul de test nu trebuie să conțină date despre persoane sau firme reale.</p>
-          </div>
-          <div id="drop" class="drop">
-            <input type="file" id="file" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" />
-            <p>Trage un <b>PDF sau o imagine</b> (JPG/PNG) aici sau <span class="link">alege un fișier</span></p>
-          </div>
-          <label class="check full" id="documentAiChoice"><input type="checkbox" id="documentAiToggle" />
-            Permite transmiterea <b>acestui document</b> către furnizorul AI afișat în Setări. Dacă debifezi, fișierul este citit numai cu reguli locale.
-          </label>
-      <div class="temei-slot" data-pas="document"></div>
-          <div class="row" data-u="u74">
-            <button id="scannerBtn" class="btn" title="Scanează direct de la scanerul conectat la acest PC (cere puntea locală pornită — îți spune cum, dacă nu e).">🖨️ Scanează (scaner local)</button>
-          </div>
-          <details id="scanSetup" data-u="u23">
-            <summary class="muted" data-u="u75">Configurează scanerul local (o singură dată)</summary>
-            <div class="muted" data-u="u76">
-              Browserul nu poate accesa direct un scaner, așa că rulezi o mică „punte" pe acest PC:
-              <ol data-u="u77">
-                <li>Instalează <a href="https://www.naps2.com/" target="_blank" rel="noopener">NAPS2</a> (gratuit) și fă o <b>scanare de probă reușită</b> în el (ca să existe un profil cu scanerul tău).</li>
-                <li>Descarcă <a href="/tools/scanner-bridge/Start-Contab-Scanner.bat" download><b>Start-Contab-Scanner.bat</b></a> — un singur fișier (își ia singur ultima versiune a punții de pe server).</li>
-                <li>Dublu-click pe el → lasă fereastra neagră deschisă. (Verifică: <a href="http://127.0.0.1:8765/ping" target="_blank">http://127.0.0.1:8765/ping</a> arată versiunea.)</li>
-                <li>Apasă <b>🖨️ Scanează (scaner local)</b> de mai sus.</li>
-              </ol>
-              <a href="/tools/scanner-bridge/CITESTE-MA.txt" target="_blank">Instrucțiuni complete →</a>
+        <div id="documentWorkbench" class="card document-workbench" data-step="upload">
+          <header class="workbench-head">
+            <div>
+              <span class="workbench-kicker">Document workbench</span>
+              <h2>Înregistrează un document primit</h2>
+              <p class="muted">Încarcă documentul, verifică datele extrase și postează-l în contabilitate.</p>
+            </div>
+          </header>
+
+          <ol class="workbench-steps" aria-label="Etapele documentului">
+            <li data-workbench-step="upload" aria-current="step"><span>1</span><b>Încarcă</b></li>
+            <li data-workbench-step="verify"><span>2</span><b>Verifică</b></li>
+            <li data-workbench-step="post"><span>3</span><b>Postează</b></li>
+          </ol>
+
+          <section id="documentUploadPane" class="workbench-pane" aria-labelledby="documentUploadTitle">
+            <h3 id="documentUploadTitle">Încarcă PDF-ul sau imaginea</h3>
+            <p class="muted">Factură, chitanță, NIR, bon sau stat de plată. Datele documentului vor fi extrase automat.</p>
+            <div class="test-stage-warning compact" role="note" data-test-stage-warning="upload">
+              <span class="test-stage-icon" aria-hidden="true">⚠️</span>
+              <p><b>Folosește doar un document fictiv.</b> Fișierul de test nu trebuie să conțină date despre persoane sau firme reale.</p>
+            </div>
+            <div id="drop" class="drop">
+              <input type="file" id="file" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" />
+              <p>Trage un <b>PDF sau o imagine</b> aici sau <span class="link">alege un fișier</span></p>
+              <small>PDF, JPG, PNG sau WEBP</small>
+            </div>
+            <div id="uploadStatus" class="status" aria-live="polite"></div>
+          </section>
+
+          <section id="documentReviewPane" class="workbench-pane hidden" aria-labelledby="documentReviewTitle">
+            <div class="workbench-pane-head">
+              <div>
+                <h3 id="documentReviewTitle">Verifică datele extrase</h3>
+                <p id="workbenchSource" class="muted">Document pregătit pentru verificare.</p>
+              </div>
+            </div>
+            <div id="workbenchReviewStatus" class="status" aria-live="polite"></div>
+            <!-- formularul e UNIC in aplicatie: JS il muta intre gazda de aici si cea din „Emite factura" -->
+            <div id="formHostDoc">
+            <form id="entryForm" class="hidden">
+              <label class="full">Tip document
+                <select id="tipSelect"></select>
+              </label>
+              <div id="dynFields" class="dyn full"></div>
+              <div class="full sect-form"><h3>Articol contabil propus</h3>
+                <p class="muted">Confirmă articolul și explică eventualele corecturi înainte de postare.</p></div>
+              <div id="preview" class="preview full"></div>
+              <label class="muted full" for="motivRevizuire">De ce a fost nevoie de corectură? <span class="muted">(opțional — intră în raportul pe furnizori/formate)</span></label>
+              <input class="full" id="motivRevizuire" placeholder="ex. furnizorul pune totalul în subsol; s-a citit subtotalul" maxlength="300" />
+              <div class="row full">
+                <button id="postEntry" type="submit" class="btn primary">Postează documentul</button>
+                <button type="button" id="saveDraft" class="btn ghost" title="Salvează ca ciornă — vizibilă, dar nu intră în contabilitate până la postare">Salvează ca ciornă</button>
+                <button type="button" id="cancelEntry" class="btn ghost">Renunță</button>
+              </div>
+            </form>
+            </div>
+            <p id="noDoc" class="muted hidden">Încarcă un document pentru a începe verificarea.</p>
+          </section>
+
+          <details id="documentWorkbenchMore" class="workbench-more">
+            <summary>Alte surse și opțiuni</summary>
+            <div class="workbench-options">
+              <section class="workbench-option workbench-option-manual">
+                <div>
+                  <h3>Introducere manuală</h3>
+                  <p class="muted">Pentru o operațiune fără fișier justificativ.</p>
+                </div>
+                <button id="manualBtn" class="btn ghost">Adaugă manual</button>
+              </section>
+
+              <details class="workbench-option">
+                <summary>Prelucrare AI pentru acest document</summary>
+                <label class="check full" id="documentAiChoice"><input type="checkbox" id="documentAiToggle" />
+                  Permite transmiterea <b>acestui document</b> către furnizorul AI afișat în Setări. Dacă debifezi, fișierul este citit numai cu reguli locale.
+                </label>
+                <div class="temei-slot" data-pas="document"></div>
+              </details>
+
+              <details class="workbench-option">
+                <summary>Scaner local</summary>
+                <div class="row" data-u="u74">
+                  <button id="scannerBtn" class="btn" title="Scanează direct de la scanerul conectat la acest PC (cere puntea locală pornită — îți spune cum, dacă nu e).">Scanează documentul</button>
+                </div>
+                <details id="scanSetup" data-u="u23">
+                  <summary class="muted" data-u="u75">Configurează scanerul local (o singură dată)</summary>
+                  <div class="muted" data-u="u76">
+                    Browserul nu poate accesa direct un scaner, așa că rulezi o mică „punte" pe acest PC:
+                    <ol data-u="u77">
+                      <li>Instalează <a href="https://www.naps2.com/" target="_blank" rel="noopener">NAPS2</a> (gratuit) și fă o <b>scanare de probă reușită</b> în el (ca să existe un profil cu scanerul tău).</li>
+                      <li>Descarcă <a href="/tools/scanner-bridge/Start-Contab-Scanner.bat" download><b>Start-Contab-Scanner.bat</b></a> — un singur fișier (își ia singur ultima versiune a punții de pe server).</li>
+                      <li>Dublu-click pe el → lasă fereastra neagră deschisă. (Verifică: <a href="http://127.0.0.1:8765/ping" target="_blank">http://127.0.0.1:8765/ping</a> arată versiunea.)</li>
+                      <li>Apasă <b>Scanează documentul</b> de mai sus.</li>
+                    </ol>
+                    <a href="/tools/scanner-bridge/CITESTE-MA.txt" target="_blank">Instrucțiuni complete →</a>
+                  </div>
+                </details>
+              </details>
+
+              <details class="workbench-option">
+                <summary>Extras bancar <span class="muted">CSV / MT940 / CAMT.053</span></summary>
+                <p class="muted">Încarcă extrasul bancar; aplicația verifică soldurile și refuză fișierele duplicate.</p>
+                <h3>Subregistrul extraselor</h3>
+                <div id="bankRegistry" class="tablewrap"><p class="muted">Deschide secțiunea pentru a încărca extrasele existente.</p></div>
+                <h3>Importă un extras nou</h3>
+                <input type="file" id="bankFile" accept=".csv,.txt,.sta,.mt940,.940,.xml" />
+                <div id="bankStatus" class="status"></div>
+                <div id="bankResult" class="tablewrap"></div>
+                <button id="bankImport" class="btn primary hidden">Punctează și postează selectate</button>
+              </details>
+
+              <details class="workbench-option workbench-option-wide">
+                <summary>SPV și e-Factura XML</summary>
+                <div class="card-head">
+                  <button id="inboxRefresh" class="btn small">Reîmprospătează facturile din SPV</button>
+                </div>
+                <p class="muted">Descarcă factura din SPV și deschide aceeași etapă de verificare ca pentru un fișier încărcat.</p>
+                <div id="inboxList" class="tablewrap"><p class="muted"><b>Opțional</b> — necesită aplicație OAuth + certificat digital ANAF (Setări → „Trimitere în SPV”). Dacă nu folosești SPV, importă direct XML-ul mai jos.</p></div>
+                <button id="einvReconBtn" class="btn small" title="Compară facturile primite din SPV cu jurnalul de cumpărări">Reconciliază SPV ↔ jurnal cumpărări</button>
+                <div id="einvReconResult" class="tablewrap"></div>
+                <h3 data-u="u78">Import direct e-Factura (XML)</h3>
+                <p class="muted">Încarcă sau lipește XML-ul pentru citire și import.</p>
+                <div class="row" data-u="u79">
+                  <input type="file" id="efImportFile" accept=".xml,text/xml" />
+                  <label data-u="u73">Cont cheltuială/stoc
+                    <select id="efImportCont" data-acc-labels>
+                      <option value="371">Mărfuri (371)</option>
+                      <option value="301">Materii prime (301)</option>
+                      <option value="302">Materiale consumabile (302)</option>
+                      <option value="628">Alte servicii (628)</option>
+                      <option value="604">Materiale nestocate (604)</option>
+                      <option value="612">Chirii (612)</option>
+                      <option value="605">Utilități (energie, apă) (605)</option>
+                      <option value="611">Întreținere și reparații (611)</option>
+                      <option value="613">Asigurări (613)</option>
+                      <option value="623">Protocol, reclamă (623)</option>
+                    </select>
+                  </label>
+                  <button id="efParseBtn" class="btn">Citește factura</button>
+                </div>
+                <textarea id="efImportXml" rows="4" placeholder="...sau lipește aici conținutul XML al e-Facturii" data-u="u80"></textarea>
+                <div id="efPreview" data-u="u23"></div>
+              </details>
             </div>
           </details>
-          <div id="uploadStatus" class="status"></div>
-        </div>
-
-        <div class="card">
-          <h2>2 · Verifică și salvează</h2>
-          <p class="muted">Verifică tipul documentului și sumele (extrase automat din fișier sau completate de tine), apoi salvează. Contabilitatea din spate (debit = credit) se face singură — nu trebuie să o știi.</p>
-          <!-- formularul e UNIC in aplicatie: JS il muta intre gazda de aici si cea din „Emite factura" -->
-          <div id="formHostDoc">
-          <form id="entryForm" class="hidden">
-            <label class="full">Tip document
-              <select id="tipSelect"></select>
-            </label>
-            <div id="dynFields" class="dyn full"></div>
-            <div class="full sect-form"><h3>Verificare și salvare</h3>
-              <p class="muted">Confirmă articolul contabil propus și explică eventualele corecturi înainte de salvare.</p></div>
-            <div id="preview" class="preview full"></div>
-            <label class="muted full" for="motivRevizuire">De ce a fost nevoie de corectură? <span class="muted">(opțional — intră în raportul pe furnizori/formate)</span></label>
-            <input class="full" id="motivRevizuire" placeholder="ex. furnizorul pune totalul în subsol; s-a citit subtotalul" maxlength="300" />
-            <div class="row full">
-              <button type="submit" class="btn primary">✓ Salvează</button>
-              <button type="button" id="saveDraft" class="btn ghost" title="Salvează ca ciornă — vizibilă, dar nu intră în contabilitate până la postare">✎ Salvează ca ciornă</button>
-              <button type="button" id="cancelEntry" class="btn ghost">Renunță</button>
-            </div>
-          </form>
-          </div>
-          <p id="noDoc" class="muted">Încarcă un document ca să începi — sau adaugă o înregistrare manuală mai jos.</p>
-          <button id="manualBtn" class="btn ghost small">✏️ Adaugă manual (fără document)</button>
         </div>
       </div>
-
-      <details class="card">
-        <summary class="sec-sum">🏦 Import extras bancar <span class="muted">(CSV / MT940 / CAMT.053)</span></summary>
-        <p class="muted">Încarcă extrasul bancar; aplicația păstrează hash-ul fișierului, IBAN-ul, moneda, soldurile și fiecare tranzacție. Verifică ecuația sold inițial + mișcări = sold final înainte de postare. Un fișier reîncărcat este refuzat.</p>
-        <h3>Subregistrul extraselor</h3>
-        <div id="bankRegistry" class="tablewrap"><p class="muted">Deschide secțiunea pentru a încărca extrasele existente.</p></div>
-        <h3>Importă un extras nou</h3>
-        <input type="file" id="bankFile" accept=".csv,.txt,.sta,.mt940,.940,.xml" />
-        <div id="bankStatus" class="status"></div>
-        <div id="bankResult" class="tablewrap"></div>
-        <button id="bankImport" class="btn primary hidden">Punctează și postează selectate</button>
-      </details>
-
-      <details class="card">
-        <summary class="sec-sum">📨 Facturi primite în SPV <span class="muted">(e-Factura: import din SPV sau XML)</span></summary>
-        <div class="card-head">
-          <button id="inboxRefresh" class="btn small">⟳ Reîmprospătează</button>
-        </div>
-        <p class="muted">Importă facturile primite prin e-Factura: descarcă XML-ul, îl citește și deschide formularul de confirmare ca o cumpărare.</p>
-        <div id="inboxList" class="tablewrap"><p class="muted"><b>Opțional</b> — necesită aplicație OAuth + certificat digital ANAF (Setări → „Trimitere în SPV”). Dacă nu folosești SPV, importă direct XML-ul mai jos.</p></div>
-        <button id="einvReconBtn" class="btn small" title="Compară facturile primite din SPV cu jurnalul de cumpărări">🔍 Reconciliază SPV ↔ jurnal cumpărări</button>
-        <div id="einvReconResult" class="tablewrap"></div>
-        <h3 data-u="u78">📥 Import direct e-Factura (XML)</h3>
-        <p class="muted">Ai primit un fișier e-Factura (XML UBL)? Încarcă-l sau lipește-l aici — aplicația citește furnizorul, sumele și TVA-ul și creează factura de cumpărare.</p>
-        <div class="row" data-u="u79">
-          <input type="file" id="efImportFile" accept=".xml,text/xml" />
-          <label data-u="u73">Cont cheltuială/stoc
-            <select id="efImportCont" data-acc-labels>
-              <option value="371">Mărfuri (371)</option>
-              <option value="301">Materii prime (301)</option>
-              <option value="302">Materiale consumabile (302)</option>
-              <option value="628">Alte servicii (628)</option>
-              <option value="604">Materiale nestocate (604)</option>
-              <option value="612">Chirii (612)</option>
-              <option value="605">Utilități (energie, apă) (605)</option>
-              <option value="611">Întreținere și reparații (611)</option>
-              <option value="613">Asigurări (613)</option>
-              <option value="623">Protocol, reclamă (623)</option>
-            </select>
-          </label>
-          <button id="efParseBtn" class="btn">Citește factura</button>
-        </div>
-        <textarea id="efImportXml" rows="4" placeholder="...sau lipește aici conținutul XML al e-Facturii" data-u="u80"></textarea>
-        <div id="efPreview" data-u="u23"></div>
-      </details>
 
 
       <details class="card">
