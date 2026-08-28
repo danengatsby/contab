@@ -53,7 +53,7 @@
     'Întrebări frecvente': 'Frequently asked questions',
     'Cartea de contabilitate': 'Accounting handbook',
     'Cartea de contabilitate: 51 de capitole și 5 anexe, de citit în browser': 'Accounting handbook: 51 chapters and 5 appendices, available in your browser',
-    'Pentru firme mici, firme mari': 'For small businesses, large companies',
+    'Pentru firme mici': 'For small businesses',
     'și birouri de contabilitate.': 'and accounting firms.',
     'Automatizare pentru': 'Automation for the',
     'ciclul contabil': 'accounting cycle',

@@ -21,6 +21,11 @@ function marketing() {
       [login, pag, termeni].every((src) => src.includes(formulaPret)));
     ok('loginul nu promite firme nelimitate sub un singur abonament',
       !/Oricâte firme|Unlimited companies/i.test(login));
+    const i18n = fs.readFileSync(path.join(RADACINA, 'public', 'i18n.js'), 'utf8');
+    ok('poziționarea publică rămâne la firme mici și birouri de contabilitate',
+      /Pentru firme mici[\s\S]{0,100}birouri de contabilitate/.test(login));
+    ok('poziționarea nu promite firme mari înainte de multi-instanță și failover',
+      !/firme mari|large companies/i.test(login + '\n' + i18n));
     ok('pagina explică diferența Simplu / Expert, nu una de preț',
       /Start și Pro au același preț și aceleași funcții/.test(pag)
         && !/Planurile (?:plătite )?(?:se diferențiază|diferă|se deosebesc) (?:doar )?prin preț/i.test(pag));

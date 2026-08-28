@@ -623,6 +623,11 @@ Aplicația rulează pe **o singură instanță, pe o singură mașină**: pm2 î
 graful integral în RAM. Fencing-ul `dbEpoch` (pasul 7 din [`docs/scalare-crestere.md`](scalare-crestere.md))
 **protejează** împotriva a doi scriitori, dar nu **permite** multi-instanță. Nu există failover.
 
+**Consecință de poziționare (2026-08-28):** până la multi-instanță și failover, mesajul public se
+adresează **firmelor mici și birourilor de contabilitate**, nu „firmelor mari”. Limita comercială
+urmează capacitatea demonstrată a produsului; se extinde numai după implementarea și probarea
+arhitecturii de mai jos.
+
 Ăsta e cel mai mare risc structural al aplicației — și totuși **nu se face acum**. La 56 de articole
 contabile în producție, ar rezolva o problemă pe care nu o ai, cu costul de a nu rezolva niciuna
 dintre cele opt de mai sus, care sunt reale astăzi.
