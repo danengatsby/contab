@@ -108,9 +108,7 @@ let portfolioMeta = null;
 await capt('fb-2-portofoliu', async () => {
   await tab('portofoliu', 2200);
   portfolioMeta = await pg.evaluate(async () => {
-    const luna = document.querySelector('#portofoliuLuna').value;
-    const an = document.querySelector('#portofoliuAn').value;
-    const period = an + '-' + String(luna).padStart(2, '0');
+    const period = document.querySelector('#globalPeriodInput').value;
     const response = await fetch('/api/portfolio?period=' + period);
     return response.json();
   });
