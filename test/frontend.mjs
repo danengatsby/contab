@@ -957,7 +957,8 @@ section('Scanerul local: oprit înseamnă ascuns, nu gri');
 
 section('Uneltele globale: în navigatorul unic, fără panou separat');
 {
-  // Cele mai folosite cinci utilitare stau direct după Acasă; restul rămân în grupul Unelte.
+  // Cockpitul comercial admin și cele mai folosite cinci utilitare stau direct după Acasă;
+  // restul rămân în grupul Unelte.
   // Același arbore devine sertar pe mobil; bara contextuală rămâne strict pentru pagină,
   // firmă și perioadă.
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
@@ -967,8 +968,8 @@ section('Uneltele globale: în navigatorul unic, fără panou separat');
   const navigator = html.slice(meniu, html.indexOf('</nav>', meniu));
   const dupaAcasa = (navigator.match(/data-tab="dashboard"[^>]*>[\s\S]*?<\/button>([\s\S]*?)<button data-tab="notificari"/) || ['', ''])[1];
   const iduriDirecte = [...dupaAcasa.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map((m) => m[1]);
-  eq('după Acasă urmează exact Ghid, Caută, Temă, Expert și Dicționar', iduriDirecte.join(','),
-    'toolGhid,paletaBtn,themeBtn,uiModeBtn,glossaryBtn');
+  eq('după Acasă urmează funnelul admin, apoi Ghid, Caută, Temă, Expert și Dicționar', iduriDirecte.join(','),
+    'navFunnel,toolGhid,paletaBtn,themeBtn,uiModeBtn,glossaryBtn');
   ok('cele patru comenzi fără pagină sunt acțiuni directe ale navigatorului',
     (dupaAcasa.match(/class="nav-action"/g) || []).length === 4);
   const unelte = (navigator.match(/<div class="navgroup" id="navgrupUnelte">[\s\S]*?<div class="navmenu" id="sideTools">([\s\S]*?)<\/div>\s*<\/div>/) || ['', ''])[1];

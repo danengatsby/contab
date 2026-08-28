@@ -600,7 +600,7 @@ section('Interfata bilingva RO/EN');
   ok('formatarea numerelor si datelor foloseste locale-ul UI',
     /export const uiLocale/.test(fsI.readFileSync(pI.join(pub, 'core.js'), 'utf8')));
   ok('shell-ul offline include catalogul de limba si are versiune noua',
-    sw.includes("'/i18n.js'") && /contab-shell-v32/.test(sw));
+    sw.includes("'/i18n.js'") && /contab-shell-v33/.test(sw));
 }
 
 section('Plafon general de API (uploadGuard.generalLimit)');
@@ -1269,6 +1269,11 @@ section('Poarta: fiecare intrare de meniu are sectiune, si fiecare sectiune are 
   // Pe mobil se refoloseste arborele #tabs; o bara/panou paralel ar reintroduce driftul de mai sus.
   ok('mobilul nu reintroduce o a doua lista de destinatii',
     !/bottomnav|moreSheet|moreBtn|data-tabs=/.test(html));
+  // Cockpitul comercial a fost inițial pus la capătul submeniului lung „Setări”. Ruta era
+  // corectă, dar administratorul nu o putea descoperi în meniul real. Păstrăm intrarea ca
+  // destinație de nivel principal; clasa `hidden` este scoasă de app.js numai pentru admin.
+  ok('funnelul comercial este o intrare admin vizibilă la nivel principal',
+    /<button data-tab="dashboard"[\s\S]*?<button data-tab="funnel" id="navFunnel" class="hidden">[\s\S]*?<div class="navgroup">/.test(html));
 
   // Meniul nu are voie sa promita ce pagina nu contine. Cazul real: intrarea „Declaratii ANAF
   // (D112, SAF-T)" numea SAF-T de luni de zile, in timp ce panoul lui statea in „Situatii

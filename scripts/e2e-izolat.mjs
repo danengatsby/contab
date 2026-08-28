@@ -99,10 +99,22 @@ const cardUtilizatori = (page) => page.evaluate(() => {
   return el ? (el.classList.contains('hidden') ? 'ascuns' : 'vizibil') : 'lipseste';
 });
 ok('adminul are administrarea utilizatorilor DISPONIBILA', (await cardUtilizatori(pg)) === 'vizibil');
+ok('adminul vede funnelul comercial direct in meniul principal',
+  (await pg.locator('#tabs > #navFunnel').count()) === 1
+    && (await pg.locator('#navFunnel.hidden').count()) === 0
+    && (await pg.locator('#navFunnel').isVisible()));
+const funnelAdmin = await apiIn(pg, '/api/commercial-funnel');
+ok('funnelul din meniu are API-ul disponibil pentru admin',
+  funnelAdmin.status === 200 && Array.isArray(funnelAdmin.body?.stages));
 
 const pgLim = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
 ok('utilizatorul cu drepturi restranse se autentifica', await login(pgLim, 'limitat', PAROLA));
 ok('...NU vede administrarea utilizatorilor (ascunsa dupa rol)', (await cardUtilizatori(pgLim)) === 'ascuns');
+ok('...NU vede funnelul comercial rezervat administratorului',
+  (await pgLim.locator('#navFunnel.hidden').count()) === 1
+    && !(await pgLim.locator('#navFunnel').isVisible()));
+const funnelLimitat = await apiIn(pgLim, '/api/commercial-funnel');
+ok('...iar API-ul funnelului ii este interzis (403)', funnelLimitat.status === 403);
 ok('...NU vede meniul de salarizare (drept faraSalarii)',
   (await pgLim.locator('button[data-tab="salarizare"]:visible').count()) === 0);
 const salLim = await apiIn(pgLim, '/api/angajati');
@@ -975,10 +987,10 @@ sect('12. Carcasa are o singura navigare logica si un context unic');
   ok('contextul păstrează firma/perioada, iar Unelte rămâne numai în navigator',
     controaleUnice.firmaInContext && controaleUnice.perioadaInContext
       && !controaleUnice.unelteInContext && controaleUnice.unelteInNavigator);
-  ok('cele cinci comenzi sunt directe după Acasă, iar Cartea/Mesaje rămân în Unelte',
+  ok('funnelul admin și cele cinci comenzi sunt directe după Acasă, iar Cartea/Mesaje rămân în Unelte',
     await adm.evaluate(() => [...document.querySelector('#tabs').children].filter((el) => el.tagName === 'BUTTON')
-      .slice(0, 7).map((el) => el.id || el.dataset.tab).join(',')
-      === 'dashboard,toolGhid,paletaBtn,themeBtn,uiModeBtn,glossaryBtn,notificari')
+      .slice(0, 8).map((el) => el.id || el.dataset.tab).join(',')
+      === 'dashboard,navFunnel,toolGhid,paletaBtn,themeBtn,uiModeBtn,glossaryBtn,notificari')
     && (await adm.locator('#sideTools #toolCartea, #sideTools #toolMesaje').count()) === 2
     && (await adm.locator('#sideTools > button, #sideTools > a').count()) === 4
     && (await adm.locator('#tabs [data-tab="ghid"], #tabs [data-tab="mesaje"], #tabs a[href="/carte/"]').count()) === 3

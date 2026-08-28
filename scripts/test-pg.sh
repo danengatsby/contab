@@ -65,11 +65,22 @@ else
     -e POSTGRES_USER=contab -e POSTGRES_PASSWORD=contab -e POSTGRES_DB=contab_test \
     -p "$PORT:5432" "$IMAGINE" >/dev/null
 
-  # asteptam sa accepte conexiuni; o baza care nu porneste e NEVERIFICAT, nu esec de test
+  # Imaginea oficială pornește mai întâi un server TEMPORAR pentru inițializare, apoi îl
+  # oprește și pornește serverul final. Un singur `pg_isready` poate prinde exact prima
+  # fereastră: următoarea conexiune primește ECONNRESET, deși baza finală pornește corect o
+  # fracțiune mai târziu. Cerem trei probe consecutive, la o secundă distanță; serverul
+  # efemer de bootstrap nu rămâne stabil, cel final da.
+  # O bază care nu pornește rămâne NEVERIFICAT, nu e raportată drept test verde.
   gata=0
+  stabile=0
   i=0
   while [ "$i" -lt 60 ]; do
-    if docker exec "$CONTAINER" pg_isready -U contab >/dev/null 2>&1; then gata=1; break; fi
+    if docker exec "$CONTAINER" pg_isready -U contab -d contab_test >/dev/null 2>&1; then
+      stabile=$((stabile + 1))
+      if [ "$stabile" -ge 3 ]; then gata=1; break; fi
+    else
+      stabile=0
+    fi
     i=$((i + 1))
     sleep 1
   done

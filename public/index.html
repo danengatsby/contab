@@ -370,6 +370,10 @@
            verifică acum că meniul n-o mai contrazice. Jos stau lucrurile din afara ciclului:
            nomenclatoarele și setările — se ating rar, deci nu mai stau în drum. -->
       <button data-tab="dashboard" class="active">🏠 Acasă</button>
+      <!-- Indicatorii comerciali sunt un cockpit al administratorului aplicației, nu o setare
+           a firmei active. Intrarea stă la nivel principal ca să nu se piardă la capătul
+           submeniului lung „Setări”; app.js o afișează numai pentru rolul admin. -->
+      <button data-tab="funnel" id="navFunnel" class="hidden">📈 Funnel comercial</button>
       <button data-tab="ghid" id="toolGhid">📖 Ghid</button>
       <button type="button" class="nav-action" id="paletaBtn" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)">🔎 Caută</button>
       <button type="button" class="nav-action" id="themeBtn" title="Comută tema (clar / întunecat)">🌙 Temă</button>
@@ -495,7 +499,6 @@
                intrare tehnica, pe cand asta e deja ingradit de rol. Doua garduri peste aceeasi
                intrare ar produce „adminul nu-l mai gaseste" fara ca nimic sa explice de ce. -->
           <button data-tab="accesari" id="navAccesari" class="hidden">Cine accesează aplicația</button>
-          <button data-tab="funnel" id="navFunnel" class="hidden">Funnel comercial</button>
         </div>
       </div>
       <!-- Utilitarele folosesc același arbore pe desktop și mobil. Nu mai există un panou

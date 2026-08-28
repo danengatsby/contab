@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "generatedAt": "2026-08-28T18:47:02.327Z",
-  "uiCache": "contab-shell-v32",
-  "sourceFingerprint": "8f2f894cb403e683e48f4df806e88aeb04dc4397ecfae32bb7323fc971be1e95",
+  "generatedAt": "2026-08-28T19:35:10.696Z",
+  "uiCache": "contab-shell-v33",
+  "sourceFingerprint": "ff30c1b5a3a3f193f334d8d7a928346773721a5ebf78c3839d48e839c7841a23",
   "sources": [
     "index.html",
     "styles.css",
