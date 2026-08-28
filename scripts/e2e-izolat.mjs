@@ -77,6 +77,14 @@ async function apiIn(page, url, opts) {
   }, [url, opts || {}]);
 }
 
+/** Reconfirmare privilegiată exact ca în client: parola curentă + un TOTP proaspăt. */
+async function grantStepUp(page, scope, password) {
+  return apiIn(page, '/api/step-up', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scope, password, code: totpCode(ADMIN_TOTP_SECRET) }),
+  });
+}
+
 // ─────────────────────────── 1. ROLURI SI DREPTURI ───────────────────────────
 sect('1. Roluri si drepturi granulare');
 ok('admin se autentifica prin interfata', await login(pg, 'admin', PAROLA, totpCode(ADMIN_TOTP_SECRET)));
@@ -366,6 +374,11 @@ sect('6. Toate declaratiile se genereaza');
   const statNou = await apiIn(adm, '/api/stat-plata?period=' + per, { method: 'POST' });
   ok('preconditie D112: statul vechi este corectat si repostat cu fotografie completa', statNou.status === 200);
 
+  // SAF-T este un export masiv și cere intenționat o reconfirmare recentă. Nu slăbim poarta
+  // pentru teste; executăm același step-up pe care îl face interfața înaintea exportului.
+  const exportStepUp = await grantStepUp(adm, 'bulk-export', PAROLA2);
+  ok('preconditie SAF-T: exportul masiv primește reconfirmarea recentă', exportStepUp.status === 200);
+
   const DECL = [
     ['D300', '/xml/d300?period=' + per, 'declaratie300'],
     ['D394', '/xml/d394?period=' + per, 'declaratie394'],
@@ -384,6 +397,9 @@ sect('6. Toate declaratiile se genereaza');
       const t = await res.text();
       return { status: res.status, len: t.length, head: t.slice(0, 400) };
     }, url);
+    if (!(r.status === 200 && r.len > 120 && r.head.includes(semn))) {
+      console.error('    diagnostic', nume, r.status, JSON.stringify(r.head.slice(0, 180)));
+    }
     ok(nume + ': se genereaza (200, XML cu radacina asteptata)',
       r.status === 200 && r.len > 120 && r.head.includes(semn));
   }
@@ -392,7 +408,10 @@ sect('6. Toate declaratiile se genereaza');
 // ─────────────────────────── 7. RESTAURARE ───────────────────────────────────
 sect('7. Backup si restaurare');
 {
+  const backupStepUp = await grantStepUp(adm, 'bulk-export', PAROLA2);
+  ok('preconditie backup: exportul global primește reconfirmarea recentă', backupStepUp.status === 200);
   const bk = await apiIn(adm, '/api/backup', { method: 'POST' });
+  if (bk.status !== 200) console.error('    diagnostic backup', bk.status, JSON.stringify(bk.body));
   ok('backup la cerere reuseste', bk.status === 200);
   const lista = await apiIn(adm, '/api/backups');
   ok('arhiva apare in lista de backup-uri',
@@ -407,8 +426,10 @@ sect('7. Backup si restaurare');
   // Restaurarea PROPRIU-ZISA: incarcam arhiva facuta INAINTE de marcaj. Daca restaurarea chiar
   // inlocuieste baza, marcajul dispare. Fara verificarea asta, „backup ok" nu spune nimic despre
   // faptul ca datele se pot aduce inapoi — exact capcana pe care o are un backup nerejucat.
-  const numeArhiva = lista.body.list[0].name;
-  const rest = await adm.evaluate(async ([nume]) => {
+  const numeArhiva = lista.body?.list?.[0]?.name || '';
+  const restoreStepUp = await grantStepUp(adm, 'restore', PAROLA2);
+  ok('preconditie restaurare: operațiunea primește reconfirmarea recentă', restoreStepUp.status === 200);
+  const rest = numeArhiva ? await adm.evaluate(async ([nume]) => {
     const m = await import('/core.js');
     const r0 = await window.fetch('/api/backup/file/' + encodeURIComponent(nume));
     if (!r0.ok) return { status: r0.status, faza: 'descarcare' };
@@ -418,7 +439,7 @@ sect('7. Backup si restaurare');
     const r = await window.fetch('/api/restore', m.withCsrf({ method: 'POST', body: fd }));
     let body = null; try { body = await r.json(); } catch (_) { /* */ }
     return { status: r.status, body, faza: 'restaurare' };
-  }, [numeArhiva]);
+  }, [numeArhiva]) : { status: 0, faza: 'backup-lipsă' };
   ok('restaurarea din arhiva reuseste', rest.status === 200);
   const dupaRest = (await apiIn(adm, '/api/partners')).body || {};
   ok('dupa restaurare, marcajul de dupa backup a DISPARUT (datele chiar s-au inlocuit)',
@@ -634,7 +655,7 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   ok('contractul de leasing are 3 pași', fluxuri.leasing === 3);
   ok('mișcarea de stoc are 3 pași', fluxuri.miscare === 3);
   ok('partenerul are 2 pași', fluxuri.partener === 2);
-  ok('configurația fiscală globală are 4 pași', fluxuri.fiscal === 4);
+  ok('configurația fiscală globală are 5 pași', fluxuri.fiscal === 5);
   ok('șablonul facturii recurente are 3 pași', fluxuri.recurenta === 3);
   ok('seriile documentelor au 2 pași', fluxuri.serii === 2);
   ok('înregistrarea producției are 3 pași', fluxuri.productie === 3);
@@ -757,6 +778,9 @@ sect('8. Cine acceseaza aplicatia (panou de administrare)');
   // Documentele au controale reconstruite dinamic; verificăm că serializerul lor dedicat păstrează
   // obiectul `fields`, nu doar inputurile statice ale formularului.
   await adm.evaluate(() => window.goTab('documente'));
+  // Introducerea manuală este intenționat o opțiune rară în workbench; o deschidem pe aceeași
+  // cale pe care o folosește utilizatorul, din meniul secundar.
+  await adm.click('#documentWorkbenchMore > summary');
   await adm.click('#manualBtn');
   await adm.fill('#fld_explicatie', 'Notă din autosave E2E');
   await adm.waitForTimeout(700);
@@ -1159,13 +1183,16 @@ sect('16. Alocarea din cockpit se pliaza dupa CATI oameni sunt, nu dupa o setare
   await adm.waitForTimeout(1200);
   const c = await adm.evaluate(() => {
     const viz = (e) => e.getBoundingClientRect().height > 0;
-    const unSelect = document.querySelector('.cl-resp');
+    // Închiderea lunară și cea anuală folosesc aceleași clase, dar sunt ecrane distincte.
+    // Măsurăm numai cockpitul activ, altfel controalele din tabul anual ascuns umflă numărul de pași.
+    const cockpit = document.querySelector('#closeCockpit');
+    const unSelect = cockpit?.querySelector('.cl-resp');
     return {
-      pasi: document.querySelectorAll('.closestep').length,
-      pliate: document.querySelectorAll('.closealoc').length,
+      pasi: cockpit?.querySelectorAll('.closestep').length || 0,
+      pliate: cockpit?.querySelectorAll('.closealoc').length || 0,
       // optiunile selectului = „— nealocat —" + cate un om
       oameni: unSelect ? unSelect.options.length - 1 : -1,
-      selectoareVizibile: [...document.querySelectorAll('.cl-resp')].filter(viz).length,
+      selectoareVizibile: [...(cockpit?.querySelectorAll('.cl-resp') || [])].filter(viz).length,
     };
   });
   ok('poarta masoara pasi reali, nu o multime goala: ' + c.pasi + ' pasi', c.pasi >= 4);

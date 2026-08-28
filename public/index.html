@@ -373,7 +373,7 @@
       <button data-tab="ghid" id="toolGhid">📖 Ghid</button>
       <button type="button" class="nav-action" id="paletaBtn" title="Caută în aplicație — clienți, facturi, pagini (Ctrl+K)">🔎 Caută</button>
       <button type="button" class="nav-action" id="themeBtn" title="Comută tema (clar / întunecat)">🌙 Temă</button>
-      <button type="button" class="nav-action" id="uiModeBtn" title="Mod simplu: ascunde partea tehnic-contabilă din meniu (balanță, registre, plan de conturi, închideri). Contabilitatea rulează neschimbată în fundal. Mod expert: totul vizibil.">🛠 Expert</button>
+      <button type="button" class="nav-action" id="uiModeBtn" title="Păstrează spațiul rolului activ. Simplu folosește vocabular accesibil și densitate confortabilă; Expert afișează termenii tehnici și o densitate mai mare.">🛠 Expert</button>
       <button type="button" class="nav-action" id="glossaryBtn" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
       <label class="language-picker nav-language"><span>🌐 Limbă</span><select class="language-switch" aria-label="Limba aplicației"><option value="ro">RO</option><option value="en">EN</option></select></label>
       <button data-tab="notificari" title="Notificări — termene fiscale">🔔 Notificări<span id="notifBadge" class="navbadge hidden">0</span></button>
@@ -549,7 +549,12 @@
   <main id="main" tabindex="-1">
     <!-- ─────────────── DASHBOARD ─────────────── -->
     <section id="tab-dashboard" class="tab active">
-      <div class="toolbar"><h2>Acasă</h2><div class="spacer"></div><span id="dashYear" class="badge"></span></div>
+      <div class="toolbar dashboard-home-toolbar">
+        <h2>Acasă</h2>
+        <span id="dashboardRoleBadge" class="dashboard-role-badge">Spațiu de lucru</span>
+        <span id="dashboardRoleDescription" class="muted dashboard-role-description"></span>
+        <div class="spacer"></div><span id="dashYear" class="badge"></span>
+      </div>
       <!-- Primul ecran răspunde numai la trei întrebări: ce trebuie rezolvat, cum stă firma în
            patru cifre și care sunt operațiile uzuale. Analizele de profunzime sunt mai jos,
            pliabile; astfel nu împing lucrul curent sub mai multe ecrane de grafice și tabele. -->
@@ -565,18 +570,18 @@
           </div>
         </div>
 
-        <div class="card" id="rezumatCard">
-          <h3>📊 4 indicatori esențiali <span id="rezumatData" class="muted" data-u="u70"></span></h3>
+        <div class="card role-workspace" id="rezumatCard">
+          <h3 id="rezumatTitle">📊 4 indicatori esențiali <span id="rezumatData" class="muted" data-u="u70"></span></h3>
           <div id="rezumatKpis" class="kpis" data-u="u23"></div>
           <div id="rezumatFooter" class="row" data-u="u71"></div>
         </div>
 
-        <div class="card" id="quickActionsCard">
-          <h3>⚡ Acțiuni frecvente</h3>
+        <div class="card role-workspace" id="quickActionsCard">
+          <h3 id="quickActionsTitle">⚡ Acțiuni frecvente</h3>
           <div class="quickacts quickacts-primary">
-            <button class="qa qa-primary" id="qaWizard"><span class="ic">🧭</span><span class="t">Înregistrează ghidat</span><span class="d">Nu știi ce tip? Te ghidez în câțiva pași simpli</span></button>
+            <button class="qa qa-primary" data-go="emite"><span class="ic">📤</span><span class="t">Emite factură</span><span class="d">Factură către client + e-Factura</span></button>
+            <button class="qa" id="qaWizard"><span class="ic">🧭</span><span class="t">Înregistrează ghidat</span><span class="d">Nu știi ce tip? Te ghidez în câțiva pași simpli</span></button>
             <button class="qa in" data-go="documente"><span class="ic">📥</span><span class="t">Adaugă document primit</span><span class="d">Factură furnizor, bon, chitanță — PDF sau poză</span></button>
-            <button class="qa out" data-go="emite"><span class="ic">📤</span><span class="t">Emite factură</span><span class="d">Factură către client + e-Factura</span></button>
             <button class="qa" data-go="cashbook"><span class="ic">🏦</span><span class="t">Bancă / Casă</span><span class="d">Încasări, plăți, extras bancar</span></button>
           </div>
           <details class="quickacts-more">

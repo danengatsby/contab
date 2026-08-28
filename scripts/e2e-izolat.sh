@@ -34,7 +34,13 @@ trap curata EXIT
 
 echo "── instanta izolata pe portul $PORT (date in $TMP)"
 export CONTAB_DB_DRIVER=sqlite CONTAB_DB_FILE="$DBF" CONTAB_DATA_DIR="$DATA"
+export CONTAB_FISCAL_REVIEW_FILE="$TMP/fiscal-review.json"
+export CONTAB_FISCAL_REVIEW_TRUST_FILE="$TMP/fiscal-review-trust.json"
 export CONTAB_DEV=1                 # instanta de test: fara secretele de productie (vezi secretsGuard)
+# Ieșirile fiscale sunt fail-closed. Instanța efemeră primește registrul criptografic sintetic
+# folosit exclusiv de teste, în loc să depindă de aprobările profesionale ale instalării reale.
+node -e 'require(process.argv[1]).writeApproved(process.env.CONTAB_FISCAL_REVIEW_FILE, process.env.CONTAB_FISCAL_REVIEW_TRUST_FILE)' \
+  "$RADACINA/test/run/fiscalReviewFixture.js"
 node "$RADACINA/scripts/seed.js" >"$TMP/seed.log" 2>&1
 
 PORT=$PORT HOST=127.0.0.1 CONTAB_JSON_MIRROR=0 STRIPE_SECRET_KEY='' \
@@ -93,6 +99,11 @@ curl -s -X POST "$API/api/users" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" -H 'Con
 # contul demo live și testăm exact codul backend încărcat în procesul de mai sus.
 curl -s -X POST "$API/api/users" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" -H 'Content-Type: application/json' \
   -d "{\"username\":\"demo\",\"password\":\"$PAROLA\",\"role\":\"user\",\"firme\":[1],\"firmaRoluri\":{\"1\":\"operator\"}}" >/dev/null
+# A doua identitate publică permite aceluiași scenariu UX să verifice cockpitul multi-firmă fără
+# să schimbe cookie-ul operatorului. Rolul aprobator este suficient pentru experiența Contabil;
+# permisiunile reale rămân matricea serverului.
+curl -s -X POST "$API/api/users" -H "Cookie: $C" -H "X-CSRF-Token: $TOK" -H 'Content-Type: application/json' \
+  -d "{\"username\":\"demo-contabil\",\"password\":\"$PAROLA\",\"role\":\"user\",\"firme\":[1],\"firmaRoluri\":{\"1\":\"aprobator\"}}" >/dev/null
 
 # 4. token de resetare: se cere prin API, apoi se citeste din baza (browserul n-are cum — pleaca pe email)
 curl -s -X POST "$API/api/forgot-password" -H 'Content-Type: application/json' \
@@ -118,10 +129,10 @@ docker run --rm --network host \
   -v "$RADACINA/scripts/e2e-izolat.mjs:/w/e2e.mjs:ro" \
   -v "$RADACINA/scripts/e2e.mjs:/w/e2e-ux.mjs:ro" \
   -e BASE_URL="http://127.0.0.1:$PORT" -e E2E_PAROLA="$PAROLA" -e E2E_RESET="$RESET" \
-  -e E2E_ADMIN_TOTP_SECRET="$SECRET_2FA" -e E2E_UX_ONLY="${E2E_UX_ONLY:-0}" \
+  -e E2E_ADMIN_TOTP_SECRET="$SECRET_2FA" -e E2E_UX_ONLY="${E2E_UX_ONLY:-0}" -e E2E_SKIP_UX="${E2E_SKIP_UX:-0}" \
   -w /w "$IMG" \
   sh -c 'npm i --no-save playwright@1.58.2 >/dev/null 2>&1 || exit $?;
-    node e2e-ux.mjs; ux=$?; [ "$E2E_UX_ONLY" = 1 ] && exit "$ux";
+    ux=0; [ "$E2E_SKIP_UX" = 1 ] || { node e2e-ux.mjs; ux=$?; }; [ "$E2E_UX_ONLY" = 1 ] && exit "$ux";
     node e2e.mjs; izolat=$?;
     [ "$ux" -eq 0 ] && [ "$izolat" -eq 0 ]'
 COD=$?

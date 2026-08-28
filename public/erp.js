@@ -77,6 +77,9 @@
     plug: '<path d="M9 3v6M15 3v6M7 9h10v2a5 5 0 0 1-5 5v5M8 21h8"/>',
     gift: '<rect x="3" y="9" width="18" height="12"/><path d="M12 9v12M3 13h18M7.5 9C5 9 4 7.5 4.8 6.2 6 4.3 9.5 6 12 9M16.5 9C19 9 20 7.5 19.2 6.2 18 4.3 14.5 6 12 9"/>',
     link: '<path d="m10 13 4-4M7.5 16.5l-1 1a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0M16.5 7.5l1-1a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0"/>',
+    star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
+    starFilled: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z" fill="currentColor"/>',
+    chevronDown: '<path d="m6 9 6 6 6-6"/>',
     arrowLeft: '<path d="M19 12H5m0 0 6-6m-6 6 6 6"/>',
     arrowRight: '<path d="M5 12h14m0 0-6-6m6 6-6 6"/>',
     generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'
@@ -111,7 +114,8 @@
     '↩': 'arrowLeft', '→': 'arrowRight', '↪': 'arrowRight', '↗': 'arrowRight', '↻': 'refresh',
     '🏥': 'building', '🏛': 'bank', '🛒': 'box', '📴': 'offline', 'ℹ': 'info', '⏳': 'clock',
     '🧰': 'briefcase', '🎁': 'gift', '💡': 'help', '🛡': 'lock', '🔗': 'link', '👋': 'user',
-    '🎉': 'spark', '🤖': 'settings', '🗄': 'folder', '📉': 'chart', '🔮': 'spark'
+    '🎉': 'spark', '🤖': 'settings', '🗄': 'folder', '📉': 'chart', '🔮': 'spark',
+    '☆': 'star', '★': 'starFilled', '⌄': 'chevronDown', '⌕': 'search', '○': 'info'
   };
 
   var SYMBOL_LABELS = {
@@ -232,7 +236,7 @@
       '#tabs > button[data-tab]', '#tabs .navlabel', '#tabs .navmenu button[data-tab]', '#tabs a.navlink',
       '#sideTools button', '#sideTools a', '.toolbar > h2', '.card > h2', '.card h3',
       '.qa .ic', '.kpi-ic', '.welcome-steps .ws-ic', '.explain .ei',
-      '.alert .al-ic', '.notice-icon', '.offline-banner'
+      '.alert .al-ic', '.notice-icon', '.operation-type-search-icon', '.offline-banner'
     ].join(',');
     $$(selector, root || document).forEach(decoreaza);
   }

@@ -1,8 +1,7 @@
 'use strict';
-// Mod simplu (necontabil) + Dictionarul contabil: ascunde intrarile tehnic-contabile din meniu
-// (implicit pentru necontabili/testeri, preferinta per utilizator in browser) si glosarul de
-// termeni pe intelesul tuturor (modal cu cautare). Extras din app.js (Etapa 6). Depinde doar de
-// nucleu; nu apeleaza inapoi in app.js. initUiMode e apelat din init().
+// Mod simplu/expert + Dicționar. Rolul (patron/contabil/operator) decide CE muncă apare pe Acasă;
+// modul schimbă vocabularul și densitatea DIN ACEL spațiu și păstrează filtrarea meniurilor pur
+// tehnice. Preferința este per utilizator în browser.
 import { $, USER, toast, fiscalText } from './core.js';
 
 // ── Mod simplu (necontabil) + Dicționar contabil pe înțelesul tuturor ──
@@ -97,8 +96,8 @@ function applyUiMode(mode) {
     // deschisa din meniu (#f0c14b), nu unul nou.
     b.classList.toggle('mod-expert', mode !== 'simplu');
     b.setAttribute('aria-label', mode === 'simplu'
-      ? 'Mod simplu activ — apasă pentru modul expert (arată și partea tehnic-contabilă)'
-      : 'Mod expert activ — apasă pentru modul simplu (ascunde partea tehnic-contabilă)');
+      ? 'Mod simplu activ — vocabular accesibil și densitate confortabilă în spațiul rolului; apasă pentru expert'
+      : 'Mod expert activ — vocabular tehnic și densitate ridicată în spațiul rolului; apasă pentru simplu');
   }
 }
 export function initUiMode() {
@@ -114,6 +113,6 @@ $('#uiModeBtn') && $('#uiModeBtn').addEventListener('click', () => {
   try { localStorage.setItem(uiModeKey(), mode); } catch (e) { /* privat */ }
   applyUiMode(mode);
   toast(mode === 'simplu'
-    ? 'Mod simplu: partea tehnic-contabilă (balanță, registre, plan de conturi, închideri) e ascunsă din meniu. Contabilitatea rulează neschimbată în fundal — revii oricând cu 🛠.'
-    : 'Mod expert: toate meniurile sunt vizibile.');
+    ? 'Mod simplu: același spațiu de rol, cu vocabular accesibil și densitate confortabilă. Detaliile pur tehnice sunt ascunse.'
+    : 'Mod expert: același flux de rol, mai dens, cu vocabularul și meniurile tehnice vizibile.');
 });

@@ -2,7 +2,8 @@
 // Dashboard (tab-ul Acasa) + analize derivate: KPI-uri, rezumat executiv, alerte, primii pasi,
 // buget vs realizat, previziune cash-flow, comparatie an-la-an si graficele SVG. Extras din app.js
 // (Etapa 5). Depinde de nucleu; navigarea intre tab-uri (goTab) e INJECTATA prin setDashboardDeps.
-import { $, $$, api, fmt, H, USER, toast, uiLocale } from './core.js';
+import { $, $$, api, fmt, H, META, USER, toast, uiLocale } from './core.js';
+import { workMonth, lunaLabel } from './periods.js';
 // Randul de termen de pe Acasa e ACELASI lucru cu cel din ecranul Notificari, deci imprumuta de
 // acolo eticheta actiunii, vechimea restantei si navigarea — nu si le rescrie. Sensul dashboard →
 // livrabile nu inchide niciun ciclu (livrabile importa core/periods/entries, nu dashboard).
@@ -10,6 +11,57 @@ import { notifAct, zileIntarziere, rezolvaNotificare } from './livrabile.js';
 
 let deps = {};
 export function setDashboardDeps(d) { deps = d; }
+
+/** Experiența de lucru urmează rolul din firma activă, nu modul Simplu/Expert.
+ *
+ * Tipul contului separă patronul de cabinetul contabil; rolul explicit `operator` are prioritate
+ * fiindcă el restrânge munca la coada de documente chiar și într-un cont creat de un contabil.
+ * Funcția este pură: aceeași regulă poate fi fixată în teste fără sesiune sau DOM. */
+export function dashboardExperience(user, meta) {
+  const u = user || {}; const m = meta || {};
+  const fid = String(m.firmaActiva == null ? '' : m.firmaActiva);
+  const firma = m.company || {};
+  const explicit = (u.firmaRoluri || {})[fid];
+  const role = u.role === 'admin' ? 'administrator'
+    : (Number(firma.ownerId) === Number(u.id) ? 'proprietar' : (explicit || 'vizualizare'));
+  if (role === 'operator') return { key: 'operator', role };
+  if (u.tipCont === 'contabil' || u.tip === 'contabil'
+      || ['verificator', 'aprobator', 'administrator'].includes(role)) return { key: 'contabil', role };
+  return { key: 'patron', role };
+}
+
+/** Numărătoarea canonică a cozii operatorului. Articolele istorice fără `status` sunt postate. */
+export function operatorQueue(entries, quality) {
+  const states = { ciorna: 0, validat: 0, aprobat: 0, postat: 0 };
+  (entries || []).forEach((e) => { const s = e.status || 'postat'; states[s] = (states[s] || 0) + 1; });
+  return Object.assign(states, {
+    coada: states.ciorna + states.validat + states.aprobat,
+    quality: quality || {},
+  });
+}
+
+function modeLabel(simplu, expert) {
+  return `<span class="simple-only-inline">${simplu}</span><span class="adv">${expert}</span>`;
+}
+
+function optionalApi(path, fallback) {
+  return api(path).catch(() => fallback);
+}
+
+async function loadRoleWorkspace(experience) {
+  const period = workMonth();
+  if (experience.key === 'contabil') {
+    return { period, portfolio: await optionalApi('/api/portfolio?period=' + encodeURIComponent(period), null) };
+  }
+  if (experience.key === 'operator') {
+    const [entries, quality] = await Promise.all([
+      optionalApi('/api/entries?period=' + encodeURIComponent(period), []),
+      optionalApi('/api/extract-quality?days=30', {}),
+    ]);
+    return { period, queue: operatorQueue(entries, quality) };
+  }
+  return { period };
+}
 
 // ───────────────────────── DASHBOARD ─────────────────────────
 // tendinta unei serii lunare (ultima luna cu date vs precedenta), in %
@@ -157,21 +209,101 @@ function aplicaTabloulGol(gol) {
   const secundar = $('#dashboardSecondary');
   if (secundar) secundar.classList.toggle('hidden', !!USER.faraFirma);
 }
+
+function renderRoleContext(experience) {
+  const meta = {
+    patron: ['Patron', 'bani, obligații și facturare'],
+    contabil: ['Contabil', 'portofoliu, control și perioade de închis'],
+    operator: ['Operator', 'coadă, verificare și postare'],
+  }[experience.key];
+  const badge = $('#dashboardRoleBadge');
+  if (badge) badge.textContent = 'Spațiu ' + meta[0];
+  const descriere = $('#dashboardRoleDescription');
+  if (descriere) descriere.textContent = meta[1] + (experience.role ? ' · rol activ: ' + experience.role : '');
+  document.body.dataset.dashboardRole = experience.key;
+}
+
+function action(ic, title, description, go, cls, id, scroll) {
+  return `<button class="qa ${cls || ''}"${id ? ` id="${id}"` : ''}${go ? ` data-go="${go}"` : ''}${scroll ? ` data-scroll="${scroll}"` : ''}>
+    <span class="ic">${ic}</span><span class="t">${title}</span><span class="d">${description}</span></button>`;
+}
+
+function renderQuickActions(experience) {
+  const primary = $('#quickActionsCard .quickacts-primary');
+  const more = $('#quickActionsCard .quickacts-more .quickacts');
+  if (!primary || !more) return;
+  const title = $('#quickActionsTitle');
+  if (experience.key === 'contabil') {
+    if (title) title.textContent = '⚡ Acțiuni pentru contabil';
+    primary.innerHTML = action('🏢', 'Portofoliu firme', 'Declarații, erori și termene pe toate firmele', 'portofoliu', 'qa-primary')
+      + action('🔎', modeLabel('Documente de verificat', 'Ciorne și articole de verificat'), 'Filtrează și lucrează în lot pe firma activă', 'toate', 'in')
+      + action('🧾', 'Declarații ANAF', 'Pregătește, validează și urmărește recipisele', 'livrabile')
+      + action('🔒', modeLabel('Închide perioada', 'Cockpit închidere lunară'), 'Controlează pașii perioadei globale', 'inchideri', 'out');
+    more.innerHTML = action('⚖️', 'Vezi balanța', 'Soldurile firmei active', 'balanta')
+      + action('🔔', 'Toate termenele', 'Restanțe și scadențe pe portofoliu', 'notificari')
+      + action('🤝', 'Punctaj bancar', 'Reconciliază încasările și plățile', 'reconciliere');
+  } else if (experience.key === 'operator') {
+    if (title) title.textContent = '⚡ Acțiuni pentru operator';
+    primary.innerHTML = action('📥', 'Încarcă document', 'Pornește fluxul Încarcă → Verifică → Postează', 'documente', 'qa-primary in')
+      + action('🔎', modeLabel('Verifică documentele', 'Validează ciornele'), 'Deschide coada documentelor primite', 'intrate')
+      + action('✅', modeLabel('Continuă fluxul', 'Validare și postare în lot'), 'Selectează mai multe articole și avansează-le', 'toate')
+      + action('🖼️', 'Compară cu originalul', 'Deschide documentele scanate', 'galerie');
+    more.innerHTML = action('📈', modeLabel('Calitatea citirii', 'Raport calitate extracție'), 'Vezi scorul și corecțiile recente', 'intrate', '', '', 'calitateCard')
+      + action('🏦', 'Bancă / Casă', 'Încasări, plăți și extras bancar', 'cashbook');
+  } else {
+    if (title) title.textContent = '⚡ Acțiuni pentru patron';
+    primary.innerHTML = action('📤', 'Emite factură', 'Factură către client + e-Factura', 'emite', 'qa-primary out')
+      + action('🧭', 'Înregistrează ghidat', 'Nu știi ce tip? Te ghidez în câțiva pași simpli', '', '', 'qaWizard')
+      + action('📥', 'Adaugă document primit', 'Factură furnizor, bon, chitanță — PDF sau poză', 'documente', 'in')
+      + action('🏦', 'Bancă / Casă', 'Încasări, plăți, extras bancar', 'cashbook');
+    more.innerHTML = action('⚖️', 'Vezi balanța', 'Soldurile tuturor conturilor', 'balanta')
+      + action('🧾', 'Decont TVA', 'TVA pentru perioada globală', 'tva')
+      + action('📖', 'Ghid de folosire', 'Cum lucrezi, pas cu pas', 'ghid');
+  }
+}
+
+function renderOperatorTasks(queue) {
+  const q = queue || operatorQueue([], {}); const quality = q.quality || {};
+  const tasks = [];
+  if (q.ciorna) tasks.push({ tone: 'warn', ic: '🔎', text: `<b>${q.ciorna}</b> ${q.ciorna === 1 ? 'document așteaptă' : 'documente așteaptă'} verificarea`, go: 'intrate', cta: 'Verifică' });
+  if (q.validat) tasks.push({ tone: 'warn', ic: '⏳', text: `<b>${q.validat}</b> ${q.validat === 1 ? 'document validat așteaptă' : 'documente validate așteaptă'} aprobarea`, go: 'toate', cta: 'Vezi coada' });
+  if (q.aprobat) tasks.push({ tone: 'warn', ic: '✅', text: `<b>${q.aprobat}</b> ${q.aprobat === 1 ? 'document este pregătit' : 'documente sunt pregătite'} pentru postare`, go: 'toate', cta: 'Postează' });
+  if (Number(quality.corectii) > 0) tasks.push({ tone: 'warn', ic: '📈', text: `<b>${Number(quality.corectii)}</b> corecții ale citirii automate în ultimele 30 de zile`, go: 'intrate', scroll: 'calitateCard', cta: 'Vezi cauzele' });
+  const box = $('#dashAlerts'); if (!box) return;
+  box.innerHTML = tasks.length
+    ? tasks.map((x) => `<button type="button" class="alert ${x.tone}" data-go="${x.go}"${x.scroll ? ` data-scroll="${x.scroll}"` : ''}><span class="al-ic">${x.ic}</span><span class="al-tx">${x.text}</span><span class="al-cta">${x.cta} →</span></button>`).join('')
+    : '<div class="alert ok"><span class="al-ic">✅</span><span class="al-tx">Coada este liberă — nu există documente care așteaptă verificarea sau postarea.</span></div>';
+  $$('#dashAlerts .alert[data-go]').forEach((b) => b.addEventListener('click', () => deps.goTab(b.dataset.go, b.dataset.scroll)));
+}
 export async function loadDashboard() {
   monteazaPanouriDashboard();
+  const experience = dashboardExperience(USER, META);
   let k; try { k = await api('/api/dashboard'); } catch (e) { return; }
-  let c = null; try { c = await api('/api/dashboard-charts'); } catch (e) { /* grafice optionale */ }
+  const [c, workspace] = await Promise.all([
+    optionalApi('/api/dashboard-charts', null),
+    loadRoleWorkspace(experience),
+  ]);
+  renderRoleContext(experience);
+  renderQuickActions(experience);
   // „Exercițiul 2026" e termenul contabil corect, dar e prima etichetă de pe primul ecran al unui
   // om care tocmai și-a făcut cont — iar un necontabil citește „exercițiu" ca la sală. Eticheta
   // spune „Anul", termenul rămâne descoperibil din tooltip și din dicționar.
   $('#dashYear').textContent = 'Anul ' + k.year;
   $('#dashYear').title = 'Exercițiul financiar ' + k.year + ' — anul contabil al firmei (1 ianuarie – 31 decembrie)';
-  renderDashAlerts(k);
-  renderPrimiiPasi(k.primiiPasi);
+  if (experience.key === 'operator') renderOperatorTasks(workspace.queue);
+  else renderDashAlerts(k, experience);
+  // Checklistul de configurare aparține patronului. Contabilul și operatorul pot avea acces la
+  // firmă fără dreptul de a-i schimba profilul sau de a emite în numele ei, deci pașii aceia nu
+  // trebuie prezentați ca sarcini ale rolului lor.
+  renderPrimiiPasi(experience.key === 'patron' ? k.primiiPasi : null);
   // Se decide INAINTE de a calcula panourile: cele scumpe (previziunea, graficele) nici nu se
   // mai cer de la server cand n-au ce arata. Alertele si checklistul raman, sunt actionabile.
   const gol = tabloulEGol(k.primiiPasi);
   aplicaTabloulGol(gol);
+  // Chiar pe o firmă fără articole, portofoliul contabilului și coada operatorului sunt informații
+  // de lucru reale (pot conține celelalte firme, respectiv zero explicit). Numai rezumatul financiar
+  // al patronului depinde de existența primei înregistrări.
+  if (experience.key !== 'patron' && $('#rezumatCard')) $('#rezumatCard').classList.remove('hidden');
   const s = (c && c.monthly) || [];
   const cinfo = (info) => info ? `<span class="cinfo" tabindex="0" role="note" aria-label="${info}">i<span class="cpop">${info}</span></span>` : '';
   const card = (ic, lbl, val, sub, cls, trend, info) => `<div class="kpi ${cls || ''}">
@@ -203,8 +335,8 @@ export async function loadDashboard() {
   // apelul ei din livrabile.js — deci pagina face în continuare două cereri, nu trei.
   let notif = null;
   try { notif = await api('/api/notifications'); } catch (e) { /* termenele sunt opționale aici */ }
-  renderDeFacut(notif);
-  renderRezumat(k, notif);
+  renderDeFacut(experience.key === 'operator' ? null : notif);
+  renderRezumat(k, notif, experience, workspace);
   if (!gol) renderForecast();
   const list = (arr) => arr.length
     ? `<table><tbody>${arr.map((p) => `<tr><td>${H(p.den)}</td><td class="num">${fmt(p.sold)}</td></tr>`).join('')}</tbody></table>`
@@ -355,38 +487,60 @@ function renderPrimiiPasi(p) {
     + `<div class="muted" data-u="u30">${gata} din ${pasi.length} pași făcuți · Nu știi ce tip de document ai? Folosește <b>🧭 Înregistrează ghidat</b> de mai jos.</div>`;
   wireSteps('#primiiPasiList');
 }
-// Cei patru indicatori esențiali sunt comuni ambelor moduri: situația firmei în limbaj de
-// business, cu drill-down — bani disponibili, de încasat, de plătit, obligații stat & salarii.
-async function renderRezumat(k, notif) {
+// Fiecare rol primește exact patru repere, dar nu aceleași patru. Simplu/Expert schimbă numai
+// vocabularul și densitatea din interiorul lor; nu schimbă coada, cifrele sau destinațiile.
+async function renderRezumat(k, notif, experience, workspace) {
   const box = $('#rezumatKpis'); if (!box) return;
-  $('#rezumatData').textContent = '· la zi, ' + new Date().toLocaleDateString(uiLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
-  const tile = (ic, lbl, val, sub, cls, go, hint) => `<div class="kpi go ${cls}" data-go="${go}" role="link" tabindex="0" title="${hint}">
+  const title = $('#rezumatTitle');
+  const titleText = experience.key === 'patron' ? '📊 4 indicatori esențiali'
+    : (experience.key === 'contabil' ? '🗂️ 4 repere pentru portofoliu' : '📥 4 repere ale cozii');
+  if (title) title.innerHTML = titleText + ' <span id="rezumatData" class="muted" data-u="u70"></span>';
+  const data = $('#rezumatData');
+  if (data) data.textContent = experience.key === 'patron'
+    ? '· la zi, ' + new Date().toLocaleDateString(uiLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
+    : '· ' + lunaLabel((workspace || {}).period || workMonth());
+  const rawTile = (ic, lbl, val, sub, cls, go, hint, scroll) => `<div class="kpi go ${cls}" data-go="${go}"${scroll ? ` data-scroll="${scroll}"` : ''} role="link" tabindex="0" title="${hint}">
     <div class="kpi-top"><span class="kpi-ic">${ic}</span></div>
-    <div class="lbl">${lbl}</div><div class="val">${fmt(val)}</div><div class="sub">${sub}</div></div>`;
+    <div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
+  const moneyTile = (ic, lbl, val, sub, cls, go, hint) => rawTile(ic, lbl, fmt(val), sub, cls, go, hint);
   const obligatii = Math.round(((k.taxeDatorate || 0) + (k.salariiDePlata || 0)) * 100) / 100;
   const dispo = dalaDisponibil(k.bancaTotal, k.casaTotal, k.disponibilTotal);
-  box.innerHTML =
-    // Aceeasi regula ca la KPI-urile de sus (vezi `tonTrezorerie`), si din acelasi motiv: altfel
-    // ACELASI numar iesea verde in modul simplu si neutru in cel expert. Cele trei solduri sunt
-    // fapte — directia lor o poarta deja pictograma (📥 intra / 📤 iese), nu culoarea; doar banii
-    // disponibili au o stare gresita reala, cea sub zero.
-    tile('💼', 'Bani disponibili', k.disponibilTotal, dispo.sub, dispo.ton, 'cashbook', 'Deschide Încasări & plăți')
-    + tile('📥', 'De încasat de la clienți', k.soldClienti, (k.clientiDeschisi || 0) + (k.clientiDeschisi === 1 ? ' client cu facturi deschise' : ' clienți cu facturi deschise'), 'blue', 'analitic', 'Deschide scadențarul pe clienți')
-    + tile('📤', 'De plătit către furnizori', k.soldFurnizori, (k.furnizoriDeschisi || 0) + (k.furnizoriDeschisi === 1 ? ' furnizor de plătit' : ' furnizori de plătit'), 'blue', 'analitic', 'Deschide scadențarul pe furnizori')
-    + tile('🏛️', 'Obligații: stat & salarii', obligatii, 'taxe ' + fmt(k.taxeDatorate) + ' · salarii ' + fmt(k.salariiDePlata), 'blue', 'livrabile', 'Deschide declarațiile și termenele');
+  const f = $('#rezumatFooter');
+  if (experience.key === 'contabil') {
+    const p = (workspace || {}).portfolio; const w = (p && p.workflow) || {};
+    const t = (p && p.tot) || {}; const firme = p ? p.firms.length : null;
+    const deRezolvat = p ? (Number(t.nedepuse) || 0) + (Number(t.erori) || 0) : null;
+    box.innerHTML = rawTile('🏢', 'Firme în portofoliu', firme == null ? '—' : H(firme), p ? H(p.firms.filter((firma) => firma.natentionari > 0).length) + ' cu atenționări' : 'Date indisponibile', 'blue', 'portofoliu', 'Deschide portofoliul tuturor firmelor')
+      + rawTile('🔎', modeLabel('Documente de verificat', 'Ciorne neverificate'), p ? H(w.ciorna || 0) : '—', p ? H(w.validat || 0) + ' validate · ' + H(w.aprobat || 0) + ' aprobate' : 'Date indisponibile', 'blue', 'toate', 'Deschide articolele firmei active')
+      + rawTile('🧾', modeLabel('Declarații de rezolvat', 'Nedepuse / cu eroare'), deRezolvat == null ? '—' : H(deRezolvat), p ? H(t.restante || 0) + ' restanțe · ' + H(t.erori || 0) + ' erori' : 'Date indisponibile', Number(t.erori || t.restante) ? 'red' : 'blue', 'livrabile', 'Deschide registrul declarațiilor')
+      + rawTile('🔒', modeLabel('Perioade de închis', 'Perioade globale deschise'), p ? H(p.perioadeDeschise || 0) : '—', p ? 'din ' + H(firme) + ' firme · ' + H((workspace || {}).period) : 'Date indisponibile', 'blue', 'inchideri', 'Deschide cockpitul firmei active');
+    if (f) f.innerHTML = p
+      ? `<span>Portofoliu: <b>${H(t.restante || 0)} restanțe</b> · <b>${H(t.erori || 0)} erori</b> · conformitate ${H(p.conformitate)}%</span>`
+      : '<span>Datele portofoliului nu au putut fi încărcate.</span>';
+  } else if (experience.key === 'operator') {
+    const q = (workspace || {}).queue || operatorQueue([], {}); const quality = q.quality || {};
+    const score = quality.scorMediu == null ? '—' : H(quality.scorMediu) + '%';
+    box.innerHTML = rawTile('📚', 'În coadă', H(q.coada), H(q.validat) + ' validate · ' + H(q.aprobat) + ' aprobate', q.coada ? 'blue' : 'green', 'toate', 'Deschide întreaga coadă')
+      + rawTile('📈', modeLabel('Calitatea citirii', 'Scor mediu extracție'), score, H(quality.documenteCitite || 0) + ' citite · ' + H(quality.rataCorectie || 0) + '% corectate', Number(quality.rataCorectie) ? 'red' : 'blue', 'intrate', 'Deschide raportul citirii automate', 'calitateCard')
+      + rawTile('🔎', modeLabel('Așteaptă verificarea', 'Ciorne de validat'), H(q.ciorna), q.ciorna === 1 ? 'un document de verificat' : H(q.ciorna) + ' documente de verificat', q.ciorna ? 'blue' : 'green', 'intrate', 'Deschide documentele primite')
+      + rawTile('✅', modeLabel('Așteaptă postarea', 'Articole aprobate'), H(q.aprobat), H(q.validat) + ' mai așteaptă aprobarea', q.aprobat ? 'blue' : 'green', 'toate', 'Deschide acțiunile în lot');
+    if (f) f.innerHTML = `<span>Fluxul rolului: <b>Încarcă → Verifică → Postează</b> · ${H(q.postat)} postate în perioada globală.</span>`;
+  } else {
+    box.innerHTML =
+      moneyTile('💼', 'Bani disponibili', k.disponibilTotal, dispo.sub, dispo.ton, 'cashbook', 'Deschide Încasări & plăți')
+      + moneyTile('📥', 'De încasat de la clienți', k.soldClienti, (k.clientiDeschisi || 0) + (k.clientiDeschisi === 1 ? ' client cu facturi deschise' : ' clienți cu facturi deschise'), 'blue', 'analitic', 'Deschide scadențarul pe clienți')
+      + moneyTile('📤', 'De plătit către furnizori', k.soldFurnizori, (k.furnizoriDeschisi || 0) + (k.furnizoriDeschisi === 1 ? ' furnizor de plătit' : ' furnizori de plătit'), 'blue', 'analitic', 'Deschide scadențarul pe furnizori')
+      + moneyTile('🏛️', 'Obligații: stat & salarii', obligatii, 'taxe ' + fmt(k.taxeDatorate) + ' · salarii ' + fmt(k.salariiDePlata), 'blue', 'livrabile', 'Deschide declarațiile și termenele');
+    const rez = k.profit >= 0
+      ? `<b data-u="u31">profit ${fmt(k.profit)} lei</b>`
+      : `<b data-u="u32">pierdere ${fmt(Math.abs(k.profit))} lei</b>`;
+    const termen = ((notif && notif.items) || []).length ? '' : ' · niciun termen fiscal în următoarele 7 zile';
+    if (f) f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span>`;
+  }
   $$('#rezumatKpis .kpi.go').forEach((el) => {
-    el.addEventListener('click', () => deps.goTab(el.dataset.go));
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); deps.goTab(el.dataset.go); } });
+    el.addEventListener('click', () => deps.goTab(el.dataset.go, el.dataset.scroll));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); deps.goTab(el.dataset.go, el.dataset.scroll); } });
   });
-  const f = $('#rezumatFooter'); if (!f) return;
-  const rez = k.profit >= 0
-    ? `<b data-u="u31">profit ${fmt(k.profit)} lei</b>`
-    : `<b data-u="u32">pierdere ${fmt(Math.abs(k.profit))} lei</b>`;
-  // Restanțele și termenul următor NU se mai repetă aici: cardul „De făcut acum" de deasupra le
-  // arată pe fiecare, cu butonul care le rezolvă. Rămâne doar confirmarea că nu e nimic de făcut —
-  // singurul caz în care cardul lipsește de pe ecran, deci singurul în care mai spune ceva nou.
-  const termen = ((notif && notif.items) || []).length ? '' : ' · niciun termen fiscal în următoarele 7 zile';
-  f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span>`;
 }
 
 export async function renderBudget(year) {
@@ -493,7 +647,7 @@ function renderYoY(yo) {
     <p class="muted" data-u="u35">Comparația cumulează tot anul curent față de cel precedent. La marjă, variația e în puncte procentuale.</p>`;
 }
 // Bandă de alerte acționabile (stil command-center) — calculată din datele deja primite
-function renderDashAlerts(k) {
+function renderDashAlerts(k, experience) {
   const box = $('#dashAlerts'); if (!box) return;
   const a = [];
   // Sold creditor pe un cont de bani — PRIMA alertă: cât timp există, „Bani disponibili" de mai jos
@@ -518,7 +672,7 @@ function renderDashAlerts(k) {
   // Repetarea lor aici transforma „De făcut" într-un al doilea rezumat financiar și adăuga două
   // rânduri pe mobil fără să numească un termen sau o anomalie. Aici rămân numai acțiunile reale.
   if (k.profit < 0) a.push({ ic: '⚠️', tone: 'bad', txt: 'Rezultatul anului e <b>pierdere</b> (' + fmt(k.profit) + ' lei)', go: 'situatii', cta: 'Situații' });
-  const gol = mesajFaraAlerte(k.primiiPasi, USER.faraFirma);
+  const gol = mesajFaraAlerte(experience && experience.key === 'patron' ? k.primiiPasi : null, USER.faraFirma);
   box.innerHTML = a.length
     ? a.map((x) => `<button type="button" class="alert ${x.tone}" data-go="${x.go}"><span class="al-ic">${x.ic}</span><span class="al-tx">${x.txt}</span><span class="al-cta">${x.cta} →</span></button>`).join('')
     : `<div class="alert ${gol.ton}"><span class="al-ic">${gol.ic}</span><span class="al-tx">${gol.txt}</span></div>`;

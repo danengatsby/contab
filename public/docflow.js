@@ -514,7 +514,9 @@ function pickWizardType(tip) {
     if (tip === '__all__') { const search = $('#operationTypeSearch'); if (search) { search.focus(); openOperationTypePicker(); } }
   }, 80);
 }
-$('#qaWizard') && $('#qaWizard').addEventListener('click', openWizard);
+// Butonul există și în spațiul Patron reconstruit la schimbarea firmei; delegarea păstrează
+// wizardul funcțional și după ce dashboard-ul a înlocuit acțiunile altui rol.
+document.addEventListener('click', (e) => { if (e.target.closest('#qaWizard')) openWizard(); });
 $('#opwBack') && $('#opwBack').addEventListener('click', () => { opwCat = null; renderWizard(); });
 $('#opwClose') && $('#opwClose').addEventListener('click', closeWizard);
 $('#opWizard') && $('#opWizard').addEventListener('click', (e) => { if (e.target.id === 'opWizard') closeWizard(); });

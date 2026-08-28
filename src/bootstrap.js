@@ -211,6 +211,12 @@ function applySecurityGuards(app, ctx) {
   const permissions = require('./permissions');
   const uploadGuard = require('./uploadGuard');
   const { currentUser } = require('./session');
+  // Unele calcule read-only folosesc POST fiindcă primesc un formular mare în corp. Metoda HTTP
+  // nu le transformă în mutații: `/api/preview` compune articolul fără save/nextId/audit. Lista
+  // semantică este folosită de TOATE porțile care separă citirea de scriere, ca una să nu-l lase
+  // iar următoarea să-l blocheze drept „scriere”. CSRF rămâne obligatoriu pentru orice POST.
+  const isReadOnlyRequest = (req) => ['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+    || (req.method === 'POST' && req.path === '/api/preview');
 
   // ── CSRF: token sincronizator + allowlist de origine (aparare in adancime peste SameSite=Lax).
   // Garda veche accepta cererea cand `Origin`/`Referer` LIPSEA, „pentru compatibilitate" — o
@@ -256,7 +262,7 @@ function applySecurityGuards(app, ctx) {
   // Impersonarea este o sesiune de diagnostic READ-ONLY. Nicio ruta noua nu poate deveni
   // accidental mutanta sub impersonare: exceptiile sunt numai iesirile sigure din sesiune.
   app.use((req, res, next) => {
-    if (!req.impersonating || ['GET', 'HEAD', 'OPTIONS'].includes(req.method)
+    if (!req.impersonating || isReadOnlyRequest(req)
         || req.path === '/api/impersonate/stop' || req.path === '/api/logout') return next();
     return res.status(403).json({
       error: 'Impersonarea este read-only. Ieși din impersonare pentru orice modificare.',
@@ -270,7 +276,7 @@ function applySecurityGuards(app, ctx) {
   const auditLog = require('./auditLog');
   app.use((req, res, next) => {
     const xmlCuEfect = req.method === 'GET' && req.path.startsWith('/xml/');
-    if ((['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !xmlCuEfect) || req.path === '/api/logout' || req.path === '/api/client-error') return next();
+    if ((isReadOnlyRequest(req) && !xmlCuEfect) || req.path === '/api/logout' || req.path === '/api/client-error') return next();
     if (!/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) return next();
     const p = auditLog.probeWritable();
     if (!p.ok) return res.status(503).json({ error: 'Jurnalul de audit nu este disponibil; operatiunea a fost oprita inainte de scriere.', auditUnavailable: true });
@@ -317,7 +323,7 @@ function applySecurityGuards(app, ctx) {
   const legal = require('./legalCompliance');
   const LEGAL_WRITE_EXEMPT = /^\/api\/(logout|me|meta|legal(?:\/|$)|profile|account|change-password|sessions|2fa|step-up|messages|plans|subscription|checkout|stripe|impersonate|firme(?:\/|$))/;
   app.use((req, res, next) => {
-    if (!req.user || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) || LEGAL_WRITE_EXEMPT.test(req.path)) return next();
+    if (!req.user || isReadOnlyRequest(req) || LEGAL_WRITE_EXEMPT.test(req.path)) return next();
     if (!/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) return next();
     const firma = db.getFirma(activeId(req));
     if (!firma) return next();
@@ -349,7 +355,7 @@ function applySecurityGuards(app, ctx) {
       const v = permissions.verdict(req.user, fid, action, firma);
       if (!v.ok) return res.status(403).json({ error: v.reason, permission: action, firmaRole: v.role });
     }
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
+    if (!isReadOnlyRequest(req) && !RO_EXEMPT.test(req.path) && !RO_ALLOW.test(req.path)) {
       const v = permissions.verdict(req.user, fid, 'write', firma);
       if (!v.ok) return res.status(403).json({ error: v.reason, permission: 'write', firmaRole: v.role });
     }
@@ -385,7 +391,7 @@ function applySecurityGuards(app, ctx) {
   const FIRMA_BILL_EXEMPT = /^\/api\/(logout|me|meta|plans|profile|account|change-password|sessions|2fa|step-up|messages|subscription|checkout|stripe|impersonate)|^\/api\/firme(\/\d+\/(keep|activate|subscribe|trial))?$|^\/api\/firme\/\d+$|^\/api\/firme\/(cerere-acces|cereri\/[\w-]+|contabili|servicii|servicii\/[\w-]+(\/retrage)?)$/;
   app.use((req, res, next) => {
     if (!req.user || req.user.role === 'admin') return next();
-    if (req.method === 'GET' && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
+    if (isReadOnlyRequest(req) && !/^\/(pdf|xml|csv|efactura)/.test(req.path)) return next(); // citirile libere
     // `trial` e exceptat DELIBERAT: e iesirea din blocaj, la fel ca `subscribe`. Fara exceptie,
     // paywall-ul ar raspunde 402 tocmai la cererea prin care utilizatorul iese din 402.
     // Cererile de acces sunt tot gestiune de CONT, nu munca contabila: un contabil caruia i-a

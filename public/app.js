@@ -1047,8 +1047,12 @@ function goTab(name, scrollId) {
 window.goTab = goTab;
 // La revenirea online: reincarca vederea curenta (datele vin doar de la server — nu se cacheaza).
 setOnReconnect(() => { const active = activeNavTabButton(); if (active) { toast('Conexiune revenită — reîncarc datele.'); onTab(active.dataset.tab); } });
-// Scurtaturi „Ce vrei sa faci?” de pe Dashboard
-$$('.qa[data-go]').forEach((b) => b.addEventListener('click', () => goTab(b.dataset.go, b.dataset.scroll)));
+// Scurtături de rol de pe Dashboard. Sunt reconstruite când firma activă schimbă rolul
+// (patron/contabil/operator), deci listenerul stă pe document, nu pe nodurile inițiale.
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.qa[data-go]');
+  if (b) goTab(b.dataset.go, b.dataset.scroll);
+});
 
 // ───────────────────────── WIZARD „Ce vrei să înregistrezi?” ─────────────────────────
 // Ghidează un ne-contabil prin întrebări simple → alege automat tipul de document potrivit.

@@ -332,7 +332,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   alertă (max. una pe oră); la înscriere, utilizatorii cu email primesc un **mesaj de bun venit**
   cu primii pași.
 - **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
-  comanda e în antetul scriptului): 88 verificări cap-coadă pe instanța reală, cu contul demo —
+  comanda e în antetul scriptului): 91 verificări cap-coadă pe instanța reală, cu contul demo —
   inclusiv FAQ-ul public de pe login, selectorul căutabil pentru cele 137 de operațiuni, dicționarul contabil,
   cardul de pro-rata din tab-ul TVA, căutarea globală (Ctrl+K) și
   două porți care au nevoie de un browser adevărat, deci nu pot trăi în `npm test`: contrastul AA
@@ -341,7 +341,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   expert, ca să nu treacă nici o regresie care ar ascunde totul pentru toată lumea).
 - **E2E pe instanță izolată:** `npm run e2e-izolat` (`scripts/e2e-izolat.sh` +
   `scripts/e2e-izolat.mjs`) ridică o instanță proprie (bază și date temporare, port separat) și
-  rulează **173 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
+  rulează **176 verificări pe instanță izolată** (unele verifică fiecare pagină/declarație,
   deci rularea produce mai multe rezultate) — exact fluxurile care nu se pot atinge pe demo
   live: roluri și drepturi granulare, resetare de parolă cu token real, importuri, erori SPV fără
   credențiale, declarațiile și situațiile XML accesibile profilului seed, **restaurarea efectivă** a unui backup (verificată

@@ -92,6 +92,29 @@ const dashboardCompact = await pg.evaluate(() => {
 ok(`dashboardul compact are sarcinile, 4 indicatori și analizele strânse (${dashboardCompact.height}px)`,
   dashboardCompact.alerts > 0 && dashboardCompact.kpis === 4 && dashboardCompact.panels === 4
     && dashboardCompact.kpiColumns === 4 && dashboardCompact.allClosed && dashboardCompact.height < 2100);
+ok('Acasă declară explicit spațiul rolului activ', await pg.evaluate(() => {
+  const badge = document.querySelector('#dashboardRoleBadge')?.textContent || '';
+  const role = document.body.dataset.dashboardRole;
+  return ['patron', 'contabil', 'operator'].includes(role) && badge.toLowerCase().includes(role);
+}));
+
+// Contabilul folosește o sesiune separată: cookie-ul lui nu înlocuiește patronul/operatorul din
+// restul scenariului. Verificăm cockpitul compus din portofoliu, coadă, declarații și închidere.
+const contabilCtx = await b.newContext({ viewport: { width: 1440, height: 900 } });
+const contabilPg = await contabilCtx.newPage();
+await contabilPg.goto(BASE + '/', { waitUntil: 'networkidle' });
+await contabilPg.evaluate(() => fetch('/api/demo-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ as: 'contabil' }) }));
+await contabilPg.reload({ waitUntil: 'networkidle' });
+await contabilPg.waitForTimeout(1200);
+await contabilPg.evaluate(() => document.querySelectorAll('#welcomeOverlay').forEach((e) => e.remove()));
+ok('contabil: Acasă pornește din portofoliu, control, declarații și închidere', await contabilPg.evaluate(() => {
+  const actions = [...document.querySelectorAll('#quickActionsCard .quickacts-primary .t')].map((x) => x.textContent).join(' ');
+  return document.body.dataset.dashboardRole === 'contabil'
+    && /Spațiu Contabil/.test(document.querySelector('#dashboardRoleBadge')?.textContent || '')
+    && document.querySelectorAll('#rezumatKpis .kpi').length === 4
+    && /Portofoliu/.test(actions) && /Declarații/.test(actions) && /închidere/i.test(actions);
+}));
+await contabilCtx.close();
 await pg.click('#dashTrendsPanel > summary');
 await pg.waitForTimeout(150);
 await pg.reload({ waitUntil: 'networkidle' });
@@ -174,9 +197,17 @@ await pg.click('#toolMesaje');
 ok('Mesaje din navigator deschide pagina și păstrează badge-ul',
   await pg.locator('#tab-mesaje').isVisible() && (await pg.locator('#toolMesaje #msgBadge').count()) === 1);
 await pg.evaluate(() => goTab('dashboard'));
-await pg.click('#qaWizard');
-ok('selectorul ghidat nu arată „Înapoi” la primul nivel', !(await pg.locator('#opwBack').isVisible()));
-await pg.click('#opwClose');
+if (await pg.locator('#qaWizard').count()) {
+  await pg.click('#qaWizard');
+  ok('patron: selectorul ghidat nu arată „Înapoi” la primul nivel', !(await pg.locator('#opwBack').isVisible()));
+  await pg.click('#opwClose');
+} else {
+  ok('operator: acțiunile directe urmează Încarcă → Verifică → Postează', await pg.evaluate(() => {
+    const actions = [...document.querySelectorAll('#quickActionsCard .quickacts-primary .t')].map((x) => x.textContent).join(' ');
+    return document.body.dataset.dashboardRole === 'operator'
+      && /Încarcă/.test(actions) && /Verifică/.test(actions) && /postare/i.test(actions);
+  }));
+}
 // Control generat dinamic, ca în rândurile de documente/administrare. MutationObserver-ul trebuie
 // să-i convertească simbolul în SVG decorativ fără să-i piardă numele accesibil.
 await pg.evaluate(() => {

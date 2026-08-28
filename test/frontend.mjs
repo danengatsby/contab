@@ -490,8 +490,13 @@ section('Dashboard: primul ecran rămâne scurt, iar analizele se personalizeaz�
     && primaZona.includes('id="deFacutCard"') && primaZona.includes('id="rezumatKpis"')
     && primaZona.includes('id="quickActionsCard"') && !primaZona.includes('id="yoyCard"')
     && !primaZona.includes('id="forecastCard"') && !primaZona.includes('id="openItemsView"'));
-  const rezumat = (dashSrc.match(/async function renderRezumat[\s\S]*?box\.innerHTML\s*=([\s\S]*?)\n\s*\$\$\('#rezumatKpis/) || [])[1] || '';
-  eq('rezumatul de lucru randează exact patru indicatori', (rezumat.match(/tile\('/g) || []).length, 4);
+  const rezumat = dashSrc.slice(dashSrc.indexOf('async function renderRezumat'), dashSrc.indexOf('export async function renderBudget'));
+  const contabil = rezumat.slice(rezumat.indexOf("experience.key === 'contabil'"), rezumat.indexOf("experience.key === 'operator'"));
+  const operator = rezumat.slice(rezumat.indexOf("experience.key === 'operator'"), rezumat.indexOf('} else {', rezumat.indexOf("experience.key === 'operator'")));
+  const patron = rezumat.slice(rezumat.lastIndexOf('} else {'), rezumat.indexOf("$$('#rezumatKpis"));
+  eq('spațiul contabilului randează exact patru repere', (contabil.match(/rawTile\('/g) || []).length, 4);
+  eq('spațiul operatorului randează exact patru repere', (operator.match(/rawTile\('/g) || []).length, 4);
+  eq('spațiul patronului randează exact patru indicatori', (patron.match(/moneyTile\('/g) || []).length, 4);
   const actiuni = (primaZona.match(/<div class="quickacts quickacts-primary">([\s\S]*?)<\/div>/) || [])[1] || '';
   eq('sunt patru acțiuni frecvente directe', (actiuni.match(/<button\b/g) || []).length, 4);
   eq('analizele secundare sunt grupate în patru panouri native',
@@ -505,6 +510,25 @@ section('Dashboard: primul ecran rămâne scurt, iar analizele se personalizeaz�
   ok('mobilul păstrează KPI-urile și acțiunile într-o grilă 2×2',
     /#quickActionsCard \.quickacts\{grid-template-columns:1fr 1fr/.test(css)
       && /\.dashboard-primary #rezumatKpis\{grid-template-columns:1fr 1fr\}/.test(css));
+}
+
+section('Dashboard: experiența urmează rolul, iar Simplu/Expert rămâne un strat interior');
+{
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  const firma = { firmaActiva: 7, company: { ownerId: 11 } };
+  eq('proprietarul intră în spațiul Patron', dashboard.dashboardExperience({ id: 11, tipCont: 'patron', firmaRoluri: {} }, firma).key, 'patron');
+  eq('contabilul aprobator intră în spațiul Contabil', dashboard.dashboardExperience({ id: 12, tipCont: 'contabil', firmaRoluri: { 7: 'aprobator' } }, firma).key, 'contabil');
+  eq('rolul operator are prioritate față de tipul contului', dashboard.dashboardExperience({ id: 12, tipCont: 'contabil', firmaRoluri: { 7: 'operator' } }, firma).key, 'operator');
+  eq('administratorul primește cockpitul contabil', dashboard.dashboardExperience({ id: 1, role: 'admin' }, firma).key, 'contabil');
+  const q = dashboard.operatorQueue([
+    { status: 'ciorna' }, { status: 'ciorna' }, { status: 'validat' }, { status: 'aprobat' }, {},
+  ], { scorMediu: 88 });
+  eq('coada exclude articolele postate', q.coada, 4);
+  eq('articolele istorice fără status sunt postate', q.postat, 1);
+  eq('raportul de extracție rămâne atașat cozii', q.quality.scorMediu, 88);
+  ok('modurile folosesc vocabular alternativ în același cockpit', /modeLabel\(/.test(dashSrc)
+    && /body:not\(\.simple-ui\) \.role-workspace/.test(css)
+    && /\.simple-ui \.role-workspace/.test(css));
 }
 
 section('Poartă: `display:…!important` nu are voie să bată `.hidden`');

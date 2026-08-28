@@ -1099,6 +1099,10 @@ async function main() {
     ok('portofoliu: doar firmele utilizatorului', porto.json && porto.json.firms.length === 1 && porto.json.firms[0].firmaId === 1);
     ok('portofoliu: fiecare firma are forma juridica + starea abonamentului',
       porto.json.firms.every((f) => (f.tipEntitate === 'srl' || f.tipEntitate === 'pfa') && typeof f.tvaPlatitor === 'boolean' && f.sub && typeof f.sub.status === 'string'));
+    ok('portofoliu: agregă fluxul documentelor și perioadele deschise pentru cockpitul contabilului',
+      porto.json.workflow && ['ciorna', 'validat', 'aprobat', 'postat'].every((s) => Number.isInteger(porto.json.workflow[s]))
+      && Number.isInteger(porto.json.perioadeDeschise)
+      && porto.json.firms.every((f) => f.workflow && typeof f.perioadaDeschisa === 'boolean'));
     // admin vede toate firmele in portofoliu, cu forma+abonament (firma 3 = proba expirata din buildDb)
     const laPorto = await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } });
     const portoAdmin = (await req('GET', '/api/portfolio?period=2026-06', { cookie: laPorto.cookie })).json;
@@ -2980,6 +2984,11 @@ async function main() {
     ok('admin seteaza drepturi restrictive pe user1', (await req('POST', '/api/users/2', { cookie: la.cookie, body: { drepturi: { readonly: true, faraSalarii: true } } })).json.ok === true);
     eq('readonly: scrierea respinsa (403)', (await req('POST', '/api/partners', { cookie: c1, body: { cui: 'RO77', den: 'Blocat SRL' } })).status, 403);
     eq('readonly: citirea ramane permisa', (await req('GET', '/api/entries', { cookie: c1 })).status, 200);
+    const previewReadonly = await req('POST', '/api/preview', { cookie: c1, body: { tip: 'nota_contabila', fields: {
+      data: '2026-06-15', explicatie: 'Calcul fără scriere', debit: '5311', credit: '5121', suma: 10,
+    } } });
+    ok('readonly: previzualizarea POST rămâne un calcul permis, fără drept de scriere',
+      previewReadonly.status === 200 && previewReadonly.json.ok === true && previewReadonly.json.total === 10);
 
     // ── /api/entries cu filtrare pe perioada (clientul cere pe ANI — plati de MB la volume mari) ──
     const eAll = (await req('GET', '/api/entries', { cookie: c1 })).json;

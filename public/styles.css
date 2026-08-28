@@ -865,6 +865,18 @@ body:not(.dark) .explain b{color:var(--head)}
 /* Acasă are două niveluri: un rezumat de lucru scurt și analize deschise la cerere. Starea
    fiecărui `<details>` este memorată de dashboard.js, astfel încât pagina se adaptează rolului
    utilizatorului fără să-i ascundă definitiv vreo analiză. */
+.dashboard-home-toolbar{row-gap:6px}
+.dashboard-role-badge{display:inline-flex;align-items:center;min-height:28px;padding:2px 10px;border:1px solid var(--line-strong);
+  border-radius:999px;background:var(--soft);color:var(--head);font-size:12px;font-weight:800;white-space:nowrap}
+.dashboard-role-description{font-size:12.5px}
+/* Simplu/Expert este un strat ÎN INTERIORUL spațiului de rol: în simplu rămâne vocabularul de
+   lucru și mai mult aer; expertul păstrează aceleași patru repere/acțiuni, dar le face mai dense
+   și afișează denumirile tehnice marcate `.adv`. */
+body:not(.simple-ui) .role-workspace{padding-top:12px;padding-bottom:12px}
+body:not(.simple-ui) .role-workspace .kpi{padding:11px}
+body:not(.simple-ui) #quickActionsCard .qa{padding:11px;gap:2px}
+body:not(.simple-ui) #quickActionsCard .qa .ic{font-size:21px}
+.simple-ui .role-workspace .kpi,.simple-ui #quickActionsCard .qa{padding:15px}
 .dashboard-primary #rezumatKpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:12px}
 .dashboard-primary #rezumatFooter{font-size:13px;color:var(--muted)}
 .dashboard-secondary{margin-top:6px}
@@ -887,6 +899,7 @@ body:not(.dark) .explain b{color:var(--head)}
 .dashboard-analysis-body>.card{box-shadow:none}
 .dashboard-analysis-body>:last-child,.dashboard-analysis-body>.grid2:last-child>.card{margin-bottom:0}
 @media(max-width:700px){
+  .dashboard-home-toolbar .dashboard-role-description{flex-basis:100%;order:4}
   .dashboard-primary #rezumatKpis{grid-template-columns:1fr 1fr}
   #quickActionsCard .quickacts{grid-template-columns:1fr 1fr;gap:8px}
   #quickActionsCard .qa{min-height:78px;padding:11px}

@@ -617,6 +617,14 @@ module.exports = function register(app, ctx) {
     // Imbogatire per firma: forma juridica (SRL/PFA), TVA si starea abonamentului (billing per-firma).
     p.firms.forEach((f) => {
       const firma = db.getFirma(f.firmaId) || {};
+      const entries = (db.scoped(f.firmaId).entries || []).filter((e) => String(e.period || e.data || '').slice(0, 7) === period);
+      // Același portofoliu al declarațiilor alimentează și punctul de pornire al contabilului.
+      // Stările sunt cele canonice ale fluxului de articole; lipsa câmpului `status` înseamnă
+      // articol istoric postat, nu ciornă. Agregarea aici evită câte o cerere /api/entries pentru
+      // fiecare firmă și, mai important, nu mută datele altor firme în contextul firmei active.
+      f.workflow = { ciorna: 0, validat: 0, aprobat: 0, postat: 0 };
+      entries.forEach((e) => { f.workflow[e.status || 'postat'] = (f.workflow[e.status || 'postat'] || 0) + 1; });
+      f.perioadaDeschisa = !firma.lockedUntil || firma.lockedUntil < period;
       const profile = fiscalProfile.profileAt(db.scoped(f.firmaId), period);
       f.tipEntitate = firma.tipEntitate === 'pfa' ? 'pfa' : 'srl';
       f.tvaPlatitor = profile.tvaPlatitor;
@@ -624,6 +632,11 @@ module.exports = function register(app, ctx) {
       f.d406Cadenta = profile.d406;
       f.sub = plans.firmaStatus(firma);
     });
+    p.workflow = p.firms.reduce((tot, f) => {
+      Object.keys(tot).forEach((key) => { tot[key] += Number((f.workflow || {})[key]) || 0; });
+      return tot;
+    }, { ciorna: 0, validat: 0, aprobat: 0, postat: 0 });
+    p.perioadeDeschise = p.firms.filter((f) => f.perioadaDeschisa).length;
     // activitate recenta pe firmele accesibile (din jurnalul de audit)
     const recent = (d.audit || []).filter((a) => a.firmaId != null && fids.includes(a.firmaId)).slice(-12).reverse()
       .map((a) => ({ ts: a.ts, username: a.username, action: a.action, detail: a.detail, firma: (db.getFirma(a.firmaId) || {}).nume || '' }));
