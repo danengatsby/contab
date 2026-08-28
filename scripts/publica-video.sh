@@ -7,7 +7,7 @@
 #  autentificare. Se ruleaza doar cand videoul e gata de aratat oricui.
 #
 #  Rulare:  npm run publica-video [cale-mp4] [durata]
-#    implicit: marketing/video/contabo-prezentare-720p.mp4, durata "3:12"
+#    implicit: marketing/video/contabo-prezentare-720p.mp4; durata se citește din MP4
 #  Videoul se produce cu scripts/video-prezentare.mjs (reteta e in antetul lui).
 #
 #  Manifestul (public/descarcari/video.json) e semnalul de existenta, ca la pachetul Windows:
@@ -17,11 +17,20 @@ set -euo pipefail
 
 RADACINA=$(cd "$(dirname "$0")/.." && pwd)
 SURSA=${1:-"$RADACINA/marketing/video/contabo-prezentare-720p.mp4"}
-DURATA=${2:-"3:12"}
+DURATA=${2:-}
 POSTER_SURSA="$(dirname "$SURSA")/poster.jpg"
 IESIRE="$RADACINA/public/descarcari"
 
 [ -f "$SURSA" ] || { echo "Nu gasesc videoul: $SURSA"; echo "Il produci cu scripts/video-prezentare.mjs (vezi antetul)."; exit 1; }
+
+if [ -z "$DURATA" ]; then
+  command -v ffprobe >/dev/null 2>&1 || {
+    echo 'Durata nu a fost dată și ffprobe nu este disponibil. Folosește: npm run publica-video -- <mp4> MM:SS' >&2
+    exit 2
+  }
+  SECUNDE=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$SURSA")
+  DURATA=$(awk -v s="$SECUNDE" 'BEGIN { s=int(s+0.5); printf "%d:%02d", int(s/60), s%60 }')
+fi
 
 mkdir -p "$IESIRE"
 cp "$SURSA" "$IESIRE/contabo-prezentare.mp4"

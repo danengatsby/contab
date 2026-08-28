@@ -26,8 +26,7 @@
 //        node scripts/seed.js                      # firma-exemplu, date pe 2026-06
 //        node scripts/video-decor.js               # OBLIGATORIU: actorii (patron/patron2/maria)
 //        PORT=18099 HOST=127.0.0.1 CONTAB_HIBP=0 node server.js &
-//        # parola contului admin se schimba o data (seed-ul porneste cu admin/admin):
-//        #   POST /api/change-password { oldPassword: 'admin', newPassword: <VIDEO_PW> }
+//        # decorul activeaza 2FA pe actorii privilegiati; filmarea introduce codul TOTP fictiv
 //
 //      Pasul cu DECORUL lipsea din reteta asta si a costat o filmare: `seed.js` face doar
 //      firma-exemplu, iar scenele s05–s09 se autentifica drept `patron` si `maria`. Fara ei,
@@ -63,16 +62,39 @@
 //       filmarea mergea mai departe pe formularul ramas pe ecran.
 //    6. „Iesi" cheama `location.reload()`, care se ciocnea cu navigarea scriptului si lasa sesiunea
 //       in aer — de doua ori filmul a ramas pe contul de proba, tacut.
+//    7. Actorii care detin/aproba firme sunt conturi privilegiate si, fara 2FA in decor, API-ul
+//       raspunde 428: meniurile se misca, dar toate listele filmate sunt goale.
 //  De aceea fiecare scena isi raporteaza starea, iar rezultatul se verifica pe CONTACTUL de imagini
 //  produs de montaj (un cadru la fiecare scena), nu pe log.
 // ─────────────────────────────────────────────────────────────────────────────
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 const BASE = process.env.BASE_URL || 'http://127.0.0.1:18099';
 const PW = process.env.VIDEO_PW || 'VideoDemo2026x';
 const W = 1280; const H = 720;
+const TOTP_SECRET = process.env.VIDEO_TOTP_SECRET || 'GEZDGNBVGY3TQOJQ';
+// Doar pentru preflight: comprimă pauzele ca toate selectoarele și navigările să poată fi probate
+// în câteva minute. Filmarea publicată rulează fără VIDEO_SPEED, deci rămâne la viteza reală.
+const SPEED = Math.max(1, Number(process.env.VIDEO_SPEED || 1));
 const DUR = Object.fromEntries(JSON.parse(fs.readFileSync('/w/tts/durate.json', 'utf8')).map((s) => [s.id, s.durata]));
+
+function codTotp(secret) {
+  const alfabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0; let valoare = 0; const octeti = [];
+  for (const ch of String(secret).toUpperCase().replace(/=+$/, '').replace(/\s/g, '')) {
+    const i = alfabet.indexOf(ch); if (i < 0) continue;
+    valoare = (valoare << 5) | i; bits += 5;
+    if (bits >= 8) { octeti.push((valoare >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  const contor = Math.floor(Date.now() / 1000 / 30);
+  const buf = Buffer.alloc(8); buf.writeUInt32BE(Math.floor(contor / 0x100000000), 0); buf.writeUInt32BE(contor >>> 0, 4);
+  const h = crypto.createHmac('sha1', Buffer.from(octeti)).update(buf).digest();
+  const o = h[h.length - 1] & 15;
+  const n = ((h[o] & 127) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3];
+  return String(n % 1000000).padStart(6, '0');
+}
 
 // HEADED, sub xvfb: in headless, `<iframe src="/pdf/...">` ramane un dreptunghi GRI —
 // vizualizatorul de PDF al lui Chromium nu porneste. Scena care arata un document PDF ar fi
@@ -80,10 +102,15 @@ const DUR = Object.fromEntries(JSON.parse(fs.readFileSync('/w/tts/durate.json', 
 // scena raporteaza reusita. Se ruleaza cu `xvfb-run -a node film.mjs`.
 const b = await chromium.launch({ headless: false });
 const ctx = await b.newContext({ bypassCSP: true, viewport: { width: W, height: H }, recordVideo: { dir: '/w/out', size: { width: W, height: H } } });
+// Perioada trebuie fixată ÎNAINTE să ruleze modulele paginii. Un `localStorage.setItem` după
+// DOMContentLoaded se întrece cu `periods.js`: acesta poate apuca să deseneze luna calendaristică
+// (și să filtreze listele pe ea) înaintea scriptului de filmare. Init-scriptul rulează la fiecare
+// navigare/reîncărcare, inclusiv la întoarcerea din carte.
+await ctx.addInitScript((m) => { try { localStorage.setItem('contab_workmonth', m); } catch (_) { /* privat */ } }, '2026-06');
 const pg = await ctx.newPage();
 const t0 = Date.now();
 const clipa = () => (Date.now() - t0) / 1000;
-const asteapta = (ms) => pg.waitForTimeout(ms);
+const asteapta = (ms) => pg.waitForTimeout(ms / SPEED);
 const jurnal = []; const timeline = [];
 
 /** O scena tine EXACT cat vocea ei: actiunile se executa, apoi se asteapta restul. */
@@ -236,35 +263,43 @@ async function intraCa(user) {
   await scrie('#loginForm [name="username"]', user, 55);
   await scrie('#loginForm [name="password"]', PW, 25);
   await pg.press('#loginForm [name=password]', 'Enter');
+  await asteapta(650);
+  const cod = pg.locator('#loginForm [name="code"]');
+  if (await cod.isVisible().catch(() => false)) {
+    await scrie('#loginForm [name="code"]', codTotp(TOTP_SECRET), 45);
+    await pg.press('#loginForm [name=code]', 'Enter');
+  }
   // `{ state: 'hidden' }` EXPLICIT — capcana 4 din antet, pe alt element si cu alt simptom.
   // `waitForSelector('#loginOverlay.hidden')` cere implicit starea „visible", iar un element
   // `.hidden` nu e vizibil NICIODATA: asteptarea mergea pana la timeout, `.catch()` o inghitea,
   // si scena raporta reusita. Costul nu se vedea in jurnal, ci in film — 20 de secunde de ecran
   // de autentificare, fara voce peste ele, de trei ori (10% din durata totala).
   await pg.waitForSelector('#loginOverlay', { state: 'hidden', timeout: 20000 });
-  await asteapta(2200);
-  await inchideModale(); await unelte();
-}
-/** Luna de lucru e GLOBALA si exemplul are datele pe iunie 2026 — fara asta, ecranele ies goale.
- *
- *  Forma veche chema `window.setWorkMonth(...)`. Aia NU EXISTA: `setWorkMonth` e export de modul din
- *  `public/periods.js`, iar singurul lucru pus pe `window` de aplicatie e `goTab`. Deci apelul era
- *  `undefined` si sarit de garda `if`, functia nu facea nimic, iar filmarea raporta tot „reusit".
- *  Se vedea abia pe contactul de imagini, si numai daca te uitai la CIFRE: liste goale pe luna
- *  curenta, cu vocea vorbind despre datele lunii iunie („0 documente" in scena e-Transport).
- *
- *  Azi se scrie CHEIA pe care o citeste chiar aplicatia (`contab_workmonth`, vezi `workMonth()`),
- *  apoi se reincarca pagina — si se VERIFICA rezultatul. O luna gresita opreste filmarea in
- *  secunda 30, nu dupa 16 minute de inregistrat degeaba. */
-const LUNA_EXEMPLU = '2026-06';
-async function lunaExemplu() {
-  await pg.evaluate((m) => { try { localStorage.setItem('contab_workmonth', m); } catch (e) { /* privat */ } }, LUNA_EXEMPLU);
-  await pg.reload({ waitUntil: 'domcontentloaded' });
-  await pg.waitForSelector('#loginOverlay', { state: 'hidden', timeout: 20000 }).catch(() => {});
-  await asteapta(2200);
+  // Overlay-ul se ascunde înainte ca `init()` să termine toate apelurile. Așteptăm datele reale,
+  // nu un număr arbitrar de milisecunde; altfel meniurile există, dar listele sunt încă goale.
+  await pg.waitForFunction(() => document.querySelector('#firmaSelect')?.options.length > 0, null, { timeout: 20000 });
+  await pg.waitForSelector('#entriesList table', { state: 'attached', timeout: 20000 });
+  await asteapta(500);
   await inchideModale(); await unelte();
   const luna = await pg.evaluate(() => (document.querySelector('#currentPeriod') || {}).textContent || '');
   if (!/iunie/i.test(luna)) throw new Error('luna de lucru nu s-a aplicat (e „' + luna.trim() + '", nu iunie 2026)');
+}
+/** Schimbare de actor fără a filma încă o dată formularul de login. Fluxul patron–contabil a fost
+ *  deja demonstrat în scenele 5–8; înainte de ciclul contabil avem nevoie doar de o tăietură
+ *  scurtă și verificabilă, nu de zeci de secunde fără voce pe același ecran. */
+async function intraDirect(user) {
+  await ctx.clearCookies();
+  const r = await ctx.request.post(BASE + '/api/login', {
+    data: { username: user, password: PW, code: codTotp(TOTP_SECRET) },
+  });
+  if (!r.ok()) throw new Error('autentificarea directă pentru ' + user + ' a răspuns ' + r.status());
+  await pg.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
+  await pg.waitForSelector('#loginOverlay', { state: 'hidden', timeout: 20000 });
+  await pg.waitForSelector('#entriesList table', { state: 'attached', timeout: 20000 });
+  await asteapta(500);
+  await inchideModale(); await unelte();
+  const luna = await pg.evaluate(() => (document.querySelector('#currentPeriod') || {}).textContent || '');
+  if (!/iunie/i.test(luna)) throw new Error('schimbarea directă a actorului a deschis „' + luna.trim() + '"');
 }
 /** Trece contul pe modul EXPERT, pe camera.
  *  Necesar, nu cosmetic: patronul porneste in modul SIMPLU, care ascunde din meniu trei grupuri
@@ -396,8 +431,7 @@ await scena('s09-portofoliu', async () => {
 });
 
 // ═══ S10 · prima intrare, meniul pe ciclul contabil ═══════════════════════
-await intraCa('patron');
-await lunaExemplu();
+await intraDirect('patron');
 
 // ═══ FAZA 1 · deschiderea exercitiului ═════════════════════════════════════
 await scena('s10-primaintrare', async () => {
@@ -697,6 +731,16 @@ await scena('s29b-etransport', async () => {
   // o lista statica peste vocea despre codul UIT); cu asteptare, pica dupa 12 s. Ambele simptome,
   // aceeasi cauza. Regula pentru orice scena noua: tinteste in interiorul tabului, nu global.
   // Lista se randeaza si DUPA un apel de retea, deci asteptarea ramane necesara.
+  // Filtrul listei poate fi rămas pe an după consultarea registrelor. Îl readucem explicit pe
+  // luna exemplului și declanșăm aceeași reîncărcare pe care o face utilizatorul din selector.
+  await pg.evaluate(() => {
+    const an = document.querySelector('#iesiteAn');
+    const luna = document.querySelector('#iesiteLuna');
+    if (an) an.value = '2026';
+    if (luna) luna.value = '06';
+    if (luna) luna.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await pg.waitForSelector('#entriesIesire table', { state: 'visible', timeout: 12000 });
   await pg.waitForSelector('#tab-iesite button.ettrans', { state: 'visible', timeout: 12000 });
   await clic('#tab-iesite button.ettrans', { dupa: 2400 });
   await pg.waitForSelector('#etModal:not(.hidden)', { timeout: 10000 });
@@ -881,6 +925,7 @@ await scena('s36c-carte', async () => {
   // direct la pagina cartii, in ACEEASI fila, si se revine dupa.
   await pg.goto(BASE + '/carte/', { waitUntil: 'domcontentloaded' });
   await asteapta(1600);
+  await unelte();
   await derulare(600, 2200);
   await derulare(1800, 2000);
   await card('O carte, nu un manual de utilizare', 'contabilitatea in ordinea\nin care se intampla',

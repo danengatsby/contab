@@ -24,6 +24,10 @@ const db = require('../src/db');
 const auth = require('../src/auth');
 
 const PAROLA = process.env.VIDEO_PW || 'VideoDemo2026x';
+// Conturile care dețin/aprobă date contabile sunt privilegiate și aplicația cere 2FA. Decorul
+// folosește un secret fictiv, exclusiv în baza temporară de filmare; scenariul calculează codul
+// curent și îl introduce la fiecare schimbare de actor.
+const TOTP_SECRET = process.env.VIDEO_TOTP_SECRET || 'GEZDGNBVGY3TQOJQ';
 
 // Id-urile urmeaza conventia APLICATIEI, nu `db.nextId('u')`. Prima forma a acestui script folosea
 // prefixe text („u2", „f4") si arata perfect la creare — dar `db.getUser` face `Number(id)` si
@@ -36,7 +40,11 @@ function faUser(d, username, role, profil) {
     d.users.push(u);
   }
   const { salt, hash } = auth.hashPassword(PAROLA);
-  Object.assign(u, { salt, hash, role, mustChange: false, pending: false, profil: Object.assign({}, u.profil, profil) });
+  Object.assign(u, {
+    salt, hash, role, mustChange: false, pending: false,
+    twofa: true, totpSecret: TOTP_SECRET, twofaRecoveryHashes: [],
+    profil: Object.assign({}, u.profil, profil),
+  });
   return u;
 }
 

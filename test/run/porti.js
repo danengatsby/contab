@@ -1532,26 +1532,43 @@ section('Poarta: scenariul video nu poate rămâne în urma vocii din film');
   try { execFileSync('node', [pth.join(RADACINA, 'scripts', 'genereaza-scenariu.js'), '--check'], { stdio: 'pipe' }); }
   catch (e) { iesire = e.status || 1; }
   ok('scenariul din docs/ e regenerat din naratiune (ruleaza `node scripts/genereaza-scenariu.js`)', iesire === 0);
+
+  // Generatorul acopera lista scenelor, dar documentul are si un epilog editorial. Tocmai acolo
+  // ramasesera „32 de scene / 10:08" dupa ce filmul ajunsese la 74 de scene: totul generat era
+  // corect, iar promisiunea publica era falsa. Numarul vine din aceeasi sursa ca scenariul, iar
+  // durata publicata ramane exclusiv in manifestul scris de `publica-video.sh` dupa montaj.
+  const document = fsx.readFileSync(pth.join(RADACINA, 'docs', 'scenariu-video-prezentare.md'), 'utf8');
+  const epilog = document.slice(document.indexOf('## 8. Filmul'));
+  ok('epilogul exista si declara numarul real de scene',
+    epilog.includes(`prin cele ${scene.length} de scene`));
+  ok('epilogul trimite durata publicata la manifest',
+    epilog.includes('public/descarcari/video.json'));
+  const durateScrise = epilog.match(/\b\d{1,2}:\d{2}\b/g) || [];
+  ok('epilogul nu pastreaza o durata scrisa de mana' +
+    (durateScrise.length ? ' — GASITE: ' + durateScrise.join(', ') : ''), durateScrise.length === 0);
 }
 
-section('Poarta: pagina filmului nu-si scrie durata de mana');
+section('Poarta: paginile filmului nu-si scriu durata de mana');
 {
   const fsx = require('fs'); const pth = require('path');
   // Filmul se reface, manifestul se rescrie singur la publicare — dar pagina isi tinea durata
   // hardcodata, in TREI locuri. Dupa refacere anunta „Durata 10:27" pentru un film de 13:20:
   // vizitatorul citea o cifra si vedea alta in player. Sursa unica e manifestul.
-  const html = fsx.readFileSync(pth.join(RADACINA, 'public', 'video.html'), 'utf8');
+  const pagini = ['video.html', 'prezentare.html'].map((nume) => ({
+    nume,
+    html: fsx.readFileSync(pth.join(RADACINA, 'public', nume), 'utf8'),
+  }));
   const js = fsx.readFileSync(pth.join(RADACINA, 'public', 'video.js'), 'utf8');
-  const faraComentarii = html.replace(/<!--[\s\S]*?-->/g, ' ');
-  ok('poarta chiar citeste pagina', faraComentarii.includes('video-player'));
-  const durate = faraComentarii.match(/\b\d{1,2}:\d{2}\b/g) || [];
-  ok('nicio durata scrisa de mana in pagina' + (durate.length ? ' — GASITE: ' + durate.join(', ') : ''), durate.length === 0);
-  ok('pagina are locul in care se pune durata', /id="videoMeta"/.test(html));
-  ok('...si scriptul care o aduce din manifest', /src="\/video\.js"/.test(html));
+  pagini.forEach(({ nume, html }) => {
+    const faraComentarii = html.replace(/<!--[\s\S]*?-->/g, ' ');
+    ok(`${nume}: poarta chiar citeste pagina`, faraComentarii.includes('video-player'));
+    const durate = faraComentarii.match(/\b\d{1,2}:\d{2}\b/g) || [];
+    ok(`${nume}: nicio durata scrisa de mana` + (durate.length ? ' — GASITE: ' + durate.join(', ') : ''), durate.length === 0);
+    ok(`${nume}: are locul in care se pune durata`, /id="videoMeta"/.test(html));
+    ok(`${nume}: scriptul aduce durata din manifest`, /src="\/video\.js"/.test(html));
+    ok(`${nume}: scriptul nu e inline (CSP: script-src self)`, !/<script(?![^>]*\bsrc=)/.test(faraComentarii));
+  });
   ok('scriptul chiar citeste manifestul', /descarcari\/video\.json/.test(js));
-  // Scriptul TREBUIE sa fie fisier separat: CSP-ul are `script-src 'self'`, deci unul inline ar fi
-  // blocat TACUT — pagina s-ar incarca, doar cifra ar lipsi, si nimeni n-ar sti de ce.
-  ok('scriptul nu e inline (CSP: script-src self)', !/<script(?![^>]*\bsrc=)/.test(faraComentarii));
   // Fara manifest, pagina nu are voie sa inventeze o durata.
   ok('fara manifest, ramane doar linkul de descarcare', /catch[\s\S]{0,120}innerHTML = link/.test(js));
 }

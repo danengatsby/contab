@@ -117,16 +117,17 @@
   </div>
 
   <!-- ─────────────── VIDEO ─────────────── -->
-  <!-- `preload="none"` si `poster`: filmul are 40 MB, iar sectiunea e a doua din pagina — o
-       preincarcare automata ar consuma traficul oricui deschide prezentarea, inclusiv pe mobil,
+  <!-- `preload="none"` si `poster`: filmul complet este mare, iar sectiunea e a doua din pagina —
+       o preincarcare automata ar consuma traficul oricui deschide prezentarea, inclusiv pe mobil,
        chiar daca nu apasa niciodata Play. Se descarca doar la cerere. -->
   <section class="alt" id="video">
     <div class="wrap">
       <p class="kicker">Vezi aplicația în lucru</p>
       <h2>Tot drumul, de la document la declarație</h2>
-      <p class="lead">Zece minute, cu voce în română: înregistrarea unei facturi, închiderea lunii și a anului,
-        decontul de TVA cu reconcilierea e-TVA, SAF-T și registrul fiscal. Fără montaj care sare
-        peste pașii grei.</p>
+      <p class="lead">Filmul complet, cu voce în română: colaborarea patron–contabil, înregistrarea
+        documentelor, banii, stocurile, salariile, închiderea lunii și a anului, situațiile
+        financiare, decontul de TVA cu reconcilierea e-TVA, SAF-T și declarațiile. Interfața și
+        cartea sunt cele din versiunea actuală a aplicației.</p>
       <div class="video-wrap">
         <video class="video-player" controls preload="none"
                poster="/descarcari/contabo-prezentare.jpg"
@@ -135,8 +136,7 @@
             <a href="/descarcari/contabo-prezentare.mp4">descarcă-l de aici</a>.</p>
         </video>
       </div>
-      <p class="video-meta">Durata 10:27 · 1280×720 ·
-        <a href="/descarcari/contabo-prezentare.mp4" download>descarcă filmul</a></p>
+      <p class="video-meta" id="videoMeta"><a href="/descarcari/contabo-prezentare.mp4" download>descarcă filmul</a></p>
     </div>
   </section>
 
@@ -435,6 +435,7 @@
     </div>
   </footer>
 
+  <script src="/video.js"></script>
   <script src="/prezentare.js"></script>
 </body>
 </html>
