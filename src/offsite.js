@@ -216,19 +216,19 @@ async function getBucketLifecycle(cfg, fetchImpl) {
 /**
  * Avertismentul de CONFIDENTIALITATE al copiei offsite.
  *
- * O copie plecata fara criptare NU e un esec de backup — arhiva chiar a ajuns undeva — dar e o
- * expunere, si pana acum trecea complet tacut: singurul avertisment din scripts/backup.js se
- * declansa cand NU exista nicio destinatie configurata. Cu e-mailul configurat si fara cheie,
- * logul spunea „Offsite email OK" si atat.
+ * Istoricul incidentului: o copie plecata fara criptare ajungea la destinatie, dar producea o
+ * expunere pe care logul o trata drept succes. Cu e-mailul configurat si fara cheie, mesajul era
+ * doar „Offsite email OK".
  *
  * Masurat pe productie la 2026-07-29: `CONTAB_BACKUP_KEY` lipsea, deci arhiva zilnica —
  * db.json + contab.sql + uploads/, adica toate datele fiscale ale tuturor firmelor — pleca in
  * CLAR catre o cutie postala terta, exact ce itemul de backlog voia sa elimine. Codul criptat
- * exista si era testat; lipsea doar configurarea, si nimic nu o semnala.
+ * exista si era testat; lipsea doar configurarea, si nimic nu o semnala. Incidentul este inchis:
+ * scripts/backup.js refuza acum orice transport configurat fara cheie, iar stocarea obiect activa
+ * a fost revalidata prin PUT + GET la 2026-08-28.
  *
- * Severitate: avertisment, nu esec. Backupul si-a facut treaba, iar `exitCode=1` aici ar
- * confunda „nu am backup" (grav, disponibilitate) cu „am backup neprotejat" (grav, dar altfel)
- * — si ar toci semnalul care conteaza cel mai mult.
+ * Functia ramane o ultima plasa pentru un transport viitor care ar ocoli garda fail-closed;
+ * scripts/backup.js transforma orice rezultat al ei in exitCode=1.
  *
  * @returns {string} mesajul de avertizare, sau '' daca nu e nimic de semnalat
  */

@@ -2,8 +2,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 #  DRILL RECE — restaurarea pe o masina pe care aplicatia NU exista
 #
-#  Ce probeaza, si nimic altceva nu proba pana acum: ca din copia offsite CRIPTATA plus cheia de
-#  criptare se poate ajunge inapoi la date, PE O MASINA GOALA. Drill-urile existente ruleaza pe
+#  Ce probeaza, si nimic altceva nu proba pana acum: ca din formatul copiei offsite CRIPTATE plus
+#  cheia de criptare se poate ajunge inapoi la date, PE O MASINA GOALA. Drill-urile existente
+#  ruleaza pe
 #  acest server, cu codul, cu Node si cu `.env` la indemana — deci raspund la „arhiva e buna?",
 #  nu la „ce fac daca serverul nu mai exista?".
 #
@@ -77,10 +78,10 @@ CUI=$(echo "$IES" | sed -n 's/^CUI=//p')
 [ "${FIRME:-0}" -gt 0 ] && [ "${CUI:-0}" -gt 0 ] || { echo "ESUAT: db.json nu contine firme cu CUI — restaurare goala."; exit 1; }
 
 echo ""
-echo "✓ DRILL RECE TRECUT — din arhiva criptata plus cheie se ajunge la date"
+echo "✓ DRILL RECE TRECUT — din arhiva in formatul offsite plus cheie se ajunge la date"
 echo "  pe o masina fara depozit, fara Node si fara aplicatie (doar openssl + unzip)."
 echo "  Continut dovedit: $FISIERE fisiere, db.json de $OCTETI octeti, cu firme si CUI-uri."
 echo ""
 echo "  ATENTIE, partea pe care drill-ul NU o poate proba: cheia a fost citita din .env, adica"
-echo "  DE PE ACEST SERVER. Daca serverul dispare, dispare si ea, iar arhivele din cutia postala"
+echo "  DE PE ACEST SERVER. Daca serverul dispare, dispare si ea, iar arhivele din stocarea obiect"
 echo "  raman necitibile. Copia cheii in alt loc e singurul pas ramas, si e o actiune omeneasca."

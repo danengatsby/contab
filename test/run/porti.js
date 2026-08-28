@@ -1082,6 +1082,17 @@ section('Documente juridice: fara placeholdere si cu identitate consecventa');
     /adresă de email \(obligatorie la înscriere/i.test(confTestTxt)
       && /name="email"[^>]*required/.test(indexTestTxt));
 
+  // Politica promite copie offsite criptata. O fraza veche din checklist spunea simultan ca toate
+  // copiile sunt doar pe server — contradictie publica, nu simpla documentatie interna. Poarta
+  // interzice afirmatia incompatibila in toate textele publice si se asigura ca nu scaneaza in gol.
+  const publicBackupFiles = ['index.html', 'prezentare.html', 'confidentialitate.html', 'panel-info.js'];
+  const publicBackupText = publicBackupFiles.map((f) => fsx.readFileSync(pth.join(root, 'public', f), 'utf8')).join('\n');
+  ok('pagina publica numeste explicit copia offsite criptata',
+    /copi(?:e|i)[^.<]{0,100}off[- ]?site[^.<]{0,100}criptat/i.test(publicBackupText)
+      || /criptat[^.<]{0,100}off[- ]?site/i.test(publicBackupText));
+  ok('nicio pagina publica nu afirma simultan ca backupurile sunt doar pe server',
+    !/copi(?:ile|i)[^.<]{0,80}(?:doar|numai)[^.<]{0,30}(?:acest|același|acelasi)?\s*server/i.test(publicBackupText));
+
   // DPA-ul trebuie sa acopere subiectele fara de care nu e un acord art. 28, ci un text frumos.
   const dpa = fsx.readFileSync(pth.join(root, 'public', 'dpa.html'), 'utf8');
   for (const [ce, rx] of [

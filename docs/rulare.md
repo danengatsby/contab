@@ -355,20 +355,23 @@ de date temporar, port liber. Versiunea de PostgreSQL se **derivă din antetul d
 de pe 18 nu se rejoacă pe 16, iar prima rulare a picat exact așa.
 
 **Ce NU intră în cifră, deliberat:**
-- **obținerea arhivei din offsite** — azi e un atașament de e-mail, deci un pas *manual*: deschizi
-  mesajul, descarci. Depinde de om și de rețea, nu de cod. Un total care ar înghiți tăcut o etapă
-  manuală ar fi ficțiune;
+- **obținerea arhivei din offsite** — sursa principală este acum stocarea obiect, iar descărcarea
+  ultimei chei `contab/full-*.zip.enc` rămâne un pas *manual* în scenariul de dezastru. Depinde de
+  om și de rețea și a fost probată separat; nu este inclusă artificial în cele ~1,4 s măsurate de
+  la „arhivă în mână”. E-mailul este doar canal auxiliar, nu dependența recuperării;
 - **pornirea PostgreSQL** (1,4 s în drill) — artefact al probei; la o restaurare reală serverul de
   baze e deja pornit;
 - **timpul operatorului** — găsirea arhivei, decizia, verificarea. Acesta domină RTO-ul real.
 
-Concluzia onestă: partea *tehnică* a revenirii e sub 2 secunde la volumul actual și scalează cu
-dimensiunea dump-ului; ce rămâne de scurtat e pasul manual de mai sus.
+Concluzia onestă: partea *tehnică* a revenirii e sub 2 secunde la volumul măsurat și scalează cu
+dimensiunea dump-ului; RTO-ul total mai include alegerea și descărcarea manuală a obiectului.
 
-> ✅ **Starea reală a copiei offsite, măsurată pe server la 2026-08-14** (`npm run offsite-check`
+> ✅ **Starea reală a copiei offsite, revalidată pe server la 2026-08-28** (`npm run offsite-check`
 > → **VERDE**): arhiva pleacă **criptată** (AES-256-CBC, PBKDF2 200.000 iterații, round-trip
 > verificat înainte de fiecare trimitere) și ajunge pe **stocare obiect**, nu doar pe e-mail.
-> Dovedit atunci, cap-coadă: obiect descărcat înapoi din bucket și restaurat pe o mașină **goală**
+> Ultima rulare zilnică (`2026-08-28T03:30:02Z`) a consemnat arhiva restaurabilă, 5 firme / 21
+> articole, criptare verificată și `objectStorage.status=ok`. Dovedit și cap-coadă la activare:
+> obiect descărcat înapoi din bucket și restaurat pe o mașină **goală**
 > (container cu doar `openssl` și `unzip`, fără Node și fără depozit) → `db.json`, `contab.sql`,
 > `uploads/` și `audit/`.
 >
@@ -387,9 +390,10 @@ dimensiunea dump-ului; ce rămâne de scurtat e pasul manual de mai sus.
 >    face schimbând `CONTAB_OFFSITE_ENDPOINT` și `_REGION` pe `hel1`/`fsn1` (Hetzner facturează
 >    per bucket, deci mutarea e o decizie de cost, nu doar de configurare).
 
-### Activarea copiei offsite criptate (pași exacți)
+### Verificarea și configurarea copiei offsite criptate (pași exacți)
 
-Totul e configurare — codul există și e testat. **Verifică oricând starea cu:**
+În serviciul găzduit copia este activă; pașii de mai jos se repetă la o instalare nouă, migrare sau
+rotație de credențiale. **Verifică oricând starea cu:**
 
 ```bash
 npm run offsite-check     # 0 = verde | 1 = ceva chiar nu merge | 2 = neconfigurat
@@ -431,9 +435,9 @@ Semnarea e **AWS SigV4 nativă**, fără `rclone` și fără dependențe noi —
 vectorii oficiali, cât și cap-coadă împotriva unui server S3 real (MinIO local, 2026-07-29):
 credențiale greșite dau `SignatureDoesNotMatch`, bucket inexistent dă `NoSuchBucket`.
 
-**3. Confirmă și lasă e-mailul ca notificare.** După `npm run offsite-check` verde, e-mailul poate
-rămâne pentru **notificare**, dar nu mai e nevoie să fie transportul datelor: arhiva criptată pleacă
-în bucket. Prima rulare reală se vede în `logs/backup.log` ca `Offsite S3 OK -> …(verificat)`.
+**3. Confirmă; e-mailul este opțional.** După `npm run offsite-check` verde, e-mailul poate rămâne
+pentru **notificare**, dar nu este transportul principal al datelor: arhiva criptată pleacă în
+bucket. Rularea reală se vede în `logs/backup.log` ca `Offsite S3 OK -> …(verificat)`.
 
 Ce se întâmplă dacă ceva cedează: criptarea e **fail-closed** (dacă cheia lipsește sau `openssl`
 eșuează, copia offsite **nu pleacă** — refuz deliberat de a trimite în clar), iar urcarea se
@@ -442,12 +446,11 @@ arată identic în log cu una bună.
 
 ### Procedura de restaurare, pas cu pas
 
-1. Obține ultima arhivă. **Astăzi:** atașamentul din e-mailul zilnic către `CONTAB_BACKUP_EMAIL_TO`
-   (`full-AAAALLZZ-HHMMSS.zip.enc`, **criptat** de la 2026-08-02). **După configurarea bucketului:**
-   din stocarea obiect (`contab/full-AAAALLZZ-HHMMSS.zip.enc`) — același format, altă sursă.
-2. Decriptează cu comanda `openssl` de mai sus. Ea e reprodusă și **în corpul fiecărui e-mail de
-   backup**, tocmai ca procedura să fie la îndemână când aplicația și serverul nu mai există.
-   Arhivele dinaintea datei de 2026-08-02 sunt `.zip` necriptat și se sar direct la pasul 3.
+1. Obține ultima arhivă din stocarea obiect: `contab/full-AAAALLZZ-HHMMSS.zip.enc`. Atașamentul de
+   e-mail este doar o sursă alternativă dacă livrarea lui a reușit, nu planul principal de
+   recuperare.
+2. Decriptează cu comanda `openssl` de mai sus, folosind cheia păstrată separat. Arhivele istorice
+   dinaintea datei de 2026-08-02 pot fi `.zip` necriptat și se sar direct la pasul 3.
 3. Dezarhivează: conține `db.json`, dump-ul PostgreSQL (`contab.sql`) și `uploads/`.
    Pașii 3–7 sunt exact ce automatizează și cronometrează `npm run rto-drill` — rulează-l periodic,
    ca procedura să fie dovedită, nu presupusă.

@@ -483,26 +483,35 @@ trece date fiscale de client printr-o cutie poștală terță — inconsecvent c
 
 ### Acceptanță
 
-- [x] **ÎNDEPLINIT PARȚIAL 2026-07-29** — RTO e acum **măsurat, nu estimat**: `npm run rto-drill`
+- [x] **ÎNDEPLINIT PARȚIAL 2026-07-29 (constatare istorică, închisă mai jos)** — RTO e acum
+      **măsurat, nu estimat**: `npm run rto-drill`
       restaurează arhiva reală într-un PostgreSQL efemer, pornește aplicația și verifică datele,
       cronometrând fiecare etapă. **~1,4 s** de la arhivă în mână la serviciu verificat (72 KB,
-      4 firme / 58 articole). Rămâne neinclus, deliberat, pasul de **obținere** a arhivei — azi e
-      un atașament de e-mail, deci manual; un total care l-ar înghiți tăcut ar fi ficțiune.
+      4 firme / 58 articole). În măsurarea de la acea dată rămânea neinclus, deliberat, pasul de
+      **obținere** a arhivei — era un atașament de e-mail, deci manual; un total care l-ar fi
+      înghițit tăcut ar fi fost ficțiune.
       Trei constatări din drill, toate confirmate pe server la aceeași dată:
       1. **drill-ul de restaurare nativă era PICAT** sub cron („no PostgreSQL user name specified"):
          `pg` deduce rolul din `process.env.USER`, pe care cron nu-l setează, iar `psql` nu are
          problema — deci defectul apărea *numai* în producție și orice probă manuală îl rata. Reparat
          (`localPgConfig` în `storePg.js`, importat de drill), cu test de regresie fără `USER` în mediu;
-      2. **copia offsite pleacă NECRIPTATĂ**: `CONTAB_BACKUP_KEY` și toate `CONTAB_OFFSITE_*` sunt
-         absente pe server, deci calea criptată pe stocare obiect construită la acest item **nu e
-         activă** — transportul real e tot e-mailul, cu date fiscale în clar. Codul e gata; lipsește
-         doar configurarea. **Criteriul de fond al itemului rămâne deci neatins în producție**;
+      2. **la acea dată, copia offsite pleca NECRIPTATĂ**: `CONTAB_BACKUP_KEY` și toate
+         `CONTAB_OFFSITE_*` erau absente pe server, deci calea criptată pe stocare obiect construită
+         la acest item **nu era activă** — transportul real era e-mailul, cu date fiscale în clar.
+         Aceasta este fotografia incidentului din 2026-07-29, nu starea curentă;
       3. **runbook-ul descria o instalare care nu e în funcțiune** (descarcă din bucket, decriptează)
          — corectat în `docs/rulare.md`, cu avertisment despre starea reală.
-- [x] **ACTUALIZARE 2026-08-20** — transportul offsite este acum fail-closed: dacă există o
-      destinație configurată, dar lipsește `CONTAB_BACKUP_KEY`, backupul se oprește înainte să
-      trimită date. Activarea copiei externe rămâne o operațiune de deployment: cheia trebuie
-      configurată separat și verificată prin `npm run offsite-check`.
+- [x] **REZOLVAT 2026-08-14, REVALIDAT 2026-08-28** — copia externă este activă pe stocare obiect.
+      `npm run offsite-check` a probat din nou criptarea, descifrarea, `PUT` și `GET` identic;
+      `npm run offsite-retentie` a citit din bucket regula vie de 180 de zile și a găsit-o identică
+      celei din cod. Rularea zilnică din 2026-08-28 03:30 UTC a creat
+      `full-20260828-033001.zip`, a trecut drill-ul de restaurare (5 firme / 21 articole) și a
+      consemnat `offsite.objectStorage.status=ok`, `encrypted=true` și
+      `encryptionVerified=true`. E-mailul poate rămâne canal auxiliar; reușita copiei nu depinde de
+      el. Constatarea din 2026-07-29 rămâne mai sus exclusiv ca istoric al incidentului.
+- [x] **ACTUALIZARE 2026-08-20** — transportul offsite este fail-closed: dacă există o destinație
+      configurată, dar lipsește `CONTAB_BACKUP_KEY`, backupul se oprește înainte să trimită date.
+      Configurația activă se verifică după orice schimbare prin `npm run offsite-check`.
 - [x] Arhiva e ilizibilă fără cheie — verificat efectiv: textul nu apare în cifrat, cheia greșită
       eșuează, round-trip-ul cu cheia bună e identic.
 - [x] Eșecul criptării **oprește** copia offsite (fail-closed); eșecul urcării se raportează și

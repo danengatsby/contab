@@ -274,7 +274,7 @@ async function main() {
   // veche din last-backup.json pana a doua zi (defect observat in auditul operational).
   scrieMarcaj();
 
-  // 3) offsite — email si/sau rclone; esecul unuia nu opreste restul.
+  // 3) offsite — stocare obiect, email si/sau rclone; esecul unuia nu opreste restul.
   //    Cu CONTAB_BACKUP_KEY setat, copia OFFSITE pleaca CRIPTATA (AES-256, openssl);
   //    restaurare: openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in f.zip.enc -out f.zip -pass env:CONTAB_BACKUP_KEY
   let offsitePath = f.path;

@@ -367,11 +367,11 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   relaționale (SQLite prin `VACUUM INTO`, sigur sub WAL; sau `contab.sql` prin `pg_dump` pe
   driverul PostgreSQL) + **toate documentele din `data/uploads/`**, jurnalul durabil și dovada
   `integrity/global-chain.json`. Verificarea arhivei recalculează rădăcina exclusiv din copiile
-  aflate în ZIP și o confruntă cu dovada — păstrează
-  ultimele 14 și o trimite **în afara serverului**: pe email (Resend, `CONTAB_BACKUP_EMAIL_TO` +
-  `RESEND_API_KEY` în `.env`) și/sau cu **rclone** (`RCLONE_REMOTE`, obligatoriu peste 20MB).
-  Restaurare după dezastru: dezarhivezi zip-ul → `db.json` prin Setări → Backup → Restaurează,
-  `uploads/*` înapoi în `data/uploads/`.
+  aflate în ZIP și o confruntă cu dovada — păstrează ultimele 14 local, criptează copia offsite și o
+  trimite în stocare obiect S3-compatibilă (`CONTAB_OFFSITE_*`). După `PUT`, obiectul este descărcat
+  și amprenta lui este comparată cu sursa; e-mailul și **rclone** rămân canale opționale, nu
+  destinația principală. Restaurare după dezastru: descarci `full-*.zip.enc`, îl decriptezi,
+  dezarhivezi → `db.json` prin Setări → Backup → Restaurează, `uploads/*` înapoi în `data/uploads/`.
 - **Restaurare backup din UI:** Setări → „Backup” → încarcă un fișier `db.json`; serverul îl
   validează structural și prin lanțul global înainte de orice mutație, face automat un backup al stării curente, apoi
   înlocuiește baza și o reîncarcă. `POST /api/restore` (admin, multipart).
