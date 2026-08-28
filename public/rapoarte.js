@@ -120,6 +120,15 @@ async function loadBalance() {
   renderBalance();
 }
 $('#balOnlyMoves') && $('#balOnlyMoves').addEventListener('change', renderBalance);
+const BALANCE_MOBILE_GROUPS = new Set(['sf', 'ru', 'si', 'su', 'all']);
+function balanceMobileGroup(value) {
+  return BALANCE_MOBILE_GROUPS.has(value) ? value : 'sf';
+}
+function applyBalanceMobileColumns() {
+  const table = $('#balantaView table');
+  if (table) table.dataset.mobileColumns = balanceMobileGroup($('#balantaMobileColumns')?.value);
+}
+$('#balantaMobileColumns') && $('#balantaMobileColumns').addEventListener('change', applyBalanceMobileColumns);
 // Cele patru egalitati ale balantei si CARE dintre ele nu se inchide. Extras ca functie pura:
 // mesajul indruma contabilul spre cauza, deci o clasificare gresita il trimite sa caute in locul
 // nepotrivit. Campurile lipsa se citesc ca 0 — altfel diferenta ar iesi NaN si s-ar afisa ca atare.
@@ -159,34 +168,37 @@ function renderBalance() {
   }
   const onlyMoves = $('#balOnlyMoves') && $('#balOnlyMoves').checked;
   const visible = onlyMoves ? tb.rows.filter((r) => r.rd || r.rc) : tb.rows;
+  const mobileControls = $('#balantaMobileControls');
+  if (mobileControls) mobileControls.hidden = !visible.length;
   if (!visible.length) { $('#balantaView').innerHTML = `<p class="muted">${onlyMoves ? 'Niciun cont cu mișcări în luna aleasă.' : 'Niciun cont.'}</p>`; return; }
   const rows = visible.map((r) => `<tr>
-    <td class="acc">${H(r.cod)}</td><td>${H(r.nume)}</td>
-    <td class="num grpsep">${fmt0(r.siD)}</td><td class="num">${fmt0(r.siC)}</td>
-    <td class="num grpsep">${fmt0(r.rd)}</td><td class="num">${fmt0(r.rc)}</td>
-    <td class="num grpsep">${fmt0(r.tsD)}</td><td class="num">${fmt0(r.tsC)}</td>
-    <td class="num grpsep">${fmt0(r.sfD)}</td><td class="num">${fmt0(r.sfC)}</td></tr>`).join('');
+    <td class="acc bal-col-account">${H(r.cod)}</td><td class="bal-col-name">${H(r.nume)}</td>
+    <td class="num grpsep bal-col-si">${fmt0(r.siD)}</td><td class="num bal-col-si">${fmt0(r.siC)}</td>
+    <td class="num grpsep bal-col-ru">${fmt0(r.rd)}</td><td class="num bal-col-ru">${fmt0(r.rc)}</td>
+    <td class="num grpsep bal-col-su">${fmt0(r.tsD)}</td><td class="num bal-col-su">${fmt0(r.tsC)}</td>
+    <td class="num grpsep bal-col-sf">${fmt0(r.sfD)}</td><td class="num bal-col-sf">${fmt0(r.sfC)}</td></tr>`).join('');
   // total: cel general, sau recalculat din rândurile vizibile când filtrăm pe „doar mișcări”
   const t = onlyMoves ? balanceTotals(visible) : tb.tot;
-  $('#balantaView').innerHTML = `<table><thead>
+  const mobileGroup = balanceMobileGroup($('#balantaMobileColumns')?.value);
+  $('#balantaView').innerHTML = `<table data-mobile-columns="${mobileGroup}"><thead>
     <tr>
-      <th rowspan="2">Cont</th><th rowspan="2">Denumire</th>
-      <th colspan="2" class="bal-grp si">Sold inițial (reportat)</th>
-      <th colspan="2" class="bal-grp ru">Rulaj lună</th>
-      <th colspan="2" class="bal-grp su">Total sume</th>
-      <th colspan="2" class="bal-grp sf">Sold final</th>
+      <th rowspan="2" class="bal-col-account">Cont</th><th rowspan="2" class="bal-col-name">Denumire</th>
+      <th colspan="2" class="bal-grp si bal-col-si">Sold inițial (reportat)</th>
+      <th colspan="2" class="bal-grp ru bal-col-ru">Rulaj lună</th>
+      <th colspan="2" class="bal-grp su bal-col-su">Total sume</th>
+      <th colspan="2" class="bal-grp sf bal-col-sf">Sold final</th>
     </tr>
     <tr>
-      <th class="num grpsep">Debit</th><th class="num">Credit</th>
-      <th class="num grpsep">Debit</th><th class="num">Credit</th>
-      <th class="num grpsep">Debit</th><th class="num">Credit</th>
-      <th class="num grpsep">Debit</th><th class="num">Credit</th>
+      <th class="num grpsep bal-col-si">Debit</th><th class="num bal-col-si">Credit</th>
+      <th class="num grpsep bal-col-ru">Debit</th><th class="num bal-col-ru">Credit</th>
+      <th class="num grpsep bal-col-su">Debit</th><th class="num bal-col-su">Credit</th>
+      <th class="num grpsep bal-col-sf">Debit</th><th class="num bal-col-sf">Credit</th>
     </tr></thead>
-    <tbody>${rows}<tr class="total"><td colspan="2">TOTAL</td>
-    <td class="num grpsep">${fmt0(t.siD)}</td><td class="num">${fmt0(t.siC)}</td>
-    <td class="num grpsep">${fmt0(t.rd)}</td><td class="num">${fmt0(t.rc)}</td>
-    <td class="num grpsep">${fmt0(t.tsD)}</td><td class="num">${fmt0(t.tsC)}</td>
-    <td class="num grpsep">${fmt0(t.sfD)}</td><td class="num">${fmt0(t.sfC)}</td></tr></tbody></table>`;
+    <tbody>${rows}<tr class="total"><td class="bal-col-account"></td><td class="bal-col-name">TOTAL</td>
+    <td class="num grpsep bal-col-si">${fmt0(t.siD)}</td><td class="num bal-col-si">${fmt0(t.siC)}</td>
+    <td class="num grpsep bal-col-ru">${fmt0(t.rd)}</td><td class="num bal-col-ru">${fmt0(t.rc)}</td>
+    <td class="num grpsep bal-col-su">${fmt0(t.tsD)}</td><td class="num bal-col-su">${fmt0(t.tsC)}</td>
+    <td class="num grpsep bal-col-sf">${fmt0(t.sfD)}</td><td class="num bal-col-sf">${fmt0(t.sfC)}</td></tr></tbody></table>`;
 }
 
 // ───────────────────────── ARTICOLE STORNATE ─────────────────────────
@@ -978,4 +990,4 @@ async function loadStatements() {
 export { loadBalance, loadCashbook, loadClosings, loadJournal, loadLedger, loadStatements, loadStorno, loadVat, loadSaft, loadBuget, loadRegFiscal };
 // Exportate pentru testele unitare de frontend (diagnosticul balantei, comparatia e-TVA si
 // suprascrierile impozitului pe profit): test/frontend.mjs
-export { balanceEquations, balanceTotals, renderEtvaResult, ptParams };
+export { balanceEquations, balanceTotals, balanceMobileGroup, renderEtvaResult, ptParams };

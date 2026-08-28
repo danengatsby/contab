@@ -535,6 +535,37 @@ ok('mobil: navigarea din același arbore merge, închide sertarul și pagina ră
   && /TVA/i.test(await pm.locator('#appContextTitle').textContent())
   && (await pm.locator('#navToggleBtn').getAttribute('aria-expanded')) === 'false'
   && (await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)));
+await pm.evaluate(() => window.goTab('balanta'));
+await pm.waitForTimeout(1200);
+const balantaMobil = await pm.evaluate(() => {
+  const table = document.querySelector('#balantaView table');
+  const cont = table?.querySelector('tbody .bal-col-account');
+  const nume = table?.querySelector('tbody .bal-col-name');
+  const sf = [...(table?.querySelectorAll('tbody .bal-col-sf') || [])].filter((el) => el.offsetParent);
+  const alte = [...(table?.querySelectorAll('tbody .bal-col-si,tbody .bal-col-ru,tbody .bal-col-su') || [])].filter((el) => el.offsetParent);
+  const primulSold = table?.querySelector('tbody .bal-col-sf');
+  const soldRect = primulSold?.getBoundingClientRect();
+  return { group: table?.dataset.mobileColumns, sf: sf.length, alte: alte.length,
+    sfInitialVisible: !!soldRect && soldRect.left >= 0 && soldRect.right <= window.innerWidth + 1,
+    contSticky: cont && getComputedStyle(cont).position === 'sticky',
+    numeSticky: nume && getComputedStyle(nume).position === 'sticky',
+    noPageOverflow: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+});
+ok('mobil: balanța pornește cu Sold final vizibil și celelalte valori strânse',
+  await pm.locator('#balantaMobileColumns').inputValue() === 'sf'
+    && balantaMobil.group === 'sf' && balantaMobil.sf > 0 && balantaMobil.alte === 0
+    && balantaMobil.sfInitialVisible);
+ok('mobil: contul și denumirea rămân sticky fără a lărgi pagina',
+  balantaMobil.contSticky && balantaMobil.numeSticky && balantaMobil.noPageOverflow);
+ok('mobil: mesajul de glisare este vizibil și alegerea Rulaj schimbă valorile afișate',
+  /Glisează pentru detalii/.test(await pm.locator('#balantaSwipeHint').textContent())
+    && await pm.locator('#balantaSwipeHint').isVisible()
+    && await pm.selectOption('#balantaMobileColumns', 'ru').then(async () => pm.evaluate(() => {
+      const table = document.querySelector('#balantaView table');
+      const ru = [...table.querySelectorAll('tbody .bal-col-ru')].filter((el) => el.offsetParent);
+      const sf = [...table.querySelectorAll('tbody .bal-col-sf')].filter((el) => el.offsetParent);
+      return table.dataset.mobileColumns === 'ru' && ru.length > 0 && sf.length === 0;
+    })));
 await pm.evaluate(() => document.querySelector('#tabs button[data-tab="dashboard"]')?.click());
 await pm.waitForTimeout(150);
 await pm.setViewportSize({ width: 320, height: 700 });

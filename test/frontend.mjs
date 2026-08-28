@@ -1607,6 +1607,32 @@ eq('cheile lipsă din rânduri contează ca 0', rapoarte.balanceTotals([{ cod: '
 // inainte de comparatie, deci ar trece si daca rotunjirea din cod ar lipsi (verificat prin mutatie).
 ok('totalul e rotunjit la ban (fara reziduu de virgulă mobilă)', rapoarte.balanceTotals([{ siD: 1.1 }, { siD: 2.2 }]).siD === 3.3);
 
+section('Balanță: coloanele utile pe mobil');
+eq('soldul final este grupa implicită', rapoarte.balanceMobileGroup(), 'sf');
+eq('o valoare necunoscută cade prudent pe sold final', rapoarte.balanceMobileGroup('inventat'), 'sf');
+eq('opțiunea toate coloanele este acceptată', rapoarte.balanceMobileGroup('all'), 'all');
+{
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
+  const src = fs.readFileSync(path.join(PUB, 'rapoarte.js'), 'utf8');
+  const i18n = fs.readFileSync(path.join(PUB, 'i18n.js'), 'utf8');
+  ok('selectorul pornește explicit pe Sold final', /id="balantaMobileColumns"[\s\S]*?<option value="sf" selected>Sold final/.test(html));
+  ok('selectorul oferă toate cele patru grupe și vederea completă',
+    ['sf', 'ru', 'si', 'su', 'all'].every((v) => html.includes(`<option value="${v}"`)));
+  ok('mesajul de glisare este legat accesibil de selector',
+    /aria-describedby="balantaSwipeHint"/.test(html) && /id="balantaSwipeHint"[^>]*>[\s\S]*Glisează pentru detalii/.test(html));
+  ok('rendererul marchează fiecare familie de valori',
+    ['account', 'name', 'si', 'ru', 'su', 'sf'].every((g) => src.includes(`bal-col-${g}`)));
+  ok('primele două coloane sunt sticky pe mobil',
+    /#balantaView \.bal-col-account\{position:sticky;left:0/.test(css)
+      && /#balantaView \.bal-col-name\{position:sticky;left:64px/.test(css));
+  ok('grupele nealese sunt ascunse numai în pragul mobil',
+    /@media\(max-width:700px\)\{[\s\S]*data-mobile-columns="sf"[\s\S]*\.bal-col-su[\s\S]*display:none/.test(css));
+  ok('noile controale rămân traduse în interfața engleză',
+    ['Coloane afișate', 'Sold final (implicit)', 'Total sume', 'Toate coloanele', 'Glisează pentru detalii']
+      .every((label) => i18n.includes(`'${label}':`)));
+}
+
 section('Declarații: insigna de stare și sensul provizionului');
 // Al doilea argument nu mai e un boolean „overdue", ci URGENȚA derivată din termen (vezi
 // `urgentaTermen` în src/declarations.js) — de aceea insigna poate spune trei lucruri, nu două.

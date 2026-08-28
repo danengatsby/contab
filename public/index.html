@@ -1137,6 +1137,19 @@
       </div>
       <div class="explain"><span class="ei">⚖️</span><p><b>Ce vezi aici:</b> situația tuturor conturilor pe luna aleasă, pe coloane: <b class="c-si">Sold inițial (reportat din luna precedentă)</b> + <b class="c-ru">Rulaj lună (mișcările lunii)</b> = <b class="c-sf">Sold final</b>. Soldul inițial nu e o eroare — soldurile de bilanț (bani, clienți, furnizori, stoc) se <b>reportează</b> firesc dintr-o lună în alta. <b>Regula de aur:</b> totalul pe <b>Debit</b> = totalul pe <b>Credit</b> ⇒ contabilitate echilibrată.</p></div>
       <div id="balantaStatus"></div>
+      <div id="balantaMobileControls" class="bal-mobile-controls" hidden>
+        <label for="balantaMobileColumns">
+          <span>Coloane afișate</span>
+          <select id="balantaMobileColumns" aria-describedby="balantaSwipeHint">
+            <option value="sf" selected>Sold final (implicit)</option>
+            <option value="ru">Rulaj lună</option>
+            <option value="si">Sold inițial</option>
+            <option value="su">Total sume</option>
+            <option value="all">Toate coloanele</option>
+          </select>
+        </label>
+        <p id="balantaSwipeHint" class="bal-swipe-hint">↔ Glisează pentru detalii</p>
+      </div>
       <div id="balantaView" class="tablewrap"></div>
     </section>
 

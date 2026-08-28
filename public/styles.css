@@ -82,6 +82,7 @@ td.grpsep,th.grpsep{border-left:2px solid #d3dcec}
 /* antet pe 2 randuri: randul de grup sus, sub-anteturile Debit/Credit dedesubt (fara suprapunere la scroll) */
 #balantaView thead tr:first-child th{height:26px;top:0}
 #balantaView thead tr:nth-child(2) th{top:26px}
+.bal-mobile-controls{display:none}
 .tab{display:none}.tab.active{display:block}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 /* Ecranele „1 · alege / 2 · verifica si salveaza" (Adauga document primit, Emite factura).
@@ -1125,6 +1126,38 @@ body.dark .fstep.done .fstep-body b{text-decoration-color:#5cbb8d}
   .card{min-width:0;overflow-x:auto}         /* orice card devine bariera de scroll propriu */
   /* tabelele late deruleaza in propriul container, pagina ramane fixa (conventia repo-ului) */
   .tab table{display:block;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+}
+
+/* Balanța pe telefon: contabilul vede direct soldul final, nu doar identificarea contului.
+   Celelalte grupe sunt alese explicit; la „Toate” rămân disponibile prin glisare. */
+@media(max-width:700px){
+  .bal-mobile-controls{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+    margin:6px 0 9px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+  .bal-mobile-controls[hidden]{display:none}
+  .bal-mobile-controls label{flex:1;margin:0}
+  .bal-mobile-controls label>span{display:block;margin-bottom:3px}
+  .bal-mobile-controls select{min-height:38px;padding:7px 9px;font-size:13.5px;background:var(--card)}
+  .bal-swipe-hint{flex:0 0 106px;margin:0 0 5px;color:var(--muted);font-size:11.5px;font-weight:600;line-height:1.3;text-align:right}
+  #balantaView{max-width:100%;overflow:auto;overscroll-behavior-inline:contain}
+  #balantaView table{display:table;width:max-content;min-width:100%;max-width:none;overflow:visible}
+  #balantaView table[data-mobile-columns="sf"] .bal-col-si,
+  #balantaView table[data-mobile-columns="sf"] .bal-col-ru,
+  #balantaView table[data-mobile-columns="sf"] .bal-col-su,
+  #balantaView table[data-mobile-columns="ru"] .bal-col-si,
+  #balantaView table[data-mobile-columns="ru"] .bal-col-su,
+  #balantaView table[data-mobile-columns="ru"] .bal-col-sf,
+  #balantaView table[data-mobile-columns="si"] .bal-col-ru,
+  #balantaView table[data-mobile-columns="si"] .bal-col-su,
+  #balantaView table[data-mobile-columns="si"] .bal-col-sf,
+  #balantaView table[data-mobile-columns="su"] .bal-col-si,
+  #balantaView table[data-mobile-columns="su"] .bal-col-ru,
+  #balantaView table[data-mobile-columns="su"] .bal-col-sf{display:none}
+  #balantaView .bal-col-account{position:sticky;left:0;z-index:3;width:64px;min-width:64px;max-width:64px;background:var(--card)}
+  #balantaView .bal-col-name{position:sticky;left:64px;z-index:3;width:118px;min-width:118px;max-width:118px;
+    white-space:normal;overflow-wrap:anywhere;background:var(--card);box-shadow:5px 0 7px -7px rgba(44,43,39,.7)}
+  #balantaView thead .bal-col-account,#balantaView thead .bal-col-name{z-index:6;background:var(--soft2)}
+  #balantaView tbody tr.total .bal-col-account,#balantaView tbody tr.total .bal-col-name{background:var(--soft)}
+  #balantaView td.num{min-width:86px}
 }
 
 /* Reconciliere decont precompletat e-TVA: campul XML + evidentierea diferentelor */
