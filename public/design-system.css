@@ -161,6 +161,87 @@ body.erp th, body.erp td { height: 40px; padding: 8px 10px; border-color: var(--
 body.erp th { font-size: 12px; letter-spacing: .025em; text-transform: uppercase; }
 body.erp .tablewrap { border: 1px solid var(--line); border-radius: 11px; }
 
+/* Registre expert: selecția și acțiunile de lot rămân lipite de marginea vizibilă chiar dacă
+   tabelul este mai lat decât cardul. Erorile parțiale rămân pe rând, nu dispar într-un toast. */
+body.erp .entry-batchbar {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: min(720px, 100%);
+  padding: 9px 10px;
+  background: color-mix(in srgb, var(--soft) 75%, var(--card));
+  border-bottom: 1px solid var(--line);
+}
+body.erp .entry-batch-selection { display: grid; min-width: 90px; line-height: 1.2; }
+body.erp .entry-batch-selection .muted { font-size: 11.5px; }
+body.erp .entry-batch-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+body.erp .entry-batch-status { margin-left: auto; white-space: nowrap; }
+body.erp .entry-select-cell { width: 46px; min-width: 46px; padding: 2px 5px; text-align: center; }
+body.erp .entry-select-label {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  min-height: 36px;
+  margin: 0;
+  cursor: pointer;
+}
+body.erp .entry-select-label input { width: 18px; height: 18px; margin: 0; accent-color: var(--app-clay); cursor: pointer; }
+body.erp tr.entry-batch-error td {
+  opacity: 1;
+  background: color-mix(in srgb, var(--ds-status-danger) 8%, var(--card));
+  border-bottom-color: color-mix(in srgb, var(--ds-status-danger) 36%, var(--line));
+}
+body.erp tr.entry-batch-error td:first-child { box-shadow: inset 4px 0 0 var(--ds-status-danger); }
+body.erp tr.entry-batch-error-current td,
+body.erp tr.entry-batch-error:focus td { box-shadow: inset 0 2px 0 var(--ds-status-danger), inset 0 -2px 0 var(--ds-status-danger); }
+body.erp tr.entry-batch-error-current td:first-child,
+body.erp tr.entry-batch-error:focus td:first-child { box-shadow: inset 4px 0 0 var(--ds-status-danger), inset 0 2px 0 var(--ds-status-danger), inset 0 -2px 0 var(--ds-status-danger); }
+body.erp .entry-batch-error-message {
+  display: block;
+  max-width: 280px;
+  margin-top: 5px;
+  color: var(--ds-status-danger);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: normal;
+}
+body.erp .expert-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  color: var(--muted);
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 12px;
+}
+body.erp .expert-shortcuts span { display: inline-flex; align-items: center; gap: 4px; }
+body.erp .expert-shortcuts kbd {
+  min-width: 22px;
+  padding: 1px 5px;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  font: 650 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  body.erp .entry-batchbar { align-items: flex-start; flex-wrap: wrap; }
+  body.erp .entry-batch-actions { order: 3; width: 100%; }
+  body.erp .entry-batch-actions .btn { flex: 1 1 145px; }
+  body.erp .entry-batch-status { margin-left: auto; }
+}
+
 /* Feedback semantic: aceeași familie pentru dashboard, stări de proces și tabele.
    Culoarea nu este singurul purtător de sens — textul și clasele rămân explicite. */
 body.erp .alert {
@@ -1008,6 +1089,7 @@ body.erp .closealoc[open] > summary .closealoc-act { text-decoration: none; }
   body.erp .tab .tablewrap .linkbtn {
     padding: 8px 10px;
   }
+  body.erp .entry-select-label { width: var(--ds-touch-target); min-height: var(--ds-touch-target); }
   body.erp .msg-del + .msg-edit { right: 52px; }
   body.erp .msg-b:has(.msg-del),
   body.erp .msg-b:has(.msg-edit) { padding-right: 56px; }

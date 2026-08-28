@@ -208,6 +208,31 @@ eq('bonul fiscal e iesire', entries.entryDir('bon_fiscal'), 'out');
 eq('avizul de livrare nu e clasificat ca vanzare', entries.entryDir('aviz_livrare'), 'other');
 eq('tip necunoscut nu deraiaza', entries.entryDir('ceva_nou'), 'other');
 
+section('Inregistrari: lucru expert in lot');
+eq('validarea in lot accepta numai ciorna', entries.batchTransitionError('ciorna', 'validat'), '');
+ok('validarea nu repeta un document deja validat', /deja validat/.test(entries.batchTransitionError('validat', 'validat')));
+eq('postarea in lot accepta documentul aprobat', entries.batchTransitionError('aprobat', 'postat'), '');
+ok('postarea nu sare peste validare si aprobare', /Validează și aprobă/.test(entries.batchTransitionError('ciorna', 'postat')));
+ok('postarea cere explicit aprobarea documentului validat', /Aprobă documentul/.test(entries.batchTransitionError('validat', 'postat')));
+const entriesSrc = fs.readFileSync(path.join(PUB, 'entries.js'), 'utf8');
+const designSrc = fs.readFileSync(path.join(PUB, 'design-system.css'), 'utf8');
+const entriesHtml = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+ok('registrele au selectare totală, contor și acțiuni distincte de lot',
+  /entry-select-all/.test(entriesSrc) && /entry-selected-count/.test(entriesSrc)
+    && /entry-batch-validate/.test(entriesSrc) && /entry-batch-post/.test(entriesSrc));
+ok('lotul refoloseste tranzitia individuala securizata si limiteaza cererile concurente',
+  /async function advanceEntryStatus/.test(entriesSrc)
+    && /await advanceEntryStatus\(b\.dataset\.id, next\)/.test(entriesSrc)
+    && /mapWithConcurrency\(rows/.test(entriesSrc));
+ok('erorile partiale raman legate de rand si pot fi parcurse cu tastatura',
+  /aria-describedby/.test(entriesSrc) && /entry-batch-error-current/.test(entriesSrc)
+    && /event\.key === 'F8'/.test(entriesSrc)
+    && /tr\.entry-batch-error/.test(designSrc));
+ok('scurtaturile expert trimit la butoanele canonice, nu la un al doilea flux',
+  /save\.click\(\)/.test(entriesSrc) && /form\.requestSubmit\(submit\)/.test(entriesSrc)
+    && /search\.click\(\)/.test(entriesSrc)
+    && /class="expert-shortcuts adv full"/.test(entriesHtml));
+
 section('Inregistrari: insigna de stare');
 ok('ciorna e marcata ca ciorna', entries.entryStateBadge({ status: 'ciorna' }).includes('>ciornă<'));
 ok('lipsa starii inseamna postat (compatibilitate cu articolele vechi)', entries.entryStateBadge({}).includes('st-postat'));

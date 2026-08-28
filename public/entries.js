@@ -34,6 +34,24 @@ function entryDir(tip) {
 const NEXT_STATE = { ciorna: 'validat', validat: 'aprobat', aprobat: 'postat' };
 const STATE_LABEL = { ciorna: 'ciornă', validat: 'validat', aprobat: 'aprobat', postat: 'postat' };
 const NEXT_LABEL = { validat: '✓ validează', aprobat: '✓ aprobă', postat: '▶ postează' };
+const BATCH_SOURCE_STATE = { validat: 'ciorna', postat: 'aprobat' };
+const BATCH_ACTION_LABEL = { validat: 'Validează selectate', postat: 'Postează selectate' };
+
+/** Loturile nu sar peste aprobarea explicită. Funcția pură ține mesajele și eligibilitatea
+ * într-un singur loc, iar serverul verifică în continuare rolul, perioada și maker-checker. */
+function batchTransitionError(status, target) {
+  const current = status || 'postat';
+  if (!BATCH_SOURCE_STATE[target]) return 'Acțiune de lot necunoscută.';
+  if (current === BATCH_SOURCE_STATE[target]) return '';
+  if (target === 'validat') {
+    if (current === 'postat') return 'Documentul este deja postat.';
+    if (current === 'aprobat') return 'Documentul este deja aprobat.';
+    return 'Documentul este deja validat; aprobă-l înainte de postare.';
+  }
+  if (current === 'ciorna') return 'Validează și aprobă documentul înainte de postare.';
+  if (current === 'validat') return 'Aprobă documentul înainte de postare.';
+  return current === 'postat' ? 'Documentul este deja postat.' : 'Documentul nu poate fi postat în starea curentă.';
+}
 // Insigna pentru coloana "Stare": ciclul de viata + marcajele de storno.
 function entryStateBadge(e) {
   if (e.stornat) return `<span class="st st-stornat" title="Corectat prin nota de storno ${H(String(e.stornoBy))}">stornat</span>`;
@@ -53,11 +71,18 @@ function entryActionsHtml(e) {
   // postat: nu se sterge (jurnal append-only) — doar storno
   return `<button class="storno" data-id="${e.id}" title="Stornează (corecție reversibilă, fără ștergere)">↩ storno</button>`;
 }
+function entrySelectHtml(e) {
+  const st = e.status || 'postat';
+  if (e.stornat || e.stornoOf || st === 'postat') return '';
+  return `<label class="entry-select-label"><input class="entry-select" type="checkbox"
+    aria-label="Selectează ${H(e.tipNume || 'documentul')} ${H(e.document || e.id)}" /></label>`;
+}
 function entryRowHtml(e) {
   const formula = e.lines.map((l) => `${l.debit}=${l.credit}`).join(', ');
   const total = e.lines.reduce((s, l) => s + l.suma, 0);
   const draft = e.status && e.status !== 'postat';
-  return `<tr class="${e.system ? 'sys' : ''}${draft ? ' draft' : ''}">
+  return `<tr class="${e.system ? 'sys' : ''}${draft ? ' draft' : ''}" data-entry-id="${H(e.id)}" data-entry-status="${H(e.status || 'postat')}">
+    <td class="entry-select-cell adv">${entrySelectHtml(e)}</td>
     <td>${H(e.data)}</td>
     <td>${H(e.tipNume)}${e.system ? ' <span class="pill">auto</span>' : ''}</td>
     <td>${H(e.partener)}</td>
@@ -80,12 +105,161 @@ function entryRowHtml(e) {
 function renderEntryTable(containerId, rowsHtml, emptyMsg) {
   const el = $('#' + containerId); if (!el) return;
   if (!rowsHtml) { el.innerHTML = `<p class="muted">${emptyMsg}</p>`; return; }
-  el.innerHTML = `<table><thead><tr>
+  el.innerHTML = `<div class="entry-batchbar adv" role="region" aria-label="Acțiuni pentru documentele selectate">
+      <span class="entry-batch-selection"><b class="entry-selected-count">0 selectate</b><span class="muted">din această listă</span></span>
+      <div class="entry-batch-actions">
+        <button type="button" class="btn small entry-batch-validate" disabled>✓ Validează selectate</button>
+        <button type="button" class="btn small primary entry-batch-post" disabled title="Scurtătură: Ctrl/⌘ + Enter">▶ Postează selectate</button>
+        <button type="button" class="btn small ghost entry-next-error" disabled title="Scurtătură: F8">Următoarea eroare</button>
+      </div>
+      <span class="entry-batch-status muted" role="status" aria-live="polite"></span>
+    </div>
+    <table><thead><tr>
+    <th class="entry-select-cell adv"><label class="entry-select-label"><input class="entry-select-all" type="checkbox" aria-label="Selectează toate documentele nepostate din listă" /></label></th>
     <th>Data</th><th>Tip</th><th>Partener</th><th class="adv">Formulă</th><th class="num">Sumă</th><th>Stare</th><th>Fișiere</th><th></th>
     </tr></thead><tbody>${rowsHtml}</tbody></table>`;
   bindEntryActions(el);
 }
+
+function selectedEntryRows(root) {
+  return Array.from(root.querySelectorAll('tbody .entry-select:checked')).map((box) => box.closest('tr')).filter(Boolean);
+}
+function updateEntryBatchBar(root) {
+  const rows = selectedEntryRows(root);
+  const count = root.querySelector('.entry-selected-count');
+  if (count) count.textContent = rows.length + (rows.length === 1 ? ' selectat' : ' selectate');
+  root.querySelectorAll('.entry-batch-validate, .entry-batch-post').forEach((b) => { b.disabled = rows.length === 0; });
+  const all = root.querySelector('.entry-select-all');
+  const boxes = Array.from(root.querySelectorAll('tbody .entry-select'));
+  if (all) {
+    all.checked = boxes.length > 0 && boxes.every((box) => box.checked);
+    all.indeterminate = boxes.some((box) => box.checked) && !all.checked;
+  }
+}
+
+function entryErrorRows(scope) {
+  return Array.from((scope || document).querySelectorAll('.entry-batch-error'));
+}
+function focusNextBatchError(root) {
+  const rows = entryErrorRows(root);
+  if (!rows.length) return false;
+  const current = rows.findIndex((row) => row.classList.contains('entry-batch-error-current'));
+  rows.forEach((row) => row.classList.remove('entry-batch-error-current'));
+  const next = rows[(current + 1) % rows.length];
+  next.classList.add('entry-batch-error-current');
+  next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  next.focus({ preventScroll: true });
+  return true;
+}
+
+function markBatchErrors(root, errors) {
+  errors.forEach((failure, index) => {
+    const row = Array.from(root.querySelectorAll('tbody tr[data-entry-id]'))
+      .find((candidate) => candidate.dataset.entryId === String(failure.id));
+    if (!row) return;
+    row.classList.add('entry-batch-error');
+    row.tabIndex = -1;
+    const message = document.createElement('span');
+    message.className = 'entry-batch-error-message';
+    message.id = root.id + '-batch-error-' + index;
+    message.textContent = failure.message;
+    message.setAttribute('role', 'alert');
+    const actionCell = row.lastElementChild;
+    if (actionCell) actionCell.appendChild(message);
+    row.setAttribute('aria-describedby', message.id);
+    const box = row.querySelector('.entry-select');
+    if (box) box.checked = true;
+  });
+  const next = root.querySelector('.entry-next-error');
+  if (next) next.disabled = errors.length === 0;
+  updateEntryBatchBar(root);
+}
+
+async function advanceEntryStatus(id, target) {
+  return api('/api/entries/' + id + '/status', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: target }),
+  });
+}
+async function refreshEntryLists() {
+  setMeta(await api('/api/meta'));
+  fillPeriods();
+  await loadEntries();
+}
+async function mapWithConcurrency(items, worker, limit = 4) {
+  const results = new Array(items.length); let cursor = 0;
+  async function consume() {
+    while (cursor < items.length) {
+      const index = cursor; cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, consume));
+  return results;
+}
+
+async function runEntryBatch(root, target) {
+  const rows = selectedEntryRows(root);
+  if (!rows.length) return;
+  if (target === 'postat') {
+    const approved = rows.filter((row) => !batchTransitionError(row.dataset.entryStatus, target)).length;
+    if (approved && !await confirmAction(
+      `${approved} ${approved === 1 ? 'document aprobat va fi postat' : 'documente aprobate vor fi postate'} și vor intra în contabilitate. Documentele din alte stări vor fi raportate separat.`,
+      { title: 'Postezi documentele selectate?', confirmLabel: approved === 1 ? 'Postează documentul' : 'Postează ' + approved + ' documente' }
+    )) return;
+  }
+  const bar = root.querySelector('.entry-batchbar');
+  const status = root.querySelector('.entry-batch-status');
+  const controls = Array.from(root.querySelectorAll('.entry-batchbar button, .entry-select, .entry-select-all'));
+  controls.forEach((control) => { control.disabled = true; });
+  if (bar) bar.setAttribute('aria-busy', 'true');
+  let complete = 0;
+  if (status) status.textContent = `Se procesează 0/${rows.length}…`;
+  const results = await mapWithConcurrency(rows, async (row) => {
+    const id = row.dataset.entryId;
+    const localError = batchTransitionError(row.dataset.entryStatus, target);
+    if (localError) { complete += 1; if (status) status.textContent = `Se procesează ${complete}/${rows.length}…`; return { id, message: localError }; }
+    try {
+      await advanceEntryStatus(id, target);
+      complete += 1; if (status) status.textContent = `Se procesează ${complete}/${rows.length}…`;
+      return { id, ok: true };
+    } catch (error) {
+      complete += 1; if (status) status.textContent = `Se procesează ${complete}/${rows.length}…`;
+      return { id, message: error.message || 'Operațiunea nu a putut fi finalizată.' };
+    }
+  });
+  const errors = results.filter((result) => !result.ok);
+  const succeeded = results.length - errors.length;
+  try {
+    await refreshEntryLists();
+    const freshRoot = $('#' + root.id);
+    const freshStatus = freshRoot && freshRoot.querySelector('.entry-batch-status');
+    if (freshRoot) markBatchErrors(freshRoot, errors);
+    if (freshStatus) freshStatus.textContent = errors.length
+      ? `${succeeded} finalizate · ${errors.length} cu eroare` : `${succeeded} ${target === 'postat' ? 'postate' : 'validate'}`;
+    toast(errors.length
+      ? `${BATCH_ACTION_LABEL[target]}: ${succeeded} finalizate, ${errors.length} cu eroare. Folosește „Următoarea eroare”.`
+      : `${succeeded} ${succeeded === 1 ? 'document finalizat' : 'documente finalizate'} în lot.`, errors.length > 0);
+  } catch (error) {
+    if (bar) bar.removeAttribute('aria-busy');
+    controls.forEach((control) => { control.disabled = false; });
+    updateEntryBatchBar(root);
+    toast('Lotul a fost procesat, dar lista nu s-a putut reîncărca: ' + error.message, true);
+  }
+}
+
 function bindEntryActions(root) {
+  const all = root.querySelector('.entry-select-all');
+  if (all) all.addEventListener('change', () => {
+    root.querySelectorAll('tbody .entry-select').forEach((box) => { box.checked = all.checked; });
+    updateEntryBatchBar(root);
+  });
+  root.querySelectorAll('tbody .entry-select').forEach((box) => box.addEventListener('change', () => updateEntryBatchBar(root)));
+  const validate = root.querySelector('.entry-batch-validate');
+  if (validate) validate.addEventListener('click', () => runEntryBatch(root, 'validat'));
+  const post = root.querySelector('.entry-batch-post');
+  if (post) post.addEventListener('click', () => runEntryBatch(root, 'postat'));
+  const nextError = root.querySelector('.entry-next-error');
+  if (nextError) nextError.addEventListener('click', () => focusNextBatchError(root));
   root.querySelectorAll('.del').forEach((b) => b.addEventListener('click', async () => {
     if (!await confirmAction(b.dataset.draft ? 'Ciorna va fi eliminată definitiv.' : 'Înregistrarea va fi eliminată definitiv.', {
       title: b.dataset.draft ? 'Ștergi ciorna?' : 'Ștergi înregistrarea?', confirmLabel: 'Șterge', danger: true,
@@ -99,9 +273,9 @@ function bindEntryActions(root) {
   root.querySelectorAll('.advst').forEach((b) => b.addEventListener('click', async () => {
     const next = b.dataset.next;
     try {
-      await api('/api/entries/' + b.dataset.id + '/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: next }) });
+      await advanceEntryStatus(b.dataset.id, next);
       toast(next === 'postat' ? 'Articol postat (intră în contabilitate)' : 'Ciornă avansată: ' + next);
-      setMeta(await api('/api/meta')); fillPeriods(); loadEntries();
+      await refreshEntryLists();
     } catch (e) { toast(e.message, true); }
   }));
   root.querySelectorAll('.storno').forEach((b) => b.addEventListener('click', async () => {
@@ -131,6 +305,75 @@ function bindEntryActions(root) {
     catch (e) { toast(e.message, true); }
   }));
 }
+
+function visibleElement(element) {
+  return !!element && !element.hidden && !element.classList.contains('hidden')
+    && (!element.getClientRects || element.getClientRects().length > 0);
+}
+function visibleEntryForm() {
+  const form = $('#entryForm');
+  return visibleElement(form) ? form : null;
+}
+function activeBatchRoot() {
+  const focused = document.activeElement && document.activeElement.closest
+    ? document.activeElement.closest('.tablewrap') : null;
+  if (focused && focused.querySelector('.entry-batchbar') && selectedEntryRows(focused).length) return focused;
+  const scope = document.querySelector('.tab.active') || document;
+  return Array.from(scope.querySelectorAll('.tablewrap')).find((root) =>
+    visibleElement(root) && root.querySelector('.entry-batchbar') && selectedEntryRows(root).length) || null;
+}
+function focusNextVisibleError() {
+  const scope = document.querySelector('.tab.active') || document;
+  const batchRoot = activeBatchRoot();
+  if (batchRoot && focusNextBatchError(batchRoot)) return true;
+  const candidates = Array.from(scope.querySelectorAll(
+    'input:invalid, select:invalid, textarea:invalid, [aria-invalid="true"], .entry-batch-error'
+  )).filter(visibleElement);
+  if (!candidates.length) return false;
+  const active = document.activeElement;
+  const current = candidates.findIndex((candidate) => candidate === active || candidate.contains(active));
+  const next = candidates[(current + 1) % candidates.length];
+  if (!next.hasAttribute('tabindex') && !/^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(next.tagName)) next.tabIndex = -1;
+  next.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  next.focus({ preventScroll: true });
+  return true;
+}
+
+// Comenzi expert, deliberat inactive în modul simplu. `click`/`requestSubmit` păstrează aceleași
+// handlere ca butoanele vizibile: scurtătura nu creează o cale paralelă de salvare sau postare.
+document.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || event.isComposing || document.body.classList.contains('simple-ui')) return;
+  if (document.querySelector('dialog.app-dialog[open], .login-overlay:not(.hidden)')) return;
+  const key = String(event.key || '').toLowerCase();
+  if (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && key === 'f') {
+    const search = $('#companyPickerSearchButton'); const company = $('#firmaSelect');
+    if (!search && !company) return;
+    event.preventDefault();
+    if (search && !search.classList.contains('hidden')) search.click();
+    else if (company) company.focus();
+    return;
+  }
+  if (event.key === 'F8' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    event.preventDefault();
+    if (!focusNextVisibleError()) toast('Nu există erori vizibile în ecranul curent.');
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 's') {
+    const form = visibleEntryForm(); const save = $('#saveDraft');
+    if (!form || !save || save.disabled) return;
+    event.preventDefault();
+    save.click();
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key === 'Enter') {
+    const form = visibleEntryForm(); const submit = $('#postEntry');
+    if (form && submit && !submit.disabled) {
+      event.preventDefault(); form.requestSubmit(submit); return;
+    }
+    const root = activeBatchRoot(); const post = root && root.querySelector('.entry-batch-post');
+    if (post && !post.disabled) { event.preventDefault(); post.click(); }
+  }
+});
 // Cache PE PERIOADA SELECTATA (luna sau an): la volume mari, „toate inregistrarile" inseamna
 // zeci de MB pe fiecare schimbare de tab (masurat: 19MB la 50k; luna curenta = 1.7MB). Se cere
 // de la server exact perioada fiecarui filtru (?period=YYYY-MM sau YYYY); implicit = luna de lucru.
@@ -382,4 +625,4 @@ $('#calZile') && $('#calZile').addEventListener('change', loadCalitate);
 
 export { loadArhiva, loadEntries, loadMissingDocs, renderEntryLists, setEntriesDeps, loadCalitate };
 // Exportate pentru testele unitare de frontend (logica pura de clasificare/insigne): test/frontend.mjs
-export { etranspCell, entryDir, entryStateBadge };
+export { etranspCell, entryDir, entryStateBadge, batchTransitionError };
