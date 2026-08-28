@@ -495,6 +495,7 @@
                intrare tehnica, pe cand asta e deja ingradit de rol. Doua garduri peste aceeasi
                intrare ar produce „adminul nu-l mai gaseste" fara ca nimic sa explice de ce. -->
           <button data-tab="accesari" id="navAccesari" class="hidden">Cine accesează aplicația</button>
+          <button data-tab="funnel" id="navFunnel" class="hidden">Funnel comercial</button>
         </div>
       </div>
       <!-- Utilitarele folosesc același arbore pe desktop și mobil. Nu mai există un panou
@@ -3236,6 +3237,33 @@ Cu stimă,
         nu s-au autentificat niciodată. Un rând per adresă, nu per cerere: o singură deschidere a
         aplicației înseamnă ~30 de cereri. „Pagini" numără navigările, „cereri" tot ce a cerut.</p>
       <div id="accessVisitors" class="tablewrap"></div>
+      </div>
+    </section>
+
+    <!-- ─────────────── FUNNEL COMERCIAL (doar admin) ─────────────── -->
+    <section id="tab-funnel" class="tab">
+      <div class="toolbar">
+        <h2>📈 Funnel comercial</h2>
+        <div class="spacer"></div>
+        <label class="muted">Interval
+          <select id="funnelRange">
+            <option value="30">Ultimele 30 zile</option>
+            <option value="90">Ultimele 90 zile</option>
+            <option value="all">De la activare</option>
+          </select>
+        </label>
+        <button id="funnelRefresh" class="btn small" aria-label="Reîmprospătează">⟳ Reîmprospătează</button>
+      </div>
+      <div class="explain"><span class="ei">📈</span><p><b>Ce e asta:</b> traseul comercial
+        <b>vizită → demo → înscriere → firmă configurată → primul document → prima lună închisă → plată</b>.
+        Este separat de panoul de securitate pe IP. Vizitele sunt încărcări de pagină, nu persoane
+        unice; etapele după înscriere se numără o singură dată pe cont sau firmă.</p></div>
+      <div id="funnelStatus" class="status"></div>
+      <div id="funnelKpis" class="kpis"></div>
+      <div class="card">
+        <h3>Mișcare zilnică</h3>
+        <div id="funnelDaily" class="tablewrap"></div>
+        <p class="muted" id="funnelPrivacy"></p>
       </div>
     </section>
 

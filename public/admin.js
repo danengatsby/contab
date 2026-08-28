@@ -592,6 +592,44 @@ $('#accessFailed') && $('#accessFailed').addEventListener('click', () => { ACCES
 $('#accessVisAll') && $('#accessVisAll').addEventListener('click', () => { ACCESS_FARA_BOTI = false; renderAccess(); });
 $('#accessVisOameni') && $('#accessVisOameni').addEventListener('click', () => { ACCESS_FARA_BOTI = true; renderAccess(); });
 
+// ── Funnel comercial (admin): numai contoare agregate, separat de vizitatorii pe IP ──
+export async function renderCommercialFunnel() {
+  if (!USER || USER.role !== 'admin') return;
+  const box = $('#funnelKpis'); const daily = $('#funnelDaily'); const status = $('#funnelStatus');
+  if (!box || !daily) return;
+  const range = ($('#funnelRange') && $('#funnelRange').value) || '30';
+  box.innerHTML = '<p class="muted">Se încarcă…</p>'; daily.innerHTML = '';
+  let data;
+  try { data = await api('/api/commercial-funnel?days=' + encodeURIComponent(range)); }
+  catch (e) {
+    box.innerHTML = ''; daily.innerHTML = '';
+    if (status) { status.className = 'status err'; status.textContent = 'Indicatorii nu au putut fi încărcați.'; }
+    return;
+  }
+  const since = data.startedAt ? dataOra(data.startedAt) : 'prima vizită măsurată';
+  if (status) {
+    status.className = 'status';
+    status.textContent = (data.range && data.range.label ? data.range.label : '') + ' · măsurarea a început la ' + since + '.';
+  }
+  box.innerHTML = (data.stages || []).map((s) => {
+    const rata = s.conversionPct == null ? 'fără bază încă' : s.conversionPct.toLocaleString('ro-RO') + '% din „' + String(s.baseLabel || '') + '”';
+    return `<div class="kpi blue"><div class="lbl">${H(s.label)}</div><div class="val">${Number(s.count) || 0}</div>
+      <div class="sub">${H(s.base ? rata : s.description)}</div></div>`;
+  }).join('') || '<p class="muted">Nicio etapă măsurată încă.</p>';
+
+  const rows = (data.daily || []).filter((r) => Object.values(r.counts || {}).some((n) => Number(n) > 0));
+  const stageIds = (data.stages || []).map((s) => s.id);
+  const stageLabels = Object.fromEntries((data.stages || []).map((s) => [s.id, s.label]));
+  daily.innerHTML = rows.length
+    ? `<table><thead><tr><th>Zi</th>${stageIds.map((id) => '<th>' + H(stageLabels[id]) + '</th>').join('')}</tr></thead><tbody>${rows.map((r) =>
+      `<tr><td>${H(String(r.day || '').split('-').reverse().join('.'))}</td>${stageIds.map((id) => '<td>' + (Number((r.counts || {})[id]) || 0) + '</td>').join('')}</tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Nicio mișcare în intervalul ales.</p>';
+  const privacy = $('#funnelPrivacy');
+  if (privacy) privacy.textContent = (data.privacy && data.privacy.statement) || '';
+}
+$('#funnelRefresh') && $('#funnelRefresh').addEventListener('click', renderCommercialFunnel);
+$('#funnelRange') && $('#funnelRange').addEventListener('change', renderCommercialFunnel);
+
 $('#auditRefresh').addEventListener('click', renderAudit);
 $('#auditScopeFirma') && $('#auditScopeFirma').addEventListener('click', () => { AUDIT_SCOPE = 'firma'; AUDIT_OFFSET = 0; renderAudit(); });
 $('#auditScopeSystem') && $('#auditScopeSystem').addEventListener('click', () => { AUDIT_SCOPE = 'system'; AUDIT_OFFSET = 0; renderAudit(); });

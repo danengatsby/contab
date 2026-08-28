@@ -36,6 +36,9 @@ const handles = [];
 // e moarta — s-a intamplat: 30 s prag vs. 60 s cadenta). Un numar magic aici si altul acolo nu
 // se pot verifica unul fata de celalalt; doua constante numite, da (poarta e in test/run.js).
 const VISITORS_FLUSH_MS = 60 * 1000;
+// Aceeasi cadenta pentru contoarele comerciale agregate. Calea paginii doar muta RAM; jobul
+// persista `settings.commercialFunnel` fara sa puna un db.save() pe fiecare vizita.
+const COMMERCIAL_FUNNEL_FLUSH_MS = 60 * 1000;
 
 // Pragul de la care o singura firma merita partitionata pe alta instanta. Vine din
 // docs/scalare-crestere.md (~20.000 de articole/an pe firma); e configurabil fiindca depinde de
@@ -308,6 +311,16 @@ function start(ctx) {
     metrics.jobResult('visitors-flush', lista.length + ' adrese');
   }, VISITORS_FLUSH_MS);
 
+  safeInterval('commercial-funnel-flush', () => {
+    const funnel = require('./commercialFunnel');
+    if (!funnel.isDirty()) return;
+    // `settings` traieste in meta; indiciul sare colectiile mari si lasa store-ul sa scrie numai
+    // amprenta meta schimbata. Daca save arunca, marcajul ramane murdar si tura urmatoare reia.
+    db.save(['settings']);
+    funnel.markPersisted();
+    metrics.jobResult('commercial-funnel-flush', 'contoare agregate persistate');
+  }, COMMERCIAL_FUNNEL_FLUSH_MS);
+
   // Igiena uploads (zilnic): staging-urile de import ramase dupa un crash se sterg
   // (gunoi cert, peste 24h); fisierele ORFANE doar se numara si se vad in /api/metrics
   // (ops) — stergerea lor ramane decizia operatorului.
@@ -538,4 +551,5 @@ function start(ctx) {
 
 // `safeInterval` e exportat pentru teste (ca `persistVerdict`): plasa de siguranta e chiar
 // proprietatea de verificat, iar prin `start()` ar cere pornirea tuturor joburilor reale.
-module.exports = { start, stop, persistVerdict, suspectiLag, verdictScalare, safeInterval, ruleazaJob, VISITORS_FLUSH_MS, SCALE_ENTRIES_WARN, SCALE_TOTAL_WARN };
+module.exports = { start, stop, persistVerdict, suspectiLag, verdictScalare, safeInterval, ruleazaJob,
+  VISITORS_FLUSH_MS, COMMERCIAL_FUNNEL_FLUSH_MS, SCALE_ENTRIES_WARN, SCALE_TOTAL_WARN };

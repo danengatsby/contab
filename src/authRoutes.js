@@ -36,6 +36,7 @@ const auditLog = require('./auditLog');
 const globalChain = require('./globalChain');
 const adminBootstrap = require('./adminBootstrap');
 const stepUp = require('./stepUp');
+const commercialFunnel = require('./commercialFunnel');
 
 module.exports = function registerAuthRoutes(app, ctx) {
   const { logAudit, wrap, requireAdmin, activeId, S } = ctx;
@@ -172,6 +173,8 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const u = d.users.find((x) => x.username === uname);
     if (!u) return res.status(404).json({ error: 'Contul ' + (uname === 'demo-contabil' ? 'demo-contabil' : 'demo') + ' nu este disponibil momentan.' });
     startSession(req, res, u);
+    // O pornire reusita, nu un click in interfata: un client care esueaza nu umfla etapa demo.
+    commercialFunnel.record(d, 'demo');
     logAudit('login', 'cont ' + uname + ' (public)', { req, userId: u.id, username: u.username, firmaId: u.firmaActiva || null });
     db.save();
     res.json({ ok: true, user: publicUser(u) });
@@ -253,7 +256,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const { salt, hash } = await authlib.hashPasswordAsync(password);
     // felul contului, ales explicit la inscriere: decide ce i se ofera in aplicatie (patronul
     // isi inscrie firme proprii; contabilul primeste firmele altora, prin acord)
-    const user = { id: db.nextUserId(), username, email, salt, hash, role: 'user',
+    const user = { id: db.nextUserId(), username, email, salt, hash, role: 'user', createdAt: new Date().toISOString(),
       tipCont: contabilFaraFirma ? 'contabil' : 'patron', firme: fid ? [fid] : [], firmaActiva: fid,
       legalAcceptance: legal.acceptanceRecord('account-onboarding', null, { declaration: 'test-stage-documents' }) };
     user.legalAcceptance.acceptedBy = user.id;
@@ -265,6 +268,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     // Profilul public este opt-in: un contabil nou nu apare intr-un catalog pana nu cere asta.
     if (contabilFaraFirma && b.disponibilContabil === true) user.profil = { disponibilContabil: true };
     d.users.push(user);
+    commercialFunnel.markEntity(d, user, 'signup', { at: user.createdAt });
     // Daca a platit ca „guest" inainte de inscriere, leaga abonamentul dupa email (Stripe) — firma devine activa.
     const pIdx = plans.findPending(d.settings.pendingSubs, user.email);
     if (pIdx >= 0) {
@@ -273,6 +277,10 @@ module.exports = function registerAuthRoutes(app, ctx) {
       // fara firma nu exista pe ce sa se aplice abonamentul de firma; contul pastreaza plata
       // legata (user.subscription) si o va folosi la prima firma pe care o primeste
       if (firma) firma.subscription = { status: 'active', plan: rec.plan, since: new Date().toISOString(), stripeCustomerId: rec.customerId || null, stripeSubscriptionId: rec.subscriptionId || null };
+      // Plata guest a fost numarata cand a confirmat-o Stripe. Aici atasam doar marcajul la
+      // entitatea noua, fara al doilea eveniment comercial.
+      const paidAt = rec.commercialPaymentAt || rec.at || new Date().toISOString();
+      commercialFunnel.markEntity(d, firma || user, 'payment', { at: paidAt, count: false });
       d.settings.pendingSubs.splice(pIdx, 1);
       logAudit('subscription.linked', 'abonament ' + rec.plan + ' legat la inscriere', { userId: user.id, username, firmaId: fid });
     }

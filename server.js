@@ -188,6 +188,8 @@ require('./src/routes/users')(app, { requireAdmin, logAudit, startSession, publi
 
 // Cine acceseaza aplicatia (admin): sesiuni active + istoricul autentificarilor, cu IP si locatie
 require('./src/routes/access')(app, { requireAdmin, wrap });
+// Funnel comercial agregat, fara IP/identificator anonim; separat de raportul de securitate.
+require('./src/routes/commercialFunnel')(app, { requireAdmin });
 
 // Configurare (companie, logo, chitanta, setari, cote fiscale): src/routes/config.js
 require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, upload });

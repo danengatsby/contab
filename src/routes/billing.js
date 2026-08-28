@@ -9,6 +9,7 @@
 const db = require('../db');
 const plans = require('../plans');
 const billing = require('../billing');
+const commercialFunnel = require('../commercialFunnel');
 
 module.exports = function register(app, ctx) {
   const { requireAdmin, logAudit, activeId } = ctx;
@@ -92,13 +93,16 @@ module.exports = function register(app, ctx) {
     if (!u && info.guest && info.email && info.action === 'activate') {
       d.settings.pendingSubs = d.settings.pendingSubs || [];
       d.settings.pendingSubs = d.settings.pendingSubs.filter((x) => x.email !== String(info.email).toLowerCase());
-      d.settings.pendingSubs.push({ email: String(info.email).toLowerCase(), plan: info.plan, customerId: info.customerId, subscriptionId: info.subscriptionId, at: new Date().toISOString() });
+      const paidAt = new Date().toISOString();
+      d.settings.pendingSubs.push({ email: String(info.email).toLowerCase(), plan: info.plan, customerId: info.customerId, subscriptionId: info.subscriptionId, at: paidAt, commercialPaymentAt: paidAt });
+      commercialFunnel.record(d, 'payment', { at: paidAt });
       billing.rememberEvent(d.settings, event.id);
       db.save();
       return res.json({ received: true, pending: true });
     }
     if (!u) return res.json({ received: true, note: 'utilizator negasit' });
     const sub = Object.assign({}, u.subscription || {});
+    const userEraPlatitor = sub.status === 'active' && !!sub.stripeSubscriptionId;
     if (info.customerId) sub.stripeCustomerId = info.customerId;
     if (info.subscriptionId) sub.stripeSubscriptionId = info.subscriptionId;
     if (info.action === 'activate') {
@@ -112,6 +116,7 @@ module.exports = function register(app, ctx) {
     const firma = info.firmaId ? d.firme.find((f) => String(f.id) === String(info.firmaId)) : null;
     if (firma) {
       const fp = firma.subscription || {};
+      const firmaEraPlatitoare = fp.status === 'active' && !!fp.stripeSubscriptionId;
       if (info.action === 'activate') {
         const luna = new Date().toISOString().slice(0, 7);
         const plan = info.plan || fp.pendingPlan || fp.plan || 'start';
@@ -120,9 +125,13 @@ module.exports = function register(app, ctx) {
           stripeCustomerId: info.customerId || fp.stripeCustomerId || null, stripeSubscriptionId: info.subscriptionId || fp.stripeSubscriptionId || null,
           abonamente: Object.assign({}, fp.abonamente || {}, { [luna]: plan }),
         };
+        commercialFunnel.markEntity(d, firma, 'payment', { count: !firmaEraPlatitoare });
       } else if (info.action === 'cancel') {
         firma.subscription = Object.assign({}, fp, { status: 'canceled' });
       }
+    }
+    if (!firma && info.action === 'activate') {
+      commercialFunnel.markEntity(d, u, 'payment', { count: !userEraPlatitor });
     }
     logAudit('subscription.stripe', event.type + ' -> ' + u.username + ' (' + (sub.plan || '-') + '/' + sub.status + ')' + (firma ? ' [firma ' + firma.id + ']' : ''), { firmaId: firma ? firma.id : null, username: 'stripe-webhook' });
     billing.rememberEvent(d.settings, event.id);
@@ -150,7 +159,9 @@ module.exports = function register(app, ctx) {
     const b = req.body || {};
     const u = db.get().users.find((x) => x.id === b.userId);
     if (!u) return res.status(404).json({ error: 'Utilizator inexistent.' });
+    const eraActiv = (u.subscription || {}).status === 'active';
     try { u.subscription = plans.activatePlan(u.subscription, b.plan); } catch (e) { return res.status(400).json({ error: e.message }); }
+    commercialFunnel.markEntity(db.get(), u, 'payment', { count: !eraActiv });
     logAudit('subscription.activate', u.username + ' -> ' + b.plan, { req });
     db.save();
     res.json({ ok: true, current: plans.status(u.subscription) });

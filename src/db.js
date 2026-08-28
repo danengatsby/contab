@@ -608,6 +608,12 @@ function assertEntryBasics(entry, o) {
 
 function pushEntry(entry, o) {
   assertEntryBasics(entry, o);
+  // Retinem premisa inainte de push: la o firma istorica fara marcaj, un al doilea document nu
+  // are voie sa fie raportat drept „primul” doar fiindca instrumentarea a aparut mai tarziu.
+  const entryFirmaId = entry.firmaId == null ? get().firmaActiva : entry.firmaId;
+  const aveaDocumentComercial = !entry.system && get().entries.some((e) =>
+    Number(e.firmaId == null ? get().firmaActiva : e.firmaId) === Number(entryFirmaId)
+      && !e.system);
   // Poarta centrala garanteaza provenienta temporala inclusiv pentru articolele de sistem care
   // nu trec prin composeEntry. La storno, amprenta veche ramane ca sursa, iar articolul nou poarta
   // regulile propriei date. Un an neacoperit este marcat explicit, niciodata completat cu 2026.
@@ -680,6 +686,13 @@ function pushEntry(entry, o) {
     };
   }
   get().entries.push(entry);
+  if (!entry.system) {
+    const firma = getFirma(entryFirmaId);
+    if (firma) require('./commercialFunnel').markEntity(get(), firma, 'first_document', {
+      count: !aveaDocumentComercial && !(o && o.commercialBaseline),
+      at: (o && o.commercialBaseline) ? (entry.createdAt || entry.data) : new Date().toISOString(),
+    });
+  }
   require('./auditOutbox').enqueue(get(), 'accounting.entry.insert', entry, o && o.actor,
     String(o && o.context || 'articol contabil') + ' · ' + String(entry.tipNume || entry.tip || '')
       + (entry.document ? ' · ' + String(entry.document) : ''));
@@ -1260,12 +1273,19 @@ function importFirma(bundle, opts) {
     // iar istoricul sau trebuie reconstituit chiar daca firma-tinta are perioade blocate.
     if (k === 'entries') for (const e of rows) pushEntry(e, {
       context: 'import firma', allowClosedPeriod: true,
+      commercialBaseline: true,
       restoreValidatedOverride: e.duplicateOverride ? RESTORE_DUPLICATE_OVERRIDE : null,
     });
     else d[k].push(...rows);
   }
   d.seq = seqImport;
   d.firmaActiva = newFid;
+  // Importul reconstituie realizari istorice; le marcam ca baseline ca urmatorul document/edit
+  // sa nu para „primul”, dar nu inventam conversii la data restaurarii.
+  const importedFirma = getFirma(newFid);
+  if (importedFirma && require('./dateFirma').completa(importedFirma)) {
+    require('./commercialFunnel').markEntity(d, importedFirma, 'company_configured', { count: false });
+  }
   if (!o.deferSave) save();
   return newFid;
 }

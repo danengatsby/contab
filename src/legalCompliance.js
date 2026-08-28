@@ -13,7 +13,7 @@ const path = require('path');
 
 const VERSIONS = Object.freeze({
   terms: '2026-08-26.1',
-  privacy: '2026-08-26.1',
+  privacy: '2026-08-28.1',
   dpa: '2026-08-26.1',
 });
 

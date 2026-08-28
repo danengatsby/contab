@@ -3,7 +3,7 @@ import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect
 import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, renderVideo, setSettingsDeps } from './settings.js';
-import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, renderCereriAcces, setAdminDeps } from './admin.js';
+import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, renderCommercialFunnel, renderCereriAcces, setAdminDeps } from './admin.js';
 import { loadDashboard, setDashboardDeps } from './dashboard.js';
 import { initUiMode } from './simplemode.js';
 import { initGhid } from './ghid.js';
@@ -230,6 +230,7 @@ function onTab(t) {
   if (t === 'video') renderVideo();
   if (t === 'audit') renderAudit();
   if (t === 'accesari') renderAccess();
+  if (t === 'funnel') renderCommercialFunnel();
   if (t === 'arhiva') loadArhiva();
   if (t === 'plan') renderPlan();
   if (t === 'galerie') loadGalerie();
@@ -445,6 +446,7 @@ async function init() {
   // Intrarea de meniu „Cine accesează aplicația" (submeniul Setări) — doar admin. Serverul refuza
   // oricum /api/access-log cu 403; ascunderea evita o intrare de meniu care nu poate reusi.
   $('#navAccesari') && $('#navAccesari').classList.toggle('hidden', USER.role !== 'admin');
+  $('#navFunnel') && $('#navFunnel').classList.toggle('hidden', USER.role !== 'admin');
   $('#exportAllBtn') && $('#exportAllBtn').classList.toggle('hidden', USER.role !== 'admin');
   // Planul de conturi e global (partajat de toate firmele), deci importul e rezervat adminului
   // — serverul raspunde 403 oricum; ascunderea evita un buton care nu poate reusi.

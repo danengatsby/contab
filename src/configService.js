@@ -16,6 +16,8 @@ const fiscalProfile = require('./fiscalProfile');
 const balanceCategory = require('./balanceCategory');
 const { reqFirma, ensureDocSeries } = require('./stocksService');
 const { validIsoDate } = require('./util');
+const dateFirma = require('./dateFirma');
+const commercialFunnel = require('./commercialFunnel');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 
@@ -35,6 +37,7 @@ function replaceFiscalHistory(fid, rows) {
 function updateCompany(fid, b, actor) {
   fid = reqFirma(fid);
   const f = db.getFirma(fid);
+  const eraCompleta = dateFirma.completa(f);
   const fields = db.pickFirmaFields(b);
   if (Object.prototype.hasOwnProperty.call(fields, 'categorieRaportare')) {
     const categorie = String(fields.categorieRaportare || '').trim().toLowerCase();
@@ -84,6 +87,15 @@ function updateCompany(fid, b, actor) {
     delete f.fiscalHistory;
     Object.assign(f, r.currentValues);
     revision = r.revision;
+  }
+  if (dateFirma.completa(f)) {
+    // O firma veche deja completa primeste doar baseline-ul. Se numara exclusiv tranzitia
+    // observata incompleta -> completa, dupa aceeasi definitie folosita in „Primii pasi”.
+    commercialFunnel.markEntity(db.get(), f, 'company_configured', { count: !eraCompleta });
+    // Daca documentul exista dinaintea instrumentarii, ii atasam marcajul fara conversie noua.
+    if ((db.get().entries || []).some((e) => Number(e.firmaId) === Number(fid) && !e.system)) {
+      commercialFunnel.markEntity(db.get(), f, 'first_document', { count: false });
+    }
   }
   db.save();
   return { company: f, revision };

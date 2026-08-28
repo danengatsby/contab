@@ -37,6 +37,7 @@ function createApp() {
   const metrics = require('./metrics');
   const uploadGuard = require('./uploadGuard');
   const visitors = require('./visitors');
+  const commercialFunnel = require('./commercialFunnel');
   const helmet = require('helmet');
 
   // Reverse proxy: avem incredere DOAR in proxy-ul local (nginx pe 127.0.0.1) ca sa citim
@@ -116,7 +117,12 @@ function createApp() {
   // `req.user` nu e inca setat aici (autentificarea vine mai jos), deci legatura IP -> cont se
   // face la finalul raspunsului, cand utilizatorul e cunoscut.
   app.use((req, res, next) => {
-    res.on('finish', () => { try { visitors.noteRequest(req); } catch (_) { /* nu rupe cererea */ } });
+    res.on('finish', () => {
+      try { visitors.noteRequest(req); } catch (_) { /* nu rupe cererea */ }
+      // Funnelul nu consuma randul pe IP de mai sus. Vede doar faptul ca una dintre cele doua
+      // pagini publice de intrare a raspuns cu HTML si incrementeaza un contor agregat.
+      try { commercialFunnel.noteLanding(db.get(), req, res.statusCode); } catch (_) { /* nu rupe cererea */ }
+    });
     next();
   });
 

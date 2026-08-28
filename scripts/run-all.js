@@ -29,6 +29,7 @@ const SUITE = [
   'scripts/check-syntax.js',
   'test/db-guard.js',
   'test/auth.js',
+  'test/commercial-funnel.js',
   'test/bilant-controls.js',
   'test/run.js',
   'test/cazuri-aprobate.js',

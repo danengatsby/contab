@@ -20,6 +20,7 @@ const { reqFirma } = require('./stocksService');
 const { capList } = require('./paginate');
 const { period: periodOf } = require('./util');
 const crypto = require('crypto');
+const commercialFunnel = require('./commercialFunnel');
 
 function fail(status, message, code, details) {
   const e = new Error(message); e.status = status;
@@ -277,6 +278,8 @@ function close(fid, period, user, b) {
   }
   const rec = ensureRecord(fid, period);
   const firma = db.getFirma(fid);
+  const aveaLunaInchisa = (db.get().closings || []).some((x) =>
+    Number(x.firmaId) === Number(fid) && x !== rec && !!x.closedAt);
   if (!firma.lockedUntil || firma.lockedUntil < period) firma.lockedUntil = period;
   rec.closedAt = new Date().toISOString();
   rec.closedBy = user ? user.id : null;
@@ -284,6 +287,10 @@ function close(fid, period, user, b) {
   rec.fortata = (!st.sePoateInchide && force)
     ? { motiv: String(b.motiv || '').trim().slice(0, 500), by: user ? user.id : null, username: user ? user.username : '', at: new Date().toISOString(), blocante: st.blocante.map((x) => x.nume) }
     : null;
+  commercialFunnel.markEntity(db.get(), firma, 'first_month_closed', {
+    count: !aveaLunaInchisa,
+    at: rec.closedAt,
+  });
   db.save();
   return { state: state(fid, period), fortata: !!rec.fortata, lockedUntil: firma.lockedUntil, idempotent: false };
 }
