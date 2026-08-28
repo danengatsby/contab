@@ -512,7 +512,7 @@ await pg.evaluate(() => document.querySelector('#cancelEntry')?.click());
 
 // 6. trecere pe VIEWPORT MOBIL (390x844): același arbore #tabs devine sertar,
 // fără o a doua navigație sau o ierarhie mobilă separată — și fără scroll orizontal.
-const pm = await b.newPage({ viewport: { width: 390, height: 844 } });
+const pm = await b.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
 await pm.goto(BASE + '/prezentare.html', { waitUntil: 'networkidle' });
 await pm.waitForTimeout(500);
 ok('mobil: prezentarea publica fara scroll orizontal', await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
@@ -533,6 +533,34 @@ ok(`mobil: dashboardul compact și contextul se randează (${dashboardMobil.heig
   && dashboardMobil.kpiColumns === 2 && dashboardMobil.actionColumns === 2 && dashboardMobil.height < 2400);
 ok('mobil: există o singură navigație, strânsă inițial', (await pm.locator('#bottomnav,#moreSheet').count()) === 0 && !(await pm.locator('#tabs').isVisible()));
 ok('mobil: dashboardul FARA scroll orizontal', await pm.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+const ergonomieTouch = await pm.evaluate(() => {
+  const proba = document.createElement('div');
+  proba.className = 'e2e-touch-targets';
+  proba.innerHTML = '<details><summary>Acordeon de verificare</summary><p>Conținut</p></details>'
+    + '<div class="tablewrap"><table><tbody><tr><td><button class="linkbtn">deschide</button>'
+    + '<button class="del" aria-label="Șterge">✕</button></td></tr></tbody></table></div>';
+  document.querySelector('#tab-dashboard').appendChild(proba);
+  const elemente = [
+    ['înapoi perioadă', document.querySelector('#prevMonth'), true],
+    ['înainte perioadă', document.querySelector('#nextMonth'), true],
+    ['perioada curentă', document.querySelector('#currentPeriod'), false],
+    ['selector firmă', document.querySelector('#firmaSelect'), false],
+    ['meniu', document.querySelector('#navToggleBtn'), false],
+    ['acordeon', proba.querySelector('summary'), false],
+    ['acțiune tabel', proba.querySelector('.linkbtn'), false],
+    ['ștergere tabel', proba.querySelector('.del'), true],
+  ];
+  const masuri = elemente.map(([nume, el, patrat]) => {
+    const r = el && el.getBoundingClientRect();
+    return { nume, h: r ? r.height : 0, w: r ? r.width : 0, patrat };
+  });
+  proba.remove();
+  return masuri;
+});
+const tinteMici = ergonomieTouch.filter((x) => x.h < 43.5 || (x.patrat && x.w < 43.5));
+ok('touch: perioada, acordeoanele și acțiunile din tabele au ținte de minimum 44px'
+  + (tinteMici.length ? ' — ' + tinteMici.map((x) => `${x.nume} ${x.w}×${x.h}`).join(', ') : ''),
+  tinteMici.length === 0);
 ok('mobil: nu mai există un panou Unelte în afara navigatorului',
   !(await pm.locator('#appContext #sideTools').count()) && !(await pm.locator('#sideTools').isVisible()));
 await pm.click('#navToggleBtn');

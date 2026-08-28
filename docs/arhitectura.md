@@ -332,7 +332,7 @@ Aplicația cere **login** și aplică **drepturi pe firmă**:
   alertă (max. una pe oră); la înscriere, utilizatorii cu email primesc un **mesaj de bun venit**
   cu primii pași.
 - **E2E pe live:** `npm run e2e` (`scripts/e2e.mjs`, Playwright — pe acest server prin Docker,
-  comanda e în antetul scriptului): 87 verificări cap-coadă pe instanța reală, cu contul demo —
+  comanda e în antetul scriptului): 88 verificări cap-coadă pe instanța reală, cu contul demo —
   inclusiv FAQ-ul public de pe login, selectorul căutabil pentru cele 137 de operațiuni, dicționarul contabil,
   cardul de pro-rata din tab-ul TVA, căutarea globală (Ctrl+K) și
   două porți care au nevoie de un browser adevărat, deci nu pot trăi în `npm test`: contrastul AA

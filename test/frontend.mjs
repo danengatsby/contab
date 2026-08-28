@@ -1301,6 +1301,18 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
   ok('design system-ul fixează separat controalele normale și cele compacte din tabele',
     /--ds-control-min-h:\s*36px/.test(dsCss) && /--ds-control-compact-h:\s*30px/.test(dsCss)
       && /body\.erp \.tab table button/.test(dsCss) && /body\.erp \.tab \.tablewrap \.linkbtn/.test(dsCss));
+  ok('pe touch toate cele trei densități urcă la ținta ergonomică de 44px',
+    /--ds-touch-target:\s*44px/.test(dsCss)
+      && /@media \(any-pointer: coarse\), \(hover: none\)[\s\S]*--ds-control-h: var\(--ds-touch-target\)[\s\S]*--ds-control-min-h: var\(--ds-touch-target\)[\s\S]*--ds-control-compact-h: var\(--ds-touch-target\)/.test(dsCss));
+  ok('acțiunile din tabele și controalele numai cu pictogramă au 44px pe ambele axe',
+    /body\.erp button\[aria-label\][\s\S]{0,150}min-width: var\(--ds-touch-target\)/.test(dsCss)
+      && /body\.erp \.tab table button,[\s\S]{0,240}padding: 8px 10px/.test(dsCss));
+  ok('carcasa ridică la 44px perioada și acordeoanele navigatorului pe touch',
+    /@media \(any-pointer: coarse\), \(hover: none\)[\s\S]*body\.erp #tabs \.navlabel:not\(\.hidden\)[\s\S]*min-height: 44px/.test(erpCss)
+      && /body\.erp \.app-context \.curnav,[\s\S]{0,180}height: 44px/.test(erpCss));
+  ok('antetul touch folosește plafonul de 64px și mută sertarul la aceeași margine',
+    /max-width: 700px\) and \(any-pointer: coarse\)[\s\S]*body\.erp \.topbar \{ height: 64px;[^}]*padding-block: 10px/.test(erpCss)
+      && /body\.erp \.topbar\.nav-open #tabs \{ inset: 64px auto 0 0/.test(erpCss));
   ok('textul de 12 px este rezervat acțiunilor compacte, nu butoanelor normale',
     /--ds-control-font:\s*14px/.test(dsCss) && /--ds-control-compact-font:\s*12px/.test(dsCss)
       && /body\.erp \.btn\.small[^}]*var\(--ds-control-font\)/.test(dsCss));

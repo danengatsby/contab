@@ -11,6 +11,7 @@ body.erp {
   --ds-control-h: 40px;
   --ds-control-min-h: 36px;
   --ds-control-compact-h: 30px;
+  --ds-touch-target: 44px;
   --ds-control-font: 14px;
   --ds-control-compact-font: 12px;
   --ds-radius-control: 9px;
@@ -972,6 +973,46 @@ body.erp .closealoc-act {
   text-underline-offset: 2px;
 }
 body.erp .closealoc[open] > summary .closealoc-act { text-decoration: none; }
+
+/* Densitatea de desktop rămâne utilă contabililor care lucrează cu mouse-ul, dar pe un ecran
+   tactil toate controalele reale au o țintă de minimum 44px. `any-pointer:coarse` acoperă și
+   laptopurile hibride, chiar dacă pointerul principal este mouse-ul; `hover:none` acoperă
+   telefoanele și stylusurile declarate imprecis de browser. */
+@media (any-pointer: coarse), (hover: none) {
+  body.erp {
+    --ds-control-h: var(--ds-touch-target);
+    --ds-control-min-h: var(--ds-touch-target);
+    --ds-control-compact-h: var(--ds-touch-target);
+  }
+  body.erp button,
+  body.erp a.btn,
+  body.erp [role="button"],
+  body.erp summary,
+  body.erp .attach-btn,
+  body.erp .linkbtn {
+    min-height: var(--ds-touch-target);
+  }
+  body.erp button[aria-label],
+  body.erp .tab table .del,
+  body.erp .tab .tablewrap .del {
+    min-width: var(--ds-touch-target);
+  }
+  body.erp .linkbtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  body.erp .tab table button,
+  body.erp .tab table .linkbtn,
+  body.erp .tab .tablewrap button,
+  body.erp .tab .tablewrap .linkbtn {
+    padding: 8px 10px;
+  }
+  body.erp .msg-del + .msg-edit { right: 52px; }
+  body.erp .msg-b:has(.msg-del),
+  body.erp .msg-b:has(.msg-edit) { padding-right: 56px; }
+  body.erp .msg-b:has(.msg-del + .msg-edit) { padding-right: 108px; }
+}
 
 /* Contract global pentru starea ascunsă. Componentele design-system au selectori mai specifici
    (`body.erp .btn`, flex/grid etc.); fără această regulă un buton `.hidden` putea redeveni vizibil,
