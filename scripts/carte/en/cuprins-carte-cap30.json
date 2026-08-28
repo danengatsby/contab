@@ -148,7 +148,7 @@
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "The general journal is a mandatory register under Accounting Law no. 82/1991, alongside the inventory register and the general ledger, and its form and manner of completion follow the rules on financial-accounting documents. Four practical observations. First: mandatory registers may be kept in electronic form, provided they can be printed at any time at the request of the control authorities and that integrity and legibility are ensured throughout the retention period; electronic form doesn't remove the obligation to be able to present them, only the medium. Second: the retention period is the one set by the accounting law, and it has been amended through successive legislative interventions in recent years — it's one of those figures that must be checked as of the current date, not recited from memory. Third: for companies using auxiliary journals, the general journal takes over their totals, not the individual transactions; the correlation that must be verified monthly is between the total of each auxiliary journal and the turnover of the accounts it feeds. Fourth: the sales journal and the purchases journal are registers for VAT purposes, provided for by the implementing rules of the Fiscal Code, and should not be confused with accounting auxiliary journals — their scope, the timing of tax chargeability, and the treatment of exempt transactions differ, and mechanically overlapping them is a frequent source of mismatches between the accounting records and the VAT return."
+   "text": "The general journal is a mandatory register under Accounting Law no. 82/1991, alongside the inventory register and the general ledger, and its form and manner of completion follow the rules on financial-accounting documents. Four practical observations. First: mandatory registers may be kept in electronic form, provided they can be printed at any time at the request of the control authorities and that integrity and legibility are ensured throughout the retention period; electronic form doesn't remove the obligation to be able to present them, only the medium. Second: the retention period is the one set by the accounting law, and it has been amended through successive legislative interventions in recent years — it's one of those figures that must be checked as of the current date, not recited from memory. Third: for companies using auxiliary journals, the general journal takes over their totals, not the individual transactions; the correlation that must be verified monthly is between the total of each auxiliary journal and the turnover of the accounts it feeds. Fourth: the sales journal and the purchases journal are registers for VAT purposes, provided for by the implementing rules of the Tax Code, and should not be confused with accounting auxiliary journals — their scope, the timing of tax chargeability, and the treatment of exempt transactions differ, and mechanically overlapping them is a frequent source of mismatches between the accounting records and the VAT return."
   },
   {
    "tip": "h",
@@ -254,6 +254,25 @@
   {
    "tip": "cheie",
    "text": "If the VAT journal and the trial balance don't agree, the return built on either of them will be wrong. The check is done before filing, not after."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "completeness and accuracy of mandatory registers",
+     "registers, trial balances, sequences and extraction parameters",
+     "reconcile period totals and investigate exclusions",
+     "report regenerated later under different rules and with no version record"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

@@ -1,35 +1,35 @@
 {
- "parte": "Part II · Opening the financial year · phase 1",
+ "parte": "Part II · Opening the fiscal year · phase 1",
  "nr": "6",
- "titlu": "The company and its regimes",
+ "titlu": "The Company and Its Regimes",
  "blocuri": [
   {
    "tip": "p",
-   "text": "The first phase of the cycle happens only once and is rarely revisited. That is exactly why it's dangerous: you don't get the chance to get used to it, and if it's wrong, the mistake doesn't show up that same day — it shows up in every declaration of the year."
+   "text": "The first phase of the cycle happens only once and is rarely revisited. That is exactly why it is dangerous: you don't get the chance to get used to it, and if it's wrong, the mistake doesn't show up that day — it shows up in every declaration of the year."
   },
   {
    "tip": "p",
-   "text": "Opening the fiscal year practically means answering two questions about the company. They are short questions, with answers that seem administrative, but everything else follows from them: which declarations you owe, by what deadlines, how much tax you pay, and whether or not you charge VAT on invoices."
+   "text": "Opening the fiscal year practically means answering two questions about the company. They are short questions with answers that seem administrative, but everything else follows from them: what declarations you owe, by what deadlines, how much tax you pay, and whether or not you add VAT to invoices."
   },
   {
    "tip": "cheie",
-   "text": "The two questions are independent. A company can be a VAT payer and a micro-enterprise, or a non-VAT-payer under corporate income tax, in any combination."
+   "text": "The two questions are independent. A company can be a VAT payer and a micro-enterprise, or a non-payer and subject to corporate income tax, in any combination."
   },
   {
    "tip": "h",
-   "text": "First question: do you charge VAT on the invoice or not?"
+   "text": "The first question: do you add VAT to the invoice or not?"
   },
   {
    "tip": "p",
-   "text": "A new company is not, by default, a VAT payer. It can remain a non-VAT-payer as long as its annual turnover stays below the exemption threshold — 395,000 lei — and it can also request registration earlier, if it wants to."
+   "text": "A new company is not automatically a VAT payer. It can remain a non-payer as long as its annual turnover stays below the exemption threshold — 395,000 lei — and it can request registration earlier if it wants."
   },
   {
    "tip": "p",
-   "text": "The practical difference is easy to describe and hard to intuit. The non-VAT-payer doesn't add VAT to its prices, but also doesn't deduct the VAT on its purchases: the tax paid to suppliers becomes, for it, a cost. The VAT payer adds VAT on sales, deducts the VAT on purchases, and remits to the state only the difference."
+   "text": "The practical difference is easy to describe and hard to intuit. The non-payer doesn't add VAT to its prices, but also doesn't deduct the VAT on what it buys: the tax paid to suppliers becomes, for it, a cost. The payer adds VAT to sales, deducts the VAT on purchases, and remits to the state only the difference."
   },
   {
    "tip": "p",
-   "text": "From this comes a practical rule every business owner should know: VAT-payer status benefits you if you sell mainly to other VAT-paying companies and have large VAT-bearing purchases. It works against you if you sell to individuals and have low expenses — there, VAT gets added to the final price and prices you out of the market against a non-VAT-paying competitor."
+   "text": "From this comes the practical rule every business owner should know: payer status benefits you if you sell mainly to other VAT-paying companies and have large purchases with VAT. It disadvantages you if you sell to individuals and have low expenses — there, VAT gets added to the final price and pushes you out of the market compared to a non-paying competitor."
   },
   {
    "tip": "p",
@@ -37,31 +37,31 @@
   },
   {
    "tip": "h",
-   "text": "Second question: how is the profit taxed?"
+   "text": "The second question: how is the gain taxed?"
   },
   {
    "tip": "p",
-   "text": "Here too there are two options, and the difference between them runs deeper than it seems: it's not just the rate that changes, but the thing the rate is applied to."
+   "text": "Here too there are two options, and the difference between them is deeper than it appears: it's not just the rate that changes, but what it's applied to."
   },
   {
    "tip": "p",
-   "text": "The micro-enterprise pays a percentage of revenue — 1%, or 3% above a threshold or for certain business activities. It doesn't matter whether it had a profit or a loss; it pays on what was invoiced. It's simple to calculate and predictable."
+   "text": "The micro-enterprise pays, in 2026, the flat rate of 1% on the tax base formed from accounting-recognized revenues, with the deductions and additions provided by the Tax Code. It doesn't matter whether it had a profit or a loss, nor whether all invoices were collected: the tax follows accounting revenue, not the bank statement. It's simple to estimate, but its base is not the same as either collections or the total of class 7."
   },
   {
    "tip": "p",
-   "text": "Corporate income tax is 16% of the gain, i.e., of the difference between revenues and expenses, adjusted for tax purposes. If the year was a loss, the tax is zero. It's more complicated to calculate, but it follows the reality of the business."
+   "text": "Corporate income tax is 16% of the gain, i.e., of the difference between revenues and expenses, fiscally adjusted. If the year was a loss, the tax is zero. It's more complicated to calculate, but it follows the reality of the business."
   },
   {
    "tip": "p",
-   "text": "The micro regime isn't available at will at any time: it has a revenue threshold — €100,000 starting in 2026 — above which the company is mandatorily switched to corporate income tax. Below the threshold, the choice exists, and the natural question is which option costs less."
+   "text": "The micro regime is not available at will at any time: eligibility requires cumulative fulfillment of the legal conditions, including the €100,000 threshold, having at least one employee, the rule on holdings above 25%, timely filing of financial statements, and the absence of excluded activities. From 2026, one can return to micro status if all conditions are met, but the option and exit are declared within their own deadlines; simply being below the threshold is not sufficient."
   },
   {
    "tip": "h",
-   "text": "Which one comes out cheaper: arithmetic, not opinion"
+   "text": "Which is cheaper: arithmetic, not opinion"
   },
   {
    "tip": "p",
-   "text": "The answer doesn't depend on the size of the company, but on its margin. The two taxes become equal at a point that can be calculated exactly: 1% of revenue equals 16% of profit when profit represents 6.25% of revenue."
+   "text": "The answer doesn't depend on the company's size, but on its margin. The two taxes become equal at a point that can be calculated exactly: 1% of revenue equals 16% of profit when profit represents 6.25% of revenue."
   },
   {
    "tip": "tabel",
@@ -121,8 +121,8 @@
    "text": "The conclusion is easy to remember: at high margins, micro is advantageous; at low margins, corporate income tax is. And if the company has loss-making years, micro becomes downright expensive — it pays even when it doesn't earn."
   },
   {
-   "tip": "p",
-   "text": "For the 3% rate, the break-even point shifts to an 18.75% margin. Below it, corporate income tax is cheaper; above it, micro still wins."
+   "tip": "cheie",
+   "text": "In 2026 there is no longer a 3% micro rate, nor the €60,000 threshold that used to change the rate. The economic comparison is made exclusively between 1% on the micro base and 16% on the taxable result, after prior verification of eligibility."
   },
   {
    "tip": "h",
@@ -134,16 +134,16 @@
   },
   {
    "tip": "p",
-   "text": "For VAT, exceeding the threshold requires registration within a short deadline, and from the registration date invoices are issued differently. For micro, exceeding the €60,000 threshold moves the rate from 1% to 3% starting with the quarter in which it was exceeded — not the following year. Exceeding the €100,000 threshold removes the company from the micro regime entirely."
+   "text": "For VAT, exceeding the threshold requires registration within a short deadline, and from the registration date invoices are issued differently. For micro, exceeding the €100,000 threshold triggers corporate income tax starting with the quarter in which it was exceeded. The threshold is also checked together with the revenues of related enterprises, under the rules of Articles 47, 52, and 54 of the Tax Code; for the 2026 threshold test, the turnover as defined by accounting regulations is used, with special rules for repeated asset transfers."
   },
   {
    "tip": "p",
-   "text": "That's why tracking these thresholds isn't a December concern, but a permanent one. Accounting software can calculate them continuously and warn in advance; it is, in fact, one of the few places where automation actually prevents a fine, not just saves time."
+   "text": "That's why monitoring these thresholds isn't a December concern, but a permanent one. Accounting software can calculate them continuously and warn in advance; this is, in fact, one of the few places where automation actually prevents a fine, not just saves time."
   },
   {
    "tip": "contabil",
-   "titlu": "For the accountant",
-   "text": "The micro tax base is not the total of class 7 accounts, and this confusion is the most frequent calculation error at small companies: under art. 53 of the Fiscal Code, revenue from provisions and adjustments, capitalized production of fixed assets, inventory changes, subsidies, and favorable exchange rate differences are subtracted from revenue, while commercial discounts granted afterward are added back. The switch from 1% to 3% takes effect starting with the quarter in which the €60,000 threshold is exceeded, not the following year (art. 51 para. (4), Law 296/2023), and the 3% rate applies from the start to the CAEN codes listed in art. 51 para. (1) letter b) point 2 — IT, HoReCa, legal, medical — regardless of revenue. The exit threshold from the regime is €100,000 starting in 2026 (art. 47, GEO 156/2024), lower than in previous years, which has pushed many companies out of micro status without them changing anything. VAT rates are 21% standard and 11% reduced starting August 1, 2025 (Law 141/2025), and the exemption threshold is 395,000 lei starting September 1, 2025 (art. 310, GO 22/2025, implementing EU Directive 2020/285). The VAT fiscal period — monthly or quarterly — is set based on the previous year's turnover and the existence of intra-Community acquisitions, and switching from quarterly to monthly during the year triggers the recalculation of deadlines for all remaining periods."
+   "titlu": "For the Accountant",
+   "text": "The micro tax base is not the total of class 7, and the threshold test no longer uses the same measure either. For TAX, Article 53 of the Tax Code starts from revenues of any source and applies the deductions and additions listed by law; the bonus granted by the tax authority is subtracted from the base. For QUALIFICATION under the €100,000 threshold, Article 54, in the form applicable from 2026 through GEO 8/2026, uses the turnover as defined by accounting regulations, cumulated with that of related enterprises; when transferring more than one asset from the same subgroup or more than one plot of land, the related revenues are also added. The rate is flat, 1%, from January 1, 2026, through GEO 89/2025; the old 1%/3% rules, the €60,000 threshold, and the CAEN list no longer apply. GEO 8/2026 allowed a return to micro status, extended to 90 days the deadline within which a new company must hire its first employee, and regulated the effect of employment termination. Separately, the VAT rates are 21% and 11%, and the small enterprise exemption threshold is 395,000 lei."
   },
   {
    "tip": "h",
@@ -151,15 +151,15 @@
   },
   {
    "tip": "p",
-   "text": "In the application, this phase means a few fields on a single page: the company's identification data, its VAT code if it has one, the tax regime, the fiscal period, the bank accounts, the document series. It's filled in once, at the start, and revisited only when something real changes."
+   "text": "In the application, this phase means a few fields on a single page: the company's identification data, the VAT code if any, the tax regime, the fiscal period, the bank accounts, the document series. It's filled in once, at the start, and revisited only when something real changes."
   },
   {
    "tip": "p",
-   "text": "From that moment on, the program knows which declarations you owe and by what deadlines, what rates go on invoices, and what reports are required at year-end. Nothing that follows in this book works correctly if the answers here are wrong — and correcting them six months later usually means redoing the declarations filed in the meantime."
+   "text": "From that moment on, the software knows what declarations you owe and by what deadlines, what rates to apply on invoices, and what reports are required at year-end. Nothing that follows in this book works correctly if the answers here are wrong — and correcting them six months later usually means redoing the declarations filed in the meantime."
   },
   {
    "tip": "p",
-   "text": "One more thing remains before the first documents: if the company isn't in its first year, the bookkeeping doesn't start from zero. Balances must be carried forward. That's the next chapter."
+   "text": "One more thing remains before the first documents: if the company is not in its first year, the bookkeeping doesn't start from zero. Balances must be carried forward. That's the next chapter."
   },
   {
    "tip": "h",
@@ -167,11 +167,11 @@
   },
   {
    "tip": "p",
-   "text": "A new business owner thinks the only decision is \"LLC or sole proprietorship.\" In reality there are four, they are made almost simultaneously, and three of them are hard to change later."
+   "text": "A new business owner thinks the only decision is \"LLC or sole proprietorship.\" In reality there are four, they're made almost simultaneously, and three of them are hard to change."
   },
   {
    "tip": "tabel",
-   "titlu": "The decisions made at the start",
+   "titlu": "Start-up decisions",
    "cap": [
     "Decision",
     "What it affects",
@@ -181,53 +181,72 @@
     [
      "Legal form",
      "liability, taxation, formalities",
-     "hard — requires conversion"
+     "hard — requires transformation"
     ],
     [
      "Tax regime",
-     "how much the company pays out of its earnings",
-     "annually, with conditions"
+     "how much the company pays out of its gain",
+     "annually, under conditions"
     ],
     [
      "VAT registration",
      "cash flow and reporting obligations",
-     "both ways, with thresholds"
+     "in both directions, with thresholds"
     ],
     [
      "Business activity (CAEN code)",
      "authorizations, VAT rates, special regimes",
-     "easy, via an amendment"
+     "easy, by amendment"
     ]
    ],
-   "nota": "The order in which these are decided matters: the tax regime depends on the legal form, and the VAT threshold is measured against actual activity, not what's written in the articles of association."
+   "nota": "The order in which these are taken matters: the tax regime depends on the legal form, and the VAT threshold is reported based on actual activity, not on what the articles of association say."
   },
   {
    "tip": "p",
-   "text": "It's worth stating clearly something nobody says at incorporation: these choices aren't made once and for all — they are REVIEWED annually, based on actual figures. A company that chose micro at incorporation because it seemed cheaper, and that ends up with low margins, pays tax on revenue even in loss-making years."
+   "text": "It's worth saying clearly something nobody says at incorporation: these choices are not made once and for all — they are REVIEWED annually, based on actual figures. A company that chose micro at incorporation because it seemed cheaper, and that ends up with low margins, pays tax on revenue even in loss-making years."
   },
   {
    "tip": "exercitiu",
    "titlu": "Exercise 6.1 — micro or corporate income tax",
    "enunt": [
     "Two companies have the same turnover, 400,000 lei per year. The first has expenses of 380,000 (5% margin), the second of 320,000 (20% margin).",
-    "Calculate each one's tax under both regimes — 1% micro tax on revenue and 16% corporate income tax — and say which regime suits each one."
+    "Calculate each company's tax under both regimes — 1% micro on revenue and 16% corporate income tax — and state which regime suits each."
    ],
    "rezolvare": [
-    "Company A: profit 20,000. Micro: 1% × 400,000 = 4,000. Profit tax: 16% × 20,000 = 3,200. Corporate income tax suits it — it pays 800 lei less.",
-    "Company B: profit 80,000. Micro: 4,000. Profit tax: 16% × 80,000 = 12,800. Micro suits it — it pays 8,800 lei less.",
-    "The break-even point is at a 6.25% margin: there, 1% of revenue equals 16% of profit. Below it, corporate income tax is cheaper; above it, micro is.",
-    "What doesn't show up in the calculation but often decides the outcome: under micro, tax is paid EVEN in loss-making years, because the base is revenue. For a business with volatile margins, the regime that seems cheaper on average can be the one that hurts in the bad year."
+    "Company A: profit 20,000. Micro: 1% × 400,000 = 4,000. Profit tax: 16% × 20,000 = 3,200. Corporate income tax suits it better — it pays 800 lei less.",
+    "Company B: profit 80,000. Micro: 4,000. Profit tax: 16% × 80,000 = 12,800. Micro suits it better — it pays 8,800 lei less.",
+    "The break-even point is at a 6.25% margin: there, 1% of revenue equals 16% of profit. Below it, corporate income tax is cheaper; above it, micro.",
+    "What doesn't appear in the calculation and often decides the matter: under micro, tax is paid EVEN in loss-making years, because the base is revenue. For a business with volatile margins, the regime that seems cheaper on average may be the one that hurts in the bad year."
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "correct classification under the tax regimes applicable to the period",
+     "tax vector, turnover, employees, affiliates, notifications and receipts",
+     "recalculate each condition at the relevant date and verify transitions",
+     "regime kept from the previous year without retesting eligibility"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
-   "titlu": "Key takeaways from this chapter",
+   "titlu": "Key Takeaways from This Chapter",
    "puncte": [
     "Opening the fiscal year requires two independent answers: VAT payer or not, and micro or corporate income tax.",
-    "The non-VAT-payer doesn't add the tax to prices but also doesn't deduct it — it becomes a cost. The exemption threshold is 395,000 lei.",
+    "The VAT non-payer doesn't add the tax to prices, but also doesn't deduct it — it becomes a cost. The exemption threshold is 395,000 lei.",
     "Micro tax is paid on revenue, regardless of profit; corporate income tax, 16% of the gain, is zero in a loss.",
-    "The break-even point is at a 6.25% margin for the 1% rate and 18.75% for the 3% rate. High margins — micro; low margins — profit tax.",
-    "Thresholds are monitored throughout the year: exceeding them shifts the rate from the quarter of the excess, not from the following year.",
+    "The arithmetic break-even point is at a 6.25% margin for the flat 1% micro rate; the comparison only makes sense after verifying all eligibility conditions.",
+    "The €100,000 threshold is monitored together with related enterprises; exceeding it triggers corporate income tax from the quarter of the excess.",
     "A wrong answer here doesn't show up today — it shows up in every declaration of the year."
    ]
   }

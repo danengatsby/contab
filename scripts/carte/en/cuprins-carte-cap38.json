@@ -263,6 +263,25 @@
    "text": "The Virtual Private Space is the mailbox, not the archive. What arrives there must be downloaded and put in the file; otherwise the proof lives on a server that isn't yours."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "proof of valid filing and follow-up of authority messages",
+     "signed file, submission index, receipt, errors, resubmission and confirmation",
+     "follow each filing through to a valid receipt and reconcile the accepted version",
+     "uploaded file treated as filed despite a missing receipt or unresolved errors"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "Key Takeaways from This Chapter",
    "puncte": [

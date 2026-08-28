@@ -212,6 +212,25 @@
    "text": "Order matters: cross-checks with the accounting first, the validator afterward. It is the last gate before filing, not the first check of correctness."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "cross-statement consistency of the complete reporting package",
+     "all statements, trial balance, cash flow and statement of changes in equity",
+     "reperform cross-checks and investigate every difference, including forced zeros",
+     "forms manually adjusted without correcting the source trial balance"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "To remember from this chapter",
    "puncte": [

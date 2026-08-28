@@ -200,6 +200,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "delimitarea responsabilității și existența aprobărilor reale",
+     "contracte, fișe de rol, delegări, semnături și jurnal de acces",
+     "confruntă rolul declarat cu operațiunile efectiv inițiate, aprobate și postate",
+     "aceeași persoană inițiază, aprobă, postează și reconciliază"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

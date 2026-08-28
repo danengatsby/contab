@@ -233,6 +233,25 @@
    "text": "Ce nu se poate calcula e dacă ele sunt adevărate. Adevărul lor depinde de documente care au fost citite, de încadrări care au fost alese, de estimări care au fost făcute — și fiecare dintre ele e o decizie a cuiva. Contabilitatea nu produce adevărul; produce o afirmație verificabilă, iar cineva o semnează."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "controlul automatizării și păstrarea raționamentului uman",
+     "reguli, versiuni, teste, excepții, confirmări și jurnal de model",
+     "testează cazuri-limită și verifică manual operațiunile cu risc",
+     "automatizare extinsă fără proprietar, praguri și monitorizarea erorilor"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

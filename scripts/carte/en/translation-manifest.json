@@ -1,348 +1,511 @@
 {
   "version": 1,
-  "model": "claude-sonnet-5",
+  "model": "mixed-professional-translation",
   "files": {
     "cuprins-carte.json": {
-      "sha256": "6cc978e3e4d3cec7cb8d7476b838bfa34ae29a4252b5c0f8d18ba998012b3281",
+      "sha256": "ace80cabd0db74dbd05c390094d577c8d291b8b32147a0605b2b094e9fd2a609",
       "model": "claude-sonnet-5",
-      "strings": 161,
-      "translatedAt": "2026-08-23T15:30:26.558Z"
+      "strings": 175,
+      "translatedAt": "2026-08-27T09:32:28.173Z",
+      "targetSha256": "b5f240f06a9e628715db6e734cf4be647bf9f56c1706cffd5d057dcc0eaca0db"
     },
     "cuprins-carte-cap1.json": {
-      "sha256": "5dc2ea3494a682984d8c006adcdd237edb1dc74932cfda25d12c572232ead014",
+      "sha256": "ef2f8949e2617f58da67b64162d6e54342d10a5a20c0ff0d98aaedd499b55903",
       "model": "claude-sonnet-5",
-      "strings": 77,
-      "translatedAt": "2026-08-23T15:30:59.287Z"
+      "strings": 87,
+      "translatedAt": "2026-08-27T09:32:13.607Z",
+      "targetSha256": "666b8c03b23423c765b2fb5fd00700ec3b803f7cf48ddb730179b9077c0c4b9b"
     },
     "cuprins-carte-cap4.json": {
-      "sha256": "d39cf8f65a9ea82fc557bf0d4f831376fe71cab7fac351102cfe4c42cce36715",
-      "model": "claude-sonnet-5",
-      "strings": 80,
-      "translatedAt": "2026-08-23T15:31:52.357Z"
-    },
-    "cuprins-carte-cap2.json": {
-      "sha256": "d4aebcc343d4823474ddcedf244ce988f146852d31b07f158f83b0f6750cae80",
-      "model": "claude-sonnet-5",
-      "strings": 89,
-      "translatedAt": "2026-08-23T15:31:53.992Z"
-    },
-    "cuprins-carte-cap3.json": {
-      "sha256": "f9f027e350665cd4924e270dc044ce17825ca072341a9ea34a93e97707828871",
-      "model": "claude-sonnet-5",
-      "strings": 130,
-      "translatedAt": "2026-08-23T15:32:03.841Z"
-    },
-    "cuprins-carte-cap5.json": {
-      "sha256": "d0bcf0450f5885232e3ee456b705ae05569d713b776d8669a179bbd85e0aea2d",
-      "model": "claude-sonnet-5",
-      "strings": 91,
-      "translatedAt": "2026-08-23T15:32:25.525Z"
-    },
-    "cuprins-carte-cap6.json": {
-      "sha256": "df1536336f24d22cd6833b26a046c4254688f88e6f28a67f47f0eeb5a58291be",
-      "model": "claude-sonnet-5",
-      "strings": 75,
-      "translatedAt": "2026-08-23T15:32:28.204Z"
-    },
-    "cuprins-carte-cap7.json": {
-      "sha256": "3120eb5013a726703e9245b2e17a630ed82c066b78a78d331eb044cedf6ced5e",
-      "model": "claude-sonnet-5",
-      "strings": 84,
-      "translatedAt": "2026-08-23T15:32:38.573Z"
-    },
-    "cuprins-carte-cap9.json": {
-      "sha256": "3103856cf5df99349ea93901d38d385ece4ad412263c5bc879208af082ec3f06",
-      "model": "claude-sonnet-5",
-      "strings": 54,
-      "translatedAt": "2026-08-23T15:32:52.139Z"
-    },
-    "cuprins-carte-cap8.json": {
-      "sha256": "d10f6d540d376245b6a4aee32795db6b084c6213203c7b928c0ed85d515dc716",
-      "model": "claude-sonnet-5",
-      "strings": 84,
-      "translatedAt": "2026-08-23T15:32:56.837Z"
-    },
-    "cuprins-carte-cap10.json": {
-      "sha256": "bea4fd76fa2a7bf252e3c1432999df32fb7a11a243da1a801b5c947c0ea10c34",
-      "model": "claude-sonnet-5",
-      "strings": 89,
-      "translatedAt": "2026-08-23T15:33:05.741Z"
-    },
-    "cuprins-carte-cap11.json": {
-      "sha256": "7d86bc7672b57e668a550d722cc923ca9d53a909fbedc0e13a61b937ce21e643",
-      "model": "claude-sonnet-5",
-      "strings": 58,
-      "translatedAt": "2026-08-23T15:33:19.092Z"
-    },
-    "cuprins-carte-cap12.json": {
-      "sha256": "67c7e763a9eacdea36882a446e6f8f4f016e0c650043164d93ad3fb7b84cd9f9",
-      "model": "claude-sonnet-5",
-      "strings": 96,
-      "translatedAt": "2026-08-23T15:33:27.285Z"
-    },
-    "cuprins-carte-cap13.json": {
-      "sha256": "9959b549007f599541b9c9631d7e8a69355929365e749e1c9c916018d37ad103",
-      "model": "claude-sonnet-5",
-      "strings": 57,
-      "translatedAt": "2026-08-23T15:33:29.690Z"
-    },
-    "cuprins-carte-cap15.json": {
-      "sha256": "231423d55cf503a11bdcb0579fe9c8ca0408702a6c288836fe7fa324f074485f",
-      "model": "claude-sonnet-5",
-      "strings": 96,
-      "translatedAt": "2026-08-23T15:33:57.587Z"
-    },
-    "cuprins-carte-cap16.json": {
-      "sha256": "00f6169827944332086f37cae5733ada9bae5b9487cab54fe486d85e261a31ae",
-      "model": "claude-sonnet-5",
-      "strings": 103,
-      "translatedAt": "2026-08-23T15:34:03.314Z"
-    },
-    "cuprins-carte-cap14.json": {
-      "sha256": "4b6ba98373b801084cc4e3d4fcdbcd2af7c14267938b608024155c7e529ebb07",
-      "model": "claude-sonnet-5",
-      "strings": 153,
-      "translatedAt": "2026-08-23T15:34:21.519Z"
-    },
-    "cuprins-carte-cap17.json": {
-      "sha256": "4eeabf56469762249c8d497c21b28b0de641d8efc2690d9222524ffad89e6db6",
-      "model": "claude-sonnet-5",
-      "strings": 69,
-      "translatedAt": "2026-08-23T15:34:25.205Z"
-    },
-    "cuprins-carte-cap19.json": {
-      "sha256": "1eb6d485ef716febcd1831bb8ba367f23bb12d95722cf7aa0ff0102ee6d67758",
-      "model": "claude-sonnet-5",
-      "strings": 74,
-      "translatedAt": "2026-08-23T15:34:50.483Z"
-    },
-    "cuprins-carte-cap20.json": {
-      "sha256": "0e496b7c72cc912695d33690c9b00a9e9a974a0673b265531791cfcbaf1b649e",
-      "model": "claude-sonnet-5",
-      "strings": 93,
-      "translatedAt": "2026-08-23T15:34:56.921Z"
-    },
-    "cuprins-carte-cap21.json": {
-      "sha256": "d5b3b17b0f462b47608b775978c0a05bd4455fa0aca1a2b8d1cd4bec77be059e",
-      "model": "claude-sonnet-5",
-      "strings": 89,
-      "translatedAt": "2026-08-23T15:35:21.307Z"
-    },
-    "cuprins-carte-cap22.json": {
-      "sha256": "f31a1d4094ed84af3d8885004fe178ac70f77af195cd3125b04d5a25cbf5301b",
-      "model": "claude-sonnet-5",
-      "strings": 84,
-      "translatedAt": "2026-08-23T15:35:28.686Z"
-    },
-    "cuprins-carte-cap24.json": {
-      "sha256": "db846fd7be9cbabfd8ef712ecb8991e241cf3f4aa9b1689b59577f78eca1a0e1",
-      "model": "claude-sonnet-5",
-      "strings": 83,
-      "translatedAt": "2026-08-23T15:35:59.606Z"
-    },
-    "cuprins-carte-cap23.json": {
-      "sha256": "236242ddc6b3b03ae641a20e9a800a4d36e46dd9d54f3d9a53c89006876cf5e7",
-      "model": "claude-sonnet-5",
-      "strings": 107,
-      "translatedAt": "2026-08-23T15:36:00.189Z"
-    },
-    "cuprins-carte-cap25.json": {
-      "sha256": "cdd3d0305c45d840eb3f21fdfa3a1114532043aa75ff56e80b3afbf9fa2fd72b",
-      "model": "claude-sonnet-5",
-      "strings": 52,
-      "translatedAt": "2026-08-23T15:36:24.231Z"
-    },
-    "cuprins-carte-cap26.json": {
-      "sha256": "449ae3d6d0b6125f56d9270931406d7c77dc9886a1ad7fa6766872697f1df0b5",
-      "model": "claude-sonnet-5",
-      "strings": 91,
-      "translatedAt": "2026-08-23T15:36:33.187Z"
-    },
-    "cuprins-carte-cap27.json": {
-      "sha256": "471f2b23f68a2459dd0928ca5db1acfc1497eb513b772ef9b56ff2baa50322f9",
-      "model": "claude-sonnet-5",
-      "strings": 109,
-      "translatedAt": "2026-08-23T15:37:04.499Z"
-    },
-    "cuprins-carte-cap28.json": {
-      "sha256": "1fa8b2895a5290bfbfaefda8c8a1c296781455317814240d03dcbdf85e9b391f",
-      "model": "claude-sonnet-5",
-      "strings": 96,
-      "translatedAt": "2026-08-23T15:37:04.991Z"
-    },
-    "cuprins-carte-cap30.json": {
-      "sha256": "c8087acc012a5c53962df28fa7f850b7e4b31a312d6af1264244b24ebbaa1b70",
-      "model": "claude-sonnet-5",
-      "strings": 84,
-      "translatedAt": "2026-08-23T15:37:34.700Z"
-    },
-    "cuprins-carte-cap18.json": {
-      "sha256": "58b18e8f01a899fb235e47eacf3ea861fe4534867c647f02d880944d957ef287",
-      "model": "claude-sonnet-5",
-      "strings": 97,
-      "translatedAt": "2026-08-23T15:37:41.980Z"
-    },
-    "cuprins-carte-cap29.json": {
-      "sha256": "0ae99d3f49f50cffe26135cb7745aa3fbd01c11c0aeb1dea914033c14573bff5",
-      "model": "claude-sonnet-5",
-      "strings": 126,
-      "translatedAt": "2026-08-23T15:37:42.963Z"
-    },
-    "cuprins-carte-cap31.json": {
-      "sha256": "d3b698d503b6524a887a8affbf5e8e89b493a49248fce323807b89755c7ba55b",
-      "model": "claude-sonnet-5",
-      "strings": 89,
-      "translatedAt": "2026-08-23T15:38:06.118Z"
-    },
-    "cuprins-carte-cap32.json": {
-      "sha256": "ad38b4f09eca9150625a07ee77e5e277509a1982ca1ba339da48f686ab397789",
-      "model": "claude-sonnet-5",
-      "strings": 116,
-      "translatedAt": "2026-08-23T15:38:15.668Z"
-    },
-    "cuprins-carte-cap33.json": {
-      "sha256": "fedb7ab559ef57bb3fe6d2db16683375911dfd6cfe86db29b145a941abbfd81d",
-      "model": "claude-sonnet-5",
-      "strings": 118,
-      "translatedAt": "2026-08-23T15:38:17.987Z"
-    },
-    "cuprins-carte-cap34.json": {
-      "sha256": "a20fc776e6d38522b67de81f937587301d1d520c20f978e47abf06c9dcba4529",
-      "model": "claude-sonnet-5",
-      "strings": 88,
-      "translatedAt": "2026-08-23T15:38:47.790Z"
-    },
-    "cuprins-carte-cap35.json": {
-      "sha256": "53d0e5971e0e81f65b2acc933417104bd6ce2686c59b7c786eca8cd2612199be",
-      "model": "claude-sonnet-5",
-      "strings": 113,
-      "translatedAt": "2026-08-23T15:38:50.367Z"
-    },
-    "cuprins-carte-cap36.json": {
-      "sha256": "da86d859d799c35e99d0f40eba24b0bb3003a9e13c2952aa315f9adb1ad12c73",
-      "model": "claude-sonnet-5",
-      "strings": 99,
-      "translatedAt": "2026-08-23T15:38:57.014Z"
-    },
-    "cuprins-carte-cap38.json": {
-      "sha256": "4def67785fa85be10552d38cb2aa9d22ac3ce4c39ebcc01ede330d5791beb3c9",
-      "model": "claude-sonnet-5",
-      "strings": 104,
-      "translatedAt": "2026-08-23T15:39:28.716Z"
-    },
-    "cuprins-carte-cap39.json": {
-      "sha256": "224d1de09aeb9ef31c6c6bdf1db98045042a09e81974e44d2c36c7a302407fbe",
-      "model": "claude-sonnet-5",
-      "strings": 107,
-      "translatedAt": "2026-08-23T15:39:28.802Z"
-    },
-    "cuprins-carte-cap37.json": {
-      "sha256": "84822351b26f041ba4e2785f3787a10003301883d9ac0a575fcd7d91a9ed9e7b",
-      "model": "claude-sonnet-5",
-      "strings": 207,
-      "translatedAt": "2026-08-23T15:39:46.019Z"
-    },
-    "cuprins-carte-cap40.json": {
-      "sha256": "fe1f1c099dba6df1988a6c3e43773a61b673e0a3420e8de783192c893f0bba8c",
-      "model": "claude-sonnet-5",
-      "strings": 100,
-      "translatedAt": "2026-08-23T15:39:57.476Z"
-    },
-    "cuprins-carte-cap41.json": {
-      "sha256": "2c5608dd83ad7889fd046da884188f53b5e7e8bc46db6bce8478a135bdc6aedf",
-      "model": "claude-sonnet-5",
-      "strings": 89,
-      "translatedAt": "2026-08-23T15:39:57.990Z"
-    },
-    "cuprins-carte-cap42.json": {
-      "sha256": "414417eec3436095b45d38b9c473c826aa2da2646a14fe805d49ae88d72486ba",
-      "model": "claude-sonnet-5",
-      "strings": 78,
-      "translatedAt": "2026-08-23T15:40:15.991Z"
-    },
-    "cuprins-carte-cap44.json": {
-      "sha256": "b2ebe64627f89c317dde788767bda96a7ebf5c38527a3740f2284e8462920f8d",
-      "model": "claude-sonnet-5",
-      "strings": 81,
-      "translatedAt": "2026-08-23T15:40:27.177Z"
-    },
-    "cuprins-carte-cap43.json": {
-      "sha256": "dfdd208b118f2f7fc44c5a7ee6d6d9c14bb696954346a163baf5484dd274bd87",
-      "model": "claude-sonnet-5",
-      "strings": 128,
-      "translatedAt": "2026-08-23T15:40:36.488Z"
-    },
-    "cuprins-carte-cap45.json": {
-      "sha256": "55042699f73c7c40edecc68209e77a072b93739b550afecf28a9b93e138c9637",
-      "model": "claude-sonnet-5",
-      "strings": 92,
-      "translatedAt": "2026-08-23T15:40:46.842Z"
-    },
-    "cuprins-carte-cap46.json": {
-      "sha256": "1f3d99ef2efd2c70349327b5bf98dc9353d69e562d53f6abd04586bd0107f201",
-      "model": "claude-sonnet-5",
-      "strings": 80,
-      "translatedAt": "2026-08-23T15:40:58.091Z"
-    },
-    "cuprins-carte-cap47.json": {
-      "sha256": "1e10e66ad49e42e64e69d8acc132770d39ae8d78640451735d65bf9ff85c0065",
-      "model": "claude-sonnet-5",
-      "strings": 94,
-      "translatedAt": "2026-08-23T15:41:05.818Z"
-    },
-    "cuprins-carte-cap48.json": {
-      "sha256": "f856f1964ef8d09cb212fc1d10ca8204b22f5ee31797a760660988b351603bfa",
-      "model": "claude-sonnet-5",
-      "strings": 82,
-      "translatedAt": "2026-08-23T15:41:15.306Z"
-    },
-    "cuprins-carte-cap50.json": {
-      "sha256": "03862e83ea74769c51e611fe440c60b90be0fe907f15f1c86b8e3b95bc31a478",
-      "model": "claude-sonnet-5",
-      "strings": 53,
-      "translatedAt": "2026-08-23T15:41:28.286Z"
-    },
-    "cuprins-carte-cap49.json": {
-      "sha256": "2348bcd71216df32224ff7f5f2d60cccf408f52c55d2b5df95fbfedaea891c4e",
+      "sha256": "11548f2ccdf1d01c73d6b4496bf1728f770dd4475a783bb6e6a17546f3d0d7af",
       "model": "claude-sonnet-5",
       "strings": 90,
-      "translatedAt": "2026-08-23T15:41:28.662Z"
+      "translatedAt": "2026-08-27T09:32:51.362Z",
+      "targetSha256": "eca96afcb51030148d26f14071e366dbdf8cca90c8428ad54ec27b3b26ee6050"
+    },
+    "cuprins-carte-cap2.json": {
+      "sha256": "50323f0b5f34c3e22b10173a02c6ed14becad5022470e0932baec8b14d6449be",
+      "model": "claude-sonnet-5",
+      "strings": 99,
+      "translatedAt": "2026-08-27T09:32:14.965Z",
+      "targetSha256": "c239c8f45e18e096b0ef4293a04fac6ce8cf9c213d45a0c57c4265df8be9697b"
+    },
+    "cuprins-carte-cap3.json": {
+      "sha256": "d8d0811b41ae40f8acb3daefd11aa9df7dfcb351795346823b63acb9f0a21e75",
+      "model": "claude-sonnet-5",
+      "strings": 140,
+      "translatedAt": "2026-08-27T09:32:58.128Z",
+      "targetSha256": "bf0ad7f2976bb2e05fddff4b5b09d7d4cafb73417e2a291eb7b1e054d6a564b3"
+    },
+    "cuprins-carte-cap5.json": {
+      "sha256": "31c986c8be0d0664baa25c6ff3c5050b816161af3fd34cbcbfb3e928e46d4965",
+      "model": "claude-sonnet-5",
+      "strings": 101,
+      "translatedAt": "2026-08-27T09:33:02.847Z",
+      "targetSha256": "171d51c67beef1e0ccc42b8234cce74b0c33675323d06b42b0ce079377331d20"
+    },
+    "cuprins-carte-cap6.json": {
+      "sha256": "7fb9673db128999f9dc978a89b2aa4e8932b9f638e40739fa7680621b1cda897",
+      "model": "claude-sonnet-5",
+      "strings": 85,
+      "translatedAt": "2026-08-27T09:33:26.802Z",
+      "targetSha256": "41f52ce2956bb5d48dc1018fd59b18be1b60dd8f8a0cd81702d406166d753b9b"
+    },
+    "cuprins-carte-cap7.json": {
+      "sha256": "bd4b279318ec60688b06ecb7b574a08056fd55fa38b05dbf3b7dd263d01f6c0f",
+      "model": "claude-sonnet-5",
+      "strings": 94,
+      "translatedAt": "2026-08-27T09:33:34.345Z",
+      "targetSha256": "1e748045301ac5150f98ac50f1fe091ec7168050a8a100aeee68c9ac1fa8cea9"
+    },
+    "cuprins-carte-cap9.json": {
+      "sha256": "845aaae4fe8cad6f4c6a439b282c38953df18824675344d96cf4ec5bd39953aa",
+      "model": "claude-sonnet-5",
+      "strings": 64,
+      "translatedAt": "2026-08-27T09:33:52.642Z",
+      "targetSha256": "69b8938e4c10f359b3fab88cb31a639684c6dd047eb12f942c7c5c15e9373694"
+    },
+    "cuprins-carte-cap8.json": {
+      "sha256": "a3fa34aa7e70fffdd167d8bbd456447e555dd2e9087ddbec8d1ac53f1b418d37",
+      "model": "claude-sonnet-5",
+      "strings": 94,
+      "translatedAt": "2026-08-27T09:33:36.857Z",
+      "targetSha256": "b6c44e9463d1386bcfb02ed1902b6d57f9c9852b389d05e006994c106a102a04"
+    },
+    "cuprins-carte-cap10.json": {
+      "sha256": "38937f9de7fa99c7ba107fea06cd8260031930d3214b708e463c3db24e45ed2b",
+      "model": "claude-sonnet-5",
+      "strings": 99,
+      "translatedAt": "2026-08-27T09:34:04.030Z",
+      "targetSha256": "a7b5f550a8755df42dfec3e67ef1c9be948b0e27a885107b394f5d2fd0d741a4"
+    },
+    "cuprins-carte-cap11.json": {
+      "sha256": "c6c5128494646a233adda7c1a3614d46e34f47c543fcd209a1e6dfe283930925",
+      "model": "claude-sonnet-5",
+      "strings": 68,
+      "translatedAt": "2026-08-27T09:34:04.790Z",
+      "targetSha256": "4f81948a6799ff9d1f1a2c198dafda9a244871fc1d7c58ec1153d702d8d2f289"
+    },
+    "cuprins-carte-cap12.json": {
+      "sha256": "428e95ac5c177373fc2bc9caf733be5a0779aa3a4b7eef366185766e7749c2c6",
+      "model": "claude-sonnet-5",
+      "strings": 106,
+      "translatedAt": "2026-08-27T09:34:25.499Z",
+      "targetSha256": "d87d566ddc7a144b0080bc89c641ba51e671d6a8244b9b13222bb7bcbc0d7d2e"
+    },
+    "cuprins-carte-cap13.json": {
+      "sha256": "6259384d4b3b571eb876d66d1871c38714d173711443ae3069cd4b400d83fb7d",
+      "model": "claude-sonnet-5",
+      "strings": 67,
+      "translatedAt": "2026-08-27T09:34:32.589Z",
+      "targetSha256": "47ce52f4bfdff2f20e9f35d26d876caee712a94cc3bdecadcabf68e7949c81ea"
+    },
+    "cuprins-carte-cap15.json": {
+      "sha256": "3d628a60495c749bf0cbb82cf5c3db6aca0bbb6a398bdc1f49c09bf6b45f0c80",
+      "model": "claude-sonnet-5",
+      "strings": 106,
+      "translatedAt": "2026-08-27T09:34:59.473Z",
+      "targetSha256": "1b47228ee40779d475d664312d760e977f48c09d6363883a5ea7356a96cdda31"
+    },
+    "cuprins-carte-cap16.json": {
+      "sha256": "e80dd9ae4edb176d10a80f609588eea84cd5d48d0678063d0a66a0709296dd72",
+      "model": "claude-sonnet-5",
+      "strings": 113,
+      "translatedAt": "2026-08-27T09:35:08.631Z",
+      "targetSha256": "1d17181853481232f84dce01bb7fe9a31cad875e9cfc1f463b2017f27b611e2d"
+    },
+    "cuprins-carte-cap14.json": {
+      "sha256": "18ca5ccc898edd435a7b2fd43385aa39ab9d394647f600a72eea0f00e7508744",
+      "model": "claude-sonnet-5",
+      "strings": 166,
+      "translatedAt": "2026-08-27T09:35:01.445Z",
+      "targetSha256": "0d50f433d082aac33a49bd0922a7436217a1b7ffb0c2067d223fcad423fb3817"
+    },
+    "cuprins-carte-cap17.json": {
+      "sha256": "82ea3579d902ba5f75069bc51f03fc1a2363065ffcebf6e01b7a107d1175340b",
+      "model": "claude-sonnet-5",
+      "strings": 79,
+      "translatedAt": "2026-08-27T09:35:29.385Z",
+      "targetSha256": "b68cfb0034e0245301aeb82095ceee9059b646932c96f2cd693e828561f45d86"
+    },
+    "cuprins-carte-cap19.json": {
+      "sha256": "8f0404916e74b7925e5730da16562ed4d9cfd4f1aba25ad9c1c9d5421ddb94a7",
+      "model": "claude-sonnet-5",
+      "strings": 84,
+      "translatedAt": "2026-08-27T09:35:39.000Z",
+      "targetSha256": "a062b9b16fb9f03fc24930b63db361cc1be7b3b533d0edb2341139bbea4650ae"
+    },
+    "cuprins-carte-cap20.json": {
+      "sha256": "1032c447704c1c8f01b92685cf1c5e890a8730b96cba9265ec3dd2431a21a734",
+      "model": "claude-sonnet-5",
+      "strings": 103,
+      "translatedAt": "2026-08-27T09:36:04.502Z",
+      "targetSha256": "cf75a322802b1cb0671f14ac62717be4910efec6253e55238349ab9dcfd03172"
+    },
+    "cuprins-carte-cap21.json": {
+      "sha256": "6f20ecc4686769dbfe5ce3abe8ee5d34e5241317d13b5f703b28c69f51dbc52c",
+      "model": "claude-sonnet-5",
+      "strings": 119,
+      "translatedAt": "2026-08-27T09:36:17.335Z",
+      "targetSha256": "aa6ce7c732998737280e48d394ed77e22fc55e7a306598921045671bb3b75759"
+    },
+    "cuprins-carte-cap22.json": {
+      "sha256": "40598b2b7c5e0dee133d8d14f7b68edb451711dddc091cd4c2f34e5b69f2a9a5",
+      "model": "claude-sonnet-5",
+      "strings": 94,
+      "translatedAt": "2026-08-27T09:36:12.737Z",
+      "targetSha256": "5349f6b4443e8d989b2d045003f3f8f0f7cb0d2c7d404de5e1a4ea7263ad8a66"
+    },
+    "cuprins-carte-cap24.json": {
+      "sha256": "486807cef260fa0011bd4806c3060efa666d6fbc53be28c3417bf3e49402d948",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 93,
+      "reusedStrings": 83,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:21.607Z",
+      "targetSha256": "5d84e08d150761b0051d2a0a9a7b5455e9fe123366e7796accd2342b74f9f8c0"
+    },
+    "cuprins-carte-cap23.json": {
+      "sha256": "7014060272f9c561c67ff4cba2045debcd8eae195d5c8c6fceb236969965c1ee",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 120,
+      "reusedStrings": 104,
+      "localStrings": 16,
+      "translatedAt": "2026-08-27T10:18:19.822Z",
+      "targetSha256": "0e7469a173f8a8aaf179c2fe0dbff831ee16678a21f30c1c4112d98a4ec1b318"
+    },
+    "cuprins-carte-cap25.json": {
+      "sha256": "05d51d69fc4f495d4a1301271ffb455ca6dff21965b2502bd7e9d2c7b225f3ed",
+      "model": "claude-sonnet-5",
+      "strings": 62,
+      "translatedAt": "2026-08-27T09:36:43.449Z",
+      "targetSha256": "fb41ce2e08c3650f9860e1e462ed88dc55ae98890086ff3b70b834904a39a7cf"
+    },
+    "cuprins-carte-cap26.json": {
+      "sha256": "2ed6995c2592b7cdafd542cb621e4d318f5e6cb392c9cb65d01340b6cb249f1a",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 101,
+      "reusedStrings": 91,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:23.733Z",
+      "targetSha256": "5b3cc1351a6e06c1044a7be2c93c79dc401dd0ba0789dd44243d673cd8649019"
+    },
+    "cuprins-carte-cap27.json": {
+      "sha256": "8b3be67b81acbea3f2c5512ac05bec71b53a2aa35ad352a8fd42ebcff81fd7f8",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 119,
+      "reusedStrings": 109,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:26.898Z",
+      "targetSha256": "eff2a38a857e3a052dae9e2aa6e2cc9ed0b9dd22f7ccb438c9bd43691c2cab9f"
+    },
+    "cuprins-carte-cap28.json": {
+      "sha256": "743cfea60a3246569d8dc4980de580f44b25d6ddd435b2881c96f7447023cc46",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 106,
+      "reusedStrings": 96,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:28.989Z",
+      "targetSha256": "c42f70714eea7e5b28aebd14d390bcfef472c757b39541e5e4f3d8fbf833f026"
+    },
+    "cuprins-carte-cap30.json": {
+      "sha256": "f75b01ae52ba8027b4e0b43d9982a46d751ab47260081d15e4b4f74ebb0707c9",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 94,
+      "reusedStrings": 84,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:32.776Z",
+      "targetSha256": "69a7fd0f0f074b66126d830a103bb0e1901471cde0106fbb721d5dcc38b62cf4"
+    },
+    "cuprins-carte-cap18.json": {
+      "sha256": "f39f51a7299417d2b424f4e52a609278c575dbc93f822a82914b7c80d5ef45ac",
+      "model": "claude-sonnet-5",
+      "strings": 107,
+      "translatedAt": "2026-08-27T09:35:37.280Z",
+      "targetSha256": "10d5224aaa4406de4747aadcdb27236cfa1a0bf91ff5b02f122ec8539db21b2e"
+    },
+    "cuprins-carte-cap29.json": {
+      "sha256": "2030da9f9e1381994124917a7be48d98a5d9d883bf21e362e9e525f605098908",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 136,
+      "reusedStrings": 126,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:30.681Z",
+      "targetSha256": "49fa37cc66016830562b6a7f9ad1dca0b86b81c02561f309c249efb084c79c8e"
+    },
+    "cuprins-carte-cap31.json": {
+      "sha256": "fca9298bb764d1f8ef875b7ff5ce95202666e495fc72d72d67f583c19a2e7f69",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 99,
+      "reusedStrings": 89,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:34.786Z",
+      "targetSha256": "0c7443464d6bd69de61027eb6bbd044c0ffbe891907b61a23f0f5dcbe7836987"
+    },
+    "cuprins-carte-cap32.json": {
+      "sha256": "76e83539df441c8a26ca51d3d18c3a3e6a310f3bdb72ca06ae19a12ee9789406",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 126,
+      "reusedStrings": 116,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:37.299Z",
+      "targetSha256": "1afcee0e3da1f05ef947f08806f5db23dc0286af68ee23e54e70a77c400c58c7"
+    },
+    "cuprins-carte-cap33.json": {
+      "sha256": "de956acca4567f839850b8e9596a049609de5bacf1cb78ac6caacec088827c9d",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 128,
+      "reusedStrings": 118,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:39.093Z",
+      "targetSha256": "53271225218e18b923965d49482db48b0acd7ab847375074ce4e1b1142f20beb"
+    },
+    "cuprins-carte-cap34.json": {
+      "sha256": "4f135baae06f7e0d1e05136da34efb91d2bf88e2c22dc48f1960d544c0777544",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 98,
+      "reusedStrings": 88,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:18:41.280Z",
+      "targetSha256": "05330ba265761b2fa5a6b350c490bfbc6d2db271e7edc6e7cd4f43a30d68fe7f"
+    },
+    "cuprins-carte-cap35.json": {
+      "sha256": "dd9ceef35ae810a4a73287971e2de0b524822e5e46c538132cfd33ccdab15aa0",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 123,
+      "reusedStrings": 112,
+      "localStrings": 11,
+      "translatedAt": "2026-08-27T10:18:50.971Z",
+      "targetSha256": "ec1582c446e07aba4aa100b248cd5f457367ea70964703c94ce4ea6e233ac6e8"
+    },
+    "cuprins-carte-cap36.json": {
+      "sha256": "265611443cbcbd5285f9f494a582e2105d42daa52c98cd31ef098cbc8844cbdb",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 110,
+      "reusedStrings": 98,
+      "localStrings": 12,
+      "translatedAt": "2026-08-27T10:19:02.987Z",
+      "targetSha256": "d3ac8600d5c55de6982319d8da4d36eebc036fc87036630525890f571d10b04f"
+    },
+    "cuprins-carte-cap38.json": {
+      "sha256": "9659fb7576aba9404365815755b4f7b96e9486df47da06de4a199cbadd73d217",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 114,
+      "reusedStrings": 104,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:19:22.460Z",
+      "targetSha256": "f2d53a4ef72401b43ea0ea98f0ee542c574b4c87c222dec653f4672c9ec5f6f4"
+    },
+    "cuprins-carte-cap39.json": {
+      "sha256": "be071e85c8a3d9b9cd703e83c24cbf61492141567f1001b37fc48302a623abe5",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 117,
+      "reusedStrings": 106,
+      "localStrings": 11,
+      "translatedAt": "2026-08-27T10:19:29.389Z",
+      "targetSha256": "07a7523af5627df1acf3848c03bee188f43f083aa9f8008e04c0b939c5aad8e2"
+    },
+    "cuprins-carte-cap37.json": {
+      "sha256": "75833d94d6581e65946dca5791bd0841b2e4dbaf4556301969d94bf92b9b8baf",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 217,
+      "reusedStrings": 194,
+      "localStrings": 23,
+      "translatedAt": "2026-08-27T10:19:20.667Z",
+      "targetSha256": "3d9bb2c56a7ae3738a83e19fcb612de519e2bf03d78407e32de39373b2dc2357"
+    },
+    "cuprins-carte-cap40.json": {
+      "sha256": "0e03acbdb59e9db232e4726b18fa97975f7eecd6ec635c29b65aeb5f367083ed",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 110,
+      "reusedStrings": 100,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:19:32.205Z",
+      "targetSha256": "aaa2c4aaad8c7d19855445a77128cbb932e2b6e62dcaaf731f91cd1ac49463c5"
+    },
+    "cuprins-carte-cap41.json": {
+      "sha256": "fe89af264d9cdaa44c9b7f6a88ac92d6718229a841454a1912b38462dba0893a",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 99,
+      "reusedStrings": 88,
+      "localStrings": 11,
+      "translatedAt": "2026-08-27T10:19:35.993Z",
+      "targetSha256": "1bdefbccf46893ae7588001a669de2b813949887bf158986190791661bcddfe9"
+    },
+    "cuprins-carte-cap42.json": {
+      "sha256": "087af125a94a74149a7df52b77dd3ed3ee9b6136e80130a7d32397fa990d9bcd",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 88,
+      "reusedStrings": 78,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:19:38.476Z",
+      "targetSha256": "357c68017ef5a6180b571d2fbcd5fc03e0f1e0b6e756fd90eed1140e2d63fdb5"
+    },
+    "cuprins-carte-cap44.json": {
+      "sha256": "52f125ee0c2a5b64ad72c5922fdbc6d7674162d150ea2cbb1f13380e951addec",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 114,
+      "reusedStrings": 80,
+      "localStrings": 34,
+      "translatedAt": "2026-08-27T10:20:09.289Z",
+      "targetSha256": "378178e71f1092e8ee00434a71112bb9bd44f027590c0c7ffe73d904ba0de0de"
+    },
+    "cuprins-carte-cap43.json": {
+      "sha256": "9bc20a1ebfc41e86c1c7c24b6b2bcc2d029c6b3a60680890f17a4413bcec92fb",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 163,
+      "reusedStrings": 125,
+      "localStrings": 38,
+      "translatedAt": "2026-08-27T10:19:54.189Z",
+      "targetSha256": "17f2aca59c0b139fa510c479411f62a9f9a9a3e4695485c0447432cf401fcb36"
+    },
+    "cuprins-carte-cap45.json": {
+      "sha256": "5933f379c1b2b9e9d1e05517911045957ff6543db0bf54576e9acb71526c0fde",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 102,
+      "reusedStrings": 92,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:20:11.418Z",
+      "targetSha256": "7d91c7a79f0ffb2cb06e652ab8a4d13233dd74aca92b8233120d8f9362405586"
+    },
+    "cuprins-carte-cap46.json": {
+      "sha256": "880909bd414ddfcfbd43c23b02cff06f8de7cd65700c1b1db9ffc5cb3b0df8e6",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 90,
+      "reusedStrings": 80,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:20:13.241Z",
+      "targetSha256": "ffcc0b6e421a714095152d881987b7acc4f67d6aa3ccc396e11d6b4d202b86f8"
+    },
+    "cuprins-carte-cap47.json": {
+      "sha256": "c712f1e183010f1ce037d109ce45d5620e8d5f72c8950c074b7b3f7cd6d44b38",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 104,
+      "reusedStrings": 94,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:20:15.048Z",
+      "targetSha256": "7b28e0df3711260b2aa81ee604919c49e3afa4ca0513c1da6c02029595f16eb7"
+    },
+    "cuprins-carte-cap48.json": {
+      "sha256": "a87eefb3ed2759eefbddebe31288ecc0f53092c0f6a8764790752b169e0bed2a",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 92,
+      "reusedStrings": 82,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:20:16.882Z",
+      "targetSha256": "d27a2f73ff156a8ee7bd8df995721a25549cb5bb2af7864931404eed15a088ab"
+    },
+    "cuprins-carte-cap50.json": {
+      "sha256": "319a46c2a27869701bd7a1860722fac528889cfc911630862c1cd0d2c9932bc6",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 63,
+      "reusedStrings": 53,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:20:21.495Z",
+      "targetSha256": "e61a5642bb854830b2fe30abbd95451a0ba62ea8e4bb1532f3b861efcddfbd3c"
+    },
+    "cuprins-carte-cap49.json": {
+      "sha256": "298ca12edef757f46908b37283d00020e4957d90a7d2a1303837b44180da22e7",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 100,
+      "reusedStrings": 90,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:20:19.014Z",
+      "targetSha256": "f589ccb9325ae2e7f1aceeab34daa0b9b38693e4252485c9de90f565441698c3"
     },
     "cuprins-carte-cap51.json": {
-      "sha256": "3b07b6584db83221767a01a6b43d61074a7457d59bf48f865f6b96a12965ff61",
-      "model": "claude-sonnet-5",
-      "strings": 88,
-      "translatedAt": "2026-08-23T15:41:48.933Z"
+      "sha256": "f9adcde8de011ec08df22d0aa6bd0ae6faa60fa7b92b209605bd487eb738776d",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 98,
+      "reusedStrings": 88,
+      "localStrings": 10,
+      "translatedAt": "2026-08-27T10:20:23.929Z",
+      "targetSha256": "ca21f46e2b03d7340044e9d6754c88288becda9add6575fcbc3af1be7b61a98f"
     },
     "cuprins-carte-capC.json": {
       "sha256": "70098e7fe038eb8877acea035b1e86ead07849a5d3aa812c5726d09ae38484cd",
       "model": "claude-sonnet-5",
       "strings": 136,
-      "translatedAt": "2026-08-23T15:42:12.500Z"
+      "translatedAt": "2026-08-23T15:42:12.500Z",
+      "targetSha256": "4b8785c07572ef57b6dc1cef26a5c9d061dada52458155282e797d4d98dad148"
     },
     "cuprins-carte-capA.json": {
       "sha256": "4e024d8a2a595fe93e00f6c99a80308e08cb5e31b742da985b5dc545c0356449",
       "model": "claude-sonnet-5",
       "strings": 452,
-      "translatedAt": "2026-08-23T15:42:23.777Z"
+      "translatedAt": "2026-08-23T15:42:23.777Z",
+      "targetSha256": "5207b198c0af06b6d20d1fbc295146c480bc0c786cfcb5292a55195fa6a30b95"
     },
     "cuprins-carte-capB.json": {
       "sha256": "57e11c0eb9830a734388d5ca8d2d8fd1081c26644408a88c7cbdba7e0f75f1a6",
       "model": "claude-sonnet-5",
       "strings": 500,
-      "translatedAt": "2026-08-23T15:42:36.288Z"
+      "translatedAt": "2026-08-23T15:42:36.288Z",
+      "targetSha256": "4ab30ac3b4402f1c92351572e0c9e2c1e5af52985f6b9d1d9ac69da43c73f022"
     },
     "cuprins-carte-capE.json": {
       "sha256": "cb555ef2f23eb1baeb04e7ef0880c1796407e3c707655536b882223a09891506",
       "model": "claude-sonnet-5",
       "strings": 98,
-      "translatedAt": "2026-08-23T15:42:44.943Z"
+      "translatedAt": "2026-08-23T15:42:44.943Z",
+      "targetSha256": "4239ea03722f2c0fcb4799df245f59d9c68e163a09cf14913f648c490268e1db"
     },
     "cuprins-carte-capD.json": {
       "sha256": "f47793e704d7c72fb5a6213d0592aa9839d38df9faf098aa55867162020358b5",
       "model": "claude-sonnet-5",
       "strings": 395,
-      "translatedAt": "2026-08-23T15:43:20.023Z"
+      "translatedAt": "2026-08-23T15:43:20.023Z",
+      "targetSha256": "b4f6361c2fcdebc8dad2852a75559e57d73c8f634175ad6f6167cdae07f4e05c"
+    },
+    "cuprins-carte-cap52.json": {
+      "sha256": "95a72e56ba9d2442020265d888a3486943650487d8ebcbe6c89def19e6067d0a",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 121,
+      "reusedStrings": 0,
+      "localStrings": 121,
+      "translatedAt": "2026-08-27T10:20:52.968Z",
+      "targetSha256": "fc0bc4c8c7ef213ccc7712e18d4b92e916ac24922aa0dde160cb7581509b0d68"
+    },
+    "cuprins-carte-cap53.json": {
+      "sha256": "6b09d3f14199885ce501e3644b4e6472e291c384996994e84498d7bdab8f48e7",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 108,
+      "reusedStrings": 0,
+      "localStrings": 108,
+      "translatedAt": "2026-08-27T10:21:24.288Z",
+      "targetSha256": "a5c3f309262fed364101fe142176804f7c65b9e3111021a1c4564d2bf502e2c0"
+    },
+    "cuprins-carte-cap54.json": {
+      "sha256": "bc305f279d0b86c62a3ac764d1f0ab7769e3bc3a57879ce663c03d28098edab7",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 124,
+      "reusedStrings": 0,
+      "localStrings": 124,
+      "translatedAt": "2026-08-27T10:21:57.878Z",
+      "targetSha256": "9eb27d72ee8a9ef001ef38a419d9d35c6736ac140749e3928e5f97cc69c372be"
+    },
+    "cuprins-carte-cap55.json": {
+      "sha256": "2475a7ecdb13281a45eb54ba011ab7732dc7edbcace0247dd2e733fb91f26971",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 147,
+      "reusedStrings": 0,
+      "localStrings": 147,
+      "translatedAt": "2026-08-27T10:22:27.674Z",
+      "targetSha256": "4ccca748af75801ddb0be48a7c0c38b9b0b1ca71dc44d966ca58846a0a657fb0"
+    },
+    "cuprins-carte-capF.json": {
+      "sha256": "aee67ab47c3d01551c908f3ede61c2d3c7613431b18e2d47552298758472f007",
+      "model": "hybrid-claude-sonnet-5+argos-ro-en-1.9-int8-sentence-v3",
+      "strings": 167,
+      "reusedStrings": 0,
+      "localStrings": 167,
+      "translatedAt": "2026-08-27T10:23:12.588Z",
+      "targetSha256": "f9a3834115d5a316c799593e832d3a57ce0b19d3b955b3e5ceb9ffe238815ee2"
     }
+  },
+  "editorialReview": {
+    "version": "expert-accounting-review-2026-08-27",
+    "language": "en-GB",
+    "scope": "professional terminology, 2026 updates, numeric and structural parity"
   }
 }

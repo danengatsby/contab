@@ -73,6 +73,10 @@
    "text": "Contabil, aici își găsește rostul contul 4428 TVA neexigibilă: taxa stă acolo, la vânzare ca la cumpărare, până în momentul plății, când trece în 4427, respectiv în 4426."
   },
   {
+   "tip": "p",
+   "text": "Regimul este opțional și are propriul plafon, diferit de plafonul scutirii pentru întreprinderi mici: 5.000.000 lei pentru perioada 1 martie–31 decembrie 2026, urmând să crească la 5.500.000 lei de la 1 ianuarie 2027. Intrarea, ieșirea și depășirea se notifică, iar aplicarea efectivă se verifică în registrul public ANAF; o bifă internă fără concordanță cu registrul nu schimbă exigibilitatea pentru parteneri."
+  },
+  {
    "tip": "h",
    "text": "Taxarea inversă: obligația trece la cumpărător"
   },
@@ -131,7 +135,7 @@
   {
    "tip": "contabil",
    "titlu": "Pentru contabil",
-   "text": "Regimurile sunt reglementate distinct: TVA la încasare la art. 282 alin. (3)-(8) Cod fiscal, taxarea inversă la art. 307, 331 și, pentru achizițiile intracomunitare, art. 308, regimul special al marjei la art. 312, iar pro-rata la art. 300. Patru observații de fond. Prima: la TVA la încasare, exigibilitatea intervine la data încasării, dar nu mai târziu de a nouăzecea zi de la data emiterii facturii, doar pentru operațiunile la care legea prevede expres această limită — regula generală de plafonare temporală aplicabilă tuturor facturilor a fost eliminată încă din 2014, iar aplicarea ei din obișnuință colectează taxa mai devreme decât e datorată. A doua: la regimul marjei, baza se determină pe fiecare bun, iar marja negativă nu compensează una pozitivă; evidența pe bun, cu prețul de achiziție și cel de vânzare, e o condiție de aplicare a regimului, nu o comoditate. A treia: la pro-rata, achizițiile destinate exclusiv operațiunilor cu drept se deduc integral, iar cele destinate exclusiv operațiunilor fără drept nu se deduc deloc — pro-rata se aplică numai achizițiilor cu destinație mixtă, iar aplicarea ei nediferențiată asupra tuturor intrărilor e o eroare atât în plus, cât și în minus. A patra: pentru bunurile de capital, ajustarea deducerii se face pe o perioadă de cinci ani, respectiv douăzeci de ani pentru bunuri imobile, iar schimbarea destinației în acest interval declanșează obligația de ajustare potrivit art. 305 — obligație care supraviețuiește schimbării regimului firmei și pe care un registru al bunurilor de capital o face vizibilă la timp."
+   "text": "Regimurile sunt reglementate distinct: TVA la încasare la art. 282 alin. (3)-(8) Cod fiscal, taxarea inversă la art. 307, 331 și, pentru achizițiile intracomunitare, art. 308, regimul special al marjei la art. 312, iar pro-rata la art. 300. Cinci observații de fond. Prima: plafonul TVA la încasare este 5.000.000 lei în perioada 1 martie–31 decembrie 2026 și 5.500.000 lei de la 1 ianuarie 2027, potrivit OUG 8/2026; notificarea și registrul public fac parte din control. A doua: la TVA la încasare, exigibilitatea intervine la data încasării, iar vechea regulă generală a celei de-a nouăzecea zi nu se aplică tuturor facturilor. A treia: la regimul marjei, baza se determină pe fiecare bun, iar marja negativă nu compensează una pozitivă; evidența pe bun este o condiție a regimului. A patra: pro-rata se aplică numai achizițiilor cu destinație mixtă; cele exclusiv cu drept se deduc integral, iar cele exclusiv fără drept nu se deduc. A cincea: pentru bunurile de capital, ajustarea deducerii se face pe cinci ani, respectiv douăzeci de ani pentru bunuri imobile, iar registrul bunurilor de capital trebuie să supraviețuiască schimbării regimului firmei."
   },
   {
    "tip": "h",
@@ -268,6 +272,25 @@
   {
    "tip": "p",
    "text": "Și o ultimă regulă, care se uită între ani: pro-rata se aplică numai achizițiilor cu destinație MIXTĂ. Ce se cumpără exclusiv pentru operațiuni cu drept de deducere se deduce integral, iar ce se cumpără exclusiv pentru operațiuni fără drept nu se deduce deloc. Aplicarea pro-ratei asupra tuturor intrărilor e o eroare în ambele sensuri deodată."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "identificarea și aplicarea corectă a regimurilor speciale de TVA",
+     "opțiuni, registre ANAF, facturi, încasări/plăți și calcule pe regim",
+     "verifică eligibilitatea, intrarea/ieșirea, exigibilitatea și pragul perioadei",
+     "regim special păstrat după pierderea condițiilor ori aplicat retroactiv"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

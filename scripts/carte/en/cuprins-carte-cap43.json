@@ -9,7 +9,7 @@
   },
   {
    "tip": "p",
-   "text": "It is applied to the fiscal result — a different figure, obtained from the first through adjustments required by law. This chapter shows where the adjustments come from and why they aren't optional."
+   "text": "It is applied to the taxable result — a different figure, obtained from the first through adjustments required by law. This chapter shows where the adjustments come from and why they aren't optional."
   },
   {
    "tip": "h",
@@ -17,7 +17,7 @@
   },
   {
    "tip": "p",
-   "text": "The accounting result measures the economic performance of the company. The fiscal result measures the base that the state chooses to tax. They are different questions, so they have different answers."
+   "text": "The accounting result measures the economic performance of the company. The taxable result measures the base that the state chooses to tax. They are different questions, so they have different answers."
   },
   {
    "tip": "p",
@@ -61,7 +61,7 @@
      "tax deduction, art. 26 — 5% of gross profit"
     ],
     [
-     "= Fiscal result",
+     "= Taxable result",
      "83.000",
      ""
     ],
@@ -137,11 +137,11 @@
   },
   {
    "tip": "p",
-   "text": "A year with a loss is not permanently lost: the fiscal loss is carried forward and deducted from the profits of subsequent years. However, two limits apply, and both have changed recently."
+   "text": "A year with a loss is not permanently lost: the tax loss is carried forward and deducted from the profits of subsequent years. However, two limits apply, and both have changed recently."
   },
   {
    "tip": "p",
-   "text": "The first is quantitative: the loss can be recovered up to a limit of 70% of the year's fiscal result, not in full. The second is temporal: losses are carried forward for a limited number of years, and those not recovered within this interval are permanently lost."
+   "text": "The first is quantitative: the loss can be recovered up to a limit of 70% of the year's taxable result, not in full. The second is temporal: losses are carried forward for a limited number of years, and those not recovered within this interval are permanently lost."
   },
   {
    "tip": "p",
@@ -149,7 +149,7 @@
   },
   {
    "tip": "h",
-   "text": "The fiscal record register"
+   "text": "The tax records register"
   },
   {
    "tip": "p",
@@ -162,7 +162,7 @@
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "The fiscal result is determined under art. 19 of the Tax Code as the difference between revenues and expenses, adjusted by the non-deductible expenses under art. 25, the non-taxable revenues under art. 23, and the deductions expressly provided for, among them the legal reserve under art. 26 para. (1) letter a) — 5% of gross accounting profit, up to one-fifth of the subscribed and paid-in share capital. Four clarifications. First: the base for the reserve is GROSS profit, i.e. the result before the corporate income tax expense, and the cap is calculated on the subscribed AND paid-in capital, not the subscribed capital alone — confusing the two, for a company with partially paid-in capital, overstates the cap several times over. Second: the order in which adjustments are applied is part of the calculation, not indifferent — fixed percentages and caps that do not depend on the tax are applied first, and the sponsorship tax credit is deducted FROM THE TAX, not from the base, so it necessarily comes last. Third: recovery of fiscal losses is done in order of age, within the percentage limit and the deadline provided by art. 31 in the form applicable to the year in which the loss was recorded — the regime differs between losses prior to and those after the 2024 amendment, so tracking by year of origin is mandatory, not optional. Fourth: the fiscal record register is prepared according to the order approving its template and content; for each adjustment it must contain the nature, the amount, and the legal basis, and the match between its totals and the lines of the annual corporate income tax return is the first check an inspection performs."
+   "text": "The taxable result is determined under art. 19 of the Tax Code as the difference between revenues and expenses, adjusted by the non-deductible expenses under art. 25, the non-taxable revenues under art. 23, and the deductions expressly provided for, among them the legal reserve under art. 26 para. (1) letter a) — 5% of gross accounting profit, up to one-fifth of the subscribed and paid-in share capital. Four clarifications. First: the base for the reserve is GROSS profit, i.e. the result before the corporate income tax expense, and the cap is calculated on the subscribed AND paid-in capital, not the subscribed capital alone — confusing the two, for a company with partially paid-in capital, overstates the cap several times over. Second: the order in which adjustments are applied is part of the calculation, not indifferent — fixed percentages and caps that do not depend on the tax are applied first, and the sponsorship tax credit is deducted FROM THE TAX, not from the base, so it necessarily comes last. Third: recovery of tax losses is done in order of age, within the percentage limit and the deadline provided by art. 31 in the form applicable to the year in which the loss was recorded — the regime differs between losses prior to and those after the 2024 amendment, so tracking by year of origin is mandatory, not optional. Fourth: the tax records register is prepared according to the order approving its template and content; for each adjustment it must contain the nature, the amount, and the legal basis, and the match between its totals and the lines of the annual corporate income tax return is the first check an inspection performs."
   },
   {
    "tip": "h",
@@ -177,12 +177,12 @@
    "titlu": "Exercise 43.1 — from accounting profit to tax",
    "enunt": [
     "Gross accounting profit 120,000 lei. Expenses: fines 8,000; non-deductible provision 15,000; protocol 6,000, with a deductible cap calculated at 2,600. Subscribed and paid-in share capital 100,000, existing legal reserve 6,000. There is no carried-forward loss.",
-    "Calculate the fiscal result and the tax."
+    "Calculate the taxable result and the tax."
    ],
    "rezolvare": [
     "Non-deductible: fines 8,000 (full) + provision 15,000 (full) + the portion of protocol expenses over the cap, 6,000 − 2,600 = 3,400. Total: 26,400 lei.",
     "Legal reserve: 5% of GROSS profit = 6,000 lei. The cumulative cap is 20% of paid-in capital = 20,000, of which 6,000 already exists, so 14,000 more can fit. The full amount can be set up: 6,000 deductible.",
-    "Fiscal result: 120,000 + 26,400 − 6,000 = 140,400 lei. Tax: 16% × 140,400 = 22,464 lei.",
+    "Taxable result: 120,000 + 26,400 − 6,000 = 140,400 lei. Tax: 16% × 140,400 = 22,464 lei.",
     "Comparison: 16% of accounting profit would have given 19,200. The difference of 3,264 lei comes from 26,400 non-deductible minus 6,000 deducted, weighted at 16%.",
     "What omitting the legal reserve would have cost: 16% × 6,000 = 960 lei per year, paid for nothing, on a reserve the law requires the company to set up anyway."
    ]
@@ -289,10 +289,17 @@
      "P26"
     ],
     [
+     "6584",
+     "sponsorship - non-deductible on base; can reduce tax within limits",
+     "10.000,00",
+     "10.000,00",
+     "P33"
+    ],
+    [
      "",
      "Total non-deductible",
      "",
-     "34.950,00",
+     "44.950,00",
      ""
     ]
    ],
@@ -309,11 +316,11 @@
   },
   {
    "tip": "p",
-   "text": "The legal reserve is deducted from the fiscal result without ever having passed through an expense account. On a gross profit of 120,000 and capital of 200,000, the 5% rate gives 6,000 lei, and the cumulative cap of 20% of capital — 40,000 — leaves room for the entire amount."
+   "text": "The legal reserve is deducted from the taxable result without ever having passed through an expense account. On a gross profit of 120,000 and capital of 200,000, the 5% rate gives 6,000 lei, and the cumulative cap of 20% of capital — 40,000 — leaves room for the entire amount."
   },
   {
    "tip": "tabel",
-   "titlu": "Fiscal result",
+   "titlu": "Taxable result",
    "cap": [
     "Item",
     "Amount"
@@ -325,26 +332,26 @@
     ],
     [
      "plus non-deductible expenses",
-     "34.950,00"
+     "44.950,00"
     ],
     [
      "minus legal reserve",
      "6.000,00"
     ],
     [
-     "= Fiscal result",
-     "148.950,00"
+     "= Taxable result",
+     "158.950,00"
     ],
     [
      "Tax 16%",
-     "23.832,00"
+     "25.432,00"
     ]
    ],
    "numerice": [
     2
    ],
    "total": true,
-   "nota": "Without the legal reserve, the tax would have been 24,792 — 960 lei more, on a reserve the law requires the company to set up anyway."
+   "nota": "The sponsorship expense is first added back in determining the taxable result; its benefit arises later as an amount deducted from corporate income tax. Without the legal reserve, tax would have been 26.392 lei — 960 lei higher."
   },
   {
    "tip": "h",
@@ -370,8 +377,8 @@
     ],
     [
      "20% of corporate income tax",
-     "20% × 23.832",
-     "4.766,40"
+     "20% × 25.432",
+     "5.086,40"
     ],
     [
      "The smaller one applies",
@@ -389,7 +396,7 @@
      "3.750,00"
     ],
     [
-     "Carried forward for subsequent years",
+     "Excess without tax credit this year",
      "",
      "6.250,00"
     ]
@@ -398,26 +405,95 @@
     3
    ],
    "total": true,
-   "nota": "The difference of 6,250 is not lost: it is carried forward, within the legal deadline, and used in the years when the cap allows it."
+   "nota": "For current sponsorship, the difference above the ceiling shall not be carried over. The carry-over regime has remained transient for historical amounts under the law; the unused ceiling space can be redirected through form 177, but does not transform a sponsorship already granted above the ceiling into a future credit."
   },
   {
    "tip": "p",
-   "text": "Final tax: 23,832 minus 3,750, i.e. 20,082 lei. The sponsorship of 10,000 lei cost the company, this year, 6,250 — the state paid the rest, through the tax that was no longer remitted."
+   "text": "Final tax is 25.432 minus 3.750, or 21.682 lei. The 10.000 lei sponsorship cost the company 6.250 lei in the current year; the balance was absorbed by tax that no longer had to be paid. Report the beneficiary and amounts in D107. Had the company not used the entire ceiling, the available amount could have been redirected through D177 under Article 42 of the Tax Code."
   },
   {
    "tip": "cheie",
    "text": "Three kinds of adjustment, three moments: fixed percentages and caps raise or lower the BASE; the legal reserve lowers it without being an expense; sponsorship is deducted from the TAX. Anyone who mixes them up gets a wrong result even if each individual figure is correct."
   },
   {
+   "tip": "h",
+   "text": "Research and development in 2026: enhanced deduction or tax credit"
+  },
+  {
+   "tip": "p",
+   "text": "For eligible research and development activities, 2026 introduced a choice with a material effect: a corporate income tax payer may apply the incentive based on the enhanced deduction for eligible expenditure or elect the 10% tax credit governed by Article 20^1 of the Tax Code. The two mechanisms cannot be applied to the same eligible expenditure."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Tax election for an R&D project",
+   "cap": [
+    "Question",
+    "Enhanced deduction",
+    "10% tax credit"
+   ],
+   "randuri": [
+    [
+     "Where the benefit arises",
+     "in determining the taxable result",
+     "after calculating corporate income tax"
+    ],
+    [
+     "Common condition",
+     "eligible, identifiable and documented project and expenditure",
+     "the same condition; a percentage cannot cure missing technical documentation"
+    ],
+    [
+     "What to compare",
+     "the effective tax saving under the entity’s scenario",
+     "10% of eligible expenditure, subject to the statutory limits and mechanism"
+    ],
+    [
+     "Unused amount",
+     "follows the rules for the selected mechanism and the taxable result",
+     "offset or refunded under the law within the four-year period"
+    ]
+   ],
+   "nota": "Model the election before finalising D101 and approve it in the tax file. Do not decide from the apparently higher percentage; consider the actual tax position, carried-forward tax losses, other tax credits and capacity to use the benefit."
+  },
+  {
+   "tip": "p",
+   "text": "The file begins with the technical owner, not accounting: project objective, novelty, technological uncertainty, activities and people involved, timesheets or time allocations, materials consumed and the criterion separating the work from ordinary commercial activity. Accounting then bridges those records to the expense accounts. A trial-balance subledger labelled “R&D” does not, by itself, establish eligibility."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "R&D election schedule",
+   "text": "The 2026 working paper contains at least: projects and periods; legal basis and technical eligibility assessment; reconciliation of eligible expenditure to the trial balance and source documents; exclusion of commercial, administrative or incompatibly funded costs; separate modelling of the enhanced deduction and 10% credit; the effect of tax losses and other credits; the approved election; and links to the tax records register and D101. Do not claim both incentives on the same base. Track every carry-forward, offsettable or refundable amount separately by year of origin, deadline and supporting evidence."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "complete bridge from accounting result to corporate income tax",
+     "tax records register, trial balance, D101, tax losses and incentive records",
+     "recompute adjustments in the statutory order and reconcile the return",
+     "16% applied directly to accounting profit, or a tax credit deducted from the tax base"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [
-    "Tax is applied to the FISCAL result, not the accounting one; the two measure different things.",
+    "Tax is applied to the TAXABLE result, not the accounting one; the two measure different things.",
     "A non-deductible expense is real and paid — the state simply refuses to deduct it from the base.",
     "The legal reserve is a fiscal deduction without being an expense; omitting it costs 16% of the reserve's value, every year.",
     "Non-deductible items come in two kinds: fixed percentage on an expense and cap on a calculation base — confusing them produces large errors.",
-    "A loss is recovered up to a limit of 70% of the fiscal result and only within the legal deadline; it is tracked by year, and consumed from the oldest onward.",
-    "The fiscal record register is the only document that explains, during an audit, the difference between the tax and 16% of the accounting profit."
+    "A loss is recovered up to a limit of 70% of the taxable result and only within the legal deadline; it is tracked by year, and consumed from the oldest onward.",
+    "The tax records register is the only document that explains, during an audit, the difference between the tax and 16% of the accounting profit.",
+    "From 2026, document the choice between the enhanced deduction and the 10% tax credit for eligible R&D expenditure; the two cannot be combined on the same base."
    ]
   }
  ]

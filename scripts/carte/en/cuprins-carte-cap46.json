@@ -237,6 +237,25 @@
    "text": "The move from one category to another does not happen at the first exceedance: the criteria must be exceeded for two consecutive financial years. The rule exists precisely so that one good year does not change the reporting regime of a company that returns, the following year, to its usual size."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "existence, measurement and classification of the financial position",
+     "trial balance, maturities and lead schedules",
+     "reconcile statement lines and test current/non-current classification and set-offs",
+     "balance-sheet equality used as the sole test of correctness"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "To Remember From This Chapter",
    "puncte": [

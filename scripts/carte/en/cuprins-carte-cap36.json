@@ -73,6 +73,10 @@
    "text": "Accountant, this is where account 4428 Non-chargeable VAT finds its purpose: the tax sits there, on sales as on purchases, until the moment of payment, when it moves into 4427, respectively into 4426."
   },
   {
+   "tip": "p",
+   "text": "The scheme is optional and has its own threshold, distinct from the small-enterprise exemption threshold: 5.000.000 lei for 1 March–31 December 2026, increasing to 5.500.000 lei from 1 January 2027. Entry, exit and threshold crossings are notified, and actual application is verified in ANAF’s public register; an internal setting that disagrees with the register does not change chargeability for counterparties."
+  },
+  {
    "tip": "h",
    "text": "Reverse charge: the obligation shifts to the buyer"
   },
@@ -131,7 +135,7 @@
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "The regimes are regulated separately: VAT on collection at art. 282 para. (3)-(8) of the Fiscal Code, reverse charge at art. 307, 331 and, for intra-Community acquisitions, art. 308, the special margin scheme at art. 312, and pro-rata at art. 300. Four substantive observations. First: under VAT on collection, chargeability occurs on the date of collection, but no later than the ninetieth day from the date the invoice was issued, only for operations for which the law expressly provides this limit — the general rule of temporal capping applicable to all invoices was eliminated back in 2014, and applying it out of habit collects the tax earlier than it is due. Second: under the margin scheme, the base is determined per item, and a negative margin does not offset a positive one; per-item records, with the purchase price and the selling price, are a condition for applying the regime, not a convenience. Third: under pro-rata, acquisitions intended exclusively for operations with deduction rights are fully deductible, and those intended exclusively for operations without such rights are not deductible at all — pro-rata applies only to acquisitions with mixed use, and its undifferentiated application to all inputs is an error in both directions. Fourth: for capital goods, the adjustment of the deduction is made over a period of five years, respectively twenty years for immovable property, and a change of use within this interval triggers the adjustment obligation under art. 305 — an obligation that survives a change in the company's regime and which a capital goods register makes visible in time."
+   "text": "The schemes are governed separately: the cash-accounting VAT scheme by Article 282(3)-(8) of the Tax Code; reverse charge by Articles 307 and 331 and, for intra-Community acquisitions, Article 308; the special margin scheme by Article 312; and the pro rata by Article 300. Five substantive points follow. First, under OUG 8/2026, the cash-accounting VAT threshold is 5.000.000 lei for 1 March–31 December 2026 and increases to 5.500.000 lei from 1 January 2027; notification and the public register are part of the control trail. Second, under the cash-accounting VAT scheme, VAT becomes chargeable upon receipt, and the former general ninety-day rule does not apply to every invoice. Third, under the margin scheme, the taxable amount is determined item by item, and a negative margin cannot offset a positive one; item-level records are a condition of the scheme. Fourth, the pro rata applies only to mixed-use purchases: purchases used exclusively for transactions carrying a right of deduction are deducted in full, while those used exclusively for transactions without that right are not deducted. Fifth, input VAT on capital goods is adjusted over five years, or twenty years for immovable property, and the capital-goods register must remain available when the company's VAT scheme changes."
   },
   {
    "tip": "h",
@@ -268,6 +272,25 @@
   {
    "tip": "p",
    "text": "And one last rule, often forgotten from year to year: pro-rata applies only to acquisitions with MIXED use. What is purchased exclusively for operations with deduction rights is fully deductible, and what is purchased exclusively for operations without such rights is not deductible at all. Applying pro-rata to all inputs is an error in both directions at once."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "identification and correct application of special VAT schemes",
+     "options, ANAF registers, invoices, receipts/payments and scheme calculations",
+     "verify eligibility, entry/exit, chargeability and the threshold for the period",
+     "special scheme retained after its conditions cease or applied retroactively"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

@@ -140,7 +140,7 @@
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "The order above is imposed by dependencies between tasks, not by any particular rule, but it supports distinct legal obligations: preparing the trial balance at least monthly, preparing and filing declarations on time, and keeping the documents that prove the transactions. Three practical observations. First: correlation checks — VAT journals against the balances of accounts 4426 and 4427, personnel accounts against D112, third-party balances against the receivables and payables statement — are performed between step 3 and step 4, not after filing; a correlation checked in the wrong order discovers errors that can only be corrected through an amended return. Second: for companies using VAT on collection, bank reconciliation is a substantive condition for determining chargeability, not a treasury check — which is why step 2 necessarily precedes step 3. Third: the month's file — the trial balance, the journals, the declarations with their receipts, the adjustment entries and any approval decisions — must be assembled at closing, not reconstructed during an audit; the practice of later reconstruction is exactly what produces files missing precisely the documents that should have justified the reasoning."
+   "text": "The sequence above follows dependencies between tasks rather than one specific rule, but supports distinct legal obligations: preparing a trial balance at least monthly, preparing and filing returns on time, and retaining documents that evidence transactions. Three practical points follow. First, perform cross-checks — VAT journals to movements in accounts 4426 and 4427, payroll accounts to D112, and third-party balances to receivable/payable schedules — between steps 3 and 4, not after filing. A late cross-check requires the correction procedure specific to the form, and D300 does not accept an ordinary amended return. Second, for companies using the cash-accounting VAT scheme, bank matching is a substantive input to chargeability, not merely a cash control; step 2 must therefore precede step 3. Third, assemble the monthly file — trial balance, journals, returns and receipts, adjustment entries and approval decisions — at closing rather than reconstructing it during an inspection. Later reconstruction tends to omit precisely the evidence that should have supported the judgments."
   },
   {
    "tip": "h",
@@ -239,6 +239,25 @@
   {
    "tip": "p",
    "text": "Internal deadlines are usually anchored to the legal one: if the declaration is filed on the 25th, the bank reconciliation has an internal deadline on the 8th, and the trial balance on the 15th. Anchoring serves a practical purpose — when the legal deadline shifts, everything else shifts too, without anyone redoing the calculation."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "compliance with dependencies and completeness of the monthly close",
+     "calendar, checklist, reconciliations, returns, approvals and statuses",
+     "select one month and reperform the sequence through locking, including exceptions",
+     "returns filed before documents and reconciliations are complete"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

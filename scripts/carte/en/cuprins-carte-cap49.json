@@ -1,5 +1,5 @@
 {
- "parte": "Part XI · The trail · phase 14",
+ "parte": "Part XI · The trace · phase 14",
  "nr": "49",
  "titlu": "Archiving",
  "blocuri": [
@@ -68,7 +68,7 @@
   },
   {
    "tip": "p",
-   "text": "On top of the twelve monthly files, an annual one is added, with the documents concerning the entire fiscal year: the financial statements with all annexes, the declaration of responsibility, the inventory register and the inventory documents, the fiscal record register, and the resolution approving and distributing the result."
+   "text": "On top of the twelve monthly files, an annual one is added, with the documents concerning the entire fiscal year: the financial statements with all annexes, the declaration of responsibility, the inventory register and the inventory documents, the tax records register, and the resolution approving and distributing the result."
   },
   {
    "tip": "p",
@@ -222,6 +222,25 @@
   {
    "tip": "p",
    "text": "And the destruction of documents upon expiry of the retention period is done based on a report, with management's approval. Without it, during an inspection, documented destruction cannot be distinguished from loss — and the consequences of the two are not the same."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "integrity, accessibility and preservation of the archive",
+     "file plan, index, retention policies, backups and restoration tests",
+     "select older documents and attempt to locate, read and trace them",
+     "files that exist but are illegible, unindexed or lack a verified backup"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

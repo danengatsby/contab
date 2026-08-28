@@ -254,6 +254,25 @@
    "text": "An analytic breakdown that doesn't agree with the synthetic account is not a reporting error: it's a data error. And the wrong figure is almost always the one in the breakdown, because the balance is checked against totals."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "agreement between the trial balance, general ledger and subledgers",
+     "trial balance, ledger accounts, journals and source reports",
+     "recompute movements and balances and verify that subledger totals agree with the control account",
+     "differences dismissed as rounding without tracing them to documents"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [

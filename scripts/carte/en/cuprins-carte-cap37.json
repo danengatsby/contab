@@ -36,7 +36,7 @@
     ],
     [
      "D394",
-     "filed together with D300",
+     "Same period as D300; own term",
      "supplies and purchases within national territory"
     ],
     [
@@ -94,7 +94,7 @@
   },
   {
    "tip": "p",
-   "text": "The observation that organizes the table is that the declarations are not independent. D394 is filed together with D300 and must match it. D406 contains, in detailed form, the data that appear aggregated in the others. And the annual financial statements must agree with the sum of the monthly declarations."
+   "text": "The organising principle is that returns are not independent. D394 covers the same reporting period as D300 and must reconcile to it, but has a distinct deadline: the 30th day, inclusive, of the month following the reporting period, or 28/29 February for January. D406 contains detailed data that must agree with the accounting and tax records. Annual financial statements reconcile to the final trial balance and the returns filed for the relevant periods."
   },
   {
    "tip": "cheie",
@@ -124,7 +124,7 @@
     ],
     [
      "Has employees",
-     "monthly D112, payroll records, D205",
+     "D112 according to the applicable period and payment states",
      "none"
     ],
     [
@@ -166,7 +166,7 @@
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "Filing deadlines are those set out in the Fiscal Procedure Code and in the orders approving the model for each declaration, and they generally refer to the 25th of the month following the reporting period, with its own exceptions for the annual financial statements and for D406. Four practical observations. First: failure to file and late filing are sanctioned separately from non-payment, and the fine for the declaration applies even if the amount owed is zero — zero declarations are not optional. Second: correcting a declaration is done through a rectifying declaration, but D112 and D300 have different procedural regimes, and for some informative declarations correction requires full retransmission, not just the difference; the wrong choice results in doubling the reported amounts. Third: the fiscal vector — the configuration of the company's declarative obligations in ANAF's records — must match the actual situation, and updating it is the taxpayer's obligation; a company left with an active obligation in the vector after it has ceased that activity will receive notices for declarations it no longer has anything to fill in. Fourth: tax obligations are settled in the order provided by law, not in the order chosen at payment; a payment without the correct reference may be allocated to a different debt than intended, generating late-payment charges on an obligation the payer believed was settled."
+   "text": "Filing deadlines derive from the Fiscal Procedure Code and the order governing each form; the 25th is common, not universal. D394, for example, is due on the 30th day of the following month, subject to the 28/29 February rule for January, while D406 and annual financial statements have their own calendars. Four practical points follow. First, non-filing and late filing are penalised separately from non-payment, and a filing obligation may exist even for zero amounts. Second, verify the correction route form by form: D112 permits an amended return; D394 is replaced with a correct return; D100 is corrected through D710; and D300 does not permit an amended VAT return, but uses a subsequent adjustment or the material-error procedure according to the cause. Third, the tax vector must reflect the actual situation and the taxpayer must update it; employees trigger D112, not automatically D205, which covers the income and withholding categories specified by its instructions. Fourth, tax liabilities are settled in the statutory order rather than according to the payer’s informal intention; reconcile the taxpayer account after filing and payment."
   },
   {
    "tip": "h",
@@ -184,8 +184,8 @@
     "List what it files in an ordinary month, what it files at the end of the quarter, and what it files annually."
    ],
    "rezolvare": [
-    "Monthly: D112, for payroll contributions and income tax. That's all — VAT is quarterly, and D390 is not filed since there are no intra-Community transactions.",
-    "Quarterly: D300 (the VAT return), D394 (together with it), D100 for micro-enterprise income tax. Plus D406 SAF-T, on its own category's deadline.",
+    "For salaries: D112 at the reporting period applicable to the firm - usually monthly, and quarterly only if special conditions are met. VAT remains quarterly and D390 does not apply because there are no intra-Community operations.",
+    "Trimestrial: D300 for quarter, D394 for the same period but at its distinct term and D100 for income tax on micro-enterprises. Plus D406 SAF-T, at the category's own term.",
     "Annually: financial statements with annexes and the statement of responsibility, D205 if it withheld tax at source, the inventory register and inventory documents, the general meeting resolution approving and distributing results.",
     "What it does NOT file: D101 — it is not a corporate income tax payer.",
     "What would change everything: a single intra-Community acquisition of goods. From that very month, VAT becomes monthly, D390 appears, and the company's calendar changes entirely — without anyone having decided so."
@@ -220,20 +220,20 @@
    "titlu": "From profile to calendar",
    "cap": [
     "The attribute",
-    "What it triggers"
+    "What triggers it"
    ],
    "randuri": [
     [
      "VAT payer + monthly period",
-     "D300 and D394 monthly, D406 monthly"
+     "D300 monthly; D394 for the same month at its deadline; D406 at the applicable deadline"
     ],
     [
      "VAT payer + quarterly period",
-     "the same, quarterly"
+     "D300 and D394 for quarter with distinct deadlines; D406 at the applicable deadline"
     ],
     [
      "has employees",
-     "monthly D112, annual D205, payroll records"
+     "D112 according to the applicable period and states of payment; does not generate D205"
     ],
     [
      "micro-enterprise",
@@ -366,7 +366,7 @@
   },
   {
    "tip": "p",
-   "text": "Declarations that report transactions — the VAT return, the D394 informative return, the payroll declaration — are corrected through a rectifying declaration: the same declaration, for the same period, marked as rectifying, which fully replaces the previous one. The difference is not filed; the whole, corrected, is filed."
+   "text": "The procedure depends on the form. D394 and D112 D300 is the important exception: no amending statement is submitted for the same period. Operations omitted and other corrections provided for in the instructions fall into the ranks of regularisations of a subsequent statement and material errors strictly defined follow the application and decision of the tax body."
   },
   {
    "tip": "p",
@@ -383,8 +383,8 @@
    "randuri": [
     [
      "D300 — the VAT return",
-     "rectifying D300",
-     "the whole return, redone, for the same period"
+     "subsequent regularisation or material error procedure, after the cause",
+     "D300 amending for the same period"
     ],
     [
      "D394 — the informative return",
@@ -410,7 +410,7 @@
   },
   {
    "tip": "cheie",
-   "text": "An amending return replaces. A D710 corrects. The first retells the whole period from scratch, the second touches a single amount in the payer's record — and that's why they aren't interchangeable."
+   "text": "Rectifier, D710, regularization D300 and application for material error correction are different procedures. The form and the cause of the error decide the way; the generic term \"amending\" is not sufficient."
   },
   {
    "tip": "p",
@@ -480,6 +480,25 @@
   {
    "tip": "p",
    "text": "It's also worth highlighting the difference from intra-Community services: they're included in D390, but not in Intrastat, because nothing physically crosses the border. This is the most common confusion between the two — and it's immediately obvious, because the totals never match."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "completeness of the filing calendar and accuracy of every return",
+     "tax vector, source registers, forms, validations and calendar",
+     "reconcile each obligation to its source and verify the form version, period and deadline",
+     "return generated from a provisional trial balance or obsolete form"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

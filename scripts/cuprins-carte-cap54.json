@@ -1,0 +1,270 @@
+{
+ "parte": "Partea XII · Raționamentul profesionist · strat transversal",
+ "nr": "54",
+ "titlu": "Părți afiliate, asociați, capital și finanțare",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Banii care circulă între firmă și asociați seamănă, în extrasul bancar, cu orice alți bani. În realitate, pot fi capital, împrumut, dividend, avans de trezorerie, decontare ori retragere fără temei. Fiecare variantă schimbă drepturile, riscul, scadența, impozitul și uneori legalitatea plății."
+  },
+  {
+   "tip": "cheie",
+   "text": "Relația cu asociatul nu este document justificativ. «A pus bani» și «a luat bani» descriu mișcarea; contractul, hotărârea și substanța economică îi dau natura contabilă."
+  },
+  {
+   "tip": "h",
+   "text": "Mai întâi: harta părților afiliate"
+  },
+  {
+   "tip": "p",
+   "text": "Identificarea nu se limitează la lista asociaților direcți. Dosarul urmărește controlul direct și indirect, controlul comun, influența semnificativă, administratorii și persoanele-cheie, rudele relevante și entitățile controlate de acestea, precum și întreprinderile legate folosite de legislația fiscală. Definițiile contabile, fiscale și societare nu sunt perfect suprapuse; pentru fiecare test se folosește definiția actului care îl cere."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Registrul relațiilor",
+   "cap": [
+    "Câmp",
+    "De ce contează",
+    "Probă"
+   ],
+   "randuri": [
+    [
+     "Persoană/entitate și beneficiar real",
+     "identifică relația dincolo de denumirea partenerului",
+     "registrul comerțului, declarații, organigramă de grup"
+    ],
+    [
+     "Tipul relației și perioada",
+     "controlul se poate schimba în cursul anului",
+     "act constitutiv, hotărâri, contracte, date de intrare/ieșire"
+    ],
+    [
+     "Tranzacții și solduri",
+     "permite analiza completitudinii și a prezentării",
+     "analitice pe partener, confirmări, reconciliere intragrup"
+    ],
+    [
+     "Condiții și preț",
+     "separă substanța economică de avantajul acordat afiliatului",
+     "contract, analiză de comparabilitate, politica de prețuri"
+    ],
+    [
+     "Aprobări și conflicte",
+     "demonstrează guvernanța tranzacției",
+     "hotărâri AGA/administrator, declarații de interese"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Capital sau împrumut?"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Substanța finanțării asociatului",
+   "cap": [
+    "Element",
+    "Capital",
+    "Împrumut"
+   ],
+   "randuri": [
+    [
+     "Drept la restituire",
+     "nu există o scadență obișnuită; restituirea urmează procedurile capitalului",
+     "există potrivit contractului și restricțiilor legale"
+    ],
+    [
+     "Remunerație",
+     "dividend numai din profit distribuibil și după hotărâre",
+     "dobândă dacă a fost convenită și este legal/fiscal susținută"
+    ],
+    [
+     "Risc",
+     "absoarbe primul pierderile",
+     "este creanță a asociatului, dar poate deveni subordonată ori blocată prin lege/contract"
+    ],
+    [
+     "Documente",
+     "hotărâre, act modificator, subscriere și vărsare",
+     "contract, sumă, monedă, scadență, dobândă, garanții, aprobări"
+    ],
+    [
+     "Conturi uzuale",
+     "456, 1011, 1012, după stadiu",
+     "4551 principal și 4558 dobândă, pe analitic"
+    ]
+   ],
+   "nota": "Denumirea dată de părți este un indiciu, nu concluzia. O finanțare fără contract, fără scadență și perpetuu rostogolită cere clarificarea substanței și a prezentării."
+  },
+  {
+   "tip": "p",
+   "text": "Dobânda dintre afiliați cere trei analize distincte: recunoașterea contabilă pe durata finanțării, prețul de piață și documentarea fiscală, apoi limitările de deductibilitate aplicabile costurilor îndatorării. Faptul că plata nu s-a făcut nu elimină cheltuiala sau venitul aferent perioadei dacă obligația contractuală există. Faptul că o dobândă este înregistrată nu demonstrează că nivelul ei este de piață."
+  },
+  {
+   "tip": "h",
+   "text": "Banii luați de asociat"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Încadrarea retragerii",
+   "cap": [
+    "Întrebare",
+    "Tratament posibil",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "Există cheltuială a firmei și documente?",
+     "avans spre decontare, urmat de documente și restituirea diferenței",
+     "sold vechi, sume rotunde, documente personale"
+    ],
+    [
+     "Există dividend legal distribuit?",
+     "457 și plata/compensarea, cu impozitul și declarațiile aferente",
+     "plată înainte de hotărâre ori peste profitul distribuibil"
+    ],
+    [
+     "Există împrumut real acordat de societate?",
+     "numai după analiza capacității legale, aprobării, condițiilor și restricțiilor",
+     "fără contract, fără scadență, fără dobândă, numai către asociat"
+    ],
+    [
+     "Este remunerație pentru muncă/mandat?",
+     "tratamentul venitului corespunzător și obligațiile salariale/fiscale",
+     "denumire de «avans» pentru plăți recurente"
+    ],
+    [
+     "Nu există temei probat",
+     "creanță clarificată și escaladată conducerii; nu se ascunde în casă ori cheltuieli",
+     "compensări artificiale la sfârșit de an"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Testul distribuirii și plății în 2026"
+  },
+  {
+   "tip": "p",
+   "text": "O hotărâre a asociaților nu face distribuibilă o sumă interzisă de lege. Înainte de dividend se verifică existența profitului determinat și aprobat, acoperirea pierderilor potrivit legii, constituirea rezervelor, activul net, restricțiile contractuale și situația dividendelor interimare. Impozitul pe dividende este 16% pentru distribuțiile cărora li se aplică regimul în vigoare de la 1 ianuarie 2026, dar cota nu este singurul test."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Restricții societare cu efect contabil direct",
+   "cap": [
+    "Situație",
+    "Consecință practică",
+    "Control în dosar"
+   ],
+   "randuri": [
+    [
+     "Dividende interimare distribuite",
+     "până la regularizare, societatea nu acordă împrumuturi asociaților/acționarilor ori afiliaților în condițiile restricției legale",
+     "hotărâri, plăți, solduri 455/461 și regularizarea anuală"
+    ],
+    [
+     "Activ net sub jumătate din capitalul social subscris",
+     "distribuirea dividendelor și restituirea împrumuturilor către asociați/afiliați sunt limitate până la reîntregirea activului net, potrivit regulilor aplicabile",
+     "calcul activ net, capital subscris, hotărâri și plăți ulterioare"
+    ],
+    [
+     "Capital social sub minimul legal",
+     "se planifică majorarea în termen; nu se cosmetizează capitalurile prin compensări fără procedură",
+     "cifră de afaceri, act constitutiv, capital vărsat și calendar de conformare"
+    ]
+   ],
+   "nota": "Regulile introduse prin Legea nr. 239/2025 au efect de la 18 decembrie 2025. Pentru societățile existente, termenul tranzitoriu privind noul capital minim trebuie urmărit până la 18 decembrie 2027."
+  },
+  {
+   "tip": "p",
+   "text": "Pentru SRL-urile nou-înființate, capitalul social minim este 500 lei. Pentru societățile cu răspundere limitată care depășesc cifra de afaceri de 400.000 lei, minimul este 5.000 lei, cu aplicarea și termenele tranzitorii prevăzute de Legea nr. 239/2025. Aceste valori se tratează ca parametri legislativi volatili: se verifică înaintea fiecărei decizii, nu se copiază automat din dosarul anului precedent."
+  },
+  {
+   "tip": "h",
+   "text": "Confirmarea și reconcilierea intragrup"
+  },
+  {
+   "tip": "p",
+   "text": "Soldurile între afiliați se confirmă bilateral pe monedă, document și natură. Diferențele se desfac în tranzacții în tranzit, curs, facturi emise numai de o parte, compensări, dobânzi și clasificări diferite. Confirmarea aceleiași sume nu dovedește automat clasificarea corectă: o parte poate avea împrumut, cealaltă avans, iar totalul să coincidă perfect."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Pachetul anual pentru fiecare afiliat",
+   "cap": [
+    "Foaie",
+    "Conținut"
+   ],
+   "randuri": [
+    [
+     "Relație",
+     "beneficiar real, control, perioadă și definițiile relevante"
+    ],
+    [
+     "Rulaj și sold",
+     "facturi, plăți, compensări, împrumuturi, dobânzi și sold pe monedă"
+    ],
+    [
+     "Condiții",
+     "contract, scadență, preț, garanții și comparabilitate"
+    ],
+    [
+     "Confirmare",
+     "răspuns extern, diferențe, explicații și ajustări"
+    ],
+    [
+     "Prezentare și fiscal",
+     "note, declarații, prețuri de transfer, reținere la sursă și deductibilitate, după caz"
+    ]
+   ]
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Deschide analitice distincte pentru fiecare asociat și fiecare natură: capital subscris/vărsat, împrumut principal, dobândă, dividende, avansuri și alte creanțe. Nu compensa soldurile numai pentru că aparțin aceleiași persoane; compensarea cere drept și intenție documentate. Actualizează anual harta afiliaților și obține declarația conducerii privind completitudinea. Pentru orice plată către asociat verifică temeiul înainte de plată, nu la închiderea anului. Calculează și arhivează activul net înaintea dividendelor și a restituirii finanțărilor, verifică restricțiile din Legea nr. 239/2025, regularizarea dividendelor interimare, condițiile de piață și efectele fiscale. Tranzacția cu afiliatul se prezintă după substanță chiar dacă balanța este închisă și ambele părți confirmă suma."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 54.1 — asociatul cere 200.000 lei",
+   "enunt": [
+    "Societatea a distribuit dividende interimare în septembrie 2026. În noiembrie, asociatul cere restituirea unui împrumut vechi de 200.000 lei și încă 50.000 lei «până luna viitoare». La ultima balanță, activul net este sub jumătate din capitalul social subscris. Nu există contract pentru cei 50.000 lei.",
+    "Stabilește verificările și concluzia de control înaintea plății."
+   ],
+   "rezolvare": [
+    "Se oprește plata până la documentarea temeiului și a restricțiilor. Relația de afiliere nu autorizează transferul.",
+    "Pentru cei 200.000 lei se verifică soldul confirmat, contractul și scadența, dar și restricția aplicabilă restituirii împrumuturilor când activul net este sub jumătate din capital. Existența datoriei contabile nu înseamnă automat că plata este permisă acum.",
+    "Pentru cei 50.000 lei se stabilește natura propusă. După distribuirea dividendelor interimare, acordarea unui împrumut asociatului/afiliatului până la regularizare intră sub restricția legală; în plus lipsesc contractul, aprobarea și condițiile.",
+    "Dosarul conține calculul activului net, hotărârile de dividende, stadiul regularizării, fișa 455, contractul vechi, analiza juridică și fiscală și comunicarea scrisă către administrator. Nu se folosește contul 542 sau casa pentru a ocoli concluzia."
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "substanța și legalitatea tranzacțiilor cu asociații/afiliații",
+     "hartă afiliați, contracte, confirmări, activ net și hotărâri",
+     "reconciliază pe natură și verifică restricțiile înaintea plății",
+     "retrageri fără temei, netări sau condiții care nu sunt de piață"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Harta afiliaților se construiește după control și substanță, nu numai după lista asociaților direcți.",
+    "Capitalul, împrumutul, dividendul, avansul și remunerația au drepturi și probe diferite; extrasul bancar nu le clasifică.",
+    "Soldurile intragrup se confirmă și pe natură, nu numai ca total.",
+    "În 2026, activul net și dividendele interimare pot bloca plăți către asociați chiar dacă există sold contabil.",
+    "Tratamentul contabil, legalitatea societară, prețul de piață și efectul fiscal sunt patru teste separate."
+   ]
+  }
+ ]
+}

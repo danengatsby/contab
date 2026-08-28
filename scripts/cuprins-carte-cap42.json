@@ -211,6 +211,25 @@
    "text": "Consecința e că, la 31 decembrie, cheltuiala cu impozitul e deja înregistrată — patru trimestre, deja declarate și plătite. Al treilea timp există în continuare, dar el închide o cheltuială care nu mai depinde de rezultatul tocmai calculat. Ordinea rămâne aceeași; doar dependența dintre pași dispare."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "închiderea corectă a veniturilor/cheltuielilor și reportarea rezultatului",
+     "balanțe înainte/după, note de închidere și calcul rezultat",
+     "reexecută închiderile și verifică sold zero în clasele 6/7",
+     "note manuale care mută cheltuieli pentru a obține rezultatul dorit"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

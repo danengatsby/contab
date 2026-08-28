@@ -211,6 +211,25 @@
    "text": "The consequence is that, on December 31, the tax expense is already recorded — four quarters, already declared and paid. The third stage still exists, but it closes an expense that no longer depends on the result just calculated. The order remains the same; only the dependency between the steps disappears."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "correct closure of revenue and expense accounts and transfer of the result",
+     "pre/post-close trial balances, closing entries and result calculation",
+     "reperform the closing and verify zero balances in classes 6/7",
+     "manual entries moving expenses to obtain a desired result"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [

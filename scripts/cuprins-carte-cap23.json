@@ -17,11 +17,11 @@
   },
   {
    "tip": "p",
-   "text": "Un bun devine imobilizare când îndeplinește două condiții deodată: e destinat să fie folosit mai mult de un an și valoarea lui de intrare depășește un plafon stabilit prin hotărâre de Guvern — în prezent 2.500 de lei."
+   "text": "Contabil, un bun este recunoscut ca imobilizare dacă firma îl controlează, așteaptă beneficii economice din utilizarea lui și îl va folosi mai mult de un an; pragul de capitalizare se stabilește prin politica contabilă, în raport cu semnificația. Fiscal, noțiunea este mai îngustă: din 2026, un mijloc fix amortizabil trebuie să aibă o valoare fiscală de cel puțin 5.000 de lei, limită prevăzută direct la art. 28 alin. (2) lit. b) Cod fiscal și actualizabilă anual cu inflația prin hotărâre a Guvernului. Cele două teste se documentează separat."
   },
   {
    "tip": "p",
-   "text": "Condițiile sunt cumulative, iar asta produce câteva rezultate care surprind. Un telefon de 2.000 de lei folosit trei ani nu e imobilizare: e sub plafon, deci intră direct pe cheltuială. Un stoc de marfă de 200.000 de lei nu e imobilizare: nu e destinat folosinței, ci vânzării."
+   "text": "Un telefon de 2.000 de lei folosit trei ani poate fi trecut direct pe cheltuială potrivit pragului de capitalizare aprobat de firmă, dar rămâne un bun controlat care trebuie urmărit inventaric dacă politica o cere. Un stoc de marfă de 200.000 de lei nu este imobilizare oricât de mare ar fi suma: destinația lui este vânzarea, nu utilizarea. Valoarea singură nu decide clasificarea."
   },
   {
    "tip": "tabel",
@@ -154,6 +154,18 @@
   },
   {
    "tip": "h",
+   "text": "Regula specială a anului 2026: amortizarea superaccelerată"
+  },
+  {
+   "tip": "p",
+   "text": "Pentru active noi din subgrupa 2.1 — echipamente tehnologice, mașini, unelte și instalații de lucru — și din subgrupa 2.4 — animale și plantații — achiziționate sau produse și puse în funcțiune în 2026, art. 28 alin. (8^1) Cod fiscal permite amortizarea superaccelerată: cel mult 65% din valoarea fiscală în primul an, iar valoarea rămasă se repartizează pe durata normală rămasă. Facilitatea este fiscală și temporară; registrul mijloacelor fixe trebuie să identifice distinct activele eligibile și data punerii în funcțiune."
+  },
+  {
+   "tip": "cheie",
+   "text": "Pragul de 5.000 lei și amortizarea de până la 65% sunt reguli FISCALE aplicabile din 2026. Politica de recunoaștere CONTABILĂ rămâne o decizie documentată a entității; cele două evidențe pot avea valori diferite fără ca una să fie greșită."
+  },
+  {
+   "tip": "h",
    "text": "Cele două amortizări care nu coincid"
   },
   {
@@ -183,7 +195,7 @@
   {
    "tip": "contabil",
    "titlu": "Pentru contabil",
-   "text": "Regimul amortizării e cel din art. 28 Cod fiscal, iar duratele normale de funcționare din catalogul aprobat prin HG 2139/2004, cu modificările ulterioare. Patru observații de practică. Prima: catalogul stabilește intervale, iar durata aleasă rămâne aceeași pe toată durata de viață a activului, cu excepțiile expres prevăzute — modernizările care majorează valoarea de intrare pot prelungi durata, dar aceasta se revizuiește, nu se reia. A doua: amortizarea degresivă se aplică cu coeficienții 1,5, 2,0 sau 2,5 în funcție de durata normală — până la 5 ani, între 5 și 10, respectiv peste 10 — și presupune trecerea la regimul liniar în anul în care amortizarea liniară a valorii rămase devine mai mare decât cea degresivă; omiterea acestei treceri produce un rest neamortizat la finalul duratei. A treia: divergența dintre amortizarea contabilă și cea fiscală trebuie urmărită cumulat, pe fiecare activ, nu doar pe anul curent — la cedare, valoarea rămasă fiscală, nu cea contabilă, e cea care se compară cu prețul de vânzare pentru determinarea rezultatului fiscal. A patra: pentru vehiculele M1, plafonul se aplică lunar și nu se reportează — o lună fără amortizare nu majorează plafonul lunii următoare, iar cumularea anuală cu un plafon de douăsprezece ori 1.500 produce o deducere mai mare decât cea legală."
+   "text": "Regimul fiscal al amortizării este cel din art. 28 Cod fiscal, iar duratele normale de funcționare sunt cele din catalogul aprobat prin HG 2139/2004. Pentru 2026, OUG 8/2026 a ridicat la 5.000 lei limita fiscală a mijlocului fix și a introdus amortizarea superaccelerată de maximum 65% în primul an pentru activele noi eligibile din subgrupele 2.1 și 2.4. Cinci observații de practică. Prima: pragul fiscal nu înlocuiește politica contabilă de capitalizare; o diferență se urmărește în registrul fiscal. A doua: catalogul stabilește intervale, iar durata aleasă se susține prin utilizarea estimată, nu prin minimizarea impozitului. A treia: amortizarea degresivă presupune trecerea la liniar în anul în care aceasta devine mai mare; omiterea trecerii lasă un rest la final. A patra: divergența contabil–fiscal se urmărește cumulat pe fiecare activ, inclusiv la cedare. A cincea: pentru vehiculele M1, plafonul de 1.500 lei se aplică lunar și nu se reportează. Dosarul activului trebuie să cuprindă factura, recepția, procesul-verbal de punere în funcțiune, încadrarea în catalog, durata și metoda aprobate, calculele contabil și fiscal, modernizările, inventarierea și documentul de ieșire."
   },
   {
    "tip": "h",
@@ -297,6 +309,25 @@
   {
    "tip": "p",
    "text": "Toate trei se ridică dacă vehiculul e folosit EXCLUSIV în scop economic, iar dovada e a firmei: foaie de parcurs, sau altă evidență din care rezultă traseele. Fără ea, limitarea se aplică — nu ca sancțiune, ci fiindcă legea prezumă folosința mixtă. E una dintre puținele situații în care o evidență ținută zilnic valorează, în bani, mai mult decât orice optimizare."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "existența, clasificarea, durata și amortizarea activelor",
+     "facturi, recepții, punere în funcțiune, registru și referat tehnic",
+     "inspectează, recalculează și separă tratamentul contabil de cel fiscal",
+     "pragul fiscal folosit ca unic criteriu contabil de capitalizare"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

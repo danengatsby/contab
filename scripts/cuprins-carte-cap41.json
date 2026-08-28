@@ -121,7 +121,7 @@
    "rezolvare": [
     "(a) Refuză înregistrarea și spune de ce: perioada e închisă. Operatorul corectează data pe loc, în două secunde.",
     "(b) Factura ar fi intrat în iunie. Balanța lunii iunie nu ar mai fi cea pe baza căreia s-a depus decontul, iar diferența s-ar descoperi cel mai devreme la o inspecție — sau niciodată.",
-    "(c) Atunci nu e o greșeală de tastare, ci un document întârziat. Se înregistrează în iulie, iar dacă afectează TVA-ul sau rezultatul lunii iunie se evaluează dacă e cazul unei rectificative. Ce NU se face: redeschiderea lunii iunie ca să „iasă frumos”.",
+    "(c) Atunci nu e o greșeală de tastare, ci un document întârziat. Se înregistrează în iulie, iar efectul asupra TVA-ului și rezultatului se tratează prin procedura specifică: regularizare într-un D300 ulterior, dacă aceasta este calea aplicabilă, ori declarație rectificativă pentru formularele care o admit. Ce NU se face: redeschiderea lunii iunie ca să „iasă frumos”.",
     "Ce arată exercițiul: blocarea nu apără de rea-credință — apără de o tastă apăsată greșit, adică de cazul care chiar se întâmplă. Iar dacă redeschiderea e totuși necesară, ea cere drept de administrator, motiv scris și consemnare permanentă: posibilă, dar niciodată comodă."
    ]
   },
@@ -216,6 +216,25 @@
   {
    "tip": "cheie",
    "text": "Blocarea perioadei stabilește CÂND se înregistrează corecția. Semnificația erorii stabilește UNDE. Sunt două întrebări separate, și amândouă cer un răspuns."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "integritatea perioadei blocate și controlul redeschiderilor",
+     "drepturi, loguri, aprobări, motive și livrabile înainte/după",
+     "inspectează toate postările ulterioare și propagarea lor în declarații/rapoarte",
+     "perioadă redeschisă informal ori modificată după depunere fără rectificare"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

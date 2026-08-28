@@ -140,7 +140,7 @@
   {
    "tip": "contabil",
    "titlu": "Pentru contabil",
-   "text": "Ordinea de mai sus e cea impusă de dependențele dintre lucrări, nu de o normă anume, dar ea susține obligații legale distincte: întocmirea balanței cel puțin lunar, întocmirea și depunerea declarațiilor în termen și păstrarea documentelor care probează operațiunile. Trei observații practice. Prima: verificările de corelație — jurnale de TVA cu rulajele conturilor 4426 și 4427, conturile de personal cu D112, soldurile de terți cu situația creanțelor și datoriilor — se fac între pasul 3 și pasul 4, nu după depunere; o corelație verificată în ordinea greșită descoperă erori care nu mai pot fi corectate decât prin rectificativă. A doua: la firmele cu TVA la încasare, punctajul bancar e o condiție de fond pentru determinarea exigibilității, nu o verificare de trezorerie — de aceea pasul 2 precede obligatoriu pasul 3. A treia: dosarul lunii — balanța, jurnalele, declarațiile cu recipisele, notele de regularizare și eventualele decizii de aprobare — trebuie constituit la închidere, nu reconstituit la control; practica reconstituirii ulterioare e cea care produce dosare în care lipsesc exact documentele care ar fi trebuit să justifice raționamentele."
+   "text": "Ordinea de mai sus e cea impusă de dependențele dintre lucrări, nu de o normă anume, dar ea susține obligații legale distincte: întocmirea balanței cel puțin lunar, întocmirea și depunerea declarațiilor în termen și păstrarea documentelor care probează operațiunile. Trei observații practice. Prima: verificările de corelație — jurnale de TVA cu rulajele conturilor 4426 și 4427, conturile de personal cu D112, soldurile de terți cu situația creanțelor și datoriilor — se fac între pasul 3 și pasul 4, nu după depunere; o corelație verificată prea târziu cere procedura de corecție proprie formularului, iar D300 nu admite o rectificativă obișnuită. A doua: la firmele cu TVA la încasare, punctajul bancar e o condiție de fond pentru determinarea exigibilității, nu o verificare de trezorerie — de aceea pasul 2 precede obligatoriu pasul 3. A treia: dosarul lunii — balanța, jurnalele, declarațiile cu recipisele, notele de regularizare și eventualele decizii de aprobare — trebuie constituit la închidere, nu reconstituit la control; practica reconstituirii ulterioare e cea care produce dosare în care lipsesc exact documentele care ar fi trebuit să justifice raționamentele."
   },
   {
    "tip": "h",
@@ -239,6 +239,25 @@
   {
    "tip": "p",
    "text": "Termenele interne se ancorează, de regulă, în cel legal: dacă declarația se depune pe 25, punctajul bancar are termen intern pe 8, iar balanța pe 15. Ancorarea are un rost practic — când termenul legal se mută, se mută și restul, fără să reia cineva calculul."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "respectarea dependențelor și completitudinea închiderii lunare",
+     "calendar, checklist, reconcilieri, declarații, aprobări și statusuri",
+     "selectează o lună și reface ordinea până la blocare, inclusiv excepțiile",
+     "declarații depuse înaintea finalizării documentelor și reconcilierilor"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

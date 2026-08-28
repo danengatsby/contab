@@ -1,9 +1,10 @@
 {
- "titlu": "Accounting, in the order it actually happens",
- "subtitlu": "A book about Romanian accounting, organized not by textbook chapters but by the accounting cycle — the real journey of an amount, from the document received to the balance sheet filed.",
+ "titlu": "Accounting, in the order it happens",
+ "subtitlu": "A book about Romanian accounting, organized not by textbook chapters but by the accounting cycle — the real journey of a sum, from the document received to the filed balance sheet.",
  "teza": [
   "Textbooks teach accounting by topic: accounts, then VAT, then payroll. Practice doesn't work that way. A company goes through the same sequence every month, in the same order, and each step depends on the one before it.",
-  "The book follows the sequence. Each part is a phase of the cycle; each chapter answers a question you ask yourself at exactly that moment — not three months earlier."
+  "The book follows the sequence. Each part is a phase of the cycle; each chapter answers a question you ask yourself at exactly that moment, not three months earlier.",
+  "Revised professional edition, with legislation verified as of August 27, 2026. Scope: Romanian entities applying the accounting regulations approved by OMFP no. 1.802/2014; IFRS treatments, the public sector, and non-profit organizations require distinct rules."
  ],
  "doua": [
   {
@@ -12,14 +13,14 @@
   },
   {
    "cap": "What the accountant learns",
-   "txt": "The bookkeeping treatment (monografie) behind each operation, the legal basis, and the checks that catch an error before it reaches a declaration."
+   "txt": "The accounting treatment behind every transaction, the legal basis, and the checks that catch an error before it reaches a declaration."
   }
  ],
  "parti": [
   {
    "nr": "I",
    "titlu": "Why accounting looks the way it does",
-   "faza": "before any figures",
+   "faza": "before any figure",
    "rezumat": "The part missing from most textbooks: what question all this work actually answers. Without it, the rest looks like bureaucracy.",
    "capitole": [
     {
@@ -30,8 +31,8 @@
     },
     {
      "nr": "2",
-     "titlu": "Why every amount is written twice",
-     "nota": "Double-entry bookkeeping (partida dublă) isn't a bureaucratic convention — it's a built-in check: every movement has a source and a destination.",
+     "titlu": "Why every sum is written twice",
+     "nota": "Double-entry bookkeeping isn't a bureaucratic convention but a built-in check: every movement has a source and a destination.",
      "semn": false
     },
     {
@@ -42,40 +43,40 @@
     },
     {
      "nr": "4",
-     "titlu": "Who's responsible for the figures",
-     "nota": "The business owner brings the documents and knows the business. The accountant checks, signs, and bears professional responsibility. Neither replaces the other.",
+     "titlu": "Who is responsible for the figures",
+     "nota": "The business owner brings the documents and knows the business. The accountant verifies, signs, and bears professional responsibility. Neither replaces the other.",
      "semn": false
     },
     {
      "nr": "5",
-     "titlu": "The accounting cycle: the book's map",
-     "nota": "The fourteen phases, in the order they occur, and why the order isn't negotiable.",
+     "titlu": "The accounting cycle: the map of the book",
+     "nota": "The fourteen phases, in the order they're carried out, and why the order isn't negotiable.",
      "semn": false
     }
    ]
   },
   {
    "nr": "II",
-   "titlu": "Opening the financial year",
+   "titlu": "Opening the fiscal year",
    "faza": "phase 1",
-   "rezumat": "Done once a year and rarely touched — but if it's wrong here, nothing that follows can be easily corrected.",
+   "rezumat": "Done once a year and rarely revisited — but if it's wrong here, nothing that follows can be easily corrected.",
    "capitole": [
     {
      "nr": "6",
-     "titlu": "The company and its tax regimes",
-     "nota": "VAT payer or not, corporate income tax or micro-enterprise tax: this choice determines what declarations you owe all year.",
+     "titlu": "The company and its regimes",
+     "nota": "VAT payer or not, corporate income tax or micro-enterprise tax: this choice determines which declarations you owe all year.",
      "semn": false
     },
     {
      "nr": "7",
      "titlu": "The opening trial balance",
-     "nota": "Where you start from, when the company isn't in its first year. Carrying over balances from another program, account by account.",
+     "nota": "Where you start from, when the company isn't in its first year. Taking over balances from another program, account by account.",
      "semn": false
     },
     {
      "nr": "8",
      "titlu": "The equality that must hold from day one",
-     "nota": "Total debit = total credit. An unbalanced opening trial balance never closes properly later.",
+     "nota": "Total debit = total credit. An unbalanced opening trial balance can never be closed.",
      "semn": false
     }
    ]
@@ -84,42 +85,42 @@
    "nr": "III",
    "titlu": "The document",
    "faza": "phase 2",
-   "rezumat": "The only door in. The rule that organizes the whole book: nothing enters accounting except through a supporting document.",
+   "rezumat": "The only entry point. The rule that organizes the whole book: nothing enters the accounts except through a supporting document.",
    "capitole": [
     {
      "nr": "9",
-     "titlu": "Nothing goes in without a document",
+     "titlu": "Nothing enters without a document",
      "nota": "Why this rule isn't formalism, but the only guarantee that the figures can be defended in an audit.",
      "semn": false
     },
     {
      "nr": "10",
      "titlu": "From paper to journal entry",
-     "nota": "Which account is debited, which is credited, with what amount — and how to read a journal entry (notă contabilă) without knowing the formula.",
+     "nota": "Which account is debited, which is credited, with what amount — and how to read a journal entry without knowing the formula.",
      "semn": false
     },
     {
      "nr": "11",
      "titlu": "The vocabulary of situations",
-     "nota": "Over one hundred twenty typical operations, grouped by family: sales, purchases, treasury, payroll, fixed assets, adjustments.",
+     "nota": "Over a hundred and twenty typical transactions, grouped by family: sales, purchases, treasury, payroll, fixed assets, adjustments.",
      "semn": false
     },
     {
      "nr": "12",
      "titlu": "Draft, validated, approved, posted",
-     "nota": "The separation between who enters and who takes responsibility. Only what's posted enters the accounting records.",
+     "nota": "The separation between who enters and who takes responsibility. Only what's posted enters the accounts.",
      "semn": false
     },
     {
      "nr": "13",
      "titlu": "The checks at the door",
-     "nota": "Does the arithmetic add up? Is the rate correct? Is the period open? Is the partner known? Is the document perhaps already recorded?",
+     "nota": "Does the arithmetic add up? Is the rate correct? Is the period open? Is the partner known? Isn't the document already recorded?",
      "semn": false
     },
     {
      "nr": "14",
      "titlu": "The invoice you issue",
-     "nota": "Numbering, mandatory content, and the electronic file sent to the ANAF system.",
+     "nota": "Numbering, mandatory content, and the electronic file that goes out through the ANAF system.",
      "semn": false
     }
    ]
@@ -133,19 +134,19 @@
     {
      "nr": "15",
      "titlu": "Bank and cash",
-     "nota": "Receipts, payments, and why the cash balance must never be negative.",
+     "nota": "Receipts, payments, and why the cash balance may never be negative.",
      "semn": false
     },
     {
      "nr": "16",
      "titlu": "Reconciliation, line by line",
-     "nota": "The accounting records versus the statement. What doesn't match is exactly what needs clarifying — the rest needs no attention.",
+     "nota": "The accounts against the statement. What doesn't match is exactly what needs clarifying — the rest requires no attention.",
      "semn": false
     },
     {
      "nr": "17",
-     "titlu": "Legal thresholds and limits",
-     "nota": "The cash register, cash payments between companies, treasury advances: thresholds that check themselves.",
+     "titlu": "Ceilings and legal limits",
+     "nota": "The cash register, cash payments between companies, treasury advances: the thresholds that check themselves.",
      "semn": false
     }
    ]
@@ -154,24 +155,24 @@
    "nr": "V",
    "titlu": "What you have, what you produce, who works",
    "faza": "phases 4–6",
-   "rezumat": "The three masses that require their own tracking, beyond the accounts: goods, people, and things that get used up over time.",
+   "rezumat": "The three categories that require their own records, beyond the accounts: goods, people, and things that are consumed over time.",
    "capitole": [
     {
      "nr": "18",
-     "titlu": "Inventory: in quantity and in value",
-     "nota": "Receipts, issues, warehouses. Weighted average cost or FIFO — what the choice changes in the month's result.",
+     "titlu": "Inventory: quantities and values",
+     "nota": "Inflows, outflows, warehouses. Weighted average cost or FIFO — what the choice changes in the month's result.",
      "semn": false
     },
     {
      "nr": "19",
      "titlu": "Production: from raw materials to finished product",
-     "nota": "The recipe, the consumption, the production cost, and how it ends up in inventory.",
+     "nota": "The recipe, the consumption, the production cost, and how it reaches inventory.",
      "semn": false
     },
     {
      "nr": "20",
      "titlu": "Physical inventory count",
-     "nota": "The moment when counted reality confronts the book records. Surpluses, shortages, liability charges, the report.",
+     "nota": "The moment when counted reality confronts the book records. Surpluses, shortfalls, charging responsibility, minutes of the count.",
      "semn": false
     },
     {
@@ -183,13 +184,13 @@
     {
      "nr": "22",
      "titlu": "The rights you lose if you don't claim them",
-     "nota": "The personal deduction, non-taxable amounts, leave entitlements. An unfilled field costs real money, every month.",
+     "nota": "The personal deduction, non-taxable amounts, leave. An unfilled field costs real money, every month.",
      "semn": false
     },
     {
      "nr": "23",
      "titlu": "Fixed assets and depreciation",
-     "nota": "How an asset gets used up over time, why the useful life isn't chosen at random, and what the official catalog says.",
+     "nota": "How an asset is consumed over time, why its useful life isn't chosen at random, and what the official catalog says.",
      "semn": false
     },
     {
@@ -204,7 +205,7 @@
    "nr": "VI",
    "titlu": "What doesn't come from a document",
    "faza": "phase 7",
-   "rezumat": "The part textbooks cover in three pages and simple programs skip entirely. Without it, the balance sheet looks fine — but it isn't true.",
+   "rezumat": "The part textbooks cover in three pages and simple software skips entirely. Without it, the balance sheet looks fine — but isn't true.",
    "capitole": [
     {
      "nr": "25",
@@ -221,19 +222,19 @@
     {
      "nr": "27",
      "titlu": "Adjustments for doubtful receivables",
-     "nota": "When a customer is late, when they stop paying altogether, and how the adjustment is reversed if they do pay after all.",
+     "nota": "When the customer is late, when they stop paying altogether, and how the adjustment is reversed if they pay after all.",
      "semn": false
     },
     {
      "nr": "28",
-     "titlu": "Delimitation over time",
+     "titlu": "Time-based allocation",
      "nota": "Insurance paid today for twelve months isn't this month's expense. Prepaid expenses and deferred revenue.",
      "semn": false
     },
     {
      "nr": "29",
-     "titlu": "It's reversed, not erased",
-     "nota": "The correction is made through a reversing entry, which stays linked to the original one. The trace of the error is part of the evidence — that's why it's written \"in red,\" not scratched out.",
+     "titlu": "You reverse, you don't erase",
+     "nota": "The correction is made through a reverse entry, which remains linked to the original one. The trace of the error is part of the proof — that's why it's written \"in red,\" not erased.",
      "semn": true
     }
    ]
@@ -242,35 +243,35 @@
    "nr": "VII",
    "titlu": "The registers and verification",
    "faza": "phase 8",
-   "rezumat": "The same operations, seen from two angles — and the tool that tells you whether everything holds together.",
+   "rezumat": "The same transactions, viewed from two angles — and the tool that tells you whether everything holds together.",
    "capitole": [
     {
      "nr": "30",
-     "titlu": "Chronological: the journal ledger (registrul-jurnal)",
+     "titlu": "Chronological: the journal register",
      "nota": "Everything that happened, in the order it happened. The register the law requires first.",
      "semn": false
     },
     {
      "nr": "31",
-     "titlu": "Systematic: the general ledger (cartea mare)",
-     "nota": "The same operations, grouped by account. This is where every check starts: from the figure, back to the document that produced it.",
+     "titlu": "Systematic: the general ledger",
+     "nota": "The same transactions, grouped by account. This is where every check starts: from the figure, back to the document that produced it.",
      "semn": false
     },
     {
      "nr": "32",
-     "titlu": "The trial balance (balanța de verificare)",
-     "nota": "Opening balance + turnover = closing balance, and total debit equals total credit. If it doesn't close, you find out here — not at the balance sheet.",
+     "titlu": "The trial balance",
+     "nota": "Opening balance + turnover = closing balance, and total debit equal to total credit. If it doesn't close, you find out here — not at the balance sheet.",
      "semn": false
     },
     {
      "nr": "33",
      "titlu": "Balanced doesn't mean correct",
-     "nota": "The book's most counterintuitive chapter: a symmetrical error passes any balance check. What the trial balance catches, what it doesn't, and what must be verified differently.",
+     "nota": "The most counterintuitive chapter in the book: a symmetrical error passes any balance check. What the trial balance catches, what it doesn't, and what must be checked differently.",
      "semn": true
     },
     {
      "nr": "34",
-     "titlu": "The aging schedule (scadențarul)",
+     "titlu": "The aging schedule",
      "nota": "Who owes you, whom you owe, and since when. The age of balances as a management tool, not just a reporting one.",
      "semn": false
     }
@@ -280,12 +281,12 @@
    "nr": "VIII",
    "titlu": "The state",
    "faza": "phases 9 and 13",
-   "rezumat": "What you owe, when, and how you prove you filed. A declaration isn't a form to fill in, but the result of a month already recorded.",
+   "rezumat": "What you owe, when, and how you prove you filed. The declaration isn't a form to fill in, but the result of a month already recorded.",
    "capitole": [
     {
      "nr": "35",
      "titlu": "VAT: collected, deductible, payable",
-     "nota": "How the return is built from the month's operations and why the balance naturally carries over from one month to the next.",
+     "nota": "How the return is built from the month's transactions and why the balance naturally carries over from one month to the next.",
      "semn": false
     },
     {
@@ -303,7 +304,7 @@
     {
      "nr": "38",
      "titlu": "Filing and proof",
-     "nota": "The Virtual Private Space (SPV), the signature, the receipt. What matters isn't the declaration itself, but the confirmation that it was received.",
+     "nota": "The Virtual Private Space, the signature, the receipt. The document that matters isn't the declaration, but the confirmation that it was received.",
      "semn": false
     }
    ]
@@ -312,42 +313,42 @@
    "nr": "IX",
    "titlu": "Closing",
    "faza": "phases 10–11",
-   "rezumat": "The moment the month or year becomes final. The order of steps matters, and skipping one only shows up months later.",
+   "rezumat": "The moment when the month or year becomes final. The order of steps matters, and skipping one only shows up months later.",
    "capitole": [
     {
      "nr": "39",
      "titlu": "Closing the month, step by step",
-     "nota": "Complete documents, the statement reconciled, adjustments made, VAT determined, declarations filed.",
+     "nota": "Documents complete, the statement reconciled, adjustments made, VAT settled, declarations filed.",
      "semn": false
     },
     {
      "nr": "40",
      "titlu": "Status is derived from data, not checked off",
-     "nota": "Why a manual checkbox lies: it stays checked even after the data underneath it has changed.",
+     "nota": "Why a manual checkbox lies: it stays true even after the data underneath it has changed.",
      "semn": false
     },
     {
      "nr": "41",
      "titlu": "Locking the period",
-     "nota": "A closed month is no longer touched. And if it must be, forcing it open requires a written reason that stays on record.",
+     "nota": "A closed month is not touched again. And if it must be, forcing it open requires a written reason that leaves a trace.",
      "semn": false
     },
     {
      "nr": "42",
      "titlu": "Closing the year",
-     "nota": "Revenues and expenses are cleared into the income statement account. What \"closing the year\" actually means.",
+     "nota": "Revenues and expenses are extinguished in the profit-and-loss account. What \"we closed the year\" actually means.",
      "semn": false
     },
     {
      "nr": "43",
-     "titlu": "From accounting result to fiscal result",
-     "nota": "The fiscal record register (registrul de evidență fiscală): which expenses aren't deductible, which revenues aren't taxed, and why tax isn't calculated from accounting profit.",
+     "titlu": "From accounting result to taxable result",
+     "nota": "The tax records register: which expenses aren't deductible, which revenues aren't taxed, and why tax isn't calculated from accounting profit.",
      "semn": false
     },
     {
      "nr": "44",
      "titlu": "Allocation of the result",
-     "nota": "The legal reserve, retained earnings, dividends and their tax. The last step of one financial year and the first of the next.",
+     "nota": "The legal reserve, retained earnings, dividends and their tax. The last step of one fiscal year and the first of the next.",
      "semn": false
     }
    ]
@@ -356,44 +357,44 @@
    "nr": "X",
    "titlu": "The financial statements",
    "faza": "phase 12",
-   "rezumat": "The documents everything else was done for. They're generated from the same records — not compiled separately.",
+   "rezumat": "The documents all the rest was done for. They're generated from the same records — not composed separately.",
    "capitole": [
     {
      "nr": "45",
      "titlu": "The income statement",
-     "nota": "Did you earn or lose during the year, and from what exactly: operations or financial activity.",
+     "nota": "Did you earn or lose money in the year, and from what exactly: operating or financial activity.",
      "semn": false
     },
     {
      "nr": "46",
      "titlu": "The balance sheet",
-     "nota": "What you have and what you owe on a given date. Why the two sides are equal by construction, not by luck.",
+     "nota": "What you have and what you owe on a specific date. Why the two sides are equal by construction, not by luck.",
      "semn": false
     },
     {
      "nr": "47",
      "titlu": "The annexes",
-     "nota": "The cash flow statement, changes in equity, the explanatory notes. What they say and why they aren't filed in the same file.",
+     "nota": "The cash flow statement, changes in equity, explanatory notes. What they say and why they aren't filed in the same file.",
      "semn": false
     },
     {
      "nr": "48",
      "titlu": "The four consistencies to check before signing",
-     "nota": "Assets = liabilities. The balance sheet result = the income statement result. Cash flow's cash = the balance of treasury accounts. The change = the sum of the three activities.",
+     "nota": "Assets = liabilities and equity. The result on the balance sheet = the result on the income statement. Cash in the flow statement = the balance of the treasury accounts. The variation = the sum of the three activities.",
      "semn": false
     }
    ]
   },
   {
    "nr": "XI",
-   "titlu": "The trail",
+   "titlu": "The trace",
    "faza": "phase 14",
-   "rezumat": "What remains after everything has been filed — and why this part matters exactly on the day someone starts asking questions.",
+   "rezumat": "What remains after everything is filed — and why this part matters exactly on the day someone starts asking questions.",
    "capitole": [
     {
      "nr": "49",
      "titlu": "Archiving",
-     "nota": "The month's file, the year's file, the legal retention periods. What \"I have the documents\" means when they're requested.",
+     "nota": "The month's file, the year's file, the legal retention periods. What \"I have the documents\" means when they're actually requested.",
      "semn": false
     },
     {
@@ -404,16 +405,48 @@
     },
     {
      "nr": "51",
-     "titlu": "What a program can't do",
-     "nota": "A program calculates and checks. It doesn't decide whether an expense belongs to the company, doesn't sign the balance sheet, and doesn't bear responsibility for anyone.",
+     "titlu": "What software can't do",
+     "nota": "Software calculates and checks. It doesn't decide whether an expense belongs to the company, doesn't sign the balance sheet, and doesn't take responsibility on anyone's behalf.",
+     "semn": false
+    }
+   ]
+  },
+  {
+   "nr": "XII",
+   "titlu": "Professional judgment",
+   "faza": "cross-cutting layer",
+   "rezumat": "The area where accounting stops being data entry: choosing the treatment, making the estimate, assessing risk, documenting the conclusion, and reviewing a piece of work that must be defensible.",
+   "capitole": [
+    {
+     "nr": "52",
+     "titlu": "Accounting policies, estimates, errors and materiality",
+     "nota": "How to separate a permitted choice from an estimate and from an error; prospective effect, correction through retained earnings, and documenting materiality.",
+     "semn": false
+    },
+    {
+     "nr": "53",
+     "titlu": "Provisions, subsequent events, and going concern",
+     "nota": "Present obligation, probability, reliable estimate, adjusting events, and the test through which the going-concern signature becomes a proven conclusion.",
+     "semn": false
+    },
+    {
+     "nr": "54",
+     "titlu": "Related parties, shareholders, capital, and financing",
+     "nota": "The economic substance of money flowing between the company and its shareholders, arm's-length conditions, net assets, dividends, and the restrictions applicable in 2026.",
+     "semn": false
+    },
+    {
+     "nr": "55",
+     "titlu": "Working papers and professional review",
+     "nota": "Assertions, evidence, thresholds, sampling, lead schedules, open points, and the conclusion that links the trial balance to the financial statements.",
      "semn": false
     }
    ]
   },
   {
    "nr": "—",
-   "titlu": "Appendices",
-   "faza": "to use, not to read",
+   "titlu": "Annexes",
+   "faza": "to be used, not read",
    "rezumat": "",
    "capitole": [
     {
@@ -424,26 +457,32 @@
     },
     {
      "nr": "B",
-     "titlu": "Case studies: common situations",
-     "nota": "From a goods invoice to reactivating a written-off receivable, each with the complete journal entry — generated from the application, not written by hand.",
+     "titlu": "Accounting treatments: frequent situations",
+     "nota": "From a goods invoice to reactivating a lost receivable, each with the complete journal entry — generated from the application, not written by hand.",
      "semn": false
     },
     {
      "nr": "C",
-     "titlu": "The tax calendar",
+     "titlu": "The fiscal calendar",
      "nota": "What's filed, by when, and by whom — by regime.",
      "semn": false
     },
     {
      "nr": "D",
      "titlu": "Glossary: accounting term ↔ plain language",
-     "nota": "\"Journal entry\" (articol contabil) means a record. \"To reverse\" (a storna) means to correctly cancel. Plus the everyday vocabulary of declarations.",
+     "nota": "\"Journal entry\" means a recorded transaction. \"To reverse\" means to cancel correctly. Plus the everyday vocabulary of declarations.",
      "semn": false
     },
     {
      "nr": "E",
      "titlu": "Consistency checks",
      "nota": "The short list to run through before every filing, in the order that catches the most errors.",
+     "semn": false
+    },
+    {
+     "nr": "F",
+     "titlu": "Legislative map and update protocol",
+     "nota": "Official sources, their hierarchy, the volatile values as of August 27, 2026, and the procedure by which the book stays current without mistaking a press release for the law.",
      "semn": false
     }
    ]
@@ -452,15 +491,15 @@
  "subsol": [
   {
    "cap": "Structure",
-   "txt": "11 parts, 51 chapters, 5 appendices. Each part corresponds to a phase of the accounting cycle, and the chapters follow the order in which the questions arise in practice."
+   "txt": "12 parts, 55 chapters, 6 annexes. The first 11 parts follow the accounting cycle; part XII documents the professional judgment that runs through all the phases."
   },
   {
    "cap": "The two levels",
-   "txt": "The base text is written for someone who has never done accounting. Where the subject calls for it, the chapter continues with the case study, the legal basis, and the corresponding check, marked separately, so the two readings don't get mixed up."
+   "txt": "The base text is written for someone with no accounting background. Where the subject requires it, the chapter continues with the treatment, the legal basis, and the corresponding check, marked separately, so the two readings don't get mixed up."
   },
   {
    "cap": "The two marked chapters",
-   "txt": "Chapters 29 and 33 are the ones I'd write first: \"it's reversed, not erased\" and \"balanced doesn't mean correct.\" Both contradict intuition, both explain errors that go unnoticed for months on end."
+   "txt": "Chapters 29 and 33 are the ones I would write first: “you reverse it, you don't delete it” and “balanced doesn't mean correct.” Both go against intuition, and both explain errors that go unnoticed for months on end."
   }
  ]
 }

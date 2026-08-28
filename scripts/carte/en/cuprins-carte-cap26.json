@@ -146,7 +146,7 @@
   {
    "tip": "contabil",
    "titlu": "For the Accountant",
-   "text": "The rule is at point 319 of the accounting regulations approved by OMFP 1802/2014: cash, receivables, and liabilities in foreign currency are valued at the exchange rate communicated by the BNR for the last banking day of the period, with differences recognized as financial income or expenses. Point 320 establishes the treatment of non-monetary items, which remain at the exchange rate on the date of the transaction. Four useful clarifications. First: revaluation is done at every period-end closing for which financial statements are prepared, not just on December 31 — for companies reporting quarterly, omitting interim closings shifts the result between quarters. Second: differences recognized at revaluation are unrealized, but they are nevertheless taxable, respectively deductible, in calculating corporate income tax, with the exceptions expressly provided — so they are not eliminated in determining the fiscal result, unlike the treatment in other jurisdictions. Third: upon actual settlement of the receivable or liability, the difference is calculated relative to the last revalued value, not to the initial exchange rate; recalculating from the invoice rate would double the difference already recognized. Fourth: for companies paying microenterprise income tax, income from exchange rate differences has its own regime — it is included in the tax base calculation only through the net favorable difference, cumulated, at the end of the quarter, not line by line."
+   "text": "The rule is at point 319 of the accounting regulations approved by OMFP 1802/2014: cash, receivables, and liabilities in foreign currency are valued at the exchange rate communicated by the BNR for the last banking day of the period, with differences recognized as financial income or expenses. Point 320 establishes the treatment of non-monetary items, which remain at the exchange rate on the date of the transaction. Four useful clarifications. First: revaluation is done at every period-end closing for which financial statements are prepared, not just on December 31 — for companies reporting quarterly, omitting interim closings shifts the result between quarters. Second: differences recognized at revaluation are unrealized, but they are nevertheless taxable, respectively deductible, in calculating corporate income tax, with the exceptions expressly provided — so they are not eliminated in determining the taxable result, unlike the treatment in other jurisdictions. Third: upon actual settlement of the receivable or liability, the difference is calculated relative to the last revalued value, not to the initial exchange rate; recalculating from the invoice rate would double the difference already recognized. Fourth: for companies paying microenterprise income tax, income from exchange rate differences has its own regime — it is included in the tax base calculation only through the net favorable difference, cumulated, at the end of the quarter, not line by line."
   },
   {
    "tip": "h",
@@ -253,6 +253,25 @@
   {
    "tip": "p",
    "text": "And for companies paying microenterprise income tax, there is a specific rule, easy to miss: favorable exchange rate differences enter the taxable base not line by line, but through the NET favorable difference, cumulated, at the end of the quarter. Calculating per transaction overestimates the base."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "complete remeasurement of monetary items denominated in foreign currencies",
+     "foreign-currency documents, official exchange rates, statements and ledgers by currency",
+     "recompute the amount at the transaction, settlement and reporting dates",
+     "subledgers kept only in lei, with no foreign-currency amount, or forced exchange differences"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

@@ -213,7 +213,7 @@
   {
    "tip": "contabil",
    "titlu": "For the Accountant",
-   "text": "From an accounting standpoint, adjustments for the impairment of receivables are set up in accordance with the prudence principle and are reviewed at each closing. Fiscally, the regime is governed by Article 26 paragraph (1) letter c) of the Fiscal Code: adjustments are deductible up to 30% of the receivable's value, if three conditions are cumulatively met — the receivable must be uncollected for a period exceeding 270 days past the due date, must not be guaranteed by another person, and must be owed by a person not affiliated with the taxpayer; other letters of the same article provide for full deductibility in specific situations, including those related to bankruptcy proceedings. From this, two consequences follow. First: the 70% difference is a non-deductible expense at the time of setup, but the subsequent reversal of the adjustment is non-taxable income in the same proportion — and the analytical record of the deductible and non-deductible portions must be kept from the time of setup, otherwise the correlation can no longer be reconstructed. Second: losses from receivables recorded in 654 are, as a rule, non-deductible under Article 25 paragraph (4) letter h), with the limitatively provided exceptions — bankruptcy proceedings closed by a final court decision, the death or dissolution of the debtor, a receivable covered by insurance, among others — so writing off a receivable without one of these being met produces no tax effect, no matter how economically certain the loss may be. For VAT, the reduction of the tax base is made under the conditions of Article 287, and the exercise of this right is subject to a deadline; checking it before it is lost is a practical obligation, not a formality."
+   "text": "From an accounting standpoint, adjustments for the impairment of receivables are set up in accordance with the prudence principle and are reviewed at each closing. Fiscally, the regime is governed by Article 26 paragraph (1) letter c) of the Tax Code: adjustments are deductible up to 30% of the receivable's value, if three conditions are cumulatively met — the receivable must be uncollected for a period exceeding 270 days past the due date, must not be guaranteed by another person, and must be owed by a person not affiliated with the taxpayer; other letters of the same article provide for full deductibility in specific situations, including those related to bankruptcy proceedings. From this, two consequences follow. First: the 70% difference is a non-deductible expense at the time of setup, but the subsequent reversal of the adjustment is non-taxable income in the same proportion — and the analytical record of the deductible and non-deductible portions must be kept from the time of setup, otherwise the correlation can no longer be reconstructed. Second: losses from receivables recorded in 654 are, as a rule, non-deductible under Article 25 paragraph (4) letter h), with the limitatively provided exceptions — bankruptcy proceedings closed by a final court decision, the death or dissolution of the debtor, a receivable covered by insurance, among others — so writing off a receivable without one of these being met produces no tax effect, no matter how economically certain the loss may be. For VAT, the reduction of the tax base is made under the conditions of Article 287, and the exercise of this right is subject to a deadline; checking it before it is lost is a practical obligation, not a formality."
   },
   {
    "tip": "h",
@@ -299,6 +299,25 @@
   {
    "tip": "cheie",
    "text": "The adjustment changes the figure on the balance sheet, not the relationship with the client. The receivable remains, pursuit continues, and if the money comes in, everything recorded is reversed."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "assessment of receivable recoverability and the required impairment adjustments",
+     "ageing, litigation, correspondence, subsequent receipts and estimates",
+     "test indicators by customer and separately recompute the accounting and tax adjustments",
+     "standard percentage applied without analysis, or old receivables left unadjusted"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

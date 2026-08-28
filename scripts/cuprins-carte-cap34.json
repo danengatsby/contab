@@ -285,6 +285,25 @@
    "text": "Creanțele și datoriile se citesc împreună. Separat, fiecare arată o listă de nume; împreună, arată dacă firma își finanțează creșterea sau o plătește."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "completitudinea și actualitatea scadențarului de creanțe și datorii",
+     "fișe parteneri, contracte, termene, confirmări și încasări/plăți ulterioare",
+     "reconciliază cu balanța și testează scadența, vechimea, litigiile și cash-flow-ul",
+     "scadențe implicite, solduri vechi fără acțiune ori compensări presupuse"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

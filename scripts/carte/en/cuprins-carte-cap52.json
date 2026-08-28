@@ -1,0 +1,265 @@
+{
+ "parte": "Part XII · Professional judgment · cross-cutting layer",
+ "nr": "52",
+ "titlu": "Accounting policies, estimates, errors and materiality",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "The same 40.000 lei difference can represent three entirely different matters: a new accounting policy, a revised estimate or a prior-period error. The amount is identical; the treatment, affected period, account and note disclosure are not. Professional judgment begins with diagnosing the nature of the change, not with choosing debits and credits."
+  },
+  {
+   "tip": "cheie",
+   "text": "Classify the issue correctly before selecting the journal entry. Flawless bookkeeping applied to a wrong classification still produces misstated financial statements."
+  },
+  {
+   "tip": "h",
+   "text": "Hierarchy that prevents improvisation"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "From rule to record",
+   "cap": [
+    "Level",
+    "Role",
+    "Document proving it"
+   ],
+   "randuri": [
+    [
+     "Accounting regulation",
+     "sets the mandatory treatment and the permitted options",
+     "Accounting law and OMFP nr 1.802/2014, in applicable form"
+    ],
+    [
+     "Entity policy",
+     "selects consistently among permitted options and defines thresholds",
+     "Policy manual approved by the Director"
+    ],
+    [
+     "Procedure",
+     "defines who applies the policy, when, using which evidence and subject to which control",
+     "Operational procedure, approval flow, checklist"
+    ],
+    [
+     "System configuration",
+     "translates the decision into accounts, useful lives, rates and automated rules",
+     "Configuration log and acceptance test"
+    ],
+    [
+     "Posting",
+     "records the effect of a specific transaction",
+     "supporting document, calculation and journal entry"
+    ]
+   ],
+   "nota": "A software parameter is not an accounting policy. It merely implements a policy that must exist, be approved and remain explainable without access to the software."
+  },
+  {
+   "tip": "h",
+   "text": "Classification test in four questions"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Policy, estimation, error or new event",
+   "cap": [
+    "Situation",
+    "The decisive question",
+    "Principle treatment"
+   ],
+   "randuri": [
+    [
+     "Policy change",
+     "Has the basis, principle or method of recognition / evaluation / presentation changed?",
+     "only when required by regulation or when the new policy provides more reliable and relevant information; apply and disclose it under the relevant rules"
+    ],
+    [
+     "change in estimate",
+     "was the original information reasonable, with new data or circumstances arising later?",
+     "prospectively, in profit or loss for the period of change and, where applicable, future periods"
+    ],
+    [
+     "prior- period error",
+     "at the reporting date there was information available, but were they omitted or misused?",
+     "correct under the entity’s materiality policy; material prior-period errors are corrected through retained earnings"
+    ],
+    [
+     "Current period event",
+     "did the economic event arise now rather than exist at the previous reporting date?",
+     "current recognition according to the nature of the operation without a \"correction\" label"
+    ]
+   ],
+   "nota": "The best indicator is the quality of the information available when the original decision was made. An estimate that later proves inaccurate does not automatically become an error."
+  },
+  {
+   "tip": "h",
+   "text": "accounting policy is not a fiscal choice"
+  },
+  {
+   "tip": "p",
+   "text": "Accounting policies must produce a true and fair view under the applicable accounting regulations; tax rules determine the taxable base. The values may coincide, but that does not merge the two calculations. An item may qualify as a fixed asset for accounting purposes because of its nature, use and the entity’s capitalisation policy, even when its value is below the 5.000 lei tax threshold applicable from 2026. Track the difference in the tax records register; do not “solve” it by distorting the accounting classification."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Three files supporting the same decision",
+   "cap": [
+    "Folder",
+    "Question",
+    "Example of conclusion"
+   ],
+   "randuri": [
+    [
+     "Accountant",
+     "which treatment faithfully reflects the transaction, and which policy applies?",
+     "equipment recognised as an asset; 36-month useful life; zero residual value"
+    ],
+    [
+     "Tax",
+     "What deduction, ceiling or adjustment does the Tax Code admit?",
+     "tax treatment tracked separately, with authority documented and the difference reconciled"
+    ],
+    [
+     "Internal control",
+     "who approves, what evidence is there and how to verify consistent application?",
+     "technical report, approval, register of fixed assets and annual test"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "materiality: not a magical percentage, but a conclusion"
+  },
+  {
+   "tip": "p",
+   "text": "Information is material when omitting or misstating it could influence users’ decisions. Size is only the first measure. Nature can make a small amount material: a transaction with a director, a covenant breach, turning a loss into profit, concealing fraud, crossing a tax threshold or affecting the right to distribute dividends."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Materiality assessment",
+   "cap": [
+    "Test",
+    "What to document",
+    "Review warning"
+   ],
+   "randuri": [
+    [
+     "Quantitative",
+     "appropriate benchmarks — revenue, assets, profit or loss, equity — plus the percentage and rationale",
+     "chosen benchmark only to avoid correction"
+    ],
+    [
+     "Qualitative",
+     "related parties, compliance, fraud, management remuneration, covenants and statutory thresholds",
+     "The amount is small, but it changes a conclusion or hides the nature of the transaction"
+    ],
+    [
+     "Individual and aggregate",
+     "single error and total errors not corrected with the same cause",
+     "many amounts below the threshold treated separately, although together they are material"
+    ],
+    [
+     "Extended effect",
+     "periods, accounts, declarations and notes affected",
+     "accounting correction without analysis of tax returns"
+    ]
+   ],
+   "nota": "Set the threshold before the review and reassess it when actual results differ substantially from expectations. Do not invent it after discovering an error."
+  },
+  {
+   "tip": "h",
+   "text": "How to correct without rewriting history"
+  },
+  {
+   "tip": "p",
+   "text": "Under OMFP No. 1.802/2014, material prior-period errors are corrected through retained earnings, using account 1174. Immaterial errors may be corrected through current-period profit or loss when the entity’s policy consistently provides for that treatment. Financial statements already approved and filed are not rewritten in the accounting records; the nature and effect of the correction are disclosed where required. Any affected tax returns are assessed separately and amended when necessary."
+  },
+  {
+   "tip": "cheie",
+   "text": "Account 1174 is not a catch-all for old problems. Use it only after demonstrating that an error exists, belongs to a prior period and is material under the documented policy."
+  },
+  {
+   "tip": "h",
+   "text": "Professional judgment memorandum"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Minimum content",
+   "cap": [
+    "Section",
+    "What another reviewer must be able to reconstruct"
+   ],
+   "randuri": [
+    [
+     "Facts",
+     "timing, contracts, amounts and information available at each time"
+    ],
+    [
+     "Problem",
+     "the precise accounting question without anticipating the answer"
+    ],
+    [
+     "Criteria",
+     "applicable regulation, entity policy and rejected alternative"
+    ],
+    [
+     "Analysis",
+     "application of criteria to facts, materiality and collateral effects"
+    ],
+    [
+     "Conclusion",
+     "treatment, period, accounts, presentations and person approving"
+    ],
+    [
+     "Follow-up",
+     "recalculation, amended returns, disclosures, future adjustments and deadline"
+    ]
+   ]
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Tailor the accounting policies manual to the entity’s actual operations; do not copy it wholesale from another entity. For every area involving a choice or estimate — inventories, capitalisation, depreciation, receivables, provisions, foreign exchange and materiality — document the owner, data source, review frequency and control. Support an estimate change with new information and apply it prospectively. Prove an error using information that existed and could have been used at the original date. Justify a policy change by a new requirement or by more reliable and relevant information. After every correction, reconcile the trial balance, financial statements, tax records register and returns; an accounting correction does not automatically amend the tax obligation."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 52.1 - three changes that seem the same",
+   "enunt": [
+    "At 31 December 2026, three situations arise: (a) the remaining useful life of a machine is shortened because new technical data indicate lower expected production; (b) a material November 2025 invoice, received and approved at that time, was not recorded; (c) the entity wants to change its inventory valuation method solely to improve profit.",
+    "Classify each situation and identify the supporting document or treatment in principle."
+   ],
+   "rezolvare": [
+    "(a) Change in estimate: the technical information is new. Recalculate depreciation prospectively over the revised remaining useful life and carrying amount; do not restate prior-year depreciation if the former estimate was reasonable.",
+    "(b) Prior-period error: the information existed and was available. Assess materiality individually and in aggregate; if material, correct the accounting records through retained earnings and assess the tax effect and any amended returns separately.",
+    "(c) The policy change is not justified. A desire to alter profit does not produce more reliable and relevant information and breaches consistency; retain the existing method.",
+    "The file contains the chronology, information available at each date, materiality assessment, authority, rejected alternative, effect calculation and approval."
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "correct classification of policies, estimates and errors",
+     "memorandum, policies, dated information, materiality assessment and approvals",
+     "reconstruct the information then available and verify prospective or retrospective treatment",
+     "account 1174 used without demonstrating both a prior-period error and materiality"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key points from this chapter",
+   "puncte": [
+    "A policy selects and applies an accounting basis; an estimate measures an uncertain amount; an error misuses information that already existed.",
+    "The change in estimate is prospective; the significant error in previous years is corrected by retained earnings.",
+    "materiality is quantitative and qualitative, individual and aggregated; there is no universal percentage that replaces reasoning.",
+    "Keep the accounting and tax analyses distinct and reconcile their effects; never subordinate the true and fair view to a tax advantage.",
+    "A professional conclusion contains facts, criteria, analysis, alternative, effects, approval and follow-up."
+   ]
+  }
+ ]
+}

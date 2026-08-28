@@ -158,6 +158,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "acoperirea controlată a operațiunilor recurente și excepționale",
+     "catalog de operațiuni, monografii aprobate și jurnal de modificări",
+     "compară tipurile reale cu catalogul și testează cazurile-limită",
+     "tip generic folosit pentru operațiuni neobișnuite fără revizie"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

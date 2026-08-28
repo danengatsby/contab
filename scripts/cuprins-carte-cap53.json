@@ -1,0 +1,261 @@
+{
+ "parte": "Partea XII · Raționamentul profesionist · strat transversal",
+ "nr": "53",
+ "titlu": "Provizioane, evenimente ulterioare și continuitatea activității",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Închiderea exercițiului nu înseamnă doar numărarea lucrurilor care există. Înseamnă și recunoașterea obligațiilor care nu au încă factură, sumă finală ori scadență sigură și folosirea informațiilor apărute după 31 decembrie pentru a înțelege ce exista, în realitate, la 31 decembrie."
+  },
+  {
+   "tip": "cheie",
+   "text": "Incertitudinea nu este motiv să nu contabilizezi. Este motiv să identifici natura obligației, probabilitatea ieșirii și cea mai bună estimare pe care o poți proba."
+  },
+  {
+   "tip": "h",
+   "text": "Arborele de decizie pentru o obligație incertă"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Provizion, datorie contingentă sau nimic de raportat",
+   "cap": [
+    "Test",
+    "Dacă răspunsul este da",
+    "Dacă răspunsul este nu"
+   ],
+   "randuri": [
+    [
+     "Există o obligație actuală, legală sau implicită, generată de un eveniment trecut?",
+     "se continuă analiza",
+     "nu se constituie provizion pentru o simplă intenție ori cost viitor de exploatare"
+    ],
+    [
+     "Este probabilă o ieșire de resurse?",
+     "se continuă analiza pentru recunoaștere",
+     "se analizează prezentarea ca datorie contingentă, dacă posibilitatea nu este îndepărtată"
+    ],
+    [
+     "Poate fi făcută o estimare credibilă?",
+     "se recunoaște provizionul la cea mai bună estimare",
+     "situație rară: se prezintă natura și imposibilitatea estimării, când prezentarea este cerută"
+    ],
+    [
+     "Riscul este îndepărtat?",
+     "de regulă nu se recunoaște și nu se prezintă",
+     "se descriu natura, incertitudinile și efectul estimabil"
+    ]
+   ],
+   "nota": "Planul conducerii de a repara anul viitor un utilaj nu este obligație prezentă. Garanția acordată clienților pentru vânzările deja efectuate poate fi, chiar dacă nimeni nu a depus încă o cerere."
+  },
+  {
+   "tip": "h",
+   "text": "Estimarea provizionului"
+  },
+  {
+   "tip": "p",
+   "text": "Cea mai bună estimare nu este suma cea mai prudentă și nici suma pe care conducerea speră să o plătească. Pentru o populație numeroasă de obligații, valoarea așteptată ponderată cu probabilități poate descrie cel mai bine expunerea. Pentru o obligație individuală, rezultatul cel mai probabil poate fi punctul de pornire, ajustat dacă alte rezultate au o probabilitate semnificativă. Riscurile, incertitudinile, rambursările de la terți și efectul valorii în timp se tratează potrivit reglementării, fără dublarea ajustărilor."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Exemplu: garanții pentru produse",
+   "cap": [
+    "Scenariu",
+    "Probabilitate",
+    "Cost estimat",
+    "Valoare ponderată"
+   ],
+   "randuri": [
+    [
+     "fără defecte",
+     "75%",
+     "0",
+     "0"
+    ],
+    [
+     "defecte minore",
+     "20%",
+     "40.000",
+     "8.000"
+    ],
+    [
+     "defecte majore",
+     "5%",
+     "160.000",
+     "8.000"
+    ],
+    [
+     "Provizion estimat",
+     "",
+     "",
+     "16.000"
+    ]
+   ],
+   "numerice": [
+    2,
+    3,
+    4
+   ],
+   "total": true,
+   "nota": "Calculul este numai rezultatul numeric. Dosarul mai trebuie să probeze populația vânzărilor, istoricul defectelor, schimbările de produs și aprobarea ipotezelor."
+  },
+  {
+   "tip": "p",
+   "text": "Provizioanele se revizuiesc la fiecare dată a bilanțului și se ajustează la estimarea curentă. Dacă ieșirea nu mai este probabilă, provizionul se reia la venituri. El se folosește numai pentru scopul pentru care a fost constituit; nu este un rezervor din care se netezesc rezultatele între ani."
+  },
+  {
+   "tip": "h",
+   "text": "Evenimentele ulterioare datei bilanțului"
+  },
+  {
+   "tip": "p",
+   "text": "Perioada dintre data bilanțului și data la care situațiile financiare sunt autorizate pentru emitere nu este contabil «închisă» informațional. Evenimentele apărute în acest interval se clasifică după ceea ce demonstrează: condiții care existau la data bilanțului sau condiții născute ulterior."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ajustabil sau numai de prezentat",
+   "cap": [
+    "Eveniment",
+    "Ce demonstrează",
+    "Consecință"
+   ],
+   "randuri": [
+    [
+     "falimentul în februarie al unui client cu dificultăți grave la 31 decembrie",
+     "confirmă deprecierea creanței existentă la bilanț",
+     "se ajustează valoarea creanței la 31 decembrie"
+    ],
+    [
+     "hotărârea definitivă într-un litigiu care confirma obligația existentă la 31 decembrie",
+     "clarifică suma unei obligații prezente",
+     "se ajustează provizionul ori se recunoaște datoria"
+    ],
+    [
+     "incendiu semnificativ produs în februarie",
+     "creează o condiție nouă după bilanț",
+     "nu ajustează valorile la 31 decembrie; se prezintă natura și efectul estimat dacă este semnificativ"
+    ],
+    [
+     "decizia din martie de a cumpăra o filială",
+     "este o decizie ulterioară",
+     "prezentare dacă este semnificativă, fără recunoaștere retroactivă"
+    ]
+   ],
+   "nota": "Data facturii, data hotărârii ori data plății nu decid singure tratamentul. Întrebarea este ce condiție exista la data bilanțului."
+  },
+  {
+   "tip": "h",
+   "text": "Registrul evenimentelor ulterioare"
+  },
+  {
+   "tip": "p",
+   "text": "Un profesionist nu așteaptă ca evenimentele să ajungă întâmplător la contabilitate. Trimite solicitări scrise conducerii, juridicului, responsabilului comercial și trezoreriei; verifică încasările și plățile ulterioare, procesele-verbale ale organelor de conducere, contractele noi, notificările, portalurile instanțelor și corespondența cu finanțatorii. Registrul consemnează evenimentul, data aflării, condiția existentă, concluzia ajustabil/neajustabil, valoarea și prezentarea."
+  },
+  {
+   "tip": "h",
+   "text": "Continuitatea activității: o concluzie, nu o bifă"
+  },
+  {
+   "tip": "p",
+   "text": "Situațiile financiare sunt întocmite, în mod normal, presupunând că entitatea își continuă activitatea. Dacă organele de conducere decid lichidarea ori încetarea sau nu există o alternativă realistă, baza continuității nu mai este adecvată. Dacă există incertitudini care pot produce îndoieli semnificative, ele trebuie evaluate și prezentate clar. Declarația administratorului cerută de Legea contabilității nu înlocuiește analiza care o susține."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de continuitate",
+   "cap": [
+    "Zonă",
+    "Probă",
+    "Test profesional"
+   ],
+   "randuri": [
+    [
+     "Lichiditate",
+     "flux de numerar lunar, scadențar, linii de credit",
+     "sold minim, luni cu deficit, sensibilitate la încasări întârziate"
+    ],
+    [
+     "Finanțare",
+     "contracte, covenant-uri, confirmări și discuții documentate cu banca",
+     "încălcări, scadențe concentrate, surse neangajante tratate separat"
+    ],
+    [
+     "Operațional",
+     "comenzi, clienți principali, furnizori critici, capacitate și personal",
+     "dependențe, pierderi de contracte și planuri realizabile"
+    ],
+    [
+     "Legal și fiscal",
+     "litigii, executări, obligații restante, controale și eșalonări",
+     "ieșiri posibile și efect asupra capacității de plată"
+    ],
+    [
+     "Planuri ale conducerii",
+     "măsuri, responsabili, termene și aprobări",
+     "fezabilitate, controlul conducerii asupra măsurii și rezultate ulterioare"
+    ],
+    [
+     "Evenimente ulterioare",
+     "încasări, plăți, contracte și finanțări până la autorizare",
+     "confirmă sau infirmă ipotezele prognozei"
+    ]
+   ],
+   "nota": "O promisiune de aport fără hotărâre, resurse identificate și capacitate financiară demonstrată nu se tratează ca numerar disponibil."
+  },
+  {
+   "tip": "h",
+   "text": "Scenariu de bază, scenariu sever, plan de răspuns"
+  },
+  {
+   "tip": "p",
+   "text": "Prognoza de numerar pornește din soldul bancar reconciliat și din creanțe/datorii pe scadențe, nu din bugetul anual de venituri. Scenariul de bază folosește ipotezele aprobate. Scenariul sever, dar plauzibil, întârzie încasările, reduce vânzările ori elimină o finanțare nesigură. Pentru fiecare deficit se indică măsura de răspuns, data, responsabilul, suma și dacă măsura este sub controlul entității. Concluzia explică dacă există incertitudine semnificativă și ce prezentare este necesară."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "La închidere, obține declarații și probe din afara contabilității: scrisoarea avocatului, situația garanțiilor, reclamațiile, contractele oneroase, deciziile de restructurare comunicate, obligațiile de mediu și procesele-verbale ale conducerii. Reconciliază fiecare provizion cu soldul inițial, constituiri, utilizări, reluări și sold final; documentează separat deductibilitatea fiscală, care nu decide recunoașterea contabilă. Menține registrul evenimentelor ulterioare până la autorizarea situațiilor. Pentru continuitate, arhivează prognoza, sursele ipotezelor, testele de sensibilitate, planurile aprobate, rezultatele efective ulterioare și minuta discuției cu administratorul. O notă explicativă generică nu remediază lipsa analizei."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 53.1 — litigiu, client și lichiditate",
+   "enunt": [
+    "La 31 decembrie, societatea are un litigiu început în iunie. Avocatul estima o pierdere probabilă între 80.000 și 120.000 lei. În februarie, instanța stabilește definitiv 105.000 lei. Tot în februarie, un client important intră în insolvență; la 31 decembrie avea restanțe de 150 de zile și negocieri eșuate. Plata celor 105.000 produce un deficit de numerar în aprilie.",
+    "Stabilește efectele asupra situațiilor la 31 decembrie și asupra dosarului de continuitate."
+   ],
+   "rezolvare": [
+    "Hotărârea din februarie confirmă obligația existentă la 31 decembrie. Provizionul se ajustează la 105.000 lei, cu documentarea informației juridice și a datei autorizării situațiilor.",
+    "Insolvența clientului confirmă indicii de depreciere care existau la 31 decembrie. Se estimează valoarea recuperabilă și se ajustează creanța; simpla deschidere ulterioară a procedurii nu transformă condiția veche într-un eveniment nou.",
+    "Ambele ajustări intră în prognoza de numerar. Se testează scadența plății, recuperarea creanței, liniile de credit și măsurile realiste ale conducerii într-un scenariu sever, dar plauzibil.",
+    "Concluzia privind continuitatea nu rezultă automat din existența deficitului. Ea rezultă din amploare, durată, finanțări angajante, măsuri controlabile și prezentarea adecvată a incertitudinilor."
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "completitudinea obligațiilor incerte și adecvarea continuității",
+     "juridic, provizioane, evenimente ulterioare, fluxuri și scenarii",
+     "testează criteriile, estimarea, actualizarea și sensibilitatea lichidității",
+     "provizion folosit pentru netezire ori continuitate bazată pe promisiuni"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Provizionul cere o obligație prezentă dintr-un eveniment trecut, ieșire probabilă și estimare credibilă.",
+    "Provizionul se revizuiește și se folosește numai pentru scopul inițial; nu este instrument de netezire a profitului.",
+    "Evenimentul ulterior ajustează situațiile dacă probează o condiție existentă la bilanț; dacă produce una nouă, poate cere numai prezentare.",
+    "Continuitatea activității se susține cu fluxuri, scadențe, sensibilități și planuri fezabile, nu cu o declarație generică.",
+    "Tratamentul contabil și deductibilitatea fiscală se documentează separat."
+   ]
+  }
+ ]
+}

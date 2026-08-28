@@ -212,6 +212,25 @@
    "text": "Ordinea contează: concordanțele cu contabilitatea întâi, validatorul după. El e ultima poartă înaintea depunerii, nu prima verificare a corectitudinii."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "concordanța transversală a întregului set de raportare",
+     "toate situațiile, balanța, fluxul și modificările capitalului",
+     "reexecută concordanțele și investighează orice diferență, inclusiv zero forțat",
+     "formulare ajustate manual fără corectarea balanței-sursă"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

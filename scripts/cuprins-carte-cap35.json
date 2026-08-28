@@ -163,7 +163,7 @@
   {
    "tip": "contabil",
    "titlu": "Pentru contabil",
-   "text": "Cotele în vigoare sunt 21% standard și 11% redusă, aplicabile de la 1 august 2025 potrivit Legii 141/2025, iar plafonul de scutire pentru întreprinderile mici e de 395.000 lei. Patru observații de practică. Prima: exigibilitatea, nu faptul generator, determină luna în care taxa intră în decont — la livrări de bunuri și prestări de servicii cele două coincid de regulă, dar la avansuri exigibilitatea intervine la încasare, iar la achizițiile intracomunitare la data emiterii facturii sau, cel târziu, în a cincisprezecea zi a lunii următoare faptului generator; tratarea lor după data documentului e o sursă constantă de decalaje între contabilitate și decont. A doua: dreptul de deducere se exercită în decontul perioadei în care sunt îndeplinite condițiile de fond și de formă, dar poate fi exercitat și ulterior, în limita termenului de prescripție, printr-un decont ulterior sau prin decont rectificativ — distincția dintre cele două căi are consecințe procedurale, deci nu se alege la întâmplare. A treia: rândul de report din decont trebuie să corespundă exact soldului contului 4424 din balanța perioadei precedente; verificarea acestei corelații înainte de depunere prinde practic toate erorile de preluare. A patra: decontul se corectează prin decont rectificativ, dar acesta nu poate fi depus după începerea unei inspecții fiscale pentru perioada respectivă — termenul practic de corecție e, deci, mai scurt decât cel legal."
+   "text": "Cotele în vigoare sunt 21% standard și 11% redusă, aplicabile de la 1 august 2025 potrivit Legii 141/2025, iar plafonul de scutire pentru întreprinderile mici e de 395.000 lei. Patru observații de practică. Prima: exigibilitatea, nu faptul generator, determină luna în care taxa intră în decont — la livrări de bunuri și prestări de servicii cele două coincid de regulă, dar la avansuri exigibilitatea intervine la încasare, iar la achizițiile intracomunitare la data emiterii facturii sau, cel târziu, în a cincisprezecea zi a lunii următoare faptului generator; tratarea lor după data documentului e o sursă constantă de decalaje între contabilitate și decont. A doua: dreptul de deducere se exercită când sunt îndeplinite condițiile de fond și de formă și poate fi exercitat ulterior, în limita legală, prin decontul unei perioade ulterioare; formularul D300 nu se depune ca decont rectificativ pentru aceeași perioadă. A treia: omisiunile și corecțiile prevăzute de instrucțiuni se duc, după natura lor, în rândurile de regularizări ale unui decont ulterior, iar erorile materiale strict definite — de exemplu erori de calcul ori de preluare — urmează procedura cererii de corectare soluționate de organul fiscal potrivit OPANAF nr. 3.604/2015. A patra: rândul de report trebuie să corespundă exact soldului de TVA din decontul precedent și balanță; înaintea oricărei corecții se stabilește cauza, fiindcă regularizarea fiscală, cererea pentru eroare materială și corecția evidenței contabile nu sunt interschimbabile."
   },
   {
    "tip": "h",
@@ -297,6 +297,25 @@
   {
    "tip": "p",
    "text": "Regularizarea avansului se face în chiar factura finală, nu ca operațiune separată — și de aceea tipul de document pentru factura finală cu avans e distinct de cel obișnuit. E același tipar ca la descărcarea gestiunii din capitolul 11: o linie care nu se vede din document, dar fără de care rezultatul e fals."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "înregistrarea TVA numai cu drept și documentație suficiente",
+     "facturi, registru TVA, statut partener, destinație și perioadă",
+     "testează exigibilitatea, dreptul, cota și restricțiile",
+     "TVA dedus numai fiindcă apare distinct pe factură"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

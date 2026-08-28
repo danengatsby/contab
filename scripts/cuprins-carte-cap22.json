@@ -13,7 +13,7 @@
   },
   {
    "tip": "p",
-   "text": "Rezultatul: angajații ale căror fișe fuseseră completate normal, fără ca cineva să atingă acel câmp, nu primeau nicio deducere. La un salariu de 5.000 de lei brut, asta înseamnă 43 de lei în plus la impozit în fiecare lună. Peste 500 de lei pe an, de fiecare angajat, plătiți statului fără să fie datorați — și scăzuți din netul unor oameni care nu aveau cum să afle."
+   "text": "Rezultatul: angajații ale căror fișe fuseseră completate normal, fără ca cineva să atingă acel câmp, nu primeau nicio deducere. În august 2026, la un salariu brut de 5.000 lei și fără persoane în întreținere, asta înseamnă 57 lei în plus la impozit în fiecare lună — 684 lei pe an de persoană, plătiți statului fără să fie datorați și scăzuți din netul unor oameni care nu aveau cum să afle."
   },
   {
    "tip": "cheie",
@@ -60,7 +60,7 @@
   },
   {
    "tip": "p",
-   "text": "La un salariu de 5.000 de lei, cu salariul minim la 4.050 și fără persoane în întreținere, deducerea e de 430 de lei — iar impozitul scade de la 325 la 282. Cu două persoane în întreținere, deducerea urcă la 640, iar impozitul coboară la 261."
+   "text": "La un salariu de 5.000 lei, cu salariul minim de 4.325 lei aplicabil din iulie 2026, deducerea de bază este 570 lei fără persoane în întreținere — iar impozitul scade de la 325 la 268 lei. Cu două persoane în întreținere, deducerea urcă la 1.000 lei, iar impozitul coboară la 225 lei. Calculul se reface automat când se schimbă salariul minim; o sumă copiată din semestrul anterior devine imediat greșită."
   },
   {
    "tip": "h",
@@ -144,7 +144,7 @@
    "rezolvare": [
     "Unul singur: cel de la al doilea loc de muncă. Deducerea se acordă la funcția de bază, deci acolo zero e răspunsul corect.",
     "Celelalte cinci sunt greșite. Cei trei cu salariul minim au dreptul la deducerea maximă. Cei doi cu 5.000 de lei brut sunt sub plafonul de salariu minim plus 2.000, deci au dreptul la o deducere diminuată, dar nu nulă.",
-    "Costul erorii, la cei doi cu 5.000 de lei: circa 43 de lei pe lună fiecare, adică peste 500 de lei pe an de persoană. La cei trei cu salariul minim, mai mult.",
+    "Costul erorii, în august 2026, la cei doi cu 5.000 lei: 57 lei pe lună fiecare, adică 684 lei pe an de persoană. La cei trei cu salariul minim, mai mult.",
     "Cum se prinde: nu prin recalcularea statului, ci uitându-te la o singură coloană. Zero acolo unde n-ar trebui e o întrebare de pus imediat — iar întrebarea nu e „de ce”, ci „de când”."
    ]
   },
@@ -158,7 +158,7 @@
   },
   {
    "tip": "tabel",
-   "titlu": "Deducerea pentru un angajat fără persoane în întreținere (salariu minim 4.050)",
+   "titlu": "Deducerea pentru un angajat fără persoane în întreținere (salariu minim 4.325, semestrul II 2026)",
    "cap": [
     "Salariu brut",
     "Deducere",
@@ -166,32 +166,32 @@
    ],
    "randuri": [
     [
-     "4.050",
-     "810",
-     "81,00"
+     "4.325",
+     "870",
+     "87,00"
     ],
     [
-     "4.300",
-     "710",
-     "71,00"
+     "4.575",
+     "760",
+     "76,00"
     ],
     [
-     "4.800",
-     "510",
-     "51,00"
+     "4.825",
+     "650",
+     "65,00"
     ],
     [
-     "5.300",
-     "310",
-     "31,00"
+     "5.325",
+     "440",
+     "44,00"
     ],
     [
-     "5.800",
-     "110",
-     "11,00"
+     "5.825",
+     "220",
+     "22,00"
     ],
     [
-     "6.050 și peste",
+     "6.325 și peste",
      "0",
      "0,00"
     ]
@@ -201,7 +201,7 @@
     2,
     3
    ],
-   "nota": "Scăderea e liniară: fiecare 250 de lei de brut în plus taie exact 100 de lei din deducere, până la plafonul de salariu minim plus 2.000."
+   "nota": "Deducerea se diminuează progresiv și se rotunjește potrivit regulilor fiscale. Tabelul este datat: o schimbare a salariului minim mută toate pragurile și toate sumele."
   },
   {
    "tip": "h",
@@ -223,9 +223,9 @@
    "randuri": [
     [
      "5.000 → 5.250",
-     "430 → 330",
-     "136,25",
-     "54,5%"
+     "570 → 460",
+     "135,25",
+     "54,1%"
     ],
     [
      "7.000 → 7.250",
@@ -263,6 +263,25 @@
   {
    "tip": "p",
    "text": "Consecința pentru angajator e o obligație de dosar, nu de calcul: declarația pe propria răspundere și documentele stau la dosarul de personal, fiindcă ele sunt temeiul oricărei deduceri peste nivelul de bază. Fără ele, la un control, deducerea acordată devine impozit datorat."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "aplicarea individuală a deducerilor și facilităților salariale",
+     "declarații salariat, persoane în întreținere, funcție de bază și calcul",
+     "verifică eligibilitatea lunar și reexecută deducerea personală",
+     "aceeași deducere copiată tuturor sau păstrată după schimbarea situației"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

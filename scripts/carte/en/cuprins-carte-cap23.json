@@ -17,11 +17,11 @@
   },
   {
    "tip": "p",
-   "text": "An asset becomes a fixed asset when it meets two conditions at the same time: it is intended to be used for more than one year, and its entry value exceeds a threshold set by government decision — currently 2,500 lei."
+   "text": "For accounting purposes, an item is recognised as a fixed asset when the company controls it, expects economic benefits from its use and intends to use it for more than one year; the capitalisation threshold is set by accounting policy with regard to materiality. The tax concept is narrower: from 2026, a depreciable fixed asset must have a tax value of at least 5.000 lei under Article 28(2)(b) of the Tax Code, a limit that may be updated annually for inflation by government decision. Document the two tests separately."
   },
   {
    "tip": "p",
-   "text": "The conditions are cumulative, and this produces a few surprising results. A phone worth 2,000 lei used for three years is not a fixed asset: it is below the threshold, so it goes directly to expense. A stock of goods worth 200,000 lei is not a fixed asset: it is not intended for use, but for sale."
+   "text": "A 2.000 lei telephone used for three years may be expensed immediately under the company’s approved capitalisation threshold, while remaining a controlled item tracked in the inventory records if policy requires. A 200.000 lei stock of merchandise is not a fixed asset, regardless of amount: it is held for sale rather than use. Value alone does not determine classification."
   },
   {
    "tip": "tabel",
@@ -154,6 +154,18 @@
   },
   {
    "tip": "h",
+   "text": "Special 2026 rule: superaccelerated depreciation"
+  },
+  {
+   "tip": "p",
+   "text": "For new assets in subgroup 2.1 — technological equipment, machinery, tools and production installations — and subgroup 2.4 — animals and plantations — acquired or produced and commissioned in 2026, Article 28(8^1) of the Tax Code permits superaccelerated depreciation: up to 65% of the tax value in the first year, with the remaining value allocated over the remaining normal useful life. This is a temporary tax facility; the fixed asset register must separately identify eligible assets and their commissioning dates."
+  },
+  {
+   "tip": "cheie",
+   "text": "The 5.000 lei threshold and depreciation of up to 65% are TAX RULES applicable from 2026. The ACCOUNTING recognition policy remains a documented decision of the entity; the two records may legitimately carry different values."
+  },
+  {
+   "tip": "h",
    "text": "The Two Depreciations That Don't Match"
   },
   {
@@ -182,8 +194,8 @@
   },
   {
    "tip": "contabil",
-   "titlu": "For the Accountant",
-   "text": "The depreciation regime is governed by art. 28 of the Tax Code, and the normal useful lives come from the catalog approved by Government Decision (HG) 2139/2004, as subsequently amended. Four practical observations. First: the catalog sets ranges, and the chosen useful life remains the same throughout the asset's life, except for the expressly provided exceptions — modernizations that increase the entry value can extend the useful life, but this is revised, not restarted. Second: declining-balance depreciation is applied with coefficients of 1.5, 2.0, or 2.5 depending on the normal useful life — up to 5 years, between 5 and 10, and over 10, respectively — and requires switching to the straight-line regime in the year when straight-line depreciation of the remaining value becomes greater than the declining-balance amount; omitting this switch leaves an undepreciated remainder at the end of the useful life. Third: the divergence between book and tax depreciation must be tracked cumulatively, for each asset, not just for the current year — upon disposal, it is the remaining tax value, not the book value, that is compared with the sale price to determine the tax result. Fourth: for M1 vehicles, the cap applies monthly and is not carried forward — a month without depreciation does not increase the following month's cap, and annual cumulation using a cap of twelve times 1,500 produces a deduction larger than the legal one."
+   "titlu": "For the accountant",
+   "text": "Tax depreciation is governed by Article 28 of the Tax Code, while normal useful-life ranges come from the catalogue approved by HG 2139/2004. For 2026, OUG 8/2026 increased the tax threshold for a fixed asset to 5.000 lei and introduced superaccelerated depreciation of up to 65% in the first year for eligible new assets in subgroups 2.1 and 2.4. Five practical points follow. First, the tax threshold does not replace the accounting capitalisation policy; differences are tracked in the tax records register. Second, the catalogue provides ranges, and the selected useful life must reflect expected use rather than tax minimisation. Third, declining-balance depreciation requires switching to straight-line when the latter becomes higher; failing to switch leaves an amount undepreciated at the end. Fourth, track accounting–tax differences cumulatively for each asset, including on disposal. Fifth, the 1.500 lei cap for M1 vehicles applies monthly and is not carried forward. The asset file includes the invoice, receipt, commissioning report, catalogue classification, approved useful life and method, accounting and tax calculations, improvements, stocktaking evidence and disposal document."
   },
   {
    "tip": "h",
@@ -297,6 +309,25 @@
   {
    "tip": "p",
    "text": "All three limitations are lifted if the vehicle is used EXCLUSIVELY for business purposes, and the burden of proof lies with the company: a trip log, or other records showing the routes traveled. Without it, the limitation applies — not as a penalty, but because the law presumes mixed use. It's one of the few situations where a daily record is worth, in money, more than any optimization."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "existence, classification, duration and depreciation of assets",
+     "invoices, receipt, entry into service, register and technical report",
+     "inspect, recalculate and separate accounting from tax treatment",
+     "the tax threshold used as the sole accounting criterion for capitalisation"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

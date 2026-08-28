@@ -269,6 +269,25 @@
    "text": "Echilibrul se verifică singur. Corectitudinea se verifică prin alegere — iar alegerea bună e cea care merge unde eroarea ar costa cel mai mult, nu unde e cel mai ușor de căutat."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "detectarea erorilor care nu rup egalitatea contabilă",
+     "analize de tendință, confirmări, documente și teste de clasificare",
+     "folosește proceduri pe aserțiuni, nu doar total debit egal credit",
+     "concluzie de corectitudine bazată exclusiv pe balanță închisă"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

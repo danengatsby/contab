@@ -213,6 +213,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "integritatea egalității debit–credit și a reportării rezultatului",
+     "balanțe înainte/după închidere și note de reportare",
+     "recalculează totalurile și urmărește rezultatul în capitaluri proprii",
+     "egalitate obținută prin note manuale fără document și explicație"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

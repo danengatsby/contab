@@ -263,6 +263,25 @@
    "text": "Spațiul privat virtual e cutia poștală, nu arhiva. Ce a intrat acolo se descarcă și se pune în dosar; altfel dovada trăiește pe un server care nu e al tău."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "dovada depunerii valide și urmărirea mesajelor autorității",
+     "fișier semnat, index, recipisă, erori, retransmiteri și confirmări",
+     "urmărește fiecare depunere până la recipisa validă și reconciliază versiunea acceptată",
+     "fișier încărcat considerat depus fără recipisă ori cu erori nesoluționate"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

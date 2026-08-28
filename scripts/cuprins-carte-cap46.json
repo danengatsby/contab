@@ -237,6 +237,25 @@
    "text": "Trecerea dintr-o categorie în alta nu se face la prima depășire: criteriile trebuie depășite două exerciții consecutive. Regula există tocmai ca un an bun să nu schimbe regimul de raportare al unei firme care revine, anul următor, la dimensiunea ei obișnuită."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "existența, evaluarea și clasificarea poziției financiare",
+     "balanță, bilanț, scadențare și foi conducătoare",
+     "reconciliază rândurile și testează curent/necurent și compensările",
+     "activ egal pasiv folosit ca unic test de corectitudine"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

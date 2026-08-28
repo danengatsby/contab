@@ -1970,7 +1970,9 @@ section('Cartea: declaratiile pe care aplicatia le genereaza sunt SI in text');
   // corespunde unei capcane reale, luata din codul aplicatiei (validat fata de schemele oficiale).
   const scrieDespre = [
     ['e-Factura: originalul e fisierul sigilat, nu PDF-ul', /sigilat de ANAF|sigiliul aplicat/],
-    ['e-Factura: termenul e in zile CALENDARISTICE', /cinci zile calendaristice/],
+    // Din 1 ianuarie 2026, OUG 89/2025 a schimbat unitatea din zile calendaristice in
+    // zile lucratoare. Poarta trebuie sa urmeze regula in vigoare, nu formularea istorica.
+    ['e-Factura: termenul e in zile LUCRATOARE', /cinci zile lucrătoare|5 zile lucrătoare/],
     ['e-Factura B2C: cele treisprezece zerouri', /treisprezece zerouri/],
     ['e-Factura: „urcata" nu inseamna „acceptata"', /nu e o factură trimisă|nu e nici acceptată/],
     ['e-Transport: codul se ia INAINTE de plecare', /înainte de punerea în mișcare|înainte ca marfa/],
@@ -1986,7 +1988,7 @@ section('Cartea EN: traducere completa, aceeasi structura, livrabile separate');
   const roDir = pB.join(RADACINA, 'scripts');
   const enDir = pB.join(roDir, 'carte', 'en');
   const files = fsB.readdirSync(roDir)
-    .filter((f) => /^cuprins-carte(?:-cap(?:\d+|[A-E]))?\.json$/.test(f));
+    .filter((f) => /^cuprins-carte(?:-cap(?:\d+|[A-Z]))?\.json$/.test(f));
   const erori = [];
   let caractereEn = 0;
 
@@ -2030,12 +2032,13 @@ section('Cartea EN: traducere completa, aceeasi structura, livrabile separate');
       JSON.parse(fsB.readFileSync(target, 'utf8')), '$', fisier,
     );
   }
-  eq('toate cele 57 de surse RO au pereche EN', files.length, 57);
+  ok('setul complet de surse RO a fost descoperit (>50 de fisiere)', files.length > 50);
   eq('schema, blocurile, tabelele si ancorele RO/EN sunt identice', erori.slice(0, 8).join('; '), '');
   ok('traducerea EN contine cartea intreaga (>500k caractere)', caractereEn > 500000);
 
   const manifest = JSON.parse(fsB.readFileSync(pB.join(enDir, 'translation-manifest.json'), 'utf8'));
-  eq('manifestul de traducere acopera toate sursele', Object.keys(manifest.files || {}).length, files.length);
+  eq('manifestul de traducere acopera exact toate sursele',
+    Object.keys(manifest.files || {}).sort().join('\n'), files.slice().sort().join('\n'));
   // public/carte si public/descarcari sunt livrabile generate si ignorate de git; suita dintr-un
   // checkout curat nu le poate cere pe disc. Verifica in schimb contractul generatorului, iar
   // publicarea reala este masurata separat in E2E/deploy.

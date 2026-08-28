@@ -127,7 +127,7 @@
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "The distribution of the result is made in accordance with accounting regulations and the decision of the general meeting, and the setting up of the legal reserve is mandatory under the conditions of Companies Law no. 31/1990 and tax-deductible under Art. 26 para. (1) letter a) of the Fiscal Code. Four observations. First: the calculation base of the reserve is the gross accounting profit, and the cumulative cap is 20% of the subscribed and paid-up share capital — a company that reaches the cap no longer sets up the reserve, and the tax deduction ceases along with the obligation. Second: the dividend tax is 16% for dividends distributed starting January 1, 2026, under Law 141/2025, and the payment deadline is tied to the date the dividend is paid, with a special rule for dividends distributed but not paid by the end of the financial year — this last rule is the most frequently overlooked, because it requires payment of the tax even if the shareholder has received nothing. Third: dividends distributed on an interim basis are adjusted after the approval of the annual financial statements, and amounts distributed in excess must be returned; until returned, they constitute a receivable from the shareholder, with implications regarding income from other sources if not returned. Fourth: the distribution cannot exceed the distributable profit, determined after covering losses carried forward and setting up legal reserves; distribution beyond this limit triggers liability for those who approved it, beyond the tax consequences."
+   "text": "Profit is appropriated under the accounting regulations and the shareholders’ resolution. The legal reserve is mandatory under Company Law and deductible within the limits of Article 26 of the Tax Code. From 2026, the distribution file must support six tests. First, the reserve is 5% of gross profit until it reaches 20% of subscribed and paid-in capital. Second, dividend tax is 16% for distributions from 1 January 2026, including the rule for dividends distributed but unpaid at year-end. Third, interim dividends are settled against the annual financial statements and any excess is repaid. Fourth, current profit is distributed only after covering retained losses and establishing legal and statutory reserves. Fifth, when net assets are below half of subscribed share capital, annual or interim dividends may be paid only after net assets are restored. Sixth, a company making quarterly distributions may not lend to shareholders or other related parties until differences are settled; breach of the rules introduced by Law 239/2025 may trigger joint liability and fines."
   },
   {
    "tip": "h",
@@ -252,6 +252,70 @@
    "text": "The legal reserve is not an expense and does not leave the company. It is part of the earnings that the law prevents from being distributed — a buffer for creditors, not a loss for the shareholders."
   },
   {
+   "tip": "h",
+   "text": "Distribution tests applicable in 2026"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What must be in the file before payment",
+   "cap": [
+    "Test",
+    "Minimum evidence",
+    "Conclusion that blocks payment"
+   ],
+   "randuri": [
+    [
+     "Distributable profit",
+     "approved financial statements, trial balance, shareholders’ resolution and reserve calculation",
+     "retained loss or reserves not established"
+    ],
+    [
+     "Net assets",
+     "total assets minus total liabilities, reconciled to the approved financial statements",
+     "net assets below half of subscribed capital"
+    ],
+    [
+     "Interim dividends",
+     "interim financial statements and settlement calculation",
+     "prior differences still unsettled"
+    ],
+    [
+     "Related-party loans",
+     "account 451/455 ledgers, contracts, maturities and confirmations",
+     "loan granted to a related party during the restricted period"
+    ],
+    [
+     "Withholding tax",
+     "16% calculation, payment order, D100 and records by beneficiary",
+     "net payment with no withholding or no scheduled tax deadline"
+    ]
+   ],
+   "nota": "The tests are cumulative. Cash in the bank does not prove the existence of distributable profit or that net assets permit payment."
+  },
+  {
+   "tip": "p",
+   "text": "Law 239/2025 also introduced new minimum share-capital thresholds for SRLs: 500 lei for newly incorporated companies and at least 5.000 lei when reported net turnover exceeds 400.000 lei. Existing companies have the statutory transition period to comply, while companies increasing capital by 31 December 2026 benefit from a reduced publication fee. Keep this control in the same file because capital affects both the net-assets limit and the legal-reserve ceiling."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "lawful appropriation and payment of profit",
+     "approved financial statements, resolutions, reserves, net-assets calculation, account 457 and payments",
+     "recompute distributable profit, restrictions and tax",
+     "dividend paid before the tests, or shareholder loan repaid while legally restricted"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [
@@ -260,7 +324,8 @@
     "The legal reserve comes first: 5% of GROSS profit, up to 20% of the subscribed and paid-up share capital; it is unavailable.",
     "Between the gross profit and the money reaching the shareholder there are TWO taxes: 16% on profit and 16% on dividends.",
     "A loss carried forward blocks distribution until it is covered.",
-    "Interim dividends are an advance: if the final result is smaller, the difference must be returned."
+    "Interim dividends are an advance: if the final result is smaller, the difference must be returned.",
+    "In 2026, the payment shall also be blocked when the net asset is less than half of the capital; interim distributions temporarily limit loans to related parties."
    ]
   }
  ]

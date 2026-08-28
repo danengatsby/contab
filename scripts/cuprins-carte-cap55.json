@@ -1,0 +1,332 @@
+{
+ "parte": "Partea XII · Raționamentul profesionist · strat transversal",
+ "nr": "55",
+ "titlu": "Dosarul de lucru și revizia profesionistului",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "O balanță poate fi corectă fără ca nimeni să mai poată explica de ce. Dosarul de lucru transformă rezultatul dintr-o colecție de fișiere într-un lanț de afirmații, probe, proceduri și concluzii pe care un alt profesionist îl poate reface."
+  },
+  {
+   "tip": "cheie",
+   "text": "O bifă dovedește că cineva a bifat. O foaie de lucru dovedește ce a fost verificat, față de ce criteriu, cu ce probă, de către cine, când și cu ce concluzie."
+  },
+  {
+   "tip": "h",
+   "text": "Aserțiunile: ce afirmă, de fapt, o cifră"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Aserțiunile folosite la revizie",
+   "cap": [
+    "Aserțiune",
+    "Întrebarea",
+    "Procedură tipică"
+   ],
+   "randuri": [
+    [
+     "Existență / apariție",
+     "activul, datoria sau tranzacția există?",
+     "inspecție, confirmare externă, document și dovada livrării"
+    ],
+    [
+     "Completitudine",
+     "lipsește ceva ce trebuia înregistrat?",
+     "căutare de datorii neînregistrate, secvențe, plăți ulterioare"
+    ],
+    [
+     "Drepturi și obligații",
+     "entitatea controlează activul ori datorează suma?",
+     "contracte, titluri, clauze, confirmări juridice"
+    ],
+    [
+     "Evaluare și alocare",
+     "valoarea, estimarea, cursul și ajustarea sunt corecte?",
+     "recalcul, vechime, recuperabilitate, surse externe"
+    ],
+    [
+     "Separarea exercițiilor",
+     "tranzacția este în perioada potrivită?",
+     "documente înainte și după închidere, recepții, expediții"
+    ],
+    [
+     "Clasificare și prezentare",
+     "contul, scadența și nota explicativă spun natura reală?",
+     "contract, mapare pe formular și listă de prezentări"
+    ],
+    [
+     "Acuratețe",
+     "datele, cantitățile și calculele sunt exacte?",
+     "recalcul și confruntare cu sursa"
+    ]
+   ],
+   "nota": "Procedura se proiectează pornind de la aserțiune. Confirmarea unui client testează bine existența creanței, dar slab completitudinea datoriilor către furnizori."
+  },
+  {
+   "tip": "h",
+   "text": "De la risc la procedură"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Matricea de planificare",
+   "cap": [
+    "Element",
+    "Conținut"
+   ],
+   "randuri": [
+    [
+     "Populație și sold",
+     "conturi, rulaje, număr de elemente, monedă și locație"
+    ],
+    [
+     "Risc inerent",
+     "complexitate, estimare, fraudă, volum, schimbare legislativă și tranzacții neobișnuite"
+    ],
+    [
+     "Control relevant",
+     "cine previne ori detectează eroarea, frecvența și dovada funcționării"
+    ],
+    [
+     "Aserțiune expusă",
+     "ce poate fi greșit: existență, completitudine, evaluare, cut-off sau prezentare"
+    ],
+    [
+     "Răspuns",
+     "procedura, selecția, perioada, responsabilul și proba așteptată"
+    ],
+    [
+     "Rezultat",
+     "excepții, extinderea testului, ajustare și concluzie"
+    ]
+   ],
+   "nota": "Un sold mare nu este automat risc mare, iar un sold zero poate avea risc de completitudine ridicat. Planificarea nu este sortarea balanței descrescător."
+  },
+  {
+   "tip": "h",
+   "text": "Materialitatea de lucru și erorile necorectate"
+  },
+  {
+   "tip": "p",
+   "text": "Pragul situațiilor financiare definește ce ar putea influența utilizatorul. Materialitatea de lucru este mai mică, pentru a reduce riscul ca erorile nedetectate și necorectate să depășească împreună pragul final. Se stabilește și un nivel sub care diferențele sunt vădit neglijabile, fără ca acesta să elimine erorile calitative, frauda ori tranzacțiile cu părți afiliate."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Registrul diferențelor",
+   "cap": [
+    "Câmp",
+    "Întrebarea de revizie"
+   ],
+   "randuri": [
+    [
+     "Fapt și cauză",
+     "este eroare izolată sau simptomul unei reguli greșite aplicate întregii populații?"
+    ],
+    [
+     "Valoare cunoscută/proiectată",
+     "cât este eroarea identificată și ce indică pentru elementele netestate?"
+    ],
+    [
+     "Perioade și declarații",
+     "afectează anul curent, anii precedenți, TVA, profit, salarii ori raportări electronice?"
+    ],
+    [
+     "Calitativ",
+     "schimbă profitul în pierdere, un prag legal, un covenant, remunerarea sau natura unei relații?"
+    ],
+    [
+     "Corectare",
+     "nota a fost postată, verificată și propagată în toate livrabilele?"
+    ],
+    [
+     "Nedecis/necorectat",
+     "cine a acceptat riscul, cu ce motiv și ce efect agregat rămâne?"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Proba: suficientă și adecvată"
+  },
+  {
+   "tip": "p",
+   "text": "Suficiența privește cantitatea; adecvarea privește relevanța și credibilitatea. O sută de copii de facturi interne nu compensează lipsa dovezii că serviciul a fost prestat. Proba obținută direct dintr-o sursă independentă este, de regulă, mai credibilă decât explicația verbală; originalul controlat este mai puternic decât un fișier fără proveniență; proba documentară este mai ușor de verificat decât memoria. Nicio ierarhie nu este absolută: procedura trebuie să răspundă aserțiunii."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce face o foaie de lucru autonomă",
+   "cap": [
+    "Componentă",
+    "Standard practic"
+   ],
+   "randuri": [
+    [
+     "Titlu și obiectiv",
+     "spune soldul, perioada, entitatea și aserțiunea testată"
+    ],
+    [
+     "Sursa",
+     "identifică exact raportul, data extragerii, parametrii și proprietarul datelor"
+    ],
+    [
+     "Legătura cu balanța",
+     "totalul foii se reconciliază cu contul și explică orice diferență"
+    ],
+    [
+     "Procedura",
+     "descrie ce s-a făcut, nu numai rezultatul «OK»"
+    ],
+    [
+     "Selecția",
+     "definește populația, metoda, criteriul și elementele alese"
+    ],
+    [
+     "Excepții",
+     "arată natura, valoarea, cauza, extinderea și rezolvarea"
+    ],
+    [
+     "Concluzia",
+     "răspunde obiectivului și indică ajustările/prezentările"
+    ],
+    [
+     "Întocmire și revizie",
+     "nume, dată, semnătură, observații și dovada închiderii lor"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Eșantionarea fără autoamăgire"
+  },
+  {
+   "tip": "p",
+   "text": "Selecția nu începe cu «primele zece facturi». Se definește populația completă și scopul testului. Elementele individual semnificative sau cu risc specific se testează integral. Restul poate fi selectat aleator, sistematic ori orientat pe risc, dar concluzia trebuie limitată la ceea ce permite metoda. O selecție orientată numai spre excepții găsește probleme, dar nu susține o concluzie statistică asupra întregii populații."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Exemplu de stratificare a furnizorilor",
+   "cap": [
+    "Strat",
+    "Răspuns"
+   ],
+   "randuri": [
+    [
+     "Solduri individual semnificative",
+     "testare 100%, confirmare ori proceduri alternative"
+    ],
+    [
+     "Solduri debitoare/neobișnuite și afiliați",
+     "testare orientată pe natură, clasificare și recuperabilitate"
+    ],
+    [
+     "Restul populației",
+     "selecție reprezentativă raportată la obiectiv și materialitatea de lucru"
+    ],
+    [
+     "Sold zero, risc de completitudine",
+     "plăți ulterioare, documente neînregistrate și secvențe, nu confirmarea soldului zero"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Revizia: întocmitorul nu își poate vedea toate presupunerile"
+  },
+  {
+   "tip": "p",
+   "text": "Revizorul verifică obiectivul, sursa, legătura cu balanța, logica procedurii, concluzia și propagarea ajustărilor. Nu repetă mecanic fiecare pas, dar aprofundează zonele de judecată, estimările, excepțiile, tranzacțiile neobișnuite și schimbările față de anul precedent. Observația de revizie rămâne deschisă până când răspunsul este probat și efectul a fost urmărit; răspunsul «discutat» nu este rezolvare."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Piramida dosarului anual",
+   "cap": [
+    "Nivel",
+    "Conținut",
+    "Legătură"
+   ],
+   "randuri": [
+    [
+     "Situații financiare și declarații",
+     "livrabile semnate și recipise",
+     "fiecare rând trimite la o foaie conducătoare"
+    ],
+    [
+     "Foi conducătoare",
+     "solduri pe rubrici, mișcări, comparații și concluzii",
+     "se leagă de balanța finală și de foile detaliate"
+    ],
+    [
+     "Foi detaliate",
+     "reconcilieri, estimări, selecții, confirmări și calcule",
+     "identifică probele suport"
+    ],
+    [
+     "Probe",
+     "contracte, facturi, extrase, răspunsuri externe, minute",
+     "index unic și proveniență"
+    ],
+    [
+     "Registrul problemelor",
+     "erori, puncte deschise, ajustări și decizii",
+     "arată închiderea și aprobarea fiecărui punct"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Închiderea dosarului"
+  },
+  {
+   "tip": "p",
+   "text": "Înainte de semnătură, profesionistul verifică dacă balanța finală este aceeași cu cea folosită în toate livrabilele, dacă toate ajustările aprobate sunt postate, dacă diferențele necorectate sunt agregate, dacă prezentările sunt complete, dacă evenimentele ulterioare au fost actualizate și dacă declarația conducerii răspunde problemelor reale. După depunere, dosarul se blochează logic: completările ulterioare indică autorul, data și motivul, fără ștergerea urmei inițiale."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Indexează dosarul permanent separat de dosarul exercițiului. În permanent păstrează actele constitutive, contractele pe termen lung, politicile și descrierea sistemelor; în anual, balanța, foile conducătoare, testele, estimările, fiscalitatea, situațiile și recipisele. Fiecare foaie are obiectiv, aserțiune, sursă, procedură, rezultat, concluzie, întocmitor și revizor. Leagă rândurile situațiilor de balanță și declarațiile de registrele lor. Înregistrează toate diferențele, inclusiv pe cele corectate, pentru a identifica erori sistemice. Păstrează o listă unică a punctelor deschise și nu semna cât timp un punct material nu are probă, ajustare ori concluzie aprobată."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 55.1 — proiectarea reviziei creanțelor",
+   "enunt": [
+    "Soldul clienților este 2.400.000 lei, format din 1.800 de poziții. Doi clienți reprezintă 900.000 lei; există solduri creditoare de 70.000 lei, creanțe afiliate de 250.000 lei și 400.000 lei cu vechime peste 180 de zile. Pragul de lucru este 120.000 lei.",
+    "Proiectează răspunsul de revizie, fără a calcula o mărime statistică a eșantionului."
+   ],
+   "rezolvare": [
+    "Se reconciliază mai întâi lista completă cu balanța și se verifică data/parametrii raportului. Fără populație completă, selecția nu are bază.",
+    "Cei doi clienți mari se testează integral. Soldurile creditoare se analizează pentru clasificare și datorii/avansuri. Afiliații se testează separat pentru existență, condiții și prezentare. Creanțele vechi se testează pentru evaluare și încasări ulterioare.",
+    "Restul populației intră într-o selecție reprezentativă adecvată existenței și acurateței. Pentru completitudinea veniturilor și cut-off se proiectează proceduri separate pe documentele din jurul datei bilanțului; confirmarea soldurilor nu acoperă singură aceste aserțiuni.",
+    "Excepțiile se evaluează individual, se proiectează când metoda o cere și se agregă în registrul diferențelor. Concluzia răspunde distinct existenței, evaluării, clasificării și prezentării."
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "trasabilitatea concluziei profesionale până la fiecare rând raportat",
+     "index, matrice de risc, foi conducătoare, probe și puncte deschise",
+     "selectează un rând și reface balanța, procedura, excepțiile și aprobarea",
+     "bife fără procedură, sursă, autor, dată ori concluzie"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Revizia pornește de la risc și aserțiune, nu de la cont și mărimea soldului.",
+    "Proba suficientă nu este neapărat adecvată; relevanța față de aserțiune decide valoarea ei.",
+    "O foaie autonomă identifică sursa, procedura, selecția, excepțiile, concluzia, întocmitorul și revizorul.",
+    "Erorile se agregă și calitativ, nu numai numeric; o cauză sistemică cere extinderea procedurii.",
+    "Dosarul final trebuie să permită refacerea drumului de la document și raționament până la fiecare rând semnat."
+   ]
+  }
+ ]
+}

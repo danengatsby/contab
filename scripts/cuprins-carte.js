@@ -64,7 +64,7 @@ const L = EN ? {
   stepsAria: 'Previous and next chapter', downloadPdf: 'Download PDF (B5, print-ready)',
   downloadDocx: 'Download DOCX', downloadHtml: 'Download HTML (one file, offline)',
   siteUrl: 'https://contabo.space/carte/en/', sitePath: path.join('public', 'carte', 'en'),
-  altUrl: '/carte/', altLabel: 'RO', currentLabel: 'EN', pdfMarker: /^\s*(Chapter\s+\d+|Appendix\s+[A-E])\s*$/m,
+  altUrl: '/carte/', altLabel: 'RO', currentLabel: 'EN', pdfMarker: /^\s*(Chapter\s+\d+|Appendix\s+[A-F])\s*$/m,
 } : {
   chapter: 'Capitolul ', appendix: 'Anexa ', appendices: 'Anexe', part: 'Partea', partUpper: 'PARTEA',
   solution: 'Rezolvare', lang: 'ro', locale: 'ro-RO', subject: 'Cuprins — carte de prezentare a contabilitatii',
@@ -74,7 +74,7 @@ const L = EN ? {
   stepsAria: 'Capitolul precedent și următor', downloadPdf: 'Descarcă PDF (B5, de tipar)',
   downloadDocx: 'Descarcă DOCX', downloadHtml: 'Descarcă HTML (un fișier, offline)',
   siteUrl: 'https://contabo.space/carte/', sitePath: path.join('public', 'carte'),
-  altUrl: '/carte/en/', altLabel: 'EN', currentLabel: 'RO', pdfMarker: /^\s*(Capitolul\s+\d+|Anexa\s+[A-E])\s*$/m,
+  altUrl: '/carte/en/', altLabel: 'EN', currentLabel: 'RO', pdfMarker: /^\s*(Capitolul\s+\d+|Anexa\s+[A-F])\s*$/m,
 };
 // Capitolele scrise pe larg vin din fisiere proprii, ca sa nu umfle cuprinsul. Cartea se
 // construieste in ordinea din `CAPITOLE`: cuprinsul, apoi textul, in ordinea din carte.
@@ -94,8 +94,10 @@ const CAPITOLE = ['cuprins-carte-cap1.json', 'cuprins-carte-cap2.json', 'cuprins
   'cuprins-carte-cap45.json', 'cuprins-carte-cap46.json',
   'cuprins-carte-cap47.json', 'cuprins-carte-cap48.json',
   'cuprins-carte-cap49.json', 'cuprins-carte-cap50.json', 'cuprins-carte-cap51.json',
+  'cuprins-carte-cap52.json', 'cuprins-carte-cap53.json', 'cuprins-carte-cap54.json',
+  'cuprins-carte-cap55.json',
   'cuprins-carte-capA.json', 'cuprins-carte-capB.json', 'cuprins-carte-capC.json',
-  'cuprins-carte-capD.json', 'cuprins-carte-capE.json']
+  'cuprins-carte-capD.json', 'cuprins-carte-capE.json', 'cuprins-carte-capF.json']
   .map((f) => JSON.parse(fs.readFileSync(path.join(SURSE, f), 'utf8')));
 
 // Eticheta de deasupra titlului: capitolele au numar, anexele au litera. O singura

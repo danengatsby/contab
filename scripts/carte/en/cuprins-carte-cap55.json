@@ -1,0 +1,332 @@
+{
+ "parte": "Part XII · Professional judgment · cross-cutting layer",
+ "nr": "55",
+ "titlu": "Working papers and professional review",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "A trial balance can be correct even when nobody can still explain why. Working papers turn the result from a collection of files into a chain of assertions, evidence, procedures and conclusions that another professional can reperform."
+  },
+  {
+   "tip": "cheie",
+   "text": "A check proves that someone checked. A worksheet proves what was checked, against what criteria, with what evidence, by whom, when and with what conclusion."
+  },
+  {
+   "tip": "h",
+   "text": "Assertions: what a figure actually states"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Assertions used in a review",
+   "cap": [
+    "Assertion",
+    "Question",
+    "Typical procedure"
+   ],
+   "randuri": [
+    [
+     "Existence / occurrence",
+     "the asset, liability or transaction exists?",
+     "inspection, external confirmation, document and proof of delivery"
+    ],
+    [
+     "Completeness",
+     "missing something that needed to be recorded?",
+     "search for unrecorded liabilities, sequence tests and subsequent payments"
+    ],
+    [
+     "Rights and obligations",
+     "the entity controls the asset or owes the amount?",
+     "contracts, securities, clauses, legal confirmation"
+    ],
+    [
+     "Valuation and allocation",
+     "are the amount, estimate, exchange rate and adjustment correct?",
+     "recalculation, ageing, recoverability and external sources"
+    ],
+    [
+     "Cut-off",
+     "is the transaction in the right period?",
+     "documents immediately before and after closing, goods receipts and dispatch records"
+    ],
+    [
+     "Classification and presentation",
+     "Does the account, maturity and explanatory note state the actual nature?",
+     "contract, mapping to the reporting form and disclosure checklist"
+    ],
+    [
+     "Accuracy",
+     "the data, quantities and calculations are accurate?",
+     "recalculation and agreement to source"
+    ]
+   ],
+   "nota": "Design the procedure around the assertion. A customer confirmation tests existence of the receivable well, but provides little evidence about completeness of supplier liabilities."
+  },
+  {
+   "tip": "h",
+   "text": "From risk to procedure"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Planning matrix",
+   "cap": [
+    "Item",
+    "Content"
+   ],
+   "randuri": [
+    [
+     "Population and balance",
+     "accounts, movements, number of items, currencies and locations"
+    ],
+    [
+     "Inherent risk",
+     "complexity, estimation, fraud, volume, legislative change and unusual transactions"
+    ],
+    [
+     "Relevant control",
+     "who prevents or detects the error, frequency and evidence of operation"
+    ],
+    [
+     "Assertion at risk",
+     "what can be wrong: existence, completeness, evaluation, cut-off or presentation"
+    ],
+    [
+     "Response",
+     "procedure, selection, period, owner and expected evidence"
+    ],
+    [
+     "Result",
+     "Exceptions, extension of the test, adjustment and conclusion"
+    ]
+   ],
+   "nota": "A large balance does not automatically mean high risk, and a zero balance may carry a high completeness risk. Planning is not a descending sort of the trial balance."
+  },
+  {
+   "tip": "h",
+   "text": "working materiality and uncorrected errors"
+  },
+  {
+   "tip": "p",
+   "text": "Financial-statement materiality defines what could influence a user. Performance materiality is lower, reducing the risk that undetected and uncorrected misstatements together exceed the final threshold. Also set a clearly trivial level, but never use it to dismiss qualitative errors, fraud or related-party transactions."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Differences register",
+   "cap": [
+    "Field",
+    "Review question"
+   ],
+   "randuri": [
+    [
+     "Fact and cause",
+     "is the error isolated or the symptom of a wrong rule applied to the entire population?"
+    ],
+    [
+     "Known/projected amount",
+     "how much is the error identified and what does it indicate for the untested elements?"
+    ],
+    [
+     "Periods and declarations",
+     "does it affect this year, previous years, VAT, profit, wages or electronic reporting?"
+    ],
+    [
+     "Qualitative",
+     "change the profit at loss, a legal threshold, a covenant, remuneration or the nature of a relationship?"
+    ],
+    [
+     "Correction",
+     "has the journal entry been posted, verified and propagated to every deliverable?"
+    ],
+    [
+     "Undecided / uncorrected",
+     "Who accepted the risk, why and what aggregate effect remains?"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Evidence: sufficient and appropriate"
+  },
+  {
+   "tip": "p",
+   "text": "Sufficiency concerns quantity; appropriateness concerns relevance and reliability. One hundred copies of internal invoices do not compensate for missing evidence that a service was performed. Evidence obtained directly from an independent source is generally more reliable than an oral explanation; a controlled original is stronger than a file of unknown provenance; documentary evidence is easier to verify than memory. No hierarchy is absolute: the procedure must address the assertion."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What makes a self-contained working paper",
+   "cap": [
+    "Component",
+    "Practical standard"
+   ],
+   "randuri": [
+    [
+     "Title and objective",
+     "says the balance, period, entity and assertion tested"
+    ],
+    [
+     "Source",
+     "identify the exact report, extraction date, parameters and data owner"
+    ],
+    [
+     "Link to the trial balance",
+     "reconcile the working-paper total to the account and explain every difference"
+    ],
+    [
+     "Procedure",
+     "describe what has been done, not only the result \"OK\""
+    ],
+    [
+     "Selection",
+     "define the population, method, criterion and chosen elements"
+    ],
+    [
+     "Exceptions",
+     "show nature, value, cause, extent and solution"
+    ],
+    [
+     "Conclusion",
+     "answer the objective and identify required adjustments or disclosures"
+    ],
+    [
+     "Preparation and review",
+     "name, date, signature, observations and proof of closure"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Sampling without self-deception"
+  },
+  {
+   "tip": "p",
+   "text": "Selection does not begin with “the first ten invoices”. Define the complete population and the purpose of the test. Test all individually material or specifically risky items. Select the remainder randomly, systematically or by risk, but limit the conclusion to what the method supports. A selection aimed only at exceptions may find problems, but it cannot support a statistical conclusion about the entire population."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Example of supplier stratification",
+   "cap": [
+    "Layer",
+    "Response"
+   ],
+   "randuri": [
+    [
+     "Significant individual balances",
+     "100% testing, confirmation or alternative procedures"
+    ],
+    [
+     "Debit, unusual and related-party balances",
+     "testing directed at nature, classification and recoverability"
+    ],
+    [
+     "Rest of the population",
+     "representative selection linked to the objective and performance materiality"
+    ],
+    [
+     "Balance zero, risk of completeness",
+     "subsequent payments, unrecorded documents and sequences, not zero balance confirmation"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Review: the preparer cannot see every assumption they made"
+  },
+  {
+   "tip": "p",
+   "text": "The reviewer assesses the objective, source, link to the trial balance, logic of the procedure, conclusion and propagation of adjustments. The reviewer need not mechanically repeat every step, but examines judgmental areas, estimates, exceptions, unusual transactions and changes from the prior year in greater depth. A review note remains open until the response is evidenced and its effect followed through; “discussed” is not a resolution."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Annual-file pyramid",
+   "cap": [
+    "Level",
+    "Content",
+    "Link"
+   ],
+   "randuri": [
+    [
+     "Financial statements and declarations",
+     "signed deliverables and filing receipts",
+     "each line cross-references to a lead schedule"
+    ],
+    [
+     "Lead schedules",
+     "balances by caption, movements, comparisons and conclusions",
+     "link to the final trial balance and detailed schedules"
+    ],
+    [
+     "Detailed sheets",
+     "Reconciliation, estimates, selections, confirmations and calculations",
+     "identify the supporting evidence"
+    ],
+    [
+     "Evidence",
+     "contracts, invoices, extracts, external replies, minutes",
+     "single index and provenance"
+    ],
+    [
+     "Problem Register",
+     "errors, open points, adjustments and decisions",
+     "show closure and approval of each point"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Closure of folder"
+  },
+  {
+   "tip": "p",
+   "text": "Before signing, verify that the final trial balance is the one used in every deliverable, all approved adjustments are posted, uncorrected differences are aggregated, disclosures are complete, subsequent events are updated and management’s representation addresses the actual issues. After filing, logically lock the file: later additions identify author, date and reason without deleting the original trail."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Index the permanent file separately from the current-year file. The permanent file contains constitutional documents, long-term contracts, policies and systems descriptions; the annual file contains the trial balance, lead schedules, tests, estimates, tax work, financial statements and filing receipts. Each paper states its objective, assertion, source, procedure, result, conclusion, preparer and reviewer. Link financial-statement lines to the trial balance and returns to their registers. Record all differences, including corrected ones, to reveal systemic errors. Maintain one open-points list and do not sign while a material point lacks evidence, adjustment or an approved conclusion."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 55.1 — designing the receivables review",
+   "enunt": [
+    "Trade receivables total 2.400.000 lei across 1.800 items. Two customers account for 900.000 lei; credit balances total 70.000 lei, related-party receivables 250.000 lei and balances older than 180 days 400.000 lei. Performance materiality is 120.000 lei.",
+    "Design the review response without calculating a statistical sample size."
+   ],
+   "rezolvare": [
+    "First reconcile the complete listing to the trial balance and verify the report date and parameters. A selection has no sound basis without a complete population.",
+    "Test both large customers in full. Analyse credit balances for classification as liabilities or advances. Test related parties separately for existence, terms and disclosure. Test old receivables for valuation and subsequent receipts.",
+    "Use an appropriate representative selection from the remainder to test existence and accuracy. Design separate procedures over documents around the balance-sheet date for completeness of revenue and cut-off; balance confirmations alone do not address those assertions.",
+    "Evaluate exceptions individually, project them where the method requires and aggregate them in the differences register. Conclude separately on existence, valuation, classification and presentation."
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "traceability of the professional conclusion to every reported line",
+     "index, risk matrix, lead schedules, evidence and open points",
+     "select one line and reperform the trail through the trial balance, procedure, exceptions and approval",
+     "tick marks with no procedure, source, author, date or conclusion"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key points from this chapter",
+   "puncte": [
+    "Begin the review with risk and assertion, not the account and balance size.",
+    "Sufficient evidence is not necessarily appropriate; relevance to assertion decides its value.",
+    "A self-contained working paper identifies its source, procedure, selection, exceptions, conclusion, preparer and reviewer.",
+    "Aggregate errors qualitatively as well as numerically; a systemic cause requires extending the procedure.",
+    "The final file must allow the path from document and judgment to every signed line to be reperformed."
+   ]
+  }
+ ]
+}

@@ -257,6 +257,25 @@
    "text": "The check has a useful side effect: it forces you to name the period. An amount for which you cannot write \"covers months X–Y\" has no business being in 471, and the discovery happens here, not two years later, when no one remembers where it came from."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "recognition in the correct economic period",
+     "contracts, invoices, receivables, subscriptions and allocation calculations",
+     "test prepayments, deferred income and unbilled purchases/sales",
+     "invoice date used automatically instead of the period receiving the benefit"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "What to remember from this chapter",
    "puncte": [

@@ -5,11 +5,11 @@
  "blocuri": [
   {
    "tip": "p",
-   "text": "A document can be entered by a person who has it in front of them, or read automatically from a file — a scanned invoice, a PDF received by email. In the second case, a new question arises: how much can you trust what the machine read?"
+   "text": "A document can be entered by a person who has it in front of them, or read automatically from a file — a scanned invoice, a PDF received by email. In the second case a new question arises: how much can you trust what the machine has read?"
   },
   {
    "tip": "p",
-   "text": "The serious answer is not \"a lot\" or \"a little,\" but a list of checks performed before the document is allowed to pass. This chapter shows what is checked, why each check exists and — the most important part — how their results are combined."
+   "text": "The serious answer is not \"a lot\" or \"a little\", but a list of checks performed before the document is allowed to pass through. This chapter shows what is checked, why each check exists and — the most important part — how their results are combined."
   },
   {
    "tip": "h",
@@ -17,7 +17,7 @@
   },
   {
    "tip": "tabel",
-   "titlu": "What gets verified before entry",
+   "titlu": "What is checked before entry",
    "cap": [
     "Check",
     "The question it answers"
@@ -45,7 +45,7 @@
     ],
     [
      "Document number",
-     "does it exist and was it read correctly?"
+     "does it exist and has it been read correctly?"
     ],
     [
      "The partner",
@@ -53,18 +53,18 @@
     ],
     [
      "Document type",
-     "could it be determined what kind of operation this is?"
+     "was it possible to determine what kind of transaction this is?"
     ],
     [
-     "The duplicate",
-     "is this document perhaps already recorded?"
+     "Duplicate",
+     "has this document not already been recorded?"
     ]
    ],
-   "nota": "All nine are blocking: failure of any one of them stops automatic posting."
+   "nota": "All nine are blocking: any one of them failing stops automatic posting."
   },
   {
    "tip": "p",
-   "text": "It's worth noting that only two of them concern the quality of the reading. The other seven check things that an attentive person would also check: that the figures balance, that the date is correct, that you don't already have the same invoice. Automation doesn't invent new checks — it performs the familiar ones every single time, without getting tired."
+   "text": "It is worth noting that only two of them concern the quality of the reading. The remaining seven check things that an attentive person would also check: that the figures add up, that the date is valid, that you don't already have the same invoice. Automation does not invent new checks — it performs the well-known ones every single time, without getting tired."
   },
   {
    "tip": "h",
@@ -76,15 +76,15 @@
   },
   {
    "tip": "p",
-   "text": "The natural temptation is to calculate a score: eight out of nine checks passed means 89%, i.e. \"almost certainly good.\" The temptation is wrong. If the only failed check is the duplicate check, the document isn't \"89% good\" — it's an invoice recorded a second time, and the other eight successes change nothing."
+   "text": "The natural temptation is to calculate a score: eight checks out of nine passed means 89%, i.e. \"almost certainly good\". The temptation is wrong. If the only failed check is the duplicate check, the document is not \"89% good\" — it is an invoice recorded a second time, and the other eight passes change nothing."
   },
   {
    "tip": "p",
-   "text": "That is why the decision to post automatically is a conjunction, not an average: it only posts itself if all checks pass. The score exists, but it serves reporting purposes — it shows how well automatic reading is performing overall — and it decides nothing about a specific document."
+   "text": "That is why the decision to post automatically is a conjunction, not an average: it posts by itself only if all checks pass. The score exists, but it serves reporting purposes — it shows how well automatic reading is performing overall — and it decides nothing about any particular document."
   },
   {
    "tip": "cheie",
-   "text": "A high score hides exactly the check that matters. Blocking checks are not averaged, they are conjoined."
+   "text": "A high score conceals precisely the check that matters. Blocking checks are not averaged, they are conjoined."
   },
   {
    "tip": "h",
@@ -92,11 +92,11 @@
   },
   {
    "tip": "p",
-   "text": "The check concerning the reliability of the reading has a numeric threshold: below it, the document does not pass on its own, no matter how good the rest looks. The threshold is deliberately set high, higher than the one at which the system merely alerts a person, because letting a document in without any human review requires more certainty than merely flagging it."
+   "text": "The check concerning reading certainty has a numeric threshold: below it, the document does not pass by itself, no matter how good the rest looks. The threshold is deliberately set high, higher than the one at which the system merely flags a person, because letting a document in without any human review requires more certainty than merely flagging it."
   },
   {
    "tip": "p",
-   "text": "A detail that seems technical and is a real trap: the threshold is not a property of the world, but of the model that reads. A new model may systematically report lower confidence at the same accuracy — in which case a threshold left unchanged blocks perfectly good documents. Thresholds like this must be recalibrated whenever the underlying engine changes, not simply inherited."
+   "text": "A detail that seems technical and is a real trap: the threshold is not a property of the world, but of the model doing the reading. A new model may systematically report lower confidence at the same accuracy — in which case a threshold left unchanged stops perfectly good documents. Thresholds of this kind must be recalibrated whenever the underlying engine changes, not inherited."
   },
   {
    "tip": "h",
@@ -104,16 +104,16 @@
   },
   {
    "tip": "p",
-   "text": "Nothing dramatic: the document stays with the person, with the reason written down. It is not rejected, it is not deleted — it is simply stopped before it produces any effects, exactly like a document brought in by someone without approval rights."
+   "text": "Nothing dramatic: the document stays with the human, with the reason written down. It is not rejected, it is not deleted — it is simply stopped before it produces effects, exactly like a document brought in by someone without approval rights."
   },
   {
    "tip": "p",
-   "text": "And when the person intervenes and corrects what the machine read incorrectly, the difference between the two is recorded on its own. Not because someone is being monitored, but because the information is useful: the places where the person corrects often are exactly the places where automatic reading needs improvement. An intervention that had to be requested from the interface would be forgotten; one that records itself would not."
+   "text": "And when the person intervenes and corrects what the machine read wrongly, the difference between the two records itself automatically. Not because someone is being monitored, but because the information is useful: the places where a person corrects often are exactly the places where automatic reading needs to be improved. An intervention that had to be requested through the interface would be forgotten; one that records itself would not."
   },
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "Automatic posting is, in essence, a delegation of classification to a system, and delegation must remain reversible and documented. That is why it is disabled by default, activated per company knowingly, and it never concerns the economic reality of the operation — the checks verify form, coherence and uniqueness, not whether the delivery actually took place; the distinction from Chapter 4 remains intact. Two checks deserve special attention. The date check is not limited to a valid format: a date falling within a closed period must block the document, not reclassify it into the current month — otherwise silent discrepancies appear between the VAT ledger and the filed return. The duplicate check must aggressively normalize the document number before comparison, because in practice the same invoice comes written as \"F 900\", \"F-900\" and \"F900\"; an undetected duplicate doubles both the expense and the deducted VAT, and the subsequent correction requires a storno in a period when the return has already been filed."
+   "text": "Automatic posting is, in essence, a delegation of classification to a system, and delegation must remain reversible and documented. That is why it is disabled by default, activated per company, knowingly, and it never concerns the economic reality of the transaction — the checks verify form, coherence and uniqueness, not whether the delivery actually took place; the distinction from chapter 4 remains intact. Two checks deserve special attention. The date check is not limited to a valid format: a date falling within a closed period must block the document, not reclassify it into the current month — otherwise silent gaps appear between the VAT ledger and the filed return. The duplicate check must aggressively normalize the document number before comparison, because the same invoice, in practice, comes written as \"F 900\", \"F-900\" and \"F900\"; an undetected duplicate doubles both the expense and the deducted VAT, and the subsequent correction requires a reversal (storno) in a period for which the return has already been filed."
   },
   {
    "tip": "h",
@@ -121,38 +121,57 @@
   },
   {
    "tip": "p",
-   "text": "The list above is complete for what can be verified from the document. It does not contain, and cannot contain, the one thing that truly matters: whether the operation actually took place."
+   "text": "The list above is complete for what can be verified from the document. It does not contain, and cannot contain, the one thing that truly matters: whether the transaction actually took place."
   },
   {
    "tip": "p",
-   "text": "A perfectly drawn-up invoice, with the arithmetic balancing, the correct rate, a known partner and no duplicate, may correspond to no delivery at all. All nine checks let it through, and they are right to do so: nothing that can be read on paper says otherwise."
+   "text": "A perfectly drawn-up invoice, with the arithmetic balanced, the correct rate, a known partner and no duplicate, may correspond to no delivery at all. All nine checks let it through, and they are right to do so: nothing that can be read on paper says otherwise."
   },
   {
    "tip": "p",
-   "text": "That is why automatic checks shift the threshold, they do not eliminate it. They allow the person not to waste their attention on arithmetic and duplicates, so it can be kept for the question only they can answer. This concludes the part on received documents; the next chapter moves on to those you issue yourself."
+   "text": "That is why automatic checks shift the threshold, they do not eliminate it. They ensure that the human no longer wastes attention on arithmetic and duplicates, so that it can be kept for the question only they can answer. This concludes the section on incoming documents; the next chapter moves on to those you issue."
   },
   {
    "tip": "exercitiu",
-   "titlu": "Exercise 13.1 — checks aren't added, they're multiplied",
+   "titlu": "Exercise 13.1 — checks are not added, they are multiplied",
    "enunt": [
-    "A document read automatically passes eight out of nine checks. The one that failed is the duplicate check: the same invoice appears to have already been recorded two weeks ago.",
-    "The displayed score is 89%. Does it post automatically?"
+    "An automatically read document passes eight out of nine checks. The one that fails is the duplicate check: the same invoice appears to have already been recorded two weeks ago.",
+    "The displayed score is 89%. Should it post automatically?"
    ],
    "rezolvare": [
-    "No. A score of 89% suggests \"almost good,\" but the decision is not an average, it is a CONJUNCTION: all blocking checks must pass.",
-    "Here, the failed check is precisely the one that matters: if the invoice is indeed a duplicate, posting it produces a double expense, VAT deducted twice, and a nonexistent liability to the supplier. The other eight passed checks compensate for nothing — they confirm that the document is internally coherent, not that it hasn't already been recorded.",
-    "The general rule: an average score hides exactly the check that failed. That is why the report must show WHICH check failed, not just what percentage passed."
+    "No. A score of 89% suggests \"almost good\", but the decision is not an average, it is a CONJUNCTION: all blocking checks must pass.",
+    "Here, the failed check is precisely the one that matters: if the invoice is indeed a duplicate, posting it produces a doubled expense, VAT deducted twice, and a nonexistent liability to the supplier. The other eight checks that passed compensate for nothing — they confirm that the document is internally coherent, not that it hasn't already been recorded.",
+    "General rule: an average score conceals exactly the check that failed. That is why the report must display WHICH check failed, not just what percentage passed."
    ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "the functioning of the preventive checks at document entry",
+     "exception reports, configurations, tests and resolutions",
+     "input correct and erroneous cases and verify the check's response",
+     "an alert systematically ignored or a check disabled without approval"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [
-    "Nine checks stand between an automatically read document and the accounting records; only two concern the quality of the reading, the rest verify what an attentive person would also verify.",
-    "The automatic posting decision is a conjunction, not an average: a score of 89% hides exactly the check that failed.",
+    "Nine checks stand between an automatically read document and the accounting records; only two concern the quality of the reading, the rest check what an attentive person would also check.",
+    "The decision to post automatically is a conjunction, not an average: a score of 89% conceals precisely the check that failed.",
     "The confidence threshold is a property of the model doing the reading, not of the world — it must be recalibrated when the engine changes.",
-    "A failed check stops the document with the person, with the reason written down; nothing is lost.",
-    "No check can verify whether the operation actually took place. Automation frees the person's attention, it does not replace it."
+    "A failed check stops the document with the human, with the reason written down; nothing is lost.",
+    "No check can verify whether the transaction actually took place. Automation frees up the human's attention, it does not replace it."
    ]
   }
  ]

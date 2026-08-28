@@ -1,39 +1,39 @@
 {
  "parte": "Part V · What you have, what you produce, who works · phases 4–6",
  "nr": "22",
- "titlu": "Rights That Are Lost If You Don't Claim Them",
+ "titlu": "Rights that are lost if you don't claim them",
  "blocuri": [
   {
    "tip": "p",
-   "text": "This chapter was written after an incident, and the incident is worth telling, because it's more instructive than the rule it illustrates."
+   "text": "This chapter was written after an incident, and the incident deserves to be told, because it is more instructive than the rule it illustrates."
   },
   {
    "tip": "p",
-   "text": "In an accounting program, the employee's file had a field called \"Dependents.\" The field appeared filled in with zero — the digit zero was there, gray, in the box. In reality it was empty: the zero was only a visual placeholder, not a value. And the program only granted the personal deduction if that field had been filled in."
+   "text": "In an accounting program, the employee record had a field called \"Dependents\". The field appeared filled in with zero — the digit zero sat there, gray, in the box. In reality it was empty: the zero was only a visual placeholder, not a value. And the program only granted the personal deduction if that field had been filled in."
   },
   {
    "tip": "p",
-   "text": "The result: employees whose files had been filled out normally, without anyone touching that field, received no deduction at all. At a gross salary of 5,000 lei, that means 43 lei extra in tax every month. Over 500 lei a year, per employee, paid to the state without being owed — and deducted from the net pay of people who had no way of finding out."
+   "text": "The result: employees whose records had been filled in normally, without anyone touching that field, received no deduction at all. In August 2026, at a gross salary of 5,000 lei with no dependents, that means 57 lei extra tax each month — 684 lei per year per person, paid to the state without being owed and deducted from the net pay of people who had no way of finding out."
   },
   {
    "tip": "cheie",
-   "text": "A right granted \"if requested\" is a right that gets lost. Not out of bad faith, but because no one checks what they weren't alerted to."
+   "text": "A right granted \"if requested\" is a right that gets lost. Not out of bad faith, but because no one checks what wasn't flagged to them."
   },
   {
    "tip": "h",
-   "text": "What the Personal Deduction Is"
+   "text": "What the personal deduction is"
   },
   {
    "tip": "p",
-   "text": "The personal deduction is a part of salary income that is not taxed. It's not an amount received on top, but a reduction of the base — its effect in money is 10% of the deduction's value, i.e. exactly the tax that is no longer paid."
+   "text": "The personal deduction is a portion of salary income that is not taxed. It's not an amount received on top, but a reduction of the tax base — its cash effect is 10% of the deduction's value, i.e., exactly the tax that is no longer paid."
   },
   {
    "tip": "p",
-   "text": "It is granted at the basic function, i.e. at the main workplace, and its size depends on two things: how many dependents the employee has and how large their salary is."
+   "text": "It is granted at the basic job, meaning the main place of employment, and its size depends on two things: how many dependents the employee has and how large their salary is."
   },
   {
    "tip": "tabel",
-   "titlu": "How the Deduction Decreases with Salary",
+   "titlu": "How the deduction decreases as salary rises",
    "cap": [
     "Gross salary",
     "Deduction",
@@ -41,12 +41,12 @@
    ],
    "randuri": [
     [
-     "at the level of the minimum wage",
+     "at minimum wage level",
      "maximum",
      "10% of it"
     ],
     [
-     "above minimum, below cap",
+     "above minimum, below threshold",
      "decreases proportionally",
      "proportional"
     ],
@@ -56,46 +56,46 @@
      "zero"
     ]
    ],
-   "nota": "The decrease is linear: the closer the salary gets to the cap, the closer the deduction gets to zero. Above the cap it is no longer granted at all."
+   "nota": "The decrease is linear: the closer the salary gets to the threshold, the closer the deduction gets to zero. Above the threshold, no deduction is granted at all."
   },
   {
    "tip": "p",
-   "text": "At a salary of 5,000 lei, with the minimum wage at 4,050 and no dependents, the deduction is 430 lei — and the tax drops from 325 to 282. With two dependents, the deduction rises to 640, and the tax drops to 261."
+   "text": "At a salary of 5,000 lei, with the minimum wage of 4,325 lei applicable from July 2026, the basic deduction is 570 lei with no dependents — and the tax drops from 325 to 268 lei. With two dependents, the deduction rises to 1,000 lei, and the tax drops to 225 lei. The calculation is automatically redone when the minimum wage changes; a figure copied from the previous semester immediately becomes wrong."
   },
   {
    "tip": "h",
-   "text": "Zero Doesn't Mean \"None\""
+   "text": "Zero doesn't mean \"none\""
   },
   {
    "tip": "p",
-   "text": "The core of the incident lies in a confusion that occurs often, not just in software: between \"I have zero dependents\" and \"I didn't fill in the field.\""
+   "text": "The core of the incident lies in a confusion that appears often, not just in software: between \"I have zero dependents\" and \"I haven't filled in the field.\""
   },
   {
    "tip": "p",
-   "text": "These are different things. An employee with zero dependents is entitled to the base deduction — the smallest of the variants, but not zero. An unfilled field says nothing about their situation; it only says that someone wrote nothing there."
+   "text": "These are different things. An employee with zero dependents is entitled to the basic deduction — the smallest of the options, but not zero. An unfilled field says nothing about their situation; it only says that someone wrote nothing there."
   },
   {
    "tip": "p",
-   "text": "A system that treats them the same silently chooses the variant that disadvantages the person. And if no one looks at the \"deduction\" line on the payslip — and usually no one does, because the net looks plausible — the mistake can last for years."
+   "text": "A system that treats them the same silently chooses the option that disadvantages the person. And if no one looks at the \"deduction\" line on the payslip — and usually no one does, because the net pay seems plausible — the error can last for years."
   },
   {
    "tip": "h",
-   "text": "How to Check, in Two Minutes"
+   "text": "How to check, in two minutes"
   },
   {
    "tip": "p",
-   "text": "The check doesn't require specialized knowledge. Open the month's payslip and look at the deduction column."
+   "text": "The check requires no specialized knowledge. Open the payslip for the month and look at the deduction column."
   },
   {
    "tip": "tabel",
-   "titlu": "What You Should See",
+   "titlu": "What you should see",
    "cap": [
-    "Employee's situation",
+    "Employee situation",
     "The deduction should be"
    ],
    "randuri": [
     [
-     "salary below or at minimum wage level, basic function",
+     "salary at or below minimum, basic job",
      "maximum"
     ],
     [
@@ -111,54 +111,54 @@
      "zero — correct"
     ]
    ],
-   "nota": "If you see zero where it shouldn't be, the question isn't \"why,\" but \"since when.\""
+   "nota": "If you see zero where you shouldn't, the question isn't \"why\", but \"since when\"."
   },
   {
    "tip": "p",
-   "text": "The last column of the table also contains the only case in which zero is the correct answer: the second job. The deduction is granted only once, at the basic function — and if an employee receives it at two jobs at the same time, the difference will be reclaimed."
+   "text": "The last column of the table also contains the only case where zero is the correct answer: a second job. The deduction is granted only once, at the basic job — and if an employee receives it at two jobs at once, the difference will be reclaimed from them."
   },
   {
    "tip": "contabil",
-   "titlu": "For the Accountant",
-   "text": "The personal deduction is granted under art. 77 of the Fiscal Code at the place where the basic function is held, for monthly gross income up to the level of the minimum wage plus 2,000 lei, decreasing progressively as income rises; it comprises the base deduction, set as a percentage of the minimum wage depending on the number of dependents, and additional deductions — for young employees and for children in education. Two practical observations. First: the absence of information about dependents does not equal the absence of the right; in the absence of the employee's declaration, the deduction corresponding to the situation with no dependents is granted, not zero — and the employee's self-declaration, together with supporting documents, must be kept in the personnel file, as it is the basis for deductions above the base level. Second: changes in situation — a person entering or leaving dependent status, turning 26, a child finishing their studies — take effect starting the month following the communication, and failure to update them generates differences that must be regularized, in both directions, with an impact on D112 forms already filed."
+   "titlu": "For the accountant",
+   "text": "The personal deduction is granted under art. 77 of the Tax Code at the place where the basic job is held, for monthly gross income up to the minimum wage plus 2,000 lei, decreasing progressively as income rises; it includes the basic deduction, set as a percentage of the minimum wage depending on the number of dependents, and the additional deductions — for young employees and for children in education. Two practical observations. First: the absence of information about dependents is not equivalent to the absence of the right; in the absence of the employee's declaration, the deduction corresponding to the situation with no dependents is granted, not zero — and the employee's own-responsibility declaration, along with supporting documents, must be kept in the personnel file, since it is the basis for deductions above the basic level. Second: changes in situation — a person entering or leaving dependent status, turning 26, a child finishing their studies — take effect starting the month following communication, and failure to update them generates differences that must be reconciled, in both directions, with impact on already-filed D112 forms."
   },
   {
    "tip": "h",
-   "text": "The General Rule, Beyond This Case"
+   "text": "The general rule, beyond this case"
   },
   {
    "tip": "p",
-   "text": "The personal deduction is the most costly example, but the pattern is broader. Everywhere a right is granted \"upon request\" or \"if filled in,\" it is lost for those who don't know they must ask for it — that is, exactly for those who would need it most."
+   "text": "The personal deduction is the costliest example, but the pattern is broader. Anywhere a right is granted \"upon request\" or \"if filled in\", it is lost for those who don't know they must ask — that is, exactly for those who would need it most."
   },
   {
    "tip": "p",
-   "text": "That's why, for any system that calculates entitlements, the right question isn't \"what happens if I check the box,\" but \"what happens if I check nothing.\" A poorly chosen default costs real money, silently, every time it runs."
+   "text": "That's why, for any system that calculates entitlements, the right question isn't \"what happens if I check the box\", but \"what happens if I check nothing at all\". A poorly chosen default costs real money, silently, on every run."
   },
   {
    "tip": "exercitiu",
-   "titlu": "Exercise 22.1 — The Two-Minute Check",
+   "titlu": "Exercise 22.1 — the two-minute check",
    "enunt": [
-    "In a payslip, three employees earn the minimum wage, two earn 5,000 lei gross at their basic function, and one earns 5,000 at a second job. The \"personal deduction\" column shows zero for all six.",
+    "In a payroll, three employees earn the minimum wage, two have 5,000 lei gross at their basic job, and one has 5,000 lei at a second job. The \"personal deduction\" column shows zero for all six.",
     "How many of the six zeros are correct?"
    ],
    "rezolvare": [
-    "Only one: the one for the second job. The deduction is granted at the basic function, so there zero is the correct answer.",
-    "The other five are wrong. The three earning the minimum wage are entitled to the maximum deduction. The two earning 5,000 lei gross are below the minimum wage plus 2,000 cap, so they are entitled to a reduced deduction, but not a zero one.",
-    "The cost of the error, for the two earning 5,000 lei: about 43 lei per month each, i.e. over 500 lei per year per person. For the three earning the minimum wage, more.",
-    "How to catch it: not by recalculating the entire payroll, but by looking at a single column. Zero where it shouldn't be is a question to ask immediately — and the question isn't \"why,\" but \"since when.\""
+    "Only one: the one for the second job. The deduction is granted at the basic job, so zero is the correct answer there.",
+    "The other five are wrong. The three earning minimum wage are entitled to the maximum deduction. The two earning 5,000 lei gross are below the threshold of minimum wage plus 2,000, so they are entitled to a reduced but not zero deduction.",
+    "The cost of the error, in August 2026, for the two earning 5,000 lei: 57 lei per month each, i.e., 684 lei per year per person. For the three earning minimum wage, more.",
+    "How to catch it: not by recalculating the entire payroll, but by looking at a single column. Zero where it shouldn't be is a question to ask immediately — and the question isn't \"why\", but \"since when\"."
    ]
   },
   {
    "tip": "h",
-   "text": "The Curve, in Numbers"
+   "text": "The curve, in figures"
   },
   {
    "tip": "p",
-   "text": "The chapter said that the deduction decreases proportionally with salary. It's worth seeing the whole curve, because it produces an effect that neither the employee nor the business owner suspects."
+   "text": "The chapter said the deduction decreases proportionally with salary. It's worth seeing the whole curve, because it produces an effect that neither the employee nor the business owner suspects."
   },
   {
    "tip": "tabel",
-   "titlu": "Deduction for an employee with no dependents (minimum wage 4,050)",
+   "titlu": "Deduction for an employee with no dependents (minimum wage 4,325, second half of 2026)",
    "cap": [
     "Gross salary",
     "Deduction",
@@ -166,32 +166,32 @@
    ],
    "randuri": [
     [
-     "4.050",
-     "810",
-     "81,00"
+     "4.325",
+     "870",
+     "87,00"
     ],
     [
-     "4.300",
-     "710",
-     "71,00"
+     "4.575",
+     "760",
+     "76,00"
     ],
     [
-     "4.800",
-     "510",
-     "51,00"
+     "4.825",
+     "650",
+     "65,00"
     ],
     [
-     "5.300",
-     "310",
-     "31,00"
+     "5.325",
+     "440",
+     "44,00"
     ],
     [
-     "5.800",
-     "110",
-     "11,00"
+     "5.825",
+     "220",
+     "22,00"
     ],
     [
-     "6,050 and above",
+     "6,325 and above",
      "0",
      "0,00"
     ]
@@ -201,31 +201,31 @@
     2,
     3
    ],
-   "nota": "The decrease is linear: every 250 additional lei of gross pay cuts exactly 100 lei from the deduction, up to the cap of minimum wage plus 2,000."
+   "nota": "The deduction decreases progressively and is rounded according to tax rules. The table is time-bound: a change in the minimum wage shifts all thresholds and all amounts."
   },
   {
    "tip": "h",
-   "text": "The Effect No One Sees"
+   "text": "The effect nobody sees"
   },
   {
    "tip": "p",
-   "text": "Because the deduction decreases along with salary, a raise granted within the phase-out band reaches the employee in a smaller proportion than one granted above it. This isn't an impression — it can be measured."
+   "text": "Because the deduction decreases along with salary, a raise granted within the phase-out band reaches the employee in a smaller proportion than one granted above it. It's not an impression — it can be measured."
   },
   {
    "tip": "tabel",
-   "titlu": "The Same 250 Lei Gross Raise, in Two Places",
+   "titlu": "The same 250-lei gross raise, in two places",
    "cap": [
     "From … to",
     "The deduction",
-    "Net increases by",
+    "Net pay increases by",
     "Reaches the employee"
    ],
    "randuri": [
     [
      "5.000 → 5.250",
-     "430 → 330",
-     "136,25",
-     "54,5%"
+     "570 → 460",
+     "135,25",
+     "54,1%"
     ],
     [
      "7.000 → 7.250",
@@ -238,42 +238,61 @@
     3,
     4
    ],
-   "nota": "Same gross amount, same cost to the company — but four percentage points less in the employee's hand, because the raise also cuts into the deduction."
+   "nota": "The same gross amount, the same cost for the company — but four percentage points less in the employee's pocket, because the raise also cuts into the deduction."
   },
   {
    "tip": "p",
-   "text": "The difference is small on a single raise and becomes visible in a negotiation: an employee earning 5,000 lei gross who asks for \"200 more in hand\" needs a bigger raise than one earning 7,000, even though the request sounds identical. Whoever calculates the gross needed using the usual formula — net divided by 58.5% — gets it wrong exactly in the band where most salaries sit."
+   "text": "The difference is small on a single raise and becomes visible in a negotiation: an employee earning 5,000 lei gross who asks for \"another 200 in hand\" needs a bigger raise than one earning 7,000, even though the request sounds identical. Anyone calculating the required gross with the usual formula — net divided by 58.5% — gets it wrong exactly in the band where most salaries fall."
   },
   {
    "tip": "cheie",
-   "text": "Between the minimum wage and the minimum wage plus 2,000, every leu of raise brings less into hand than above the threshold. It's the only zone in the pay scale where the effective rate is higher than the legal one."
+   "text": "Between the minimum wage and the minimum wage plus 2,000, each additional leu of raise brings less into hand than above the threshold. It's the only zone in the pay scale where the effective rate is higher than the legal one."
   },
   {
    "tip": "h",
-   "text": "When the Situation Changes During the Year"
+   "text": "When the situation changes during the year"
   },
   {
    "tip": "p",
-   "text": "The deduction isn't set once and for all. It depends on the number of dependents, and that changes — a child is born, a parent becomes dependent, a child turns 26 or finishes their studies."
+   "text": "The deduction is not set once and for all. It depends on the number of dependents, and that changes — a child is born, a parent becomes a dependent, a child turns 26 or finishes their studies."
   },
   {
    "tip": "p",
-   "text": "The rule is that the change takes effect starting the MONTH FOLLOWING the one in which it was communicated, based on the employee's declaration and supporting documents. Two practical things follow from this: the change must be communicated, not assumed; and a delay in communication cannot be recovered retroactively indefinitely."
+   "text": "The rule is that the change takes effect starting THE MONTH FOLLOWING the one in which it was communicated, based on the employee's declaration and supporting documents. Two practical things follow from this: the change must be communicated, not assumed; and a delay in communication is not retroactively recovered indefinitely."
   },
   {
    "tip": "p",
-   "text": "The consequence for the employer is a filing obligation, not a calculation one: the self-declaration and the documents must be kept in the personnel file, since they are the basis for any deduction above the base level. Without them, in an audit, the deduction granted turns into tax owed."
+   "text": "The consequence for the employer is a filing obligation, not a calculation one: the own-responsibility declaration and the documents stay in the personnel file, since they are the basis for any deduction above the basic level. Without them, in an audit, the deduction granted becomes tax owed."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "individual application of salary deductions and benefits",
+     "employee declarations, dependents, basic job, and calculation",
+     "check eligibility monthly and re-run the personal deduction",
+     "the same deduction copied for everyone or kept unchanged after a change in situation"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",
-   "titlu": "Key Takeaways from This Chapter",
+   "titlu": "Key takeaways from this chapter",
    "puncte": [
-    "The personal deduction reduces the taxable base, it is not received in cash; its effect is 10% of the deduction's value.",
-    "It is granted at the basic function and decreases progressively, down to zero above minimum wage plus 2,000 lei.",
-    "Zero dependents does NOT mean zero deduction — the employee is entitled to the base deduction.",
-    "An unfilled field is not information; systems that treat it as \"no right\" silently disadvantage the employee.",
+    "The personal deduction reduces the tax base, it's not received in cash; its effect is 10% of the deduction's value.",
+    "It is granted at the basic job and decreases progressively, down to zero above the minimum wage plus 2,000 lei.",
+    "Zero dependents does NOT mean zero deduction — the employee is entitled to the basic deduction.",
+    "An unfilled field is not information; systems that treat it as \"no entitlement\" silently disadvantage the employee.",
     "The check takes two minutes, by looking at the deduction column on the payslip.",
-    "The general rule: for any right granted \"upon request,\" ask what happens when you request nothing."
+    "The general rule: for any right granted \"upon request\", ask what happens when you request nothing."
    ]
   }
  ]

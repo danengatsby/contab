@@ -254,6 +254,25 @@
    "text": "Analiticul care nu concordă cu sinteticul nu e o eroare de raport: e o eroare de date. Iar cifra greșită e aproape întotdeauna cea din desfășurare, fiindcă echilibrul se verifică pe totaluri."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "concordanța dintre balanță, carte mare și analitice",
+     "balanță, fișe, jurnal și rapoarte-sursă",
+     "recalculează rulaje și solduri și verifică analitic egal sintetic",
+     "diferențe explicate ca rotunjiri fără analiză pe document"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

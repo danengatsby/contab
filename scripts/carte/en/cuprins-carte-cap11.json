@@ -9,27 +9,27 @@
   },
   {
    "tip": "p",
-   "text": "It deserves to be seen as a vocabulary, not a list. Each entry links a real-world situation — \"I bought goods on credit,\" \"I paid salaries,\" \"a piece of equipment broke down and I wrote it off\" — to the journal entry that corresponds to it. Whoever knows the vocabulary no longer needs to compose; they need to choose."
+   "text": "It deserves to be seen as a vocabulary, not a list. Each entry links a real-world situation — \"I bought goods on credit,\" \"I paid wages,\" \"a piece of equipment broke down and I scrapped it\" — to the accounting entry that corresponds to it. Whoever knows the vocabulary no longer needs to compose; they need to choose."
   },
   {
    "tip": "h",
-   "text": "How many situations does a small business actually have"
+   "text": "How Many Situations Does a Small Business Actually Have"
   },
   {
    "tip": "p",
-   "text": "The answer usually surprises in both directions. There are fewer than a beginner fears, and more than someone who has run a simple business for a year believes."
+   "text": "The answer usually surprises in both directions. There are fewer than a beginner fears and more than someone who has run a simple business for a year believes."
   },
   {
    "tip": "p",
-   "text": "In the application from which this book was born, the vocabulary has more than one hundred and twenty entries, grouped into twenty-one families. The richest are purchases and sales, which is natural: that's where most of a business's economic life takes place."
+   "text": "In the application from which this book was born, the vocabulary has over one hundred and twenty entries, grouped into twenty-one families. The richest are purchases and sales, which is natural: that's where most of a company's economic life takes place."
   },
   {
    "tip": "tabel",
-   "titlu": "The most commonly used families",
+   "titlu": "The Most Used Families",
    "cap": [
     "Family",
     "Situations",
-    "Example entries"
+    "Example Entries"
    ],
    "randuri": [
     [
@@ -40,7 +40,7 @@
     [
      "Sales",
      "18",
-     "goods, finished products, services, advances, reversals"
+     "goods, finished products, services, advances, credit notes"
     ],
     [
      "Treasury",
@@ -53,17 +53,17 @@
      "prepaid expenses, annual pro-rata, VAT adjustments"
     ],
     [
-     "Salaries",
+     "Payroll",
      "6",
-     "payroll statement, salary payment, withholdings, leave"
+     "payroll statement, wage payment, withholdings, leave"
     ],
     [
-     "Fixed assets",
+     "Fixed Assets",
      "6",
      "acquisition, depreciation, write-off, disposal"
     ],
     [
-     "Receivables and provisions",
+     "Receivables and Provisions",
      "6",
      "doubtful customers, adjustments, derecognition, provisions"
     ]
@@ -71,27 +71,27 @@
    "numerice": [
     2
    ],
-   "nota": "The remaining fourteen families — leasing, foreign currency, share capital, dividends, trade bills, subsidies, and others — cover situations that arise at some businesses and never at others."
+   "nota": "The remaining fourteen families — leasing, foreign currency, share capital, dividends, commercial paper, subsidies, and others — cover situations that occur at some companies and never at others."
   },
   {
    "tip": "p",
-   "text": "The useful observation is that an ordinary business uses, in practice, between fifteen and thirty entries. The rest sit there for the day when the situation arises — and when it does, it's better to already be prepared than improvised under pressure."
+   "text": "The useful observation is that an ordinary business uses, in practice, between fifteen and thirty entries. The rest sit there for the day the situation appears — and when it does appear, it's better for it to already be prepared than improvised under pressure."
   },
   {
    "tip": "h",
-   "text": "Why choose a type instead of entering the accounts directly"
+   "text": "Why You Choose a Type Instead of Writing the Accounts Directly"
   },
   {
    "tip": "p",
-   "text": "A program could, in principle, let you enter debit and credit directly. Some do. But choosing a document type has three advantages that you immediately lose the moment you start improvising."
+   "text": "A program could, in principle, let you write debit and credit directly. Some do. Choosing a document type, however, has three advantages that you lose as soon as you start improvising."
   },
   {
    "tip": "p",
-   "text": "First, the type brings with it all the lines, not just the obvious one. In a goods sale, a beginner records the revenue and forgets the inventory write-off; the document type doesn't forget. We saw in Chapter 2 that this omission leaves the trial balance perfectly balanced and the result false."
+   "text": "First, the type brings with it all the lines, not just the obvious one. In a sale of goods, a beginner records the revenue and forgets the inventory write-off; the document type doesn't forget. We saw in Chapter 2 that this omission leaves the trial balance perfectly balanced and the result false."
   },
   {
    "tip": "p",
-   "text": "Then, the type carries the tax information: whether the transaction is included in the VAT return and on which line, whether the document must be sent to the e-Factura system, whether the amount must be reported in the informational declarations. The accounts alone say none of this."
+   "text": "Then, the type carries the tax information: whether the transaction enters the VAT return and on which line, whether the document must be sent to the e-Factura system, whether the value is reported in informative declarations. The accounts alone say nothing of all this."
   },
   {
    "tip": "p",
@@ -103,7 +103,7 @@
   },
   {
    "tip": "h",
-   "text": "When the wrong type is chosen"
+   "text": "When the Wrong Type Is Chosen"
   },
   {
    "tip": "p",
@@ -111,61 +111,80 @@
   },
   {
    "tip": "p",
-   "text": "The result, however, is an incomplete entry that closes perfectly. And the consequence only becomes visible weeks later: the customer is left with a receivable that doesn't exist, and the collected VAT remains inflated and goes into the return as such."
+   "text": "The result, however, is an incomplete entry that closes perfectly. And the consequence only shows up weeks later: the customer is left with a receivable that doesn't exist, and the collected VAT remains inflated and goes out that way in the return."
   },
   {
    "tip": "p",
-   "text": "The vocabulary has, for exactly this situation, its own entry — sales reversal, \"in red\" — which reverses all the lines and, in addition, keeps the reference to the corrected invoice. The difference between using the right tool and improvising isn't a matter of elegance, but of the correctness of the declaration."
+   "text": "The vocabulary has, for exactly this situation, its own entry — sales credit note, \"in red\" — which reverses all the lines and, in addition, keeps the reference to the corrected invoice. The difference between using the right tool and improvising isn't one of elegance, but of the correctness of the declaration."
   },
   {
    "tip": "p",
-   "text": "A well-built program doesn't settle for offering the correct tool: it refuses improvisation and states which tool to use. Chapter 29 returns at length to corrections."
+   "text": "A well-made program doesn't just offer the correct tool: it refuses improvisation and tells you which tool to use. Chapter 29 returns at length to corrections."
   },
   {
    "tip": "contabil",
-   "titlu": "For the accountant",
-   "text": "The monograph isn't a convenience—it's the place where classification materializes, that is, the only genuine professional decision in the daily flow. Three practical observations. First: a correct monograph entry carries the tax treatment as well, not just the account correspondence; the separation of fully deductible / 50% / non-deductible VAT, the classification on the return line, and the reporting obligation in the informational declarations cannot be deduced from the accounts after recording—they must be established when choosing the type. Second: for situations with double articulation—a sale with inventory write-off, a write-off with removal of accumulated depreciation, charging an inventory shortfall—the risk isn't the wrong entry, but the incomplete entry, which passes any balance check. Third: when no entry fits exactly, the correct solution isn't to force the closest one, but to compose a custom entry, documented in the transaction's explanatory note; a forced classification propagates silently into the return and into reports, where it's much harder to find than in the journal."
+   "titlu": "For the Accountant",
+   "text": "The monograph isn't a convenience; it's the place where classification takes shape — that is, the only genuine professional decision in the daily flow. Three practical observations. First: a correct monograph entry carries the tax treatment too, not just the account correspondence; the split between fully deductible VAT / 50% deductible / non-deductible VAT, the classification on the return line, and the reporting obligation in informative declarations cannot be deduced from the accounts after recording — they must be established when the type is chosen. Second: for situations with double articulation — a sale with inventory write-off, a scrapping with removal of accumulated depreciation, charging an inventory shortfall — the risk isn't the wrong entry but the incomplete entry, which passes any balance check. Third: when no entry fits exactly, the correct solution isn't forcing the closest one, but composing a custom entry, documented in the transaction's explanatory note; a forced classification propagates silently into the return and into reports, where it's much harder to find than in the journal."
   },
   {
    "tip": "h",
-   "text": "How it's chosen in practice"
+   "text": "How It's Chosen in Practice"
   },
   {
    "tip": "p",
-   "text": "The entries are written in plain language, not accounting terms: \"goods purchase invoice,\" \"supplier payment receipt,\" \"materials consumption slip.\" You choose based on what's written on the paper in hand, not on which account you think should be used."
+   "text": "The entries are written in plain language, not accounting terms: \"purchase invoice for goods,\" \"supplier payment receipt,\" \"materials consumption slip.\" You choose based on what's written on the paper in your hand, not on which account you think should be used."
   },
   {
    "tip": "p",
-   "text": "When the document is read automatically from a file, the program proposes the type itself, and you confirm it. The confirmation isn't a formality: it's exactly the moment when a human verifies a machine's assumption, and Chapter 13 shows what's verified then and why."
+   "text": "When the document is read automatically from a file, the program proposes the type itself, and you confirm it. Confirmation isn't a formality: it's exactly the moment when a human checks a machine's assumption, and Chapter 13 shows what's being checked then and why."
   },
   {
    "tip": "p",
-   "text": "Before that, however, there's another question to clarify: who exactly presses the save button, and what it actually means for a document to have \"entered the accounting records.\" That's the next chapter."
+   "text": "Before that, though, there's another question to clarify: who exactly presses the save button, and what it actually means for a document to have \"entered the accounting records.\" That's the next chapter."
   },
   {
    "tip": "exercitiu",
-   "titlu": "Exercise 11.1 — how many lines does the transaction have",
+   "titlu": "Exercise 11.1 — How Many Lines Does the Transaction Have",
    "enunt": [
-    "State, without writing the accounts, how many lines each entry has and which line beginners forget:",
+    "Say, without writing the accounts, how many lines each entry has and which line beginners forget:",
     "(a) Sale of goods with invoice. (b) Payment to a supplier via bank. (c) Sale of a fixed asset. (d) The month's payroll statement."
    ],
    "rezolvare": [
-    "(a) Three lines: the receivable from the customer, the revenue, the collected VAT — plus, as a related transaction, the inventory write-off. The forgotten line is the last one: without it, the goods remain in stock and profit comes out inflated.",
+    "(a) Three lines: the receivable from the customer, the revenue, the collected VAT — plus, as a linked transaction, the inventory write-off. The forgotten line is the last one: without it, the goods stay in inventory and profit comes out inflated.",
     "(b) Two lines, and nothing is forgotten: it's the simplest transaction in accounting.",
-    "(c) Four lines: the receivable, the collected VAT, the removal of accumulated depreciation, and the expensing of the remaining value. What's forgotten is the second half — the asset stays on the balance sheet even though it was sold.",
-    "(d) At least five: the salary expense, the withholdings for employee contributions, the tax, the employer's contribution, and at payment, yet another transaction. What's forgotten is the employer's contribution, since it doesn't show up on the payslip.",
-    "The rule that ties the four together: the number of lines isn't guessed from the document, but from the TRANSACTION. That's why choosing the right type is a decision, not a formality — it brings the lines that the mind skips."
+    "(c) Four lines: the receivable, the collected VAT, the removal of accumulated depreciation, and the expensing of the remaining value. The forgotten part is the second half — the asset stays on the balance sheet even though it was sold.",
+    "(d) At least five: the wage expense, withholdings for employee contributions, the tax, the employer's contribution, and at payment, one more transaction. The forgotten one is the employer's contribution, because it doesn't show on the payslip.",
+    "The rule linking all four: the number of lines isn't guessed from the document, but from the TRANSACTION. That's why choosing the right type is a decision, not a formality — it brings in the lines that the mind skips."
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "controlled coverage of recurring and exceptional transactions",
+     "catalog of transactions, approved monographs, and change log",
+     "compare actual types against the catalog and test edge cases",
+     "generic type used for unusual transactions without review"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
-   "titlu": "Key takeaways from this chapter",
+   "titlu": "Key Takeaways From This Chapter",
    "puncte": [
-    "The monograph is a vocabulary that links real situations to journal entries; whoever knows it chooses, rather than composes.",
-    "An ordinary business uses 15–30 entries out of more than one hundred twenty; the rest wait for a situation that may never occur.",
-    "The document type brings all the lines — including the easily forgotten ones — plus the tax treatment and retrievability.",
+    "The monograph is a vocabulary linking real situations to accounting entries; whoever knows it chooses, rather than composes.",
+    "An ordinary business uses 15–30 entries out of over one hundred and twenty; the rest wait for a situation that may never occur.",
+    "The document type brings all the lines — including the ones easily forgotten — plus the tax treatment and retrievability.",
     "Choosing the wrong type doesn't produce a visible error, but an incomplete entry that closes perfectly.",
-    "For cancellations there is the reversal entry, which reverses all the lines and keeps the reference; negative amounts on an ordinary type are an improvisation with consequences in the return."
+    "For cancellations there is the credit-note entry, which reverses all lines and keeps the reference; negative amounts on an ordinary type are an improvisation with consequences in the return."
    ]
   }
  ]

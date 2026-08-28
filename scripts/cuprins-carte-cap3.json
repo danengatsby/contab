@@ -332,6 +332,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "clasificarea consecventă în planul de conturi și analitice utile",
+     "plan de conturi, politici, nomenclatoare și balanță analitică",
+     "testează maparea operațiunii–cont–raport și consistența între perioade",
+     "conturi diverse cu rulaj mare ori analitice create numai la închidere"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

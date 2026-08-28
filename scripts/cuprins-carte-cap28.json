@@ -257,6 +257,25 @@
    "text": "Verificarea are un efect secundar util: obligă la a numi perioada. O sumă pentru care nu poți scrie „acoperă lunile X–Y” nu are ce căuta în 471, iar descoperirea se face aici, nu peste doi ani, când nimeni nu-și mai amintește de unde venea."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "recunoașterea în perioada economică potrivită",
+     "contracte, facturi, recepții, abonamente și calcul de alocare",
+     "testează cheltuieli/venituri în avans și facturi de primit/emis",
+     "data facturii folosită automat în locul perioadei prestației"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

@@ -1,11 +1,11 @@
 {
  "parte": "Part VI · What doesn't come from a document · phase 7",
  "nr": "25",
- "titlu": "Adjusting entries: the accounting of time",
+ "titlu": "Adjustments: the accounting of time",
  "blocuri": [
   {
    "tip": "p",
-   "text": "Up to this point, every entry has had a document behind it: an invoice, a bank statement, a payroll, an inventory count report. This part is about the entries that have no such thing."
+   "text": "So far, every entry has had a document behind it: an invoice, a bank statement, a payroll, an inventory count report. This part is about the entries that have no such thing."
   },
   {
    "tip": "p",
@@ -13,19 +13,19 @@
   },
   {
    "tip": "h",
-   "text": "Why they're needed"
+   "text": "Why they are needed"
   },
   {
    "tip": "p",
-   "text": "Accounting divides a continuous activity into periods with a beginning and an end. The division is artificial — customers do not stop buying on December 31 — but necessary: without it, one could never say how much the company earned."
+   "text": "Accounting divides a continuous activity into periods with a beginning and an end. The division is artificial — customers do not stop buying on December 31 — but necessary: without it, you could never say how much the company earned."
   },
   {
    "tip": "p",
-   "text": "The problem is that the cut always falls through the middle of something. Insurance paid in October also covers months of the following year. A client who stops answering doesn't turn into a loss on a specific date. A euro collected in March is not worth the same in December."
+   "text": "The problem is that the cut always falls through the middle of something. Insurance paid in October also covers months of the following year. A client who stops responding does not turn into a loss on a specific date. A euro collected in March is not worth the same in December."
   },
   {
    "tip": "cheie",
-   "text": "Adjusting entries are the entries through which the accounting period becomes true. Without them, the trial balance closes perfectly and the result is false."
+   "text": "Adjustments (regularizări) are the entries through which the accounting period becomes true. Without them, the trial balance closes perfectly and the result is false."
   },
   {
    "tip": "h",
@@ -46,26 +46,26 @@
      "26"
     ],
     [
-     "Impairment adjustments for receivables",
-     "do I still have this money to receive, or am I just waiting for it?",
+     "Impairment allowances for receivables",
+     "do I still have this money to receive, or am I just still waiting for it?",
      "27"
     ],
     [
-     "Delimitation in time",
-     "of the amount paid, how much is the expense of this period?",
+     "Time-based allocation",
+     "of the amount paid, how much is this period's expense?",
      "28"
     ],
     [
      "Provisions",
-     "what probable obligation has already arisen, without the invoice having arrived?",
+     "what probable obligation has already arisen, even though the invoice hasn't arrived?",
      "here"
     ]
    ],
-   "nota": "The four have one thing in common: none has an external document to trigger them."
+   "nota": "The four have one thing in common: none has an external document that triggers them."
   },
   {
    "tip": "p",
-   "text": "There is also a fifth category, less discussed: expenses for which the service was rendered but the invoice has not arrived. These are not adjustments in the strict sense, but early recognitions, and are recorded in accounts 408 Suppliers — invoices not yet received and 418 Clients — invoices to be issued."
+   "text": "There is also a fifth category, less discussed: expenses for which the service was provided but the invoice has not arrived. These are not adjustments in the strict sense, but early recognitions, and are recorded in accounts 408 Suppliers — invoices not yet received and 418 Customers — invoices to be issued."
   },
   {
    "tip": "h",
@@ -73,19 +73,19 @@
   },
   {
    "tip": "p",
-   "text": "A provision is set up when the company has a probable obligation, of estimable amount, arising from an event that has already occurred — but whose exact amount or due date is not yet known."
+   "text": "A provision is set up when the company has a probable obligation, of estimable size, arising from an event that has already occurred — but whose exact amount or due date is not yet known."
   },
   {
    "tip": "p",
-   "text": "The classic example is litigation. A former employee has sued the company, the lawyer estimates the chances of losing are high, and the probable amount is 30,000 lei. There is no invoice, no ruling, no document that obliges payment. But there is a real risk, born of a past fact."
+   "text": "The classic example is litigation. A former employee has sued the company, the lawyer assesses the chances of loss as high, and the probable amount is 30,000 lei. There is no invoice, no ruling, no document that requires payment. There is, however, a real risk, born from a past fact."
   },
   {
    "tip": "p",
-   "text": "The entry debits 6812 Operating expenses regarding provisions and credits 151 Provisions. When the litigation concludes, the provision is reversed — 151 is debited against 7812 — regardless of whether the company won or lost; if it lost, the actual payment is recorded separately, at its real value."
+   "text": "The entry debits 6812 Operating expenses regarding provisions and credits 151 Provisions. When the litigation ends, the provision is reversed — 151 is debited against 7812 — regardless of whether the company won or lost; if it lost, the actual payment is recorded separately, at its real value."
   },
   {
    "tip": "p",
-   "text": "It's worth noting that a provision does not set money aside. There is no blocked bank account, no liquid reserve. The provision only recognizes, in the result, an obligation that already exists — just as depreciation recognizes a consumption that has already occurred."
+   "text": "It is worth noting that a provision does not set money aside. There is no blocked bank account, no liquid reserve. The provision only recognizes, in the result, an obligation that already exists — just as depreciation recognizes a consumption that has already occurred."
   },
   {
    "tip": "h",
@@ -93,24 +93,24 @@
   },
   {
    "tip": "p",
-   "text": "Adjusting entries have three properties that make them the preferred place for errors, and they deserve naming in advance, since they recur in all the chapters that follow."
+   "text": "Adjustments have three properties that make them the preferred spot for errors, and it's worth naming them in advance, since they recur in all the chapters that follow."
   },
   {
    "tip": "p",
-   "text": "First, nothing triggers them. No paper arrives to remind you of them. If no one makes them, they simply aren't made — and nothing signals the omission."
+   "text": "First, nothing triggers them. No paper arrives to remind you of them. If nobody does them, they simply don't get done — and nothing signals the absence."
   },
   {
    "tip": "p",
-   "text": "Second, their absence unbalances nothing. The trial balance remains perfectly closed without any adjustment. It's a variant of the trap from chapter 2: the balance check says nothing about completeness."
+   "text": "Then, their absence unbalances nothing. The trial balance remains perfectly closed without any adjustment. It's a variant of the trap from chapter 2: the balance check says nothing about completeness."
   },
   {
    "tip": "p",
-   "text": "Finally, all of them require judgment. What is the probability of losing the litigation? Will this client still pay? How many months of the insurance belong to next year? These are questions a person answers, not a formula — and the answer must be documented, because otherwise no one can reconstruct it two years from now."
+   "text": "Finally, all of them require judgment. What is the probability of losing the litigation? Will this client still pay? How many months of the insurance belong to next year? These are questions a person answers, not a formula — and the answer must be documented, because otherwise no one can reconstruct it two years later."
   },
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "Closing adjustments are required by the accrual accounting principle and the matching principle in the accounting regulations: the effects of transactions are recognized in the period in which they occur, regardless of the moment of collection or payment. Three substantive observations. First: provisions are recognized only if three conditions are cumulatively met — a present obligation resulting from a past event, the probability of an outflow of resources, and the possibility of a reliable estimate; in the absence of any of these, the obligation is presented as a contingent liability in the explanatory notes, not recorded. Second: a provision is not used for anything other than the risk for which it was set up, and at each closing it is reviewed — increased, decreased, or reversed entirely — which means that a balance that remains unchanged for two years in a row almost always signals a review that was not done. Third: from a fiscal perspective, most operating provisions are non-deductible, with the limited exceptions provided by art. 26 of the Fiscal Code, and the deduction upon reversal follows the regime applied at set-up — so the analytical record of deductible and non-deductible must be kept from the start, not reconstructed at the time of the tax calculation. Finally, all the reasoning behind these entries is documented in the operation's explanatory note; a provision without a note is, upon inspection, an expense without justification."
+   "text": "Closing adjustments are required by the accrual accounting principle and the principle of independence of the financial year in the accounting regulations: the effects of transactions are recognized in the period in which they occur, regardless of the moment of collection or payment. Three substantive observations. First: provisions are recognized only if three conditions are cumulatively met — a current obligation resulting from a past event, the probability of a resource outflow, and the possibility of a reliable estimate; in the absence of any of these, the obligation is presented as a contingent liability in the explanatory notes, not recorded. Second: a provision is not used for anything other than the risk for which it was set up, and at each closing it is reviewed — increase, decrease, or full reversal — which means that a balance that remains unchanged for two years in a row almost always signals a review that was not done. Third: from a fiscal perspective, most operating provisions are non-deductible, with the exceptions limitatively provided by art. 26 of the Tax Code, and the deduction upon reversal follows the regime established at the time of setup — so analytical records of deductible and non-deductible must be kept from the start, not reconstructed at tax calculation time. Finally, all the reasoning underlying these entries must be documented in the operation's explanatory note; a provision without a note is, in an audit, an expense without justification."
   },
   {
    "tip": "h",
@@ -118,32 +118,51 @@
   },
   {
    "tip": "p",
-   "text": "The four chapters that follow take up, one by one, the adjustments that appear in almost every company. The first is the most mechanical of them and, precisely for that reason, the one where mistakes slip in most easily: bringing foreign currency to the closing rate."
+   "text": "The four chapters that follow take up, in turn, the adjustments that appear at almost any company. The first is the most mechanical of them and, precisely for that reason, the one where mistakes slip in most easily: bringing foreign currency to the closing exchange rate."
   },
   {
    "tip": "exercitiu",
    "titlu": "Exercise 25.1 — provision or not",
    "enunt": [
     "For each situation, say whether a provision is set up on December 31:",
-    "(a) A former employee has sued the company; the lawyer estimates the loss as probable, around 30,000 lei. (b) The company might face a rent increase next year. (c) A client complained about a defective product; the company accepted replacement, estimated cost 4,000 lei. (d) The manager fears a tax audit."
+    "(a) A former employee sued the company; the lawyer assesses the loss as probable, around 30,000 lei. (b) The company might face a rent increase next year. (c) A client complained about a defective product; the company accepted replacement, estimated cost 4,000 lei. (d) The administrator fears a tax audit."
    ],
    "rezolvare": [
-    "(a) YES. All three conditions are met: a present obligation from a past event (the employment relationship and the litigation), a probable outflow of resources, a reliable estimate.",
-    "(b) NO. There is no present obligation from a past fact — it's a future expense of normal activity. Provisions are not set up for future operating expenses.",
+    "(a) YES. All three conditions are met: a current obligation from a past event (the employment relationship and the litigation), a probable outflow of resources, a reliable estimate.",
+    "(b) NO. There is no current obligation from a past fact — it's a future expense of normal activity. Provisions are not set up for future operating expenses.",
     "(c) YES. The obligation arose from the sale already made, the company accepted it, and the amount is estimable.",
-    "(d) NO. Fear is not an obligation. However, if an audit had already begun and findings with a probable amount had been communicated, the situation would change.",
+    "(d) NO. Fear is not an obligation. However, if an audit had already started and findings with a probable amount had been communicated, the situation would change.",
     "The test that separates all four: look for the PAST EVENT that created the obligation. In (a) and (c) it exists and can be named. In (b) and (d) the event is in the future or imagined."
    ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "recognition of revenue and expenses in the correct economic period",
+     "contracts, invoices, receiving reports, subscriptions and adjustment calculations",
+     "test unbilled purchases/sales and prepayments/deferred income before and after closing",
+     "invoice date used automatically instead of the period in which the service was supplied"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [
-    "Adjusting entries are the entries that do not come from an external document, but from the passage of time and professional judgment.",
+    "Adjustments are the entries that don't come from an external document, but from the passage of time and professional judgment.",
     "They are necessary because dividing activity into periods always cuts through the middle of something.",
-    "A provision recognizes a probable obligation born of a past fact — it does not set money aside.",
-    "Nothing triggers them: if no one makes them, they aren't made, and their absence does not unbalance the trial balance.",
-    "All of them require judgment, so all of them require a written note that can be reconstructed years later."
+    "A provision recognizes a probable obligation arising from a past fact — it does not set money aside.",
+    "Nothing triggers them: if nobody does them, they don't get done, and their absence does not unbalance the trial balance.",
+    "All require judgment, so all require a written note that can be reconstructed years later."
    ]
   }
  ]

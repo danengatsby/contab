@@ -127,7 +127,7 @@
   {
    "tip": "contabil",
    "titlu": "Pentru contabil",
-   "text": "Repartizarea rezultatului se face potrivit reglementărilor contabile și hotărârii adunării generale, iar constituirea rezervei legale e obligatorie în condițiile Legii societăților nr. 31/1990 și deductibilă fiscal potrivit art. 26 alin. (1) lit. a) Cod fiscal. Patru observații. Prima: baza de calcul a rezervei e profitul contabil brut, iar plafonul cumulat e de 20% din capitalul social subscris și vărsat — o firmă care atinge plafonul nu mai constituie rezervă, iar deducerea fiscală încetează odată cu obligația. A doua: impozitul pe dividende e de 16% pentru dividendele distribuite începând cu 1 ianuarie 2026, potrivit Legii 141/2025, iar termenul de plată e legat de data plății dividendului, cu regulă specială pentru dividendele distribuite și neplătite până la sfârșitul exercițiului — regula aceasta din urmă e cea mai frecvent omisă, fiindcă obligă la plata impozitului chiar dacă asociatul nu a primit nimic. A treia: dividendele distribuite interimar se regularizează după aprobarea situațiilor financiare anuale, iar sumele distribuite în plus se restituie; până la restituire ele constituie creanță asupra asociatului, cu implicații privind veniturile din alte surse dacă nu sunt returnate. A patra: repartizarea nu poate depăși profitul distribuibil, determinat după acoperirea pierderilor reportate și constituirea rezervelor legale; distribuirea peste această limită atrage răspunderea celor care au aprobat-o, dincolo de consecințele fiscale."
+   "text": "Repartizarea rezultatului se face potrivit reglementărilor contabile și hotărârii adunării generale, iar rezerva legală este obligatorie potrivit Legii societăților și deductibilă în limitele art. 26 Cod fiscal. Din 2026, dosarul de distribuire trebuie să probeze șase teste. Primul: rezerva se calculează cu 5% din profitul brut, până la 20% din capitalul subscris și vărsat. Al doilea: impozitul pe dividende este 16% pentru distribuirile începând cu 1 ianuarie 2026, inclusiv regula dividendelor distribuite și neplătite până la sfârșitul anului. Al treilea: dividendele interimare se regularizează după situațiile anuale, iar diferența se restituie. Al patrulea: profitul curent se distribuie numai după acoperirea pierderii reportate și constituirea rezervelor legale și statutare. Al cincilea: dacă activul net este sub jumătate din capitalul social subscris, dividendele anuale sau interimare se pot plăti numai după reîntregirea activului net. Al șaselea: o societate care distribuie trimestrial nu poate acorda împrumuturi asociaților ori altor afiliați până la regularizarea diferențelor; încălcarea regulilor introduse prin Legea 239/2025 poate atrage răspundere solidară și amenzi."
   },
   {
    "tip": "h",
@@ -252,6 +252,70 @@
    "text": "Rezerva legală nu e o cheltuială și nu iese din firmă. E o parte din câștig pe care legea o oprește din a fi distribuită — un tampon pentru creditori, nu o pierdere pentru asociați."
   },
   {
+   "tip": "h",
+   "text": "Testul de distribuire valabil în 2026"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce trebuie să existe în dosar înainte de plată",
+   "cap": [
+    "Test",
+    "Proba minimă",
+    "Concluzia care blochează plata"
+   ],
+   "randuri": [
+    [
+     "Profit distribuibil",
+     "situații aprobate, balanță, hotărâre AGA, calculul rezervei",
+     "pierdere reportată sau rezerve neconstituite"
+    ],
+    [
+     "Activ net",
+     "total active minus total datorii, reconciliat cu situațiile aprobate",
+     "activ net sub jumătate din capitalul subscris"
+    ],
+    [
+     "Dividende interimare",
+     "situații interimare și calculul regularizării",
+     "diferențe anterioare încă neregularizate"
+    ],
+    [
+     "Împrumuturi cu afiliații",
+     "fișele 451/455, contracte, scadențe și confirmări",
+     "împrumut acordat afiliatului în perioada interdicției"
+    ],
+    [
+     "Impozit reținut",
+     "calcul 16%, ordin de plată, D100 și evidența pe beneficiar",
+     "plată netă fără reținere sau termen fiscal neprogramat"
+    ]
+   ],
+   "nota": "Testele sunt cumulative. Faptul că firma are bani în cont nu dovedește că are profit distribuibil și nici că activul net permite plata."
+  },
+  {
+   "tip": "p",
+   "text": "Legea 239/2025 a introdus și praguri noi de capital social pentru SRL: 500 lei pentru societățile nou-înființate, respectiv minimum 5.000 lei când cifra de afaceri netă raportată depășește 400.000 lei. Societățile existente au termenul tranzitoriu prevăzut de lege pentru conformare, iar cele care majorează capitalul până la 31 decembrie 2026 beneficiază de reducerea tarifului de publicare. Acest control se ține în același dosar, fiindcă nivelul capitalului schimbă atât limita activului net, cât și plafonul rezervei legale."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "legalitatea repartizării și a plății rezultatului",
+     "situații aprobate, hotărâri, rezerve, activ net, 457 și plăți",
+     "recalculează profitul distribuibil, restricțiile și impozitul",
+     "dividend plătit înaintea testelor ori împrumut restituit când este blocat"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
@@ -260,7 +324,8 @@
     "Rezerva legală se ia prima: 5% din profitul BRUT, până la 20% din capitalul subscris și vărsat; e indisponibilă.",
     "Între profitul brut și banii ajunși la asociat sunt DOUĂ impozite: 16% pe profit și 16% pe dividende.",
     "Pierderea reportată blochează distribuirea până la acoperirea ei.",
-    "Dividendele interimare sunt un avans: dacă rezultatul final e mai mic, diferența se restituie."
+    "Dividendele interimare sunt un avans: dacă rezultatul final e mai mic, diferența se restituie.",
+    "În 2026, plata se blochează și când activul net este sub jumătate din capital; distribuirile interimare limitează temporar împrumuturile către afiliați."
    ]
   }
  ]

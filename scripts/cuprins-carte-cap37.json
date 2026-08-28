@@ -36,7 +36,7 @@
     ],
     [
      "D394",
-     "odată cu D300",
+     "aceeași perioadă ca D300; termen propriu",
      "livrările și achizițiile pe teritoriul național"
     ],
     [
@@ -94,7 +94,7 @@
   },
   {
    "tip": "p",
-   "text": "Observația care ordonează tabelul e că declarațiile nu sunt independente. D394 se depune odată cu D300 și trebuie să se potrivească cu el. D406 conține, în formă detaliată, datele care apar agregat în celelalte. Iar situațiile financiare anuale trebuie să concorde cu suma declarațiilor lunare."
+   "text": "Observația care ordonează tabelul e că declarațiile nu sunt independente. D394 are aceeași perioadă de raportare ca D300 și trebuie să se reconcilieze cu el, dar termenul este distinct: până la data de 30 inclusiv a lunii următoare perioadei, iar pentru ianuarie până la 28/29 februarie. D406 conține, în formă detaliată, date care trebuie să fie coerente cu evidența contabilă și fiscală. Situațiile financiare anuale se reconciliază cu balanța finală și cu declarațiile perioadelor."
   },
   {
    "tip": "cheie",
@@ -124,7 +124,7 @@
     ],
     [
      "Are angajați",
-     "D112 lunar, state de plată, D205",
+     "D112 potrivit perioadei aplicabile și state de plată",
      "niciuna"
     ],
     [
@@ -166,7 +166,7 @@
   {
    "tip": "contabil",
    "titlu": "Pentru contabil",
-   "text": "Termenele de depunere sunt cele din Codul de procedură fiscală și din ordinele care aprobă modelul fiecărei declarații, iar ele se raportează de regulă la data de 25 a lunii următoare perioadei de raportare, cu excepții proprii pentru situațiile financiare anuale și pentru D406. Patru observații de practică. Prima: nedepunerea și depunerea cu întârziere se sancționează distinct de neplată, iar amenda pentru declarație curge chiar dacă suma datorată e zero — declarațiile pe zero nu sunt opționale. A doua: corectarea unei declarații se face prin declarație rectificativă, dar D112 și D300 au regimuri procedurale diferite, iar pentru unele declarații informative rectificarea presupune retransmiterea integrală, nu doar a diferenței; alegerea greșită produce dublarea sumelor raportate. A treia: vectorul fiscal — configurația obligațiilor declarative ale firmei din evidența ANAF — trebuie să corespundă situației reale, iar actualizarea lui e o obligație a contribuabilului; o firmă rămasă cu o obligație activă în vector după ce a încetat activitatea respectivă va primi somații pentru declarații pe care nu mai are ce să le completeze. A patra: obligațiile fiscale se sting în ordinea prevăzută de lege, nu în ordinea aleasă la plată; o plată fără referință corectă poate fi alocată altei datorii decât cea intenționată, generând accesorii pe o obligație pe care plătitorul o credea stinsă."
+   "text": "Termenele de depunere rezultă din Codul de procedură fiscală și din ordinul fiecărui formular; data de 25 este frecventă, nu universală. D394, de exemplu, are termen 30 ale lunii următoare perioadei, cu regula 28/29 februarie pentru ianuarie, iar D406 și situațiile financiare au calendare proprii. Patru observații de practică. Prima: nedepunerea și depunerea cu întârziere se sancționează distinct de neplată, iar o obligație declarativă poate exista și cu sume zero. A doua: calea de corecție se verifică formular cu formular — D112 admite rectificativă, D394 se înlocuiește cu o declarație corectă, D100 se corectează prin D710, iar D300 nu admite decont rectificativ, ci regularizare ulterioară sau procedura erorii materiale, după cauză. A treia: vectorul fiscal trebuie să corespundă situației reale, iar actualizarea lui este obligația contribuabilului; existența salariaților generează D112, nu automat D205, care privește categoriile de venit și rețineri prevăzute de instrucțiunile sale. A patra: obligațiile fiscale se sting în ordinea legală, nu după intenția informală a plătitorului; fișa pe plătitor se reconciliază după depunere și plată."
   },
   {
    "tip": "h",
@@ -184,8 +184,8 @@
     "Enumeră ce depune într-o lună obișnuită, ce depune la sfârșit de trimestru și ce depune anual."
    ],
    "rezolvare": [
-    "Lunar: D112, pentru contribuțiile și impozitul pe salarii. Atât — TVA-ul e trimestrial, iar D390 nu se depune fiindcă nu există operațiuni intracomunitare.",
-    "Trimestrial: D300 (decontul de TVA), D394 (odată cu el), D100 pentru impozitul pe veniturile microîntreprinderilor. Plus D406 SAF-T, la termenul propriu al categoriei.",
+    "Pentru salarii: D112 la perioada declarativă aplicabilă firmei — de regulă lunar, iar trimestrial numai dacă sunt îndeplinite condițiile speciale. TVA-ul rămâne trimestrial, iar D390 nu se depune fiindcă nu există operațiuni intracomunitare.",
+    "Trimestrial: D300 pentru trimestru, D394 pentru aceeași perioadă dar la termenul ei distinct și D100 pentru impozitul pe veniturile microîntreprinderilor. Plus D406 SAF-T, la termenul propriu al categoriei.",
     "Anual: situațiile financiare cu anexele și declarația de asumare a răspunderii, D205 dacă a reținut impozit la sursă, registrul-inventar și documentele de inventariere, hotărârea AGA de aprobare și repartizare.",
     "Ce NU depune: D101 — nu e plătitoare de impozit pe profit.",
     "Ce ar schimba totul: o singură achiziție intracomunitară de bunuri. Din chiar luna respectivă, TVA-ul devine lunar, apare D390, iar calendarul firmei se schimbă complet — fără ca cineva să fi decis asta."
@@ -225,15 +225,15 @@
    "randuri": [
     [
      "plătitor de TVA + perioadă lunară",
-     "D300 și D394 lunar, D406 lunar"
+     "D300 lunar; D394 pentru aceeași lună, la termenul ei; D406 la termenul aplicabil"
     ],
     [
      "plătitor de TVA + perioadă trimestrială",
-     "aceleași, trimestrial"
+     "D300 și D394 pentru trimestru, cu termene distincte; D406 la termenul aplicabil"
     ],
     [
      "are salariați",
-     "D112 lunar, D205 anual, state de plată"
+     "D112 potrivit perioadei aplicabile și state de plată; nu generează singur D205"
     ],
     [
      "microîntreprindere",
@@ -366,7 +366,7 @@
   },
   {
    "tip": "p",
-   "text": "Declarațiile care raportează operațiuni — decontul de TVA, informativa D394, declarația de salarii — se corectează prin declarație rectificativă: aceeași declarație, pentru aceeași perioadă, bifată ca rectificativă, care o înlocuiește integral pe cea dinainte. Nu se depune diferența, se depune întregul, corect."
+   "text": "Procedura depinde de formular. D394 și D112 se pot rectifica prin formularul corespunzător pentru aceeași perioadă, completat potrivit instrucțiunilor. D300 este excepția importantă: nu se depune un decont rectificativ pentru aceeași perioadă. Operațiunile omise și alte corecții prevăzute de instrucțiuni intră în rândurile de regularizări ale unui decont ulterior, iar erorile materiale strict definite urmează cererea și decizia organului fiscal."
   },
   {
    "tip": "p",
@@ -383,8 +383,8 @@
    "randuri": [
     [
      "D300 — decontul de TVA",
-     "D300 rectificativ",
-     "decontul întreg, refăcut, pentru aceeași perioadă"
+     "regularizare ulterioară sau procedura erorii materiale, după cauză",
+     "nu se depune D300 rectificativ pentru aceeași perioadă"
     ],
     [
      "D394 — informativa",
@@ -410,7 +410,7 @@
   },
   {
    "tip": "cheie",
-   "text": "Rectificativa înlocuiește. D710 corectează. Prima repovestește perioada de la capăt, a doua atinge o singură sumă din fișa pe plătitor — și de aceea nu sunt interschimbabile."
+   "text": "Rectificativa, D710, regularizarea D300 și cererea de corectare a erorii materiale sunt proceduri diferite. Formularul și cauza erorii decid calea; denumirea generică «rectificativă» nu este suficientă."
   },
   {
    "tip": "p",
@@ -480,6 +480,25 @@
   {
    "tip": "p",
    "text": "Merită subliniată și deosebirea față de serviciile intracomunitare: ele intră în D390, dar nu în Intrastat, fiindcă nu trece nimic fizic peste graniță. E cea mai frecventă confuzie dintre cele două — și se vede imediat, fiindcă totalurile nu se potrivesc niciodată."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "completitudinea calendarului de declarații și exactitatea fiecărui formular",
+     "vector fiscal, registre-sursă, formulare, validări și calendar",
+     "reconciliază obligația cu sursa și verifică versiunea, perioada și termenul",
+     "declarație generată dintr-o balanță provizorie ori formular depășit"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

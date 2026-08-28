@@ -145,6 +145,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "funcționarea controalelor preventive la intrarea documentului",
+     "rapoarte de excepții, configurări, teste și rezolvări",
+     "introdu cazuri corecte și eronate și verifică răspunsul controlului",
+     "alertă ignorată sistematic ori control dezactivat fără aprobare"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

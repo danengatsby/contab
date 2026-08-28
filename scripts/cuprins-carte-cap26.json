@@ -255,6 +255,25 @@
    "text": "Iar pentru firmele plătitoare de impozit pe veniturile microîntreprinderilor există o regulă proprie, ușor de ratat: diferențele favorabile de curs intră în baza impozabilă nu rând cu rând, ci prin diferența favorabilă NETĂ, cumulat, la sfârșitul trimestrului. Calculul pe fiecare operațiune supraevaluează baza."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "reevaluarea completă a elementelor monetare în valută",
+     "documente valutare, cursuri oficiale, extrase și fișe pe fiecare monedă",
+     "recalculează la data operațiunii, decontării și închiderii",
+     "analitic numai în lei, fără cantitate valutară ori diferențe forțate"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

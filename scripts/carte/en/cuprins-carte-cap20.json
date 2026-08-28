@@ -1,15 +1,15 @@
 {
  "parte": "Part V · What you have, what you produce, who works · phases 4–6",
  "nr": "20",
- "titlu": "Inventory-taking (Stocktaking)",
+ "titlu": "Stocktaking",
  "blocuri": [
   {
    "tip": "p",
-   "text": "Stocktaking is the moment when accounting admits it can be wrong. All the other checks in this book compare figures against other figures; this one compares figures against the world — actually counting what is in the warehouse, in the cash register, in the business."
+   "text": "Stocktaking is the moment when accounting admits it might be wrong. All the other checks in this book compare figures with other figures; this one compares figures with the world — actually counting what is in the warehouse, in the cash register, in the business."
   },
   {
    "tip": "p",
-   "text": "It is also the only accounting operation that cannot be done from an office. Someone has to go, count, and write down what they found. That is precisely why it is required by law, at least once a year, before the financial statements are prepared."
+   "text": "It's also the only accounting operation that cannot be done from an office. Someone has to go, count, and write down what they found. That's precisely why it's mandatory by law, at least once a year, before the financial statements are prepared."
   },
   {
    "tip": "h",
@@ -29,15 +29,15 @@
    "randuri": [
     [
      "An unrecorded outgoing document",
-     "book (recorded) shortage — the goods really did leave"
+     "book shortfall — the goods really did leave"
     ],
     [
      "A receipt recorded twice",
-     "book (recorded) shortage — the goods never actually came in twice"
+     "book shortfall — the goods never came in twice"
     ],
     [
-     "Damage, breakage, expiry",
-     "actual shortage, with known cause"
+     "Deterioration, breakage, expiry",
+     "real shortfall, with known cause"
     ],
     [
      "Measurement errors for bulk products",
@@ -45,14 +45,14 @@
     ],
     [
      "Theft",
-     "actual shortage, cause to be determined"
+     "real shortfall, with cause to be established"
     ]
    ],
    "nota": "The first two are not shortages: they are recording errors, and treating them as shortages hides the real problem."
   },
   {
    "tip": "p",
-   "text": "That is why the correct order for an inventory result is: first look for recording errors, then establish the shortage. A shortage recorded as a loss, when in fact a delivery note was missing, \"resolves\" the difference and leaves behind an unbilled sale."
+   "text": "That's why the correct order when dealing with a stocktaking result is: first look for recording errors, then confirm the shortage. A shortfall recorded as a loss, when in fact a delivery note was missing, \"resolves\" the difference and leaves behind an unbilled sale."
   },
   {
    "tip": "h",
@@ -60,38 +60,38 @@
   },
   {
    "tip": "p",
-   "text": "Once the actual differences have been established, they are recorded, and the accounting treatment is brief and worth knowing."
+   "text": "Once the real differences have been established, they are recorded, and the accounting treatment is brief and worth knowing."
   },
   {
    "tip": "tabel",
    "titlu": "The three situations",
    "cap": [
     "Situation",
-    "The entry",
-    "What it says"
+    "Journal entry",
+    "What it means"
    ],
    "randuri": [
     [
      "Inventory surplus",
      "3xx = 758",
-     "the company has more than it knew — recorded as revenue"
+     "the company has more than it knew it had — recorded as revenue"
     ],
     [
-     "Non-chargeable shortage",
+     "Non-chargeable shortfall",
      "60x = 3xx",
-     "the shortage becomes an expense of the company"
+     "the shortfall becomes an expense of the company"
     ],
     [
-     "Shortage charged to the custodian",
+     "Shortfall charged to the custodian",
      "4282 = 7588 + 4427",
-     "the company has a receivable from the person responsible, including VAT"
+     "the company has a receivable against the responsible person, plus VAT"
     ]
    ],
-   "nota": "The third situation is the only one where VAT appears: recovery from the custodian is, for tax purposes, a taxable transaction."
+   "nota": "The third situation is the only one where VAT appears: recovery from the custodian is, for tax purposes, a taxable operation."
   },
   {
    "tip": "p",
-   "text": "Charging the shortage to someone is neither automatic nor mandatory. It presupposes that liability has been established — which requires procedure, not just a difference on a table. A shortage charged without grounds quickly turns into a labor dispute that the company loses."
+   "text": "Charging is not automatic and not mandatory. It presupposes that liability has been established — which requires a procedure, not just a difference in a table. A shortfall charged without grounds quickly turns into a labor dispute that the company loses."
   },
   {
    "tip": "cheie",
@@ -103,16 +103,16 @@
   },
   {
    "tip": "p",
-   "text": "The word evokes the warehouse, but stocktaking concerns the entire patrimony. Goods and materials are counted, but the cash register and balances with partners are also verified — through confirmation requests — and the physical existence of fixed assets is checked."
+   "text": "The word brings to mind the warehouse, but stocktaking concerns the entire patrimony. Goods and materials are counted, but the cash register and balances with partners are also checked — through confirmation requests — and the physical existence of fixed assets is verified."
   },
   {
    "tip": "p",
-   "text": "This last part is the one most often skipped, and the most instructive. A company that inventories its fixed assets often discovers equipment scrapped long ago that is still on the books and still being depreciated — or, conversely, equipment used daily and never recorded."
+   "text": "The last part is the one most often skipped and the most instructive. A company that inventories its fixed assets often discovers equipment scrapped long ago that still appears in the records and on which depreciation continues to be calculated — or, conversely, equipment used daily and never recorded."
   },
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "The general inventory of assets, liabilities, and equity items is mandatory at least once during the financial year, and the results are recorded in the inventory register; the rules on organizing and carrying out stocktaking establish the composition of the committee, the procedure for custodian declarations, how listings are prepared, and the treatment of surpluses and shortages. Offsetting surpluses against shortages is allowed only under strict limits — for the same custody period, between confusable product types, within quantity limits, and with written justification — and cannot be used as a general method of smoothing differences. For non-chargeable shortages related to goods for which VAT was deducted, adjustment of the tax is mandatory under Art. 304-305 of the Fiscal Code, except for technological losses within established limits; omitting this adjustment is one of the most common findings in VAT audits. Valuation at stocktaking is done at inventory value, and a decrease in value compared to cost — without physical shortage — is reflected through impairment adjustments, not by removal from the records."
+   "text": "The general stocktaking of assets, liabilities, and equity items is mandatory at least once during the financial year, and the results are recorded in the inventory register; the rules on organizing and carrying out stocktaking establish the composition of the commission, the procedure for custodian's declarations, the listing method, and the treatment of surpluses and shortfalls. Offsetting surpluses against shortfalls is allowed only strictly limitedly — for the same custody period, for confusable item types, within quantity limits and with written justification — and cannot be used as a general method for smoothing differences. For non-chargeable shortfalls related to goods for which VAT was deducted, adjustment of the tax is mandatory under Articles 304-305 of the Tax Code, except for technological losses within established limits; omitting the adjustment is one of the most frequent findings in VAT inspections. Valuation at stocktaking is done at inventory value, and a decrease in value compared to cost — without physical shortage — is reflected through impairment adjustments, not by writing off from the records."
   },
   {
    "tip": "h",
@@ -120,19 +120,19 @@
   },
   {
    "tip": "p",
-   "text": "With stocktaking, the section on things comes to a close. Next comes the section on people: payroll, the most heavily regulated monthly operation in all of accounting."
+   "text": "With stocktaking, the part about things comes to an end. Next comes the part about people: the payroll, the most heavily regulated monthly operation in all of accounting."
   },
   {
    "tip": "exercitiu",
-   "titlu": "Exercise 20.1 — surplus and shortage in the same stocktaking",
+   "titlu": "Exercise 20.1 — surplus and shortfall in the same stocktaking",
    "enunt": [
-    "At stocktaking, for the same custody, a surplus of 12 units of product A (cost 40 lei/unit) and a shortage of 15 units of product B (cost 30 lei/unit) are found.",
-    "(a) Are they offset? (b) What is recorded?"
+    "At stocktaking, for the same custody unit, a surplus of 12 units of product A (cost 40 lei/unit) and a shortfall of 15 units of product B (cost 30 lei/unit) are found.",
+    "(a) Can they be offset? (b) What is recorded?"
    ],
    "rezolvare": [
-    "(a) As a rule, no. Offsetting surpluses against shortages is allowed only between confusable product types, from the same group, within quantity limits, and with justification — not as a method to make the total come out even.",
-    "(b) The surplus: 12 × 40 = 480 lei, recorded as an increase in stock, offset against operating revenue.",
-    "The shortage: 15 × 30 = 450 lei, is removed from stock as an expense. If chargeable, it is charged to the custodian at the charging value, plus related output VAT. If non-chargeable, the VAT deducted on purchase is adjusted.",
+    "(a) As a rule, no. Offsetting surpluses against shortfalls is allowed only between confusable item types, from the same group, within quantity limits and with justification — not as a way of making the total come out even.",
+    "(b) The surplus: 12 × 40 = 480 lei, recorded as a stock inflow, offset by operating revenue.",
+    "The shortfall: 15 × 30 = 450 lei, leaves stock as an expense. If chargeable, it is billed to the custodian at the charging value, with output VAT applied. If non-chargeable, the VAT deducted on purchase is adjusted.",
     "What is lost through offsetting: 480 − 450 = 30 lei might seem \"almost nothing.\" But offsetting hides TWO real problems — an unrecorded inflow and an unrecorded outflow — and next month both will repeat, because no one looked for the cause."
    ]
   },
@@ -142,7 +142,7 @@
   },
   {
    "tip": "p",
-   "text": "Stocktaking has a form set out in regulations, and the form is not bureaucracy: it is the only thing that turns a count into evidence. A shortage found without procedure cannot be charged to anyone, and a surplus cannot be justified during an audit."
+   "text": "Stocktaking has a form prescribed by regulations, and the form is not bureaucracy: it's the only thing that turns a count into evidence. A shortfall found without procedure cannot be charged to anyone, and a surplus cannot be justified during an audit."
   },
   {
    "tip": "tabel",
@@ -155,36 +155,36 @@
    "randuri": [
     [
      "The stocktaking decision",
-     "names the committee, the period, the custodies",
+     "names the commission, the period, the custody units",
      "without it, no one knows who is responsible for the count"
     ],
     [
      "The custodian's declaration",
-     "before counting",
-     "they declare that all documents have been handed over"
+     "before the counting",
+     "they declare that they have handed over all documents"
     ],
     [
-     "Inventory lists",
-     "actual quantities, signed",
+     "The stocktaking lists",
+     "the actual quantities, signed",
      "they are the primary document of the operation"
     ],
     [
-     "Comparison with the recorded figures",
-     "the differences, item by item",
-     "this is where surpluses and shortages appear"
+     "Comparison with the book records",
+     "the differences, for each item",
+     "this is where surpluses and shortfalls appear"
     ],
     [
      "The minutes report",
-     "the causes and the committee's proposals",
+     "the causes and the commission's proposals",
      "turns differences into decisions"
     ],
     [
-     "The entry",
-     "the accounting entries",
-     "only now is accounting actually touched"
+     "The recording",
+     "the journal entries",
+     "only now does accounting come into play"
     ]
    ],
-   "nota": "The custodian's declaration is given BEFORE counting, not after. If given after, it could be adjusted to match what came out."
+   "nota": "The custodian's declaration is given BEFORE the counting, not after. If given after, it could be adjusted to match what came out."
   },
   {
    "tip": "p",
@@ -192,48 +192,67 @@
   },
   {
    "tip": "h",
-   "text": "Offsets and natural loss allowances"
+   "text": "Offsetting and shrinkage allowances"
   },
   {
    "tip": "p",
-   "text": "Two mechanisms reduce differences before they are recorded, and both apply restrictively, not as a method to make the total come out even."
+   "text": "Two mechanisms reduce differences before they are recorded, and both apply restrictively, not as a method for making the total come out even."
   },
   {
    "tip": "p",
-   "text": "Offsetting surpluses against shortages is allowed only between confusable product types, from the same group, within the smaller quantities, and only if the committee justifies the confusion. It is not a leveling of the total: two different products that cancel out in value remain two distinct problems."
+   "text": "Offsetting surpluses against shortfalls is allowed only between confusable item types, from the same group, within the limit of the smaller quantities, and only if the commission justifies the confusion. It is not an equalization of the total: two different products that cancel out in value remain two distinct problems."
   },
   {
    "tip": "p",
-   "text": "Natural loss allowances cover the normal losses from handling, transport, or storage — evaporation, breakage, drying — within limits set by government decision, by category of goods. They are granted only upon finding an actual shortage and only up to the legal limit: beyond it, the rest remains a chargeable or non-chargeable shortage."
+   "text": "Shrinkage allowances cover natural losses from handling, transport, or storage — evaporation, breakage, drying — within limits established by Government decision, by category of goods. They are granted only when an actual shortage is found and only up to the legal limit: beyond it, the rest remains a chargeable or non-chargeable shortfall."
   },
   {
    "tip": "cheie",
-   "text": "Neither offsetting nor natural loss allowance explains a shortage. They only acknowledge that part of it was foreseeable. The rest requires an answer."
+   "text": "Neither offsetting nor shrinkage allowances explain a shortage. They only acknowledge that part of it was foreseeable. The rest requires an answer."
   },
   {
    "tip": "h",
-   "text": "Not just inventory (stock)"
+   "text": "Not just inventory"
   },
   {
    "tip": "p",
-   "text": "The word \"inventory\" evokes the warehouse, but the obligation concerns the entire patrimony: fixed assets, receivables, liabilities, cash, even items held in off-balance-sheet accounts."
+   "text": "The word \"inventory\" brings to mind the warehouse, but the obligation concerns the entire patrimony: fixed assets, receivables, liabilities, cash and cash equivalents, even off-balance-sheet items."
   },
   {
    "tip": "p",
-   "text": "Stocktaking of receivables is not done by counting, but by confirmation: the partner is asked to confirm the balance. This is the procedure that uncovers invoices they never received, payments allocated incorrectly, and receivables that no longer exist. For fixed assets, the count confirms that the item on the register still physically exists — and for undeclared write-offs, that is where they turn up."
+   "text": "Stocktaking of receivables is not done by counting, but by confirmation: the partner is asked to confirm the balance. It's the procedure that uncovers invoices they never received, payments allocated incorrectly, and receivables that no longer exist. For fixed assets, the count confirms that the item in the register still physically exists — and, in the case of undeclared disposals, that's where it shows up."
   },
   {
    "tip": "p",
-   "text": "The result of the entire operation is recorded in the inventory register, which is a mandatory register, alongside the journal ledger and the general ledger. Without it, financial statements are prepared on figures that were never checked against reality."
+   "text": "The result of the entire operation is recorded in the inventory register, which is a mandatory register, alongside the journal register and the general ledger. Without it, financial statements are prepared on figures that were never checked against reality."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "the physical existence and valuation of all inventoried items",
+     "decision, commissions, lists, confirmations, minutes report, and valuation notes",
+     "observe/retest selections and trace differences through to approval and recording",
+     "lists pre-filled from accounting or differences offset without analysis"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [
-    "Stocktaking is the only check that compares figures against the world, not against other figures. It is mandatory annually, before the balance sheet.",
-    "Most differences are recording errors, not shortages. Documents are searched for first, then the shortage is established.",
-    "The surplus is recorded as revenue; the non-chargeable shortage becomes an expense; the chargeable one creates a receivable from the custodian, including VAT.",
-    "Charging someone presupposes liability established through procedure, not just a difference on a table.",
+    "Stocktaking is the only check that compares figures with the world, not with other figures. It is mandatory annually, before the balance sheet.",
+    "Most differences are recording errors, not shortages. Documents are checked first, then the shortage is confirmed.",
+    "The surplus is recorded as revenue; the non-chargeable shortfall becomes an expense; the charged one creates a receivable against the custodian, with VAT.",
+    "Charging presupposes liability established through procedure, not just a difference in a table.",
     "The entire patrimony is inventoried, not just the warehouse — including fixed assets, where the biggest surprises appear."
    ]
   }

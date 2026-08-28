@@ -256,6 +256,25 @@
    "text": "Dacă jurnalul de TVA și balanța nu spun același lucru, decontul construit pe oricare dintre ele va fi greșit. Verificarea se face înainte de depunere, nu după."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "completitudinea și exactitatea jurnalelor obligatorii",
+     "jurnale, balanță, secvențe și parametri de extracție",
+     "reconciliază totalurile pe perioadă și investighează excluderile",
+     "raport regenerat ulterior cu reguli diferite și fără versiune"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

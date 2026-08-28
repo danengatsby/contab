@@ -177,6 +177,25 @@
    "text": "Verificarea e simplă și merită făcută lunar, odată cu punctajul: soldul contului 542, desfășurat pe persoane, cu data la care s-a acordat fiecare sumă. Orice poziție mai veche decât termenul intern e o întrebare de pus — iar întrebarea pusă la timp costă un telefon, nu o recalculare de contribuții."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "respectarea plafoanelor și limitelor legale pentru numerar și plăți",
+     "registru de casă, parteneri, documente fragmentate și calculul limitelor",
+     "agregă operațiunile după regulile legale și testează fragmentarea/plățile în lanț",
+     "documente sau plăți divizate artificial pentru a rămâne sub plafon"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

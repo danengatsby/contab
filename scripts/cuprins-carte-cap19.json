@@ -215,6 +215,25 @@
    "text": "Diferența dintre consumul din rețetă și cel efectiv nu e o eroare contabilă: e chiar informația pentru care merită să ai o rețetă."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "transformarea completă și corectă a costurilor în producție finită",
+     "rețete, bonuri de consum/predare, rapoarte, producție neterminată și calculații",
+     "reexecută fluxul cantitativ și alocarea costurilor pentru loturi selectate",
+     "randament imposibil, consum standard neactualizat ori producție fără predare"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

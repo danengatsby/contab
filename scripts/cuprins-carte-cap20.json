@@ -227,6 +227,25 @@
    "text": "Rezultatul întregii operațiuni se consemnează în registrul-inventar, care e registru obligatoriu, alături de registrul-jurnal și cartea mare. Fără el, situațiile financiare se întocmesc pe cifre care nu au fost niciodată confruntate cu realitatea."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "existența faptică și evaluarea tuturor elementelor inventariate",
+     "decizie, comisii, liste, confirmări, proces-verbal și note de valorificare",
+     "observă/retestează selecții și urmărește diferențele până la aprobare și contabilizare",
+     "liste precompletate din contabilitate ori diferențe compensate fără analiză"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

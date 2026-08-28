@@ -21,7 +21,7 @@
   },
   {
    "tip": "tabel",
-   "titlu": "Un salariu de 5.000 lei brut, pas cu pas",
+   "titlu": "Un salariu de 5.000 lei brut în august 2026, pas cu pas",
    "cap": [
     "Pasul",
     "Cota",
@@ -46,32 +46,32 @@
     [
      "minus deducerea personală",
      "",
-     "430"
+     "570"
     ],
     [
      "= baza de impozitare",
      "",
-     "2.820"
+     "2.680"
     ],
     [
      "minus impozit pe venit",
      "10%",
-     "282"
+     "268"
     ],
     [
      "= salariu net",
      "",
-     "2.968"
+     "2.982"
     ]
    ],
    "numerice": [
     3
    ],
-   "nota": "Deducerea personală nu e o sumă primită, ci o parte din venit care nu se impozitează. Ea reduce impozitul cu 10% din valoarea ei."
+   "nota": "În august 2026 salariul minim este 4.325 lei. Deducerea personală nu e o sumă primită, ci o parte din venit care nu se impozitează; ea reduce impozitul cu 10% din valoarea ei."
   },
   {
    "tip": "p",
-   "text": "Din 5.000 de lei bruți, angajatul primește 2.968. Diferența de 2.032 nu rămâne la firmă: 1.750 sunt contribuțiile lui, virate la stat, iar 282 impozitul. Firma nu câștigă nimic din reținere — e doar intermediarul obligat să vireze."
+   "text": "Din 5.000 de lei bruți, în exemplul din august 2026 angajatul primește 2.982. Diferența de 2.018 nu rămâne la firmă: 1.750 sunt contribuțiile lui, virate la stat, iar 268 impozitul. Firma nu câștigă nimic din reținere — e doar intermediarul obligat să vireze."
   },
   {
    "tip": "h",
@@ -106,7 +106,7 @@
     2
    ],
    "total": true,
-   "nota": "Raportul care se reține ușor: la un net de aproximativ 2.968 de lei, firma plătește 5.112,50 — cam de 1,7 ori mai mult."
+   "nota": "Raportul care se reține ușor: la un net de aproximativ 2.982 de lei, firma plătește 5.112,50 — cam de 1,7 ori mai mult."
   },
   {
    "tip": "cheie",
@@ -139,7 +139,7 @@
   {
    "tip": "contabil",
    "titlu": "Pentru contabil",
-   "text": "Cotele aplicabile sunt CAS 25% și CASS 10% în sarcina salariatului, impozit pe venit 10% aplicat asupra bazei rezultate după scăderea contribuțiilor obligatorii și a deducerii personale, respectiv CAM 2,25% în sarcina angajatorului (art. 138, 156, 78 și 220^3 Cod fiscal). Trei zone produc majoritatea corecțiilor. Prima: bazele de calcul nu coincid — suma neimpozabilă din salariul minim, potrivit art. 76, este exceptată atât de la impozit, cât și de la contribuții, deci reduce toate bazele, în timp ce deducerea personală reduce doar baza de impozitare; tratarea lor la fel produce erori în ambele sensuri. A doua: la normele parțiale sub salariul minim, contribuțiile se calculează la nivelul salariului minim, diferența fiind suportată de angajator, cu excepțiile expres prevăzute — netul salariatului nu se diminuează, dar costul firmei crește. A treia: indemnizația de concediu medical intră în baza CAS, dar are regim propriu la CASS și CAM, iar partea suportată din FNUASS se recuperează, nu se înregistrează ca și cheltuială definitivă. În fine, D112 se întocmește pe date individuale, iar corelația dintre totalurile ei și conturile 641, 421, 43x din balanță trebuie verificată înainte de depunere, nu după."
+   "text": "Cotele aplicabile sunt CAS 25% și CASS 10% în sarcina salariatului, impozit pe venit 10% după contribuții și deducerea personală, respectiv CAM 2,25% în sarcina angajatorului (art. 138, 156, 78 și 220^3 Cod fiscal). Din 1 iulie 2026 salariul minim este 4.325 lei, prin HG 146/2026. Pentru iulie–decembrie 2026, suma de 200 lei/lună din salariul minim este neimpozabilă și fără contribuții dacă sunt îndeplinite cumulativ condițiile OUG 89/2025, inclusiv limita venitului brut realizat de 4.600 lei; facilitatea nu se confundă cu deducerea personală. Trei zone produc majoritatea corecțiilor. Prima: bazele nu coincid — suma neimpozabilă reduce bazele de impozit și contribuții, deducerea personală numai baza impozitului. A doua: la normele parțiale sub minim, diferența contribuțiilor este suportată de angajator, cu excepțiile legale. A treia: concediul medical are tratament diferențiat pe coduri la CAS, CASS, CAM și repartizarea angajator/FNUASS; D112 se reconciliază cu 641, 421 și 43x înainte de depunere, pe fiecare salariat și pe total."
   },
   {
    "tip": "h",
@@ -173,7 +173,7 @@
   },
   {
    "tip": "tabel",
-   "titlu": "Aceeași lună, cu și fără concediu (5.000 lei brut, 21 de zile lucrătoare)",
+   "titlu": "Aceeași lună, cu și fără concediu de odihnă (5.000 lei brut, 21 de zile lucrătoare)",
    "cap": [
     "Situația",
     "Salariu pe zile lucrate",
@@ -188,7 +188,7 @@
      "5.000,00",
      "—",
      "5.000,00",
-     "2.968,00",
+     "același în ambele scenarii",
      "5.112,50"
     ],
     [
@@ -196,7 +196,7 @@
      "3.809,52",
      "1.190,48",
      "5.000,00",
-     "2.968,00",
+     "același în ambele scenarii",
      "5.112,50"
     ]
    ],
@@ -204,10 +204,9 @@
     2,
     3,
     4,
-    5,
     6
    ],
-   "nota": "Salariul se reduce proporțional cu zilele nelucrate, iar indemnizația umple exact golul. Netul și costul rămân neschimbate."
+   "nota": "La salariu și medie constante, salariul se reduce proporțional cu zilele nelucrate, iar indemnizația umple exact golul. Netul și costul rămân neschimbate; valoarea netă se calculează cu parametrii fiscali ai lunii concrete."
   },
   {
    "tip": "p",
@@ -215,39 +214,47 @@
   },
   {
    "tip": "h",
-   "text": "Concediul medical: cine plătește primele zile"
+   "text": "Concediul medical în 2026: o zi diminuată și două surse de suportare"
   },
   {
    "tip": "p",
-   "text": "La concediul medical, mecanismul e altul și împarte costul în două. Primele cinci zile lucrătoare le suportă angajatorul; restul se suportă din fondul de asigurări sociale de sănătate și se recuperează."
+   "text": "Pentru certificatele eliberate între 1 februarie 2026 și 31 decembrie 2027, OUG nr. 91/2025 a introdus o regulă temporară: indemnizația se calculează și se plătește prin diminuarea cu o zi. Pentru incapacitatea temporară de muncă aflată în regimul obișnuit, angajatorul suportă indemnizația din a doua zi până inclusiv în a șasea zi de incapacitate, iar FNUASS din ziua următoare celor suportate de angajator. Se plătesc zilele lucrătoare din aceste intervale; zilele calendaristice stabilesc poziția în concediu. Există excepții și indemnizații suportate integral din fond, care se testează după cod."
   },
   {
    "tip": "tabel",
-   "titlu": "Concediu medical, la aceleași 5.000 lei brut",
+   "titlu": "Iunie 2026: boală obișnuită, efectul duratei și calendarului (medie zilnică 238,10 lei)",
    "cap": [
-    "Situația",
-    "Brut taxabil",
-    "Suportat de firmă",
-    "Din FNUASS",
-    "Net",
-    "Cost firmă"
+    "Certificatul",
+    "Zile lucrătoare CM",
+    "Zi diminuată",
+    "Zile plătite de angajator",
+    "Zile plătite din FNUASS",
+    "Indemnizație brută totală"
    ],
    "randuri": [
     [
-     "5 zile de concediu medical",
-     "3.809,52",
-     "892,85",
-     "0,00",
-     "2.874,25",
-     "4.808,17"
+     "luni 8 – vineri 12 iunie (5 zile calendaristice)",
+     "5",
+     "1 zi lucrătoare",
+     "4",
+     "0",
+     "523,81 (55%)"
     ],
     [
-     "10 zile de concediu medical",
-     "2.619,05",
-     "892,85",
-     "892,85",
-     "2.780,49",
-     "3.590,92"
+     "joi 11 – luni 15 iunie (5 zile calendaristice)",
+     "3",
+     "1 zi lucrătoare",
+     "2",
+     "0",
+     "261,90 (55%)"
+    ],
+    [
+     "luni 8 – miercuri 17 iunie (10 zile calendaristice)",
+     "8",
+     "1 zi lucrătoare",
+     "4",
+     "3",
+     "1.083,33 (65%)"
     ]
    ],
    "numerice": [
@@ -257,60 +264,86 @@
     5,
     6
    ],
-   "nota": "În ambele cazuri firma suportă exact 892,85 lei — cele cinci zile. Ce trece peste ele se recuperează, oricât ar dura concediul."
+   "nota": "Pentru codul 01, procentul se stabilește pe episod: 55% până la 7 zile, 65% pentru 8–14 zile și 75% peste 15 zile. Tabelul explică numărul zilelor și brutul; netul și contribuțiile se calculează după toate regulile aplicabile certificatului."
   },
   {
    "tip": "p",
-   "text": "Cifrele arată și de ce concediul medical scade venitul angajatului: indemnizația e de 75% din media zilnică, nu 100%. La cinci zile, netul coboară de la 2.968 la 2.874,25 de lei — aproape 94 de lei mai puțin pentru o săptămână de boală."
+   "text": "Pentru certificatul de cinci zile început luni, cinci zile lucrătoare lipsesc din salariu, dar numai patru sunt indemnizate în acest regim temporar. Pentru certificatul început joi, weekendul ocupă două dintre zilele calendaristice aflate în intervalul angajatorului, astfel că rămân numai două zile lucrătoare indemnizate. La certificatul de zece zile, zilele lucrătoare începând cu a șaptea zi calendaristică intră în sarcina FNUASS."
   },
   {
    "tip": "cheie",
-   "text": "Numărul de zile suportate de firmă se socotește în zile LUCRĂTOARE din primele cinci zile CALENDARISTICE ale concediului. Un concediu care începe joi are alt cost pentru firmă decât unul care începe luni."
+   "text": "Pentru certificatele emise în intervalul 1 februarie 2026–31 decembrie 2027, nu aplica automat regula istorică «angajatorul suportă primele cinci zile». Identifică ziua diminuată, numără intervalele în zile calendaristice și plătește numai zilele lucrătoare aferente fiecărei surse."
   },
   {
    "tip": "p",
-   "text": "Observația din caseta de mai sus e cea care produce cele mai multe recalculări, iar diferența se poate arăta pe același concediu, cu aceeași durată."
+   "text": "Separat de sursa de suportare, procentul indemnizației, baza de calcul și tratamentul CAS, CASS, CAM depind de cod și durată. Pentru un concediu fără întrerupere, diminuarea se aplică o singură dată pe episod, indiferent de numărul certificatelor, potrivit Legii nr. 64/2026 și normelor actualizate prin Ordinul nr. 506/2026. De la 1 iulie 2026, prelungirea în luna următoare care mută episodul într-un interval procentual superior poate produce recalcularea diferenței pentru luna anterioară; diferența se include și se declară în luna recalculării, potrivit OUG nr. 89/2025."
   },
   {
    "tip": "tabel",
-   "titlu": "Cinci zile de concediu medical, două zile de început",
+   "titlu": "Controlul certificatului medical în stat și D112",
    "cap": [
-    "Începe",
-    "Zile lucrătoare în sarcina firmei",
-    "Suportat de firmă",
-    "Din FNUASS"
+    "Control",
+    "Probă",
+    "Eroare prinsă",
+    "Urmărire"
    ],
    "randuri": [
     [
-     "luni, 8 iunie",
-     "5",
-     "892,85",
-     "0,00"
+     "Data și continuitatea episodului",
+     "certificat inițial/în continuare și registrul medical",
+     "diminuarea aplicată de mai multe ori ori deloc",
+     "fișa episodului"
     ],
     [
-     "joi, 11 iunie",
-     "3",
-     "535,71",
-     "357,14"
+     "Calendar și program",
+     "interval calendaristic, zile lucrătoare și pontaj",
+     "zile atribuite sursei greșite",
+     "recalcul pe zi"
+    ],
+    [
+     "Cod, procent și contribuții",
+     "certificat, bază pe șase luni și parametri datați",
+     "procent ori contribuție generalizată",
+     "reconciliere stat–D112"
+    ],
+    [
+     "Recuperabil din fond",
+     "centralizator, D112, cerere și răspunsul casei",
+     "creanță nerecuperată ori supraevaluată",
+     "vechime și confirmare"
     ]
    ],
-   "numerice": [
-    2,
-    3,
-    4
-   ],
-   "nota": "Cinci zile calendaristice de joi cuprind și sâmbăta cu duminica, deci doar trei zile lucrătoare. Diferența de 357,14 lei se recuperează de la fond — sau se pierde, dacă cineva numără din obișnuință cinci zile lucrătoare."
+   "nota": "Regula temporară provine din OUG nr. 91/2025, aprobată cu modificări prin Legea nr. 64/2026, și din normele actualizate prin ordinele nr. 521/2026 și nr. 506/2026. Dosarul păstrează versiunea parametrilor care a produs statul."
   },
   {
    "tip": "p",
-   "text": "E o sumă mică pe un singur concediu și una considerabilă pe un an cu mulți angajați. Mai important, e o eroare care nu se vede: statul de plată iese echilibrat, netul angajatului e corect, iar singura consecință e o sumă recuperabilă subdeclarată în D112."
+   "text": "Eroarea nu se vede prin egalitatea statului: programul poate calcula perfect o regulă veche. Controlul eficient compară data certificatului cu versiunea regulii, apoi reconciliază zilele și sumele suportate de angajator și din FNUASS cu D112 și cu creanța de recuperat."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "exactitatea statului și conformitatea obligațiilor salariale",
+     "contracte, pontaje, state, concedii, plăți și D112",
+     "recalculează brut–net și costul pentru salariați și luni cu risc",
+     "parametri globali modificați fără dată de valabilitate ori test"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
     "Impozitul se calculează după scăderea contribuțiilor și a deducerii, nu pe brut.",
-    "Brutul, netul și costul firmei sunt trei cifre diferite: 5.000, 2.968 și 5.112,50 în exemplul de față.",
+    "Brutul, netul și costul firmei sunt trei cifre diferite: 5.000, 2.982 și 5.112,50 în exemplul din august 2026.",
     "Firma nu câștigă nimic din reținerile din salariu — e doar intermediarul obligat să le vireze.",
     "Salariul lunii e cheltuiala lunii, chiar dacă se plătește în luna următoare.",
     "Cotele și plafoanele trebuie să vină dintr-un loc unic și datat: se schimbă des, iar o cotă veche într-un colț de cod se descoperă târziu."

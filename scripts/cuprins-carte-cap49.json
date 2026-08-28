@@ -224,6 +224,25 @@
    "text": "Iar distrugerea documentelor la expirarea termenului se face pe bază de proces-verbal, cu aprobarea conducerii. Fără el, la un control, distrugerea documentată nu se poate distinge de pierdere — iar consecințele celor două nu sunt aceleași."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "integritatea, accesibilitatea și păstrarea arhivei",
+     "nomenclator, index, politici de retenție, copii și teste de restaurare",
+     "selectează documente vechi și probează găsirea, citirea și urma",
+     "fișiere existente dar ilizibile, neindexate ori fără copie verificată"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

@@ -45,7 +45,7 @@
   },
   {
    "tip": "p",
-   "text": "Microîntreprinderea plătește un procent din venituri — 1%, sau 3% peste prag ori pe anumite domenii de activitate. Nu contează dacă a avut profit sau pierdere; se plătește pe încasat, la propriu pe ce a facturat. E simplu de calculat și previzibil."
+   "text": "Microîntreprinderea plătește, în 2026, cota unică de 1% asupra bazei fiscale formate din veniturile recunoscute contabil, cu scăderile și adăugările prevăzute de Codul fiscal. Nu contează dacă a avut profit sau pierdere și nici dacă toate facturile au fost încasate: impozitul urmează venitul contabil, nu extrasul bancar. E simplu de estimat, dar baza lui nu se confundă nici cu încasările, nici cu totalul clasei 7."
   },
   {
    "tip": "p",
@@ -53,7 +53,7 @@
   },
   {
    "tip": "p",
-   "text": "Regimul micro nu e la alegere oricând: are un plafon de venituri — 100.000 de euro începând cu 2026 — peste care firma trece obligatoriu la impozit pe profit. Sub plafon, alegerea există, iar întrebarea firească e care variantă costă mai puțin."
+   "text": "Regimul micro nu e la alegere oricând: încadrarea cere îndeplinirea cumulativă a condițiilor legale, între care plafonul de 100.000 euro, existența a cel puțin unui salariat, regula privind deținerile de peste 25%, depunerea la termen a situațiilor financiare și absența activităților excluse. Din 2026 se poate reveni la micro dacă toate condițiile sunt îndeplinite, dar opțiunea și ieșirea se declară în termenele proprii; simpla situare sub plafon nu este suficientă."
   },
   {
    "tip": "h",
@@ -121,8 +121,8 @@
    "text": "Concluzia se reține ușor: la marje mari, micro e avantajos; la marje mici, impozitul pe profit. Iar dacă firma are ani în pierdere, micro devine de-a dreptul scump — plătește și când nu câștigă."
   },
   {
-   "tip": "p",
-   "text": "Pentru cota de 3% punctul de cumpănă se mută la 18,75% marjă. Sub el, impozitul pe profit e mai ieftin; peste, tot micro."
+   "tip": "cheie",
+   "text": "În 2026 nu mai există cota micro de 3% și nici pragul de 60.000 euro care schimba cota. Comparația economică se face exclusiv între 1% pe baza micro și 16% pe rezultatul fiscal, după verificarea prealabilă a eligibilității."
   },
   {
    "tip": "h",
@@ -134,7 +134,7 @@
   },
   {
    "tip": "p",
-   "text": "La TVA, depășirea plafonului obligă la înregistrare într-un termen scurt, iar de la data înregistrării facturile se emit altfel. La micro, depășirea pragului de 60.000 de euro mută cota de la 1% la 3% începând cu trimestrul în care s-a depășit — nu de anul următor. Depășirea plafonului de 100.000 de euro scoate firma din regimul micro cu totul."
+   "text": "La TVA, depășirea plafonului obligă la înregistrare într-un termen scurt, iar de la data înregistrării facturile se emit altfel. La micro, depășirea plafonului de 100.000 euro atrage impozit pe profit începând cu trimestrul depășirii. Plafonul se verifică și cu veniturile întreprinderilor legate, după regulile art. 47, 52 și 54 Cod fiscal; pentru testul plafonului din 2026 se folosește cifra de afaceri definită de reglementările contabile, cu regulile speciale pentru transferul repetat de active."
   },
   {
    "tip": "p",
@@ -143,7 +143,7 @@
   {
    "tip": "contabil",
    "titlu": "Pentru contabil",
-   "text": "Baza impozitului micro nu e totalul clasei 7 și confuzia asta e cea mai frecventă eroare de calcul la firmele mici: potrivit art. 53 Cod fiscal, din venituri se scad veniturile din provizioane și ajustări, producția de imobilizări, variația stocurilor, subvențiile și diferențele favorabile de curs, iar reducerile comerciale acordate ulterior se adaugă. Comutarea 1% → 3% operează de la trimestrul depășirii pragului de 60.000 EUR, nu de la anul următor (art. 51 alin. (4), Legea 296/2023), iar cota de 3% se aplică din start pe codurile CAEN enumerate la art. 51 alin. (1) lit. b) pct. 2 — IT, HoReCa, juridic, medical — indiferent de venituri. Plafonul de ieșire din regim e 100.000 EUR din 2026 (art. 47, OUG 156/2024), în scădere față de anii anteriori, ceea ce a scos multe firme din micro fără ca ele să se schimbe cu ceva. Cotele de TVA sunt 21% standard și 11% redus de la 1 august 2025 (Legea 141/2025), iar plafonul de scutire e 395.000 lei de la 1 septembrie 2025 (art. 310, OG 22/2025, în aplicarea Directivei UE 2020/285). Perioada fiscală pentru TVA — lună sau trimestru — se stabilește după cifra de afaceri a anului precedent și după existența achizițiilor intracomunitare, iar trecerea de la trimestru la lună în cursul anului atrage recalcularea termenelor pentru toate perioadele rămase."
+   "text": "Baza impozitului micro nu e totalul clasei 7 și nici testul plafonului nu mai folosește aceeași mărime. Pentru IMPOZIT, art. 53 Cod fiscal pornește de la veniturile din orice sursă și aplică scăderile și adăugările enumerate de lege; bonificația acordată de organul fiscal se scade din bază. Pentru ÎNCADRAREA în plafonul de 100.000 euro, art. 54, în forma aplicabilă din 2026 prin OUG 8/2026, folosește cifra de afaceri definită de reglementările contabile, cumulată cu cea a întreprinderilor legate; la transferul a mai mult de un activ din aceeași subgrupă ori a mai mult de un teren se adaugă și veniturile aferente. Cota este unică, 1%, de la 1 ianuarie 2026, prin OUG 89/2025; regulile vechi de 1%/3%, pragul de 60.000 euro și lista CAEN nu se mai aplică. OUG 8/2026 a permis revenirea la micro, a extins la 90 de zile termenul în care o firmă nouă trebuie să angajeze primul salariat și a reglementat efectul încetării raportului de muncă. Separat, cotele de TVA sunt 21% și 11%, iar plafonul scutirii pentru întreprinderi mici este 395.000 lei."
   },
   {
    "tip": "h",
@@ -220,14 +220,33 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "încadrarea corectă în regimurile fiscale aplicabile perioadei",
+     "vector fiscal, cifră de afaceri, salariați, afiliați, notificări și recipise",
+     "recalculează fiecare condiție la data relevantă și verifică tranzițiile",
+     "regim păstrat din anul precedent fără retestarea eligibilității"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
     "Deschiderea exercițiului cere două răspunsuri independente: plătitor de TVA sau nu, și micro sau impozit pe profit.",
     "Neplătitorul de TVA nu adaugă taxa la prețuri, dar nici nu o deduce — devine cost. Plafonul de scutire e 395.000 lei.",
     "Micro se plătește pe venituri, indiferent de profit; impozitul pe profit, 16% din câștig, e zero în pierdere.",
-    "Punctul de cumpănă e la 6,25% marjă pentru cota de 1% și la 18,75% pentru cea de 3%. Marje mari — micro; marje mici — profit.",
-    "Pragurile se urmăresc pe parcursul anului: depășirea mută cota din trimestrul depășirii, nu din anul următor.",
+    "Punctul de cumpănă aritmetic este la 6,25% marjă pentru cota micro unică de 1%; comparația are sens numai după verificarea tuturor condițiilor de eligibilitate.",
+    "Plafonul de 100.000 euro se urmărește împreună cu întreprinderile legate; depășirea atrage impozit pe profit din trimestrul depășirii.",
     "Un răspuns greșit aici nu se vede azi, ci la fiecare declarație a anului."
    ]
   }

@@ -253,6 +253,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "separarea performanței de numerar și validarea ecuației poziției financiare",
+     "balanță, extrase, creanțe/datorii și puntea profit–numerar",
+     "recalculează profitul, poziția și variația de numerar din aceleași operațiuni",
+     "profit raportat fără creanță reală ori numerar fără sursă explicată"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

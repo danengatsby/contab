@@ -5,11 +5,11 @@
  "blocuri": [
   {
    "tip": "p",
-   "text": "A document entered into the software does not, by that simple fact, enter the accounting records. Between \"I typed it\" and \"it's recorded\" lie several steps, and they are not the software's bureaucracy: they are exactly the separation discussed in chapter 4, between the one who enters and the one who takes responsibility."
+   "text": "A document entered into the program does not, by that simple fact, become part of the accounting records. Between \"I typed it\" and \"it's recorded\" there are several steps, and they are not the program's bureaucracy: they are exactly the separation discussed in chapter 4, between who enters and who takes responsibility."
   },
   {
    "tip": "p",
-   "text": "At a small business, where the same person does both things, the steps seem like an affectation. They become useful, however, on the first day someone makes a mistake — and they are indispensable the moment someone other than the person signing the balance sheet works on entering documents."
+   "text": "In a small business, where the same person does both things, the steps seem like a fuss. But they become useful on the first day someone makes a mistake — and they are indispensable the moment someone other than the one who signs the balance sheet works on entering documents."
   },
   {
    "tip": "h",
@@ -26,7 +26,7 @@
    "randuri": [
     [
      "Draft",
-     "it has been typed, but nothing is decided yet; it may be incomplete",
+     "it has been typed, but nothing is decided; it may be incomplete",
      "yes, without a trace"
     ],
     [
@@ -36,7 +36,7 @@
     ],
     [
      "Approved",
-     "someone with the right to do so has taken responsibility for the content",
+     "someone with the right authority has taken responsibility for the content",
      "yes, until posting"
     ],
     [
@@ -45,15 +45,15 @@
      "NO — only by reversal (storno)"
     ]
    ],
-   "nota": "Only the last state produces effects. A draft does not appear in the trial balance, does not enter the VAT return, and is not visible in the balance sheet."
+   "nota": "Only the last state has effects. A draft does not appear in the trial balance, does not enter the VAT return, and is not visible in the balance sheet."
   },
   {
    "tip": "p",
-   "text": "The threshold that matters is the last one. Until posting, an entry is an intention: it can be corrected, completed, or deleted without anyone ever knowing it existed. After posting, it becomes a recorded fact, and recorded facts are not deleted — they are corrected through another entry, which also remains."
+   "text": "The threshold that matters is the last one. Until posting, an entry is an intention: it can be corrected, completed, or deleted without anyone ever knowing it existed. After posting it becomes a recorded fact, and recorded facts are not deleted — they are corrected through another entry, which also remains."
   },
   {
    "tip": "cheie",
-   "text": "Before posting, a mistake is a correction. After posting, it is a new transaction."
+   "text": "Before posting, a mistake is a correction. After posting, it is a new operation."
   },
   {
    "tip": "h",
@@ -61,15 +61,15 @@
   },
   {
    "tip": "p",
-   "text": "The question arises immediately, and it is legitimate: if I made a mistake, why can't I delete it and write it correctly? The answer has two parts, one practical and one of principle."
+   "text": "The question comes up right away, and it is legitimate: if I made a mistake, why can't I just delete it and write it correctly? The answer has two parts, one practical and one of principle."
   },
   {
    "tip": "p",
-   "text": "Practical: other things have already been calculated based on the posted entry. A VAT return filed, a trial balance sent to the bank, a statement handed to a partner. Deletion would make the same documents say something different today than they said yesterday, with nothing explaining the difference."
+   "text": "Practical: other things have already been calculated based on the posted entry. A VAT return already filed, a trial balance sent to the bank, a statement handed to a partner. Deletion would make the same documents say something different today than they said yesterday, with nothing explaining the difference."
   },
   {
    "tip": "p",
-   "text": "Of principle: the trail of the correction is part of the proof. Accounting records in which mistakes disappear without a trace are, to an outsider, indistinguishable from records in which figures are adjusted as needed. Precisely because errors are normal and inevitable, the way they are corrected says everything about the seriousness of the records."
+   "text": "Of principle: the trail of the correction is part of the evidence. Accounting records in which mistakes disappear without a trace are, to an outside observer, indistinguishable from records where figures are adjusted as needed. Precisely because errors are normal and inevitable, the way they are corrected says everything about the seriousness of the records."
   },
   {
    "tip": "h",
@@ -77,48 +77,48 @@
   },
   {
    "tip": "p",
-   "text": "The steps take on full meaning when they are tied to different people. The usual model at a company with an external accountant looks like this: someone from the company enters documents as they appear, the accountant checks and posts them."
+   "text": "The steps make full sense when linked to different people. The usual model at a business with an external accountant looks like this: someone in the business enters documents as they appear, the accountant verifies and posts."
   },
   {
    "tip": "p",
-   "text": "The advantage is not control, but the proper division of labor. The person at the company knows what happened — they saw the goods, they signed for receipt. The accountant knows how it is recorded. Each does the part the other cannot do, and the state of the document shows, at any moment, where things stand."
+   "text": "The advantage is not control, but the correct division of labor. The person in the business knows what happened — they saw the goods, they signed for receipt. The accountant knows how it should be recorded. Each does the part the other cannot do, and the state of the document shows, at any moment, where things stand."
   },
   {
    "tip": "p",
-   "text": "At a company where the business owner does everything alone, the steps remain useful in a more modest way: they separate \"I set the document aside so I wouldn't lose it\" from \"I checked it and it's fine.\" These are two different things, and mixing them is the usual cause of invoices recorded twice."
+   "text": "In a business where the owner does everything alone, the steps remain useful in a more modest way: they separate \"I set the document aside so I wouldn't lose it\" from \"I checked it and it's good.\" These are two different things, and mixing them is the usual cause of invoices recorded twice."
   },
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "The state flow is the digital form of an internal control principle: separating the recording function from the approval function. Even where separation by person is not possible — small firms, a single accountant — separation in time preserves part of the benefit, because verification is done with the document in hand and not in the same motion as typing. Two consequences for practice. First: posting rights must be treated as a distinct right in the access matrix, not as a consequence of write access; a user who can enter documents should not also be able to post them, if the company's structure allows otherwise. Second: the moment of posting determines the period only together with the transaction date, not in its place — an entry posted in March with a February date belongs to February, and if February is closed, the system must refuse it, not silently reclassify it. This refusal is the subject of period locking, covered in chapter 41."
+   "text": "The state flow is the digital form of an internal control principle: separating the recording function from the approval function. Even where separation of persons is not possible — small businesses, a single accountant — separation in time preserves part of the benefit, because verification is done with the document in hand and not in the same motion as typing. Two consequences for practice. First: the right to post must be treated as a distinct right in the access matrix, not as a consequence of the write right; a user who can enter documents should not also be able to post, if the business structure allows otherwise. Second: the moment of posting determines the period only together with the operation date, not instead of it — an entry posted in March with a February date belongs to February, and if February is closed, the system must refuse it, not silently reclassify it. This refusal is the subject of period locking, in chapter 41."
   },
   {
    "tip": "h",
-   "text": "What is visible from outside"
+   "text": "What is visible from the outside"
   },
   {
    "tip": "p",
-   "text": "A side effect of the states, often more valuable than the control itself: at any moment one can say what is ready and what is not. How many of the month's documents are still drafts, how many are awaiting verification, how many have actually entered the accounting records."
+   "text": "A side effect of the states, often more valuable than the control itself: at any moment one can say what is ready and what is not. How many documents for the month are still drafts, how many are awaiting verification, how many have actually entered the accounting records."
   },
   {
    "tip": "p",
-   "text": "At the end of the month, the question \"have we finished?\" is no longer answered from memory, but read off directly. And when the answer is no, one can see exactly what is missing — which turns month-end closing from a hunch into a list. Chapter 39 returns to this."
+   "text": "At month-end, the question \"are we done?\" is no longer answered from memory, but read off. And when the answer is no, one can see exactly what is missing — which turns the month-end close from a hunch into a list. Chapter 39 returns to this."
   },
   {
    "tip": "p",
-   "text": "The question of what exactly is checked before a document is allowed to pass remains. That is the next chapter."
+   "text": "The question remains of what is actually verified before a document is allowed to pass through. That is the next chapter."
   },
   {
    "tip": "exercitiu",
    "titlu": "Exercise 12.1 — who presses the button, and when",
    "enunt": [
-    "A company employs an operator who enters documents and an accountant responsible for filings. On the 12th of the month, the operator enters 40 invoices. On the 14th, the accountant discovers that three of them are from the previous month, already closed and filed.",
+    "In a business, an operator enters documents and an accountant is responsible for filings. On the 12th of the month, the operator enters 40 invoices. On the 14th, the accountant discovers that three of them are from the previous month, already closed and filed.",
     "(a) What state should the 40 have been in on the 12th? (b) What is done with the three?"
    ],
    "rezolvare": [
     "(a) In draft state. Entry is an execution operation; posting is the act by which someone takes responsibility for the figure. If the 40 had been posted directly, the three would already have entered the records of a closed month — or would have been rejected by the period guard, which is exactly the desired behavior.",
-    "(b) They are not recorded in the closed month. They are recorded in the current month, and if they affect the VAT or the result of the previous month, it is evaluated whether a corrective return is warranted — a decision that depends on the amount involved and the deadlines.",
-    "What the exercise shows: the draft/posted separation is not bureaucracy, it is the place where verification happens. A company where everyone posts directly has nowhere to verify, and errors reach the filings without passing by anyone."
+    "(b) They are not recorded in the closed month. They are recorded in the current month, and the effect on the previous period is analyzed separately: VAT adjustment, tax correction, or an amending declaration only for the form that allows this route, depending on the nature of the error and the applicable rules.",
+    "What the exercise shows: the draft/posted separation is not bureaucracy, but the place where verification happens. A business in which everyone posts directly has no place to verify, and errors reach the filings without passing by anyone."
    ]
   },
   {
@@ -135,8 +135,8 @@
    "cap": [
     "State",
     "Visible in reports?",
-    "Can be modified?",
-    "Can be deleted?"
+    "Can it be modified?",
+    "Can it be deleted?"
    ],
    "randuri": [
     [
@@ -168,7 +168,7 @@
   },
   {
    "tip": "p",
-   "text": "From this follows a practical consequence that beginners discover late: an item entered and left as a draft is NOT an entry. It does not appear in the trial balance, does not enter the VAT return, and is not visible in reports. \"Entered\" documents that cannot be found anywhere are, almost always, forgotten drafts."
+   "text": "From this comes a practical consequence that beginners discover late: an item entered and left in draft is NOT a recorded entry. It does not appear in the trial balance, does not enter the VAT return, and is not visible in reports. \"Entered\" documents that cannot be found anywhere are, almost always, forgotten drafts."
   },
   {
    "tip": "h",
@@ -176,7 +176,7 @@
   },
   {
    "tip": "p",
-   "text": "At a small company, the three states before posting seem like a luxury: the same person enters and posts. But they describe three different questions, and at a company with a team, each one has a different answer."
+   "text": "In a small business, the three states before posting seem like a luxury: the same person enters and posts. But they describe three different questions, and in a business with a team each has a different answer."
   },
   {
    "tip": "tabel",
@@ -190,24 +190,24 @@
     [
      "draft → validated",
      "the operator",
-     "is the document complete and correctly read?"
+     "is the document complete and read correctly?"
     ],
     [
      "validated → approved",
      "the accountant",
-     "is the accounting classification the right one?"
+     "is the accounting treatment the appropriate one?"
     ],
     [
      "approved → posted",
      "the person responsible",
-     "do I take responsibility for the figure as it stands?"
+     "do I take responsibility for the figure as it is?"
     ]
    ],
-   "nota": "At a small company, the same person answers three times. The fact that they answer separately each time is precisely the point of the states."
+   "nota": "In a small business, the same person answers three times. The fact that they answer separately each time is precisely the purpose of the states."
   },
   {
    "tip": "cheie",
-   "text": "Posting is not a save button. It is a signature on a statement about the past — and that is why, after it, correction is done by reversal (storno), not by modification."
+   "text": "Posting is not a save button. It is the signature on a statement about the past — and that is why, after it, correction is done by reversal (storno), not by modification."
   },
   {
    "tip": "h",
@@ -215,23 +215,42 @@
   },
   {
    "tip": "p",
-   "text": "The case comes up often and deserves clarification: a draft created in June, left unposted, while in the meantime June has been closed."
+   "text": "The case comes up often and deserves clarification: a draft created in June, left unposted, and in the meantime June has been closed."
   },
   {
    "tip": "p",
-   "text": "The draft still exists — nothing has been deleted — but it can no longer be posted there, because the period is locked. It is not a loss of data, but a question: did that document belong to June or not? If yes, it is recorded in the current month and it is evaluated whether a corrective filing is warranted. If not, the date is corrected."
+   "text": "The draft still exists — nothing has been deleted — but it can no longer be posted there, because the period is locked. It is not a loss of data, but a question: did that document belong to June or not? If yes, it is recorded in the current month and it is assessed whether an amending declaration is needed. If not, the date is corrected."
   },
   {
    "tip": "p",
-   "text": "This situation is, in fact, exactly the reason why the period guard checks at POSTING, not at creation: a draft can be composed at any time, but entry into the records is subject to the calendar."
+   "text": "This situation is, in fact, exactly why the period guard checks at POSTING, not at creation: a draft can be composed at any time, but entry into the records is subject to the calendar."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "separation of stages and approval before accounting impact",
+     "workflow, rights, logs, and approval evidence",
+     "trace the sample from draft through to posting and locking",
+     "automatic posting without criteria, exceptions, and an intervention log"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",
-   "titlu": "To remember from this chapter",
+   "titlu": "Key takeaways from this chapter",
    "puncte": [
     "An entered document is not a recorded document: only the \"posted\" state produces effects in the trial balance, in VAT, and in the balance sheet.",
-    "Until posting a mistake is a correction; after posting it becomes a new transaction, through reversal (storno).",
-    "Deleting a posted entry would make already-issued reports say something different, without explanation.",
+    "Until posting, a mistake is a correction; after posting it becomes a new operation, through reversal (storno).",
+    "Deleting a posted entry would make already issued reports say something different, without explanation.",
     "The steps separate who enters from who takes responsibility — ideally different people, but separation in time also helps.",
     "The state of documents shows, at any moment, what is ready and what is missing for the month."
    ]

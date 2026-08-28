@@ -1,0 +1,335 @@
+{
+ "parte": "Anexe · de folosit, nu de citit",
+ "nr": "F",
+ "titlu": "Harta legislativă și protocolul de actualizare",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Această ediție a fost verificată la 27 august 2026. Data este parte din informație: fiscalitatea, raportarea electronică, salariul minim și formularele se schimbă mai repede decât tratamentele contabile de bază. Anexa arată ce sursă are autoritate, ce valori trebuie reverificate și cum se actualizează o concluzie fără a amesteca legea, instrucțiunea și funcționarea tehnică a unui portal."
+  },
+  {
+   "tip": "cheie",
+   "text": "O carte actualizată nu promite că o cifră rămâne adevărată. Spune data la care a fost verificată, sursa, domeniul, regula de tranziție și procedura prin care cifra se verifică din nou."
+  },
+  {
+   "tip": "h",
+   "text": "Domeniul ediției"
+  },
+  {
+   "tip": "p",
+   "text": "Tratamentele contabile au ca reper entitățile din România care aplică OMFP nr. 1.802/2014. Entitățile care aplică IFRS, instituțiile publice, organizațiile fără scop patrimonial, persoanele care țin contabilitate în partidă simplă și sectoarele cu reglementări prudențiale ori speciale necesită o hartă proprie. Exemplele fiscale sunt orientate spre societăți române obișnuite; nerezidența, grupurile fiscale, accizele, regimurile vamale și operațiunile transfrontaliere complexe cer analiză separată."
+  },
+  {
+   "tip": "h",
+   "text": "Ierarhia surselor"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Ce poate proba fiecare sursă",
+   "cap": [
+    "Nivel",
+    "Exemple",
+    "Utilizare corectă"
+   ],
+   "randuri": [
+    [
+     "Act normativ publicat",
+     "lege, ordonanță, hotărâre, ordin și anexele lor",
+     "stabilește obligația, condițiile, data intrării în vigoare și tranziția"
+    ],
+    [
+     "Formă consolidată oficială",
+     "Portalul Legislativ",
+     "arată textul integrat; se verifică istoricul și forma aplicabilă datei operațiunii"
+    ],
+    [
+     "Instrucțiuni și formulare aprobate",
+     "ordine ANAF/MF, nomenclatoare, scheme și instrucțiuni de completare",
+     "stabilesc raportarea și validările în limitele actului superior"
+    ],
+    [
+     "Ghid/comunicat oficial",
+     "material ANAF ori MF",
+     "explică aplicarea; nu modifică textul legii și nu înlocuiește condițiile omise"
+    ],
+    [
+     "Portal și validator",
+     "SPV, e-Factura, programe de asistență",
+     "probează funcționarea tehnică la o dată; o eroare tehnică se documentează distinct"
+    ],
+    [
+     "Sursă secundară",
+     "articol, seminar, bază comercială",
+     "semnal și orientare; concluzia materială se întoarce la sursa oficială"
+    ]
+   ],
+   "nota": "Când două surse par să se contrazică, se verifică data operațiunii, data intrării în vigoare, norma tranzitorie, domeniul și forța juridică înainte de a presupune că una este greșită."
+  },
+  {
+   "tip": "h",
+   "text": "Harta de bază a profesionistului"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Temă și reper oficial",
+   "cap": [
+    "Temă",
+    "Reper principal",
+    "Document de lucru"
+   ],
+   "randuri": [
+    [
+     "Organizarea contabilității și răspunderea",
+     "Legea contabilității nr. 82/1991",
+     "matrice responsabilități, inventariere, registre, semnături și arhivare"
+    ],
+    [
+     "Recunoaștere, evaluare și situații financiare",
+     "OMFP nr. 1.802/2014, cu modificările aplicabile",
+     "manual de politici, estimări, note și mapare pe formulare"
+    ],
+    [
+     "Documente financiar-contabile",
+     "OMFP nr. 2.634/2015 și norme speciale",
+     "nomenclator, circuit, numerotare și termen de păstrare"
+    ],
+    [
+     "Inventariere",
+     "Legea nr. 82/1991 și OMFP nr. 2.861/2009",
+     "decizie, comisii, liste, confirmări, proces-verbal și valorificare"
+    ],
+    [
+     "Impozite și contribuții",
+     "Legea nr. 227/2015 privind Codul fiscal și actele de modificare",
+     "registru fiscal pe tip de impozit, an și articol"
+    ],
+    [
+     "Procedură și declarații",
+     "Legea nr. 207/2015, ordinele ANAF și instrucțiunile formularelor",
+     "calendar, versiune formular, recipisă și reconciliere"
+    ],
+    [
+     "Societăți, capital și distribuiri",
+     "Legea nr. 31/1990 și Legea nr. 239/2025",
+     "calcul activ net, hotărâri, restricții și plăți ulterioare"
+    ],
+    [
+     "Muncă și salarizare",
+     "Codul muncii, Codul fiscal, hotărârea salariului minim și actele speciale",
+     "fișă parametri datată, state, pontaje și D112"
+    ],
+    [
+     "Raportare electronică",
+     "OUG nr. 120/2021, ordinele și specificațiile tehnice aplicabile",
+     "registru mesaje, fișier transmis, index, răspuns și incident"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Parametri volatili verificați pentru această ediție"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Fișa de actualitate la 27 august 2026",
+   "cap": [
+    "Parametru",
+    "Valoare/regulă folosită în carte",
+    "Reper și următoarea verificare"
+   ],
+   "randuri": [
+    [
+     "Microîntreprindere",
+     "cotă unică 1%; plafon 100.000 euro; condiții cumulative și întreprinderi legate",
+     "OUG nr. 89/2025 și OUG nr. 8/2026; înaintea opțiunii și trimestrial"
+    ],
+    [
+     "Salariul minim general",
+     "4.325 lei de la 1 iulie 2026",
+     "HG nr. 146/2026; la fiecare stat și modificare contractuală"
+    ],
+    [
+     "Sumă netaxabilă la minim",
+     "200 lei în semestrul II 2026, dacă sunt îndeplinite condițiile și plafonul brut de 4.600 lei",
+     "OUG nr. 89/2025; lunar, pe salariat"
+    ],
+    [
+     "Concedii medicale",
+     "pentru certificatele 1 februarie 2026–31 decembrie 2027: diminuare cu o zi, o singură dată pe episod continuu; angajator zilele 2–6 pentru incapacitatea obișnuită, cu excepțiile legale",
+     "OUG nr. 91/2025, Legea nr. 64/2026 și Ordinul nr. 506/2026; pe certificat și episod"
+    ],
+    [
+     "Impozit pe dividende",
+     "16% pentru regimul aplicabil de la 1 ianuarie 2026",
+     "Cod fiscal/OUG nr. 89/2025; la data distribuirii și plății"
+    ],
+    [
+     "Imobilizare fiscală",
+     "prag 5.000 lei din 2026; pragul fiscal nu este politica de capitalizare contabilă",
+     "OUG nr. 8/2026; la intrarea activului"
+    ],
+    [
+     "Amortizare fiscală 2026",
+     "până la 65% în primul an pentru active noi eligibile din subgrupele 2.1 și 2.4",
+     "OUG nr. 8/2026; la punerea în funcțiune și alegerea metodei"
+    ],
+    [
+     "TVA la încasare",
+     "plafon 5.000.000 lei pentru 1 martie–31 decembrie 2026; 5.500.000 lei din 2027",
+     "OUG nr. 8/2026; lunar și înaintea schimbării regimului"
+    ],
+    [
+     "RO e-Factura",
+     "transmitere în 5 zile lucrătoare, fără depășirea termenului legal de emitere; excepții și registre actualizate în 2026",
+     "OUG nr. 120/2021, OUG nr. 89/2025 și OUG nr. 8/2026; la fiecare versiune de flux"
+    ],
+    [
+     "Corecția D300",
+     "nu se depune decont rectificativ; se folosesc regularizările unui decont ulterior ori procedura erorii materiale, după cauză",
+     "OPANAF nr. 174/2026 și OPANAF nr. 3.604/2015; la fiecare eroare"
+    ],
+    [
+     "Situații financiare 2025",
+     "termen 2 iunie 2026 și depunere exclusiv electronică",
+     "OMF nr. 2.036/2025 și calendarul oficial; anual"
+    ],
+    [
+     "Capital minim SRL",
+     "500 lei la societățile noi; 5.000 lei dacă cifra de afaceri depășește 400.000 lei, cu tranziția legală",
+     "Legea nr. 239/2025; la înființare, închiderea anuală și până la 18 decembrie 2027"
+    ]
+   ],
+   "nota": "Tabelul este o listă de control, nu substitutul textului legal. Regula exactă depinde de data faptului generator, categoria contribuabilului și dispozițiile tranzitorii."
+  },
+  {
+   "tip": "h",
+   "text": "Protocolul de actualizare în opt pași"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Flux controlat de actualizare",
+   "cap": [
+    "Pas",
+    "Acțiune",
+    "Ieșire"
+   ],
+   "randuri": [
+    [
+     "1. Declanșator",
+     "monitorizare act nou, formular, validator, termen ori incident",
+     "tichet cu sursa și data"
+    ],
+    [
+     "2. Autenticitate",
+     "se obține actul publicat și forma oficială, nu numai comentariul",
+     "copie/link, emitent, număr, publicare"
+    ],
+    [
+     "3. Aplicabilitate",
+     "se identifică subiectul, operațiunea, data, intrarea în vigoare și tranziția",
+     "notă de domeniu"
+    ],
+    [
+     "4. Diferență",
+     "text vechi versus text nou, condiție cu condiție",
+     "matrice de modificări"
+    ],
+    [
+     "5. Impact",
+     "conturi, politici, contracte, taxe, declarații, sistem, controale și clienți",
+     "listă de obiecte afectate"
+    ],
+    [
+     "6. Implementare",
+     "procedură, parametri, migrare, comunicare și responsabil",
+     "plan aprobat și testat"
+    ],
+    [
+     "7. Validare",
+     "cazuri înainte/după, recalcul independent și verificarea livrabilului",
+     "probe de test și acceptanță"
+    ],
+    [
+     "8. Trasabilitate",
+     "versiune, dată de referință, autor, revizor și arhivarea regulii vechi",
+     "jurnal de versiuni"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Fișa unei reguli volatile"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Câmpuri obligatorii",
+   "cap": [
+    "Câmp",
+    "Exemplu de conținut"
+   ],
+   "randuri": [
+    [
+     "Regulă scurtă",
+     "termen e-Factura: 5 zile lucrătoare"
+    ],
+    [
+     "Temei exact",
+     "act, articol, alineat și forma aplicabilă"
+    ],
+    [
+     "Valabilitate",
+     "de la/până la, inclusiv regula tranzitorie"
+    ],
+    [
+     "Domeniu și excepții",
+     "B2B/B2C, identificare fiscală, registre și situații exceptate"
+    ],
+    [
+     "Parametru de sistem",
+     "unitate de măsură «zi lucrătoare», calendar și alertă"
+    ],
+    [
+     "Control",
+     "raport zilnic facturi emise versus index de încărcare"
+    ],
+    [
+     "Ultima verificare",
+     "data, autorul, sursa și versiunea"
+    ],
+    [
+     "Următorul eveniment",
+     "data expirării, plafon nou ori revizie programată"
+    ]
+   ]
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Păstrează un registru legislativ cu proprietar pe domeniu, surse oficiale, alerte și revizie periodică. Pentru fiecare schimbare, separă data publicării, data intrării în vigoare și prima perioadă de raportare afectată. Salvează forma aplicabilă operațiunii, nu numai forma consolidată consultată astăzi. Leagă regula de parametrul din program, de procedură, de control și de comunicarea către client/conducere. Testează atât o operațiune obișnuită, cât și limitele și tranziția. O schimbare de formular fără schimbare de lege poate cere implementare; un comunicat fără act normativ poate cere atenție, dar nu rescrie singur politica."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul F.1 — de la comunicat la regulă controlată",
+   "enunt": [
+    "Primești un comunicat oficial care anunță schimbarea unui plafon peste două luni. Programul folosește plafonul vechi, iar trei clienți se află aproape de limită. Descrie fluxul până la implementare."
+   ],
+   "rezolvare": [
+    "Se identifică și se arhivează actul normativ publicat. Se verifică articolul, domeniul, definiția bazei, cursul ori perioada de referință, data intrării în vigoare și tranziția; comunicatul rămâne material explicativ.",
+    "Se extrag clienții afectați pe baza definiției legale, nu a unui raport aproximativ. Pentru fiecare se simulează data depășirii și obligațiile de notificare/declarare.",
+    "Se modifică parametrul cu dată de valabilitate, păstrând regula veche pentru perioadele anterioare. Se testează sub plafon, exact la plafon, peste plafon și în perioada de tranziție.",
+    "Se actualizează procedura, controlul, calendarul și materialele relevante; se comunică responsabililor. Autorul și revizorul semnează fișa regulii, iar jurnalul păstrează sursa și testele."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din această anexă",
+   "puncte": [
+    "Data verificării și domeniul sunt parte din orice afirmație legislativă.",
+    "Actul publicat stabilește regula; forma consolidată, instrucțiunea, comunicatul și validatorul au roluri diferite.",
+    "Fiecare parametru volatil are temei, valabilitate, domeniu, excepții, implementare, control și proprietar.",
+    "Actualizarea urmărește impactul până în contabilitate, fiscalitate, declarații, contracte, sistem și comunicare.",
+    "Regula veche se arhivează cu perioada ei; nu se suprascrie istoria."
+   ]
+  }
+ ]
+}

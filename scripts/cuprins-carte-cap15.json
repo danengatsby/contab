@@ -234,6 +234,25 @@
    "text": "Merită observat că patru din cinci nu au nevoie de niciun document nou: sunt întrebări puse datelor existente. E cazul tipic în care automatizarea nu economisește timp, ci prinde ceva ce un om nu ar verifica în fiecare zi — iar plafoanele se depășesc, de regulă, în zile obișnuite, nu în cele în care cineva stă cu ochii pe ele."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "existența și integritatea disponibilului din bancă și casierie",
+     "extrase complete, confirmări, registru de casă, monetar și documentele plăților",
+     "reconciliază fiecare cont, numără casa și investighează elementele în tranzit",
+     "conturi bancare omise, casă creditoare ori sold scriptic constant mare"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

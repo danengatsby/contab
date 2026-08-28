@@ -1,0 +1,265 @@
+{
+ "parte": "Partea XII · Raționamentul profesionist · strat transversal",
+ "nr": "52",
+ "titlu": "Politici contabile, estimări, erori și praguri de semnificație",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Aceeași diferență de 40.000 de lei poate însemna trei lucruri complet diferite: o politică nouă, o estimare revizuită sau o eroare veche. Cifra e aceeași; tratamentul, perioada afectată, contul și informația din note nu sunt. Aici începe raționamentul profesional: nu la debit și credit, ci la diagnosticul naturii schimbării."
+  },
+  {
+   "tip": "cheie",
+   "text": "Mai întâi numești corect problema; abia apoi alegi nota contabilă. O monografie impecabilă aplicată unei clasificări greșite produce situații financiare greșite."
+  },
+  {
+   "tip": "h",
+   "text": "Ierarhia care împiedică improvizația"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "De la regulă la înregistrare",
+   "cap": [
+    "Nivel",
+    "Rol",
+    "Documentul care îl probează"
+   ],
+   "randuri": [
+    [
+     "Reglementarea contabilă",
+     "stabilește tratamentul obligatoriu și opțiunile permise",
+     "Legea contabilității și OMFP nr. 1.802/2014, în forma aplicabilă"
+    ],
+    [
+     "Politica entității",
+     "alege consecvent între opțiunile permise și definește pragurile",
+     "manualul de politici aprobat de administrator"
+    ],
+    [
+     "Procedura",
+     "spune cine, când, cu ce probe și cu ce control aplică politica",
+     "procedură operațională, flux de aprobare, listă de control"
+    ],
+    [
+     "Configurația sistemului",
+     "traduce decizia în conturi, durate, cote și reguli automate",
+     "jurnal de configurare și test de acceptanță"
+    ],
+    [
+     "Înregistrarea",
+     "arată efectul unei operațiuni concrete",
+     "document justificativ, calcul și notă contabilă"
+    ]
+   ],
+   "nota": "Un parametru din program nu este politică contabilă. El este numai implementarea unei politici care trebuie să existe, să fie aprobată și să poată fi explicată fără acces la program."
+  },
+  {
+   "tip": "h",
+   "text": "Testul de clasificare în patru întrebări"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Politică, estimare, eroare sau eveniment nou",
+   "cap": [
+    "Situația",
+    "Întrebarea decisivă",
+    "Tratamentul de principiu"
+   ],
+   "randuri": [
+    [
+     "Schimbare de politică",
+     "s-a schimbat baza, principiul ori metoda de recunoaștere/evaluare/prezentare?",
+     "numai dacă o cere reglementarea sau noua politică oferă informații mai credibile și relevante; efect și prezentare conform regulii aplicabile"
+    ],
+    [
+     "Schimbare de estimare",
+     "informația veche a fost rezonabilă, dar au apărut date ori circumstanțe noi?",
+     "prospectiv: în rezultatul perioadei schimbării și, dacă este cazul, al perioadelor viitoare"
+    ],
+    [
+     "Eroare anterioară",
+     "la data raportării existau informații disponibile, dar au fost omise ori folosite greșit?",
+     "corecție potrivit politicii de semnificație; pentru erori semnificative, prin rezultatul reportat"
+    ],
+    [
+     "Eveniment al perioadei curente",
+     "faptul economic s-a născut acum, nu exista la data vechii raportări?",
+     "recunoaștere curentă potrivit naturii operațiunii, fără a o eticheta «corecție»"
+    ]
+   ],
+   "nota": "Indiciul cel mai bun este calitatea informației disponibile la data deciziei inițiale. O estimare care ulterior se dovedește inexactă nu devine automat eroare."
+  },
+  {
+   "tip": "h",
+   "text": "Politica contabilă nu este o alegere fiscală"
+  },
+  {
+   "tip": "p",
+   "text": "Politicile contabile trebuie să producă o imagine fidelă potrivit reglementărilor contabile. Regula fiscală determină baza impozabilă. Uneori valorile coincid, dar coincidența nu schimbă natura celor două calcule. Un bun poate fi imobilizare contabilă prin natura, utilizarea și politica de capitalizare a entității, chiar dacă valoarea sa se află sub pragul fiscal de 5.000 de lei aplicabil din 2026. Diferența se urmărește în registrul de evidență fiscală; nu se «rezolvă» deformând clasificarea contabilă."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Cele trei dosare ale aceleiași decizii",
+   "cap": [
+    "Dosar",
+    "Întrebarea",
+    "Exemplu de concluzie"
+   ],
+   "randuri": [
+    [
+     "Contabil",
+     "cum reflectă fidel operațiunea și ce politică se aplică?",
+     "echipamentul este activ, durată utilă 36 luni, valoare reziduală zero"
+    ],
+    [
+     "Fiscal",
+     "ce deducere, plafon ori ajustare admite Codul fiscal?",
+     "tratament fiscal urmărit separat, cu temei și diferență reconciliată"
+    ],
+    [
+     "Control intern",
+     "cine aprobă, ce probă există și cum se verifică aplicarea consecventă?",
+     "referat tehnic, aprobare, registru de imobilizări și test anual"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Materialitatea: nu un procent magic, ci o concluzie"
+  },
+  {
+   "tip": "p",
+   "text": "O informație este semnificativă dacă omiterea ori prezentarea ei eronată poate influența deciziile utilizatorilor. Dimensiunea este doar prima măsură. Natura poate face semnificativă o sumă mică: o operațiune cu administratorul, încălcarea unei clauze bancare, transformarea pierderii în profit, mascarea unei fraude, afectarea unui prag fiscal sau a dreptului de a distribui dividende."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Fișa de materialitate",
+   "cap": [
+    "Test",
+    "Ce se documentează",
+    "Semnal de revizie"
+   ],
+   "randuri": [
+    [
+     "Cantitativ",
+     "repere adecvate: venituri, active, rezultat, capitaluri; procentul și motivul alegerii",
+     "reper ales numai pentru a evita corecția"
+    ],
+    [
+     "Calitativ",
+     "părți afiliate, conformare, fraudă, management remuneration, covenant, prag legal",
+     "suma este mică, dar schimbă o concluzie ori ascunde natura tranzacției"
+    ],
+    [
+     "Individual și agregat",
+     "eroarea singură și totalul erorilor necorectate cu aceeași cauză",
+     "multe sume sub prag tratate separat, deși împreună sunt materiale"
+    ],
+    [
+     "Efect extins",
+     "perioade, conturi, declarații și note afectate",
+     "corecție contabilă fără analiza declarațiilor fiscale"
+    ]
+   ],
+   "nota": "Pragul se stabilește înainte de revizie și se reanalizează când rezultatul real diferă mult de cel estimat. Nu se inventează după descoperirea erorii."
+  },
+  {
+   "tip": "h",
+   "text": "Cum se corectează fără să rescrii istoria"
+  },
+  {
+   "tip": "p",
+   "text": "Erorile semnificative aferente exercițiilor precedente se corectează, potrivit OMFP nr. 1.802/2014, pe seama rezultatului reportat, prin contul 1174. Erorile nesemnificative pot fi corectate pe seama rezultatului curent, dacă politica entității prevede consecvent acest tratament. Situațiile financiare deja aprobate și depuse nu sunt rescrise contabil; efectul corecției și natura erorii se prezintă când reglementările cer aceasta. Separat, declarațiile fiscale afectate se analizează și, dacă este necesar, se rectifică."
+  },
+  {
+   "tip": "cheie",
+   "text": "Contul 1174 nu este un sertar pentru orice problemă veche. El se folosește după ce ai demonstrat simultan că există o eroare, că aparține unei perioade precedente și că este semnificativă potrivit politicii documentate."
+  },
+  {
+   "tip": "h",
+   "text": "Memorandumul de raționament profesional"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Conținut minim",
+   "cap": [
+    "Secțiune",
+    "Ce trebuie să poată reface un revizor"
+   ],
+   "randuri": [
+    [
+     "Faptele",
+     "cronologia, contractele, sumele și informațiile disponibile la fiecare dată"
+    ],
+    [
+     "Problema",
+     "întrebarea contabilă precisă, fără a anticipa răspunsul"
+    ],
+    [
+     "Criteriile",
+     "reglementarea aplicabilă, politica entității și alternativa respinsă"
+    ],
+    [
+     "Analiza",
+     "aplicarea criteriilor la fapte, materialitatea și efectele colaterale"
+    ],
+    [
+     "Concluzia",
+     "tratamentul, perioada, conturile, prezentările și persoana care aprobă"
+    ],
+    [
+     "Urmărirea",
+     "recalcul, declarații rectificative, note, ajustări viitoare și termen"
+    ]
+   ]
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Pentru contabil",
+   "text": "Manualul de politici trebuie adaptat activității reale, nu copiat integral de la altă entitate. Pentru fiecare zonă cu alegere sau estimare — stocuri, capitalizare, amortizare, creanțe, provizioane, curs valutar, prag de semnificație — documentează responsabilul, sursa datelor, frecvența revizuirii și controlul. Schimbarea de estimare se justifică prin informația nouă și se aplică prospectiv. Eroarea se probează prin informația care exista și putea fi folosită la data inițială. Schimbarea de politică se justifică prin cerința nouă ori prin informația mai credibilă și relevantă. După orice corecție, reconciliază balanța, situațiile financiare, registrul fiscal și declarațiile; tratamentul contabil nu rectifică automat obligația fiscală."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercițiul 52.1 — trei schimbări care par la fel",
+   "enunt": [
+    "La 31 decembrie 2026 apar trei situații: (a) durata rămasă a unui utilaj se reduce fiindcă volumul de producție estimat a scăzut pe baza unor date tehnice noi; (b) o factură semnificativă din noiembrie 2025, primită și aprobată atunci, nu a fost înregistrată; (c) entitatea vrea să schimbe metoda de evaluare a stocurilor numai pentru a obține un rezultat mai bun.",
+    "Clasifică fiecare situație și stabilește documentul ori tratamentul de principiu."
+   ],
+   "rezolvare": [
+    "(a) Schimbare de estimare: informația tehnică este nouă. Se recalculează prospectiv amortizarea pentru valoarea rămasă și durata utilă revizuită; nu se corectează amortizarea anilor anteriori dacă estimarea veche a fost rezonabilă.",
+    "(b) Eroare a exercițiului precedent: informația exista și era disponibilă. Se evaluează materialitatea individual și agregat; dacă este semnificativă, corecția contabilă se face prin rezultatul reportat, iar efectul fiscal și necesitatea rectificării declarațiilor se analizează distinct.",
+    "(c) Nu există justificare pentru schimbarea politicii. Dorința de a modifica rezultatul nu produce informație mai credibilă și relevantă și încalcă permanența metodelor. Se păstrează metoda existentă.",
+    "Dosarul trebuie să conțină cronologia, informațiile disponibile, testul de materialitate, temeiul, alternativa respinsă, calculul efectului și aprobarea."
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "clasificarea corectă a politicii, estimării și erorii",
+     "memorandum, politici, informații datate, materialitate și aprobări",
+     "reconstituie informația disponibilă și verifică efectul prospectiv/retroactiv",
+     "contul 1174 folosit fără test de eroare și semnificație"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
+   "tip": "recap",
+   "titlu": "De reținut din acest capitol",
+   "puncte": [
+    "Politica alege și aplică o bază contabilă; estimarea măsoară o valoare incertă; eroarea folosește greșit informația care exista deja.",
+    "Schimbarea de estimare este prospectivă; eroarea semnificativă din anii precedenți se corectează prin rezultatul reportat.",
+    "Materialitatea este cantitativă și calitativă, individuală și agregată; nu există un procent universal care înlocuiește raționamentul.",
+    "Contabilul separă dosarul contabil de cel fiscal și reconciliază efectele, fără să subordoneze imaginea fidelă unui avantaj fiscal.",
+    "O concluzie profesională conține fapte, criterii, analiză, alternativă, efecte, aprobare și urmărire."
+   ]
+  }
+ ]
+}

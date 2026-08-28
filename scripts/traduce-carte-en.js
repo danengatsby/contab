@@ -29,7 +29,7 @@ fs.mkdirSync(OUT, { recursive: true });
 
 function surse() {
   return fs.readdirSync(__dirname)
-    .filter((f) => /^cuprins-carte(?:-cap(?:\d+|[A-E]))?\.json$/.test(f))
+    .filter((f) => /^cuprins-carte(?:-cap(?:\d+|[A-F]))?\.json$/.test(f))
     .sort((a, b) => {
       if (a === 'cuprins-carte.json') return -1;
       if (b === 'cuprins-carte.json') return 1;
@@ -136,7 +136,7 @@ function canonizeazaPartile(files) {
       : `Part ${parte.nr} · ${parte.titlu}${parte.nr === 'I' ? '' : ` · ${parte.faza}`}`;
     parte.capitole.forEach((c) => dupaNumar.set(String(c.nr), nume));
   }
-  for (const fisier of files.filter((f) => /-cap(?:\d+|[A-E])\.json$/.test(f))) {
+  for (const fisier of files.filter((f) => /-cap(?:\d+|[A-F])\.json$/.test(f))) {
     const target = path.join(OUT, fisier);
     const capitol = JSON.parse(fs.readFileSync(target, 'utf8'));
     const parte = dupaNumar.get(String(capitol.nr));

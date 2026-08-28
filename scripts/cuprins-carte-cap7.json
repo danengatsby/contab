@@ -229,6 +229,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "preluarea integrală și exactă a soldurilor de deschidere",
+     "balanță închisă anterior, fișe analitice, confirmări și proces-verbal de migrare",
+     "reconciliază sold cu sold, pe monedă, partener și scadență",
+     "diferențe parcate în analitice diverse pentru a închide totalul"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

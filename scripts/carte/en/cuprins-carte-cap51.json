@@ -1,5 +1,5 @@
 {
- "parte": "Part XI · The trail · phase 14",
+ "parte": "Part XI · The trace · phase 14",
  "nr": "51",
  "titlu": "What a program cannot do",
  "blocuri": [
@@ -231,6 +231,25 @@
   {
    "tip": "p",
    "text": "What cannot be calculated is whether they are true. Their truth depends on documents that were read, classifications that were chosen, estimates that were made — and each of these is someone's decision. Accounting does not produce the truth; it produces a verifiable statement, and someone signs it."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "control over automation while preserving human judgment",
+     "rules, versions, tests, exceptions, confirmations and model log",
+     "test boundary cases and manually review high-risk transactions",
+     "broad automation with no owner, thresholds or error monitoring"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

@@ -255,6 +255,25 @@
    "text": "Consecința care surprinde la primul bilanț: contul 371 poate arăta 1.554 de lei pentru o marfă care a costat 1.000, fără ca nimic să fie greșit. Cine citește soldul brut și trage concluzii despre stoc greșește cu adaosul plus taxa."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "existența, cantitatea, costul și deprecierea stocurilor",
+     "recepții, fișe de magazie, inventar, mișcări și calcul de cost",
+     "testează fizic, reconciliază cantitativ-valoric și verifică valoarea realizabilă",
+     "stoc negativ, fără mișcare, diferențe fizice ori marjă imposibilă"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

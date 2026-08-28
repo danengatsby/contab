@@ -254,11 +254,30 @@
     "Ce se întâmplă cu fiecare dintre: (a) decontul deja generat; (b) balanța lunii; (c) situația firmei la un control."
    ],
    "rezolvare": [
-    "(a) Decontul e incomplet: TVA-ul deductibil al celor trei facturi lipsește, deci firma declară mai mult de plată decât datorează. Dacă a fost deja depus, corecția cere decont rectificativ.",
+    "(a) Decontul e incomplet: TVA-ul deductibil al celor trei facturi lipsește, deci firma declară mai mult de plată decât ar fi putut deduce. Dacă a fost deja depus, D300 nu se redepune ca rectificativ; dreptul se exercită și corecția se reflectă într-un decont ulterior, la rândul corespunzător, după verificarea condițiilor și instrucțiunilor formularului.",
     "(b) Balanța întocmită după înregistrarea facturilor nu va mai corespunde cu decontul depus — iar corelația dintre rulajul contului 4426 și jurnalul de cumpărări, care ar fi trebuit verificată înainte de depunere, iese acum greșită.",
-    "(c) La control, diferența dintre evidență și declarație e prima care se vede. Ea nu e o eroare de calcul, ci una de ORDINE, și e reparabilă — dar reparația costă o rectificativă și o explicație, în loc de două zile de așteptare.",
+    "(c) La control, diferența dintre evidență și declarație e prima care se vede. Ea nu e o eroare de calcul, ci una de ORDINE, și e reparabilă — dar reparația cere o regularizare trasabilă și o explicație, în loc de două zile de așteptare.",
     "Morala, care e chiar rostul capitolului: fazele nu sunt un ritual, sunt dependențe. Sărirea uneia nu economisește timp, ci îl mută mai departe, cu dobândă."
    ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "completitudinea și ordinea ciclului de închidere",
+     "calendar, dependențe, liste de control și statusuri",
+     "selectează un livrabil și reface toate etapele și aprobările prealabile",
+     "declarație depusă înaintea finalizării reconcilierilor-sursă"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

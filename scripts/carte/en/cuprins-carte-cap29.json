@@ -295,6 +295,25 @@
    "text": "The reversal corrects ACCOUNTS. When the operation also moved a quantity, a register, or a calculation, the correction must be made where the movement occurred — otherwise the two records diverge silently."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "retention of a controlled audit trail for every correction",
+     "original document, reason, approval, reversal and corrected document",
+     "follow the two-way link and the effect on tax returns",
+     "deletion, overwriting or reversal with no reference to the original"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "To remember from this chapter",
    "puncte": [

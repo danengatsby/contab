@@ -202,6 +202,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "lease classification and separation of its components",
+     "contract, payment schedule, minutes, invoices, options and fixed asset register",
+     "assess the economic substance, recompute principal and interest, and verify the asset, liability and VAT",
+     "classification based only on the security, or the full instalment charged to expense"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [

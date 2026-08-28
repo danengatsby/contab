@@ -269,6 +269,25 @@
    "text": "Balance verifies itself. Correctness is verified through selection — and good selection is the kind that goes where an error would cost the most, not where it's easiest to look."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "detection of errors that do not disturb debit–credit equality",
+     "trend analyses, confirmations, classification documents and targeted tests",
+     "design procedures around assertions, not only total debits equalling total credits",
+     "correctness concluded solely because the trial balance balances"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "To remember from this chapter",
    "puncte": [

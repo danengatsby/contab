@@ -269,6 +269,25 @@
    "text": "Iar diferența dintre cele două întrebări e chiar diferența dintre o fotografie și un film, cu care a început partea aceasta: bilanțul arată unde s-a ajuns, situația capitalurilor arată pe ce drum."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "completitudinea notelor și coerența lor cu cifrele și riscurile",
+     "checklist de prezentări, contracte, politici și foi suport",
+     "leagă fiecare notă de cerință, balanță și raționament",
+     "text copiat din anul precedent cu date și riscuri vechi"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

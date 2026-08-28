@@ -301,6 +301,25 @@
    "text": "Ajustarea schimbă cifra din bilanț, nu relația cu clientul. Creanța rămâne, urmărirea continuă, iar dacă banii vin, tot ce s-a înregistrat se dă înapoi."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "evaluarea recuperabilității creanțelor și a ajustărilor necesare",
+     "vechime, litigii, corespondență, încasări ulterioare și estimări",
+     "testează indiciile pe client și recalculează ajustarea contabilă/fiscală separat",
+     "procent standard aplicat fără analiză ori creanțe vechi neajustate"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

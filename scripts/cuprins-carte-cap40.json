@@ -244,6 +244,25 @@
    "text": "Aplicat la contabilitate, testul explică și de ce dosarul lunii conține note scrise, nu doar cifre: cifrele se recalculează oricând, raționamentele nu. O ajustare pentru creanțe se poate reface din date; motivul pentru care creanța a fost considerată incertă nu."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "derivarea obiectivă a stării fiecărui pas din date",
+     "reguli de status, rapoarte-sursă, excepții și jurnal de calcul",
+     "recalculează starea din probe și testează revenirea din gata în deschis",
+     "status bifat manual, deși datele-sursă arată elemente nerezolvate"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

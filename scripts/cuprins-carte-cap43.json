@@ -289,10 +289,17 @@
      "P26"
     ],
     [
+     "6584",
+     "sponsorizare — nedeductibilă în bază; poate reduce impozitul în limite",
+     "10.000,00",
+     "10.000,00",
+     "P33"
+    ],
+    [
      "",
      "Total nedeductibil",
      "",
-     "34.950,00",
+     "44.950,00",
      ""
     ]
    ],
@@ -325,7 +332,7 @@
     ],
     [
      "plus cheltuieli nedeductibile",
-     "34.950,00"
+     "44.950,00"
     ],
     [
      "minus rezerva legală",
@@ -333,18 +340,18 @@
     ],
     [
      "= Rezultat fiscal",
-     "148.950,00"
+     "158.950,00"
     ],
     [
      "Impozit 16%",
-     "23.832,00"
+     "25.432,00"
     ]
    ],
    "numerice": [
     2
    ],
    "total": true,
-   "nota": "Fără rezerva legală, impozitul ar fi fost 24.792 — cu 960 de lei mai mult, pe o rezervă pe care legea o obligă oricum să o constituie."
+   "nota": "Cheltuiala cu sponsorizarea este mai întâi adăugată înapoi la rezultatul fiscal; avantajul ei apare abia ulterior, ca sumă scăzută din impozit. Fără rezerva legală, impozitul ar fi fost 26.392 — cu 960 lei mai mult."
   },
   {
    "tip": "h",
@@ -370,8 +377,8 @@
     ],
     [
      "20% din impozitul pe profit",
-     "20% × 23.832",
-     "4.766,40"
+     "20% × 25.432",
+     "5.086,40"
     ],
     [
      "Se aplică cel mai mic",
@@ -389,7 +396,7 @@
      "3.750,00"
     ],
     [
-     "Reportat pentru anii următori",
+     "Exces fără credit fiscal în anul curent",
      "",
      "6.250,00"
     ]
@@ -398,15 +405,83 @@
     3
    ],
    "total": true,
-   "nota": "Diferența de 6.250 nu se pierde: se reportează, în limita termenului legal, și se folosește în anii în care plafonul o permite."
+   "nota": "Pentru sponsorizările curente, diferența peste plafon nu se reportează. Regimul reportării a rămas tranzitoriu pentru sumele istorice în condițiile legii; spațiul de plafon neutilizat poate fi redirecționat prin formularul 177, dar nu transformă o sponsorizare deja acordată peste plafon într-un credit viitor."
   },
   {
    "tip": "p",
-   "text": "Impozitul final: 23.832 minus 3.750, adică 20.082 de lei. Sponsorizarea de 10.000 de lei a costat firma, în anul acesta, 6.250 — restul l-a plătit statul, prin impozitul care nu s-a mai virat."
+   "text": "Impozitul final: 25.432 minus 3.750, adică 21.682 lei. Sponsorizarea de 10.000 lei a costat firma, în anul acesta, 6.250 lei — restul a fost suportat prin impozitul care nu s-a mai virat. Beneficiarul și sumele se raportează în D107; dacă firma nu ar fi folosit integral plafonul, diferența disponibilă s-ar fi putut redirecționa prin D177, în condițiile art. 42 Cod fiscal."
   },
   {
    "tip": "cheie",
    "text": "Trei feluri de ajustare, trei momente: procentele fixe și plafoanele urcă sau coboară BAZA; rezerva legală o coboară fără să fie cheltuială; sponsorizarea se scade din IMPOZIT. Cine le amestecă obține un rezultat greșit chiar dacă fiecare cifră în parte e corectă."
+  },
+  {
+   "tip": "h",
+   "text": "Cercetarea-dezvoltarea în 2026: deducere suplimentară sau credit fiscal"
+  },
+  {
+   "tip": "p",
+   "text": "Pentru activitățile eligibile de cercetare-dezvoltare, anul 2026 a adăugat o alegere cu efect material: contribuabilul plătitor de impozit pe profit poate aplica facilitatea bazată pe deducerea suplimentară a cheltuielilor eligibile sau poate opta pentru creditul fiscal de 10% reglementat de art. 20^1 din Codul fiscal. Cele două mecanisme nu se aplică împreună asupra acelorași cheltuieli eligibile."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Decizia fiscală pentru un proiect de cercetare-dezvoltare",
+   "cap": [
+    "Întrebarea",
+    "Deducerea suplimentară",
+    "Creditul fiscal de 10%"
+   ],
+   "randuri": [
+    [
+     "Unde produce efectul",
+     "în calculul rezultatului fiscal",
+     "după calculul impozitului pe profit"
+    ],
+    [
+     "Condiția comună",
+     "proiect și cheltuieli eligibile, identificabile și documentate",
+     "aceeași condiție; procentul nu repară lipsa documentației tehnice"
+    ],
+    [
+     "Ce trebuie comparat",
+     "economia efectivă de impozit în scenariul entității",
+     "10% din cheltuielile eligibile, în limitele și mecanismul legal"
+    ],
+    [
+     "Exces neutilizat",
+     "urmează regimul mecanismului ales și al rezultatului fiscal",
+     "se compensează ori se restituie potrivit legii, în intervalul de patru ani"
+    ]
+   ],
+   "nota": "Alegerea se simulează înainte de definitivarea D101 și se aprobă în dosarul fiscal. Nu se decide după procentul care pare mai mare, ci după situația fiscală efectivă, pierderile reportate, celelalte credite și capacitatea de utilizare."
+  },
+  {
+   "tip": "p",
+   "text": "Dosarul nu începe în contabilitate, ci la responsabilul tehnic: obiectivul proiectului, elementul de noutate, incertitudinea tehnologică, activitățile și persoanele implicate, pontajele ori alocările de timp, consumurile și criteriul de separare față de activitatea comercială obișnuită. Contabilitatea construiește apoi puntea dintre această evidență și conturile de cheltuieli. O balanță cu un analitic intitulat «R&D» nu demonstrează singură că activitatea este eligibilă."
+  },
+  {
+   "tip": "contabil",
+   "titlu": "Fișa de opțiune R&D",
+   "text": "Fișa de lucru a exercițiului 2026 trebuie să conțină cel puțin: lista proiectelor și perioada lor; baza legală și verificarea eligibilității tehnice; reconcilierea cheltuielilor eligibile cu balanța și documentele primare; excluderea costurilor comerciale, administrative ori finanțate în condiții incompatibile; simularea separată a deducerii suplimentare și a creditului de 10%; efectul pierderilor fiscale și al celorlalte credite; opțiunea aprobată; legătura cu registrul de evidență fiscală și cu D101. Pentru aceeași bază nu se înscriu ambele facilități. Orice sumă reportabilă, compensabilă sau de restituit se urmărește distinct pe an de origine, termen și document de susținere."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "puntea completă dintre rezultatul contabil și impozitul pe profit",
+     "registru fiscal, balanță, D101, pierderi și dosare de facilități",
+     "recalculează ajustările în ordinea legală și reconciliază declarația",
+     "procent de 16% aplicat direct profitului sau credit scăzut din bază"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",
@@ -417,7 +492,8 @@
     "Rezerva legală e deducere fiscală fără să fie cheltuială; omiterea ei costă 16% din valoarea rezervei, în fiecare an.",
     "Nedeductibilele sunt de două feluri: procent fix pe cheltuială și plafon pe o bază de calcul — confundarea lor produce erori mari.",
     "Pierderea se recuperează în limita a 70% din rezultatul fiscal și doar în termenul legal; se ține pe ani, se consumă de la cea mai veche.",
-    "Registrul de evidență fiscală e singurul document care explică, la control, diferența dintre impozit și 16% din profitul contabil."
+    "Registrul de evidență fiscală e singurul document care explică, la control, diferența dintre impozit și 16% din profitul contabil.",
+    "Din 2026, pentru cheltuielile R&D eligibile se documentează alegerea între deducerea suplimentară și creditul fiscal de 10%; cele două nu se cumulează pentru aceeași bază."
    ]
   }
  ]

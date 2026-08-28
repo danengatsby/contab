@@ -5,11 +5,11 @@
  "blocuri": [
   {
    "tip": "p",
-   "text": "The previous chapter ended with a practical question. If every amount is recorded in two places, which places exactly? Goods in one, the debt owed to the supplier in another, revenue in a third. These places are called accounts, and their complete list is the chart of accounts."
+   "text": "The previous chapter ended with a practical question. If every amount is written in two places, which two? The goods in one place, the payable to the supplier in another, the revenue in a third. These places are called accounts, and their complete list is the chart of accounts."
   },
   {
    "tip": "p",
-   "text": "This is probably the page that looks scariest at first glance: several hundred lines of figures. The good news is that it isn't meant to be memorized, and the best news is that the logic behind it can be explained in a quarter of an hour. After that, the chart is read, not memorized."
+   "text": "This is probably the page that looks scariest at first sight: a few hundred lines of numbers. The good news is that you don't need to memorize it, and the even better news is that the logic behind it can be explained in fifteen minutes. Once you understand that logic, the chart is something you read, not something you memorize."
   },
   {
    "tip": "h",
@@ -17,15 +17,15 @@
   },
   {
    "tip": "p",
-   "text": "An account is a card that gathers, in one place, all movements of the same kind. The card has exactly two columns — the ones from the previous chapter: left, debit; right, credit. That's it."
+   "text": "An account is a record that gathers together all movements of the same kind. The record has exactly two columns — the ones from the previous chapter: left, debit; right, credit. That's all."
   },
   {
    "tip": "p",
-   "text": "The card for account \"Cash in lei\" gathers everything that came in and everything that went out of the cash register. The card for account \"Suppliers\" gathers everything you came to owe and everything you paid. At any moment, the difference between the two columns is called the balance and answers a precise question: how much do I have in cash right now, how much do I still owe suppliers."
+   "text": "The record for account \"Cash in lei\" gathers everything that came in and went out of the cash register. The record for account \"Suppliers\" gathers everything you came to owe and everything you paid. At any moment, the difference between the two columns is called the balance and answers a precise question: how much do I currently have in cash, how much do I still owe suppliers."
   },
   {
    "tip": "p",
-   "text": "An account, then, is not an administrative file. It's a question you want to be able to answer at any time, without digging through invoices. The number of accounts in a chart is the number of questions the legislator considered worth being able to ask separately."
+   "text": "An account is not, therefore, an administrative file. It's a question you want to be able to answer at any time, without digging through invoices. The number of accounts in a chart is the number of questions the legislator considered worth being able to ask separately."
   },
   {
    "tip": "h",
@@ -33,11 +33,11 @@
   },
   {
    "tip": "p",
-   "text": "The Romanian chart of accounts is not an alphabetical list, but a classification. The first digit of any account tells you which family it belongs to, and the families are arranged in an order that is not accidental."
+   "text": "The Romanian chart of accounts isn't an alphabetical list, it's a classification. The first digit of any account tells you which family it belongs to, and the families are arranged in an order that isn't accidental."
   },
   {
    "tip": "tabel",
-   "titlu": "Classes of the Chart of Accounts",
+   "titlu": "The Classes of the Chart of Accounts",
    "cap": [
     "Class",
     "What It Gathers",
@@ -47,52 +47,52 @@
     [
      "1",
      "Equity — what the business owner put in and what has accumulated over time",
-     "1012 Subscribed and Paid-In Capital"
+     "1012 Subscribed and Paid-Up Capital"
     ],
     [
      "2",
-     "Fixed Assets — goods that serve for several years",
+     "Fixed assets — goods that serve for several years",
      "2131 Technological Equipment"
     ],
     [
      "3",
      "Inventory — goods that are consumed or sold",
-     "371 Goods for Resale"
+     "371 Merchandise"
     ],
     [
      "4",
-     "Third Parties — who owes you and whom you owe",
+     "Third parties — who owes you and whom you owe",
      "4111 Customers · 401 Suppliers"
     ],
     [
      "5",
-     "Treasury — actual money",
+     "Treasury — the money itself",
      "5121 Bank · 5311 Cash"
     ],
     [
      "6",
      "Expenses — what was consumed during the period",
-     "607 Expenses on Goods for Resale"
+     "607 Expenses on Merchandise"
     ],
     [
      "7",
      "Revenue — what was earned during the period",
-     "707 Revenue from Sale of Goods"
+     "707 Revenue from the Sale of Merchandise"
     ],
     [
      "8",
-     "Special Accounts — what isn't yours, but concerns you",
-     "8031 Fixed Assets Taken on Lease"
+     "Special accounts — what isn't yours but concerns you",
+     "8031 Fixed Assets Held Under Lease"
     ]
    ],
    "numerice": [
     1
    ],
-   "nota": "Classes 1–5 answer the book's second question (what do I have and what do I owe). Classes 6 and 7 answer the first (how much have I earned)."
+   "nota": "Classes 1–5 answer the book's second question (what I have and to whom I owe). Classes 6 and 7 answer the first (how much I earned)."
   },
   {
    "tip": "p",
-   "text": "The order of classes 1–5 follows a principle: from what is most stable to what is most liquid. Capital stays put for years; a building, for many years; goods, for a few months; a receivable, a few weeks; money in the account is already money. Whoever goes through classes 1 to 5 is, in effect, descending the slope of time."
+   "text": "The order of classes 1–5 follows a principle: from what is most stable to what is most liquid. Capital stays for years; a building, for many years; goods, for a few months; a receivable, a few weeks; money in the bank account is already money. Going through classes 1 to 5 means, in effect, descending the slope of time."
   },
   {
    "tip": "cheie",
@@ -104,15 +104,15 @@
   },
   {
    "tip": "p",
-   "text": "Between the first five classes and the next two there is a difference of nature, not of content, and it's worth understanding early, because it explains half of the operations at year-end closing."
+   "text": "Between the first five classes and the following two there is a difference in nature, not in content, and it's worth understanding early, because it explains half of the operations at year-end closing."
   },
   {
    "tip": "p",
-   "text": "An account from classes 1–5 has memory. The cash balance on December 31 becomes the cash balance on January 1; the money doesn't disappear because the year changed. The same goes for receivables, liabilities, inventory."
+   "text": "An account from classes 1–5 has memory. The cash balance on December 31 becomes the cash balance on January 1; money doesn't disappear because the year changed. The same is true for receivables, payables, and inventory."
   },
   {
    "tip": "p",
-   "text": "An account from classes 6 and 7 has no memory, and shouldn't have any. The question \"how much have I spent\" only makes sense if you specify for how long — otherwise you keep adding forever. That's why, at the end of each year, all revenue and expense accounts are emptied into a single account, 121 Profit or Loss, and the following year they start from zero. This operation has a chapter of its own further ahead; for now, it's enough to note that the emptying isn't a formality, but the natural consequence of the fact that it measures a period."
+   "text": "An account from classes 6 and 7 has no memory, nor should it. The question \"how much have I spent\" only makes sense if you specify for how long — otherwise you'd keep adding forever. That's why, at the end of every year, all revenue and expense accounts are emptied into a single account, 121 Profit or Loss, and the following year they start from zero. This operation has its own chapter further on; for now it's enough to note that emptying isn't a formality, but the natural consequence of the fact that these accounts measure a period."
   },
   {
    "tip": "h",
@@ -120,7 +120,7 @@
   },
   {
    "tip": "p",
-   "text": "The digits are not inventory numbers, but an address that is read from left to right, narrowing the meaning at each step."
+   "text": "The digits aren't inventory numbers — they're an address read from left to right, narrowing the meaning at each step."
   },
   {
    "tip": "tabel",
@@ -139,7 +139,7 @@
     [
      "41",
      "group",
-     "customers and related accounts"
+     "customers and similar accounts"
     ],
     [
      "411",
@@ -157,15 +157,15 @@
      "a specific customer, opened by the company"
     ]
    ],
-   "nota": "The first four levels are fixed by regulation and are the same for all companies in the country. The fifth is opened by the company, if it needs to."
+   "nota": "The first four levels are fixed by regulation and are the same at every company in the country. The fifth is opened by the company, if it needs it."
   },
   {
    "tip": "p",
-   "text": "The uniformity of the first levels is why the accounting of two companies can be compared, and a trial balance can be read by anyone in the profession. It's not bureaucracy: it's like postal addresses, where the street is written the same way for everyone, otherwise the letter never arrives."
+   "text": "The uniformity of the first levels is why the accounting of two companies can be compared, and why a trial balance can be read by anyone in the profession. It's not bureaucracy: it's like postal addresses, where the street name is written the same way for everyone, otherwise the letter never arrives."
   },
   {
    "tip": "h",
-   "text": "Which Side an Account Increases On"
+   "text": "On Which Side an Account Grows"
   },
   {
    "tip": "p",
@@ -176,52 +176,52 @@
    "titlu": "The Rule, in Two Lines",
    "cap": [
     "Type of Account",
-    "Increases On",
+    "Grows On",
     "Examples"
    ],
    "randuri": [
     [
-     "What you have (classes 2, 3, 5 and receivables from 4)",
+     "What you have (classes 2, 3, 5, and the receivables in class 4)",
      "debit — left",
-     "5121 Bank · 371 Goods for Resale · 4111 Customers"
+     "5121 Bank · 371 Merchandise · 4111 Customers"
     ],
     [
-     "What you owe and what you earn (classes 1, 7 and liabilities from 4)",
+     "What you owe and what you earn (classes 1, 7, and the payables in class 4)",
      "credit — right",
      "401 Suppliers · 707 Revenue · 1012 Capital"
     ],
     [
      "What you consume (class 6)",
      "debit — left",
-     "607 Expenses on Goods for Resale"
+     "607 Expenses on Merchandise"
     ]
    ],
-   "nota": "There are also accounts that work in both directions, called dual-function accounts — 121 Profit or Loss is the best known: it has a credit balance for profit and a debit balance for loss."
+   "nota": "There are also accounts that work in both directions, called bifunctional — 121 Profit or Loss is the best known: it has a credit balance for profit and a debit balance for loss."
   },
   {
    "tip": "p",
-   "text": "The rule is easier to remember starting from a single observation: accounting looks at things from the company's perspective, not yours. When the bank tells you \"we have credited your account,\" it's speaking from its own perspective — for the bank, you are a liability. In your company's accounting, that same money coming in increases the bank account on the debit side."
+   "text": "The rule is easier to remember from a single observation: accounting looks at things from the company's perspective, not yours. When the bank tells you \"we've credited your account,\" it's speaking from its own perspective — to the bank, you are a liability. In your company's accounting, the same money coming in increases the bank account on debit."
   },
   {
    "tip": "h",
-   "text": "Analytical Accounts: The Only Part You Choose Yourself"
+   "text": "Analytical Accounts: The Only Part You Choose"
   },
   {
    "tip": "p",
-   "text": "Account 4111 gathers all customers together. That's enough to know how much you have to collect in total, but it doesn't tell you from whom. For that, analytical accounts are opened — 4111.01, 4111.02, and so on, one per customer."
+   "text": "Account 4111 gathers all customers together. It's enough to know how much you have to collect in total, but it doesn't tell you from whom. For that, analytical accounts are opened — 4111.01, 4111.02, and so on, one per customer."
   },
   {
    "tip": "p",
-   "text": "The practical rule is simple: open an analytical account only where you really need a separate answer. A chart with a thousand unnecessary analytical accounts is harder to read than one with twenty well-chosen ones, and at the end of the month someone still has to review them."
+   "text": "The practical rule is simple: open an analytical account only where you really need a separate answer. A chart with a thousand useless analytical accounts is harder to read than one with twenty well-chosen ones, and at month-end someone still has to review them all."
   },
   {
    "tip": "p",
-   "text": "In practice, an accounting program keeps records per partner without forcing you to open anything; analytical accounts remain for cases where you want the separation to appear right in the trial balance."
+   "text": "In practice, an accounting program tracks records by partner without requiring you to open anything; analytical accounts remain useful for cases where you want the separation to actually appear in the trial balance."
   },
   {
    "tip": "contabil",
    "titlu": "For the Accountant",
-   "text": "The general chart of accounts is established by accounting regulations (OMFP 1802/2014) and its structure is mandatory: the symbol and name of first- and second-degree synthetic accounts cannot be changed, only analytical accounts can be added. Class 8 comprises off-balance-sheet accounts, with their own accounting function (they do not enter the balance sheet equation), and class 9 — management accounting — is optional and, in small companies, generally unused; the chart in the application does not contain it at all. The function of each account (asset, liability, or dual-function) is the one set out in the regulations and determines the side on which increases are recorded; apparent exceptions — corrective accounts such as 129 Profit Distribution, or the adjustments in groups 29, 39, 49, 59 — do not contradict the rule, but rather correct another account, which is why they function in reverse relative to the account they correct. When opening an analytical account, take care that the sum of the analytical balances remains equal to the synthetic balance: a mismatch between them is one of the most common causes of a trial balance that \"won't close\" when taking over a company."
+   "text": "The general chart of accounts is established through the accounting regulations (OMFP 1802/2014) and is mandatory in its structure: the symbol and name of first- and second-degree synthetic accounts cannot be changed, only analytical accounts may be added. Class 8 comprises off-balance-sheet accounts with their own accounting function (not part of the balance-sheet equality), while class 9 — management accounting — is optional and, at small companies, generally unused; the chart in the application does not contain it at all. The function of each account (asset, liability, or bifunctional) is the one set out in the regulations and determines the side on which increases are recorded; the apparent exceptions — contra accounts such as 129 Profit Distribution, or the adjustments in groups 29, 39, 49, 59 — do not contradict the rule but correct another account, which is why they function in the opposite direction from the account they correct. When opening an analytical account, make sure the sum of the analytical balances remains equal to the synthetic balance: a mismatch between them is one of the most common causes of a trial balance that \"won't close\" when taking over a company."
   },
   {
    "tip": "h",
@@ -229,15 +229,15 @@
   },
   {
    "tip": "p",
-   "text": "A business owner never opens the chart of accounts. In an accounting program, they say what document they have — a supplier invoice, a receipt, a bank statement — and the program chooses the drawers. That choice is called the accounting mapping, and it is, essentially, a dictionary between everyday language and the language of accounts."
+   "text": "A business owner never opens the chart of accounts. In an accounting program, he states what document he has — a supplier invoice, a receipt, a bank statement — and the program chooses the drawers. That choice is called an accounting mapping (\"monografie contabilă\") and is, essentially, a dictionary between everyday language and the language of accounts."
   },
   {
    "tip": "p",
-   "text": "An accountant does open it, but not to memorize it: to verify. When a figure looks odd in a report, the way back invariably passes through an account's card, and from there through the document that produced it. The chart is the map on which that journey is made."
+   "text": "An accountant does open it, but not to memorize it: to verify. When a figure looks odd in a report, the path back invariably passes through an account's record, and from there through the document that produced it. The chart is the map on which that path is drawn."
   },
   {
    "tip": "p",
-   "text": "With that, the tools are on the table: we know what questions accounting answers, why every amount is recorded twice, and exactly where it is recorded. One question remains, which is not technical but everything hinges on it: who is responsible for these figures. That is the subject of the next chapter."
+   "text": "With this, the tools are on the table: we know what questions accounting answers, why every amount is written twice, and exactly where it is written. What remains is a question that isn't technical, but on which everything depends: who is responsible for these figures. That's the subject of the next chapter."
   },
   {
    "tip": "h",
@@ -245,21 +245,21 @@
   },
   {
    "tip": "p",
-   "text": "No one memorizes the chart of accounts. It is read, and reading it involves three steps that work for any symbol, including one encountered for the first time."
+   "text": "Nobody memorizes the chart of accounts. It's read, and reading follows three steps that work for any symbol, including one encountered for the first time."
   },
   {
    "tip": "tabel",
-   "titlu": "The Three Questions, Applied to an Example: Account 4426",
+   "titlu": "The Three Questions, Illustrated with Account 4426",
    "cap": [
     "Step",
-    "The Question",
-    "The Answer Here"
+    "Question",
+    "Answer Here"
    ],
    "randuri": [
     [
      "1",
      "Which class? (first digit)",
-     "4 — third-party accounts: a relationship with someone outside"
+     "4 — third-party accounts: a relationship with someone outside the company"
     ],
     [
      "2",
@@ -269,14 +269,14 @@
     [
      "3",
      "Which exactly?",
-     "4426 — deductible VAT, tax paid to suppliers"
+     "4426 — Deductible VAT, tax paid to suppliers"
     ]
    ],
-   "nota": "The more digits you add, the more precise the question becomes. The general meaning, however, is read from the first digit."
+   "nota": "The more digits you add, the more precise the question becomes. But the general meaning is read from the first digit."
   },
   {
    "tip": "p",
-   "text": "The three levels have names in the regulation: first-degree synthetic account (three digits), second-degree synthetic account (four digits), and analytical account (whatever is added afterward, at the company's choice). An analytical account is not a new account — it is a breakdown of the synthetic one, and the sum of all analytical accounts must equal exactly the balance of the synthetic account."
+   "text": "The three levels have names in the regulation: first-degree synthetic account (three digits), second-degree synthetic account (four digits), and analytical account (whatever is added after, at the company's choice). An analytical account isn't a new account — it's a breakdown of the synthetic one, and the sum of all analytical accounts must exactly equal the synthetic balance."
   },
   {
    "tip": "h",
@@ -284,11 +284,11 @@
   },
   {
    "tip": "p",
-   "text": "There is a pattern that shortens learning considerably, and textbooks often pass over it in silence. In fixed asset and inventory accounts, an 8 in the second position means depreciation, and a 9 means impairment adjustment. These are corrective accounts: they don't add value, they subtract it."
+   "text": "There's a pattern that shortens learning considerably, and textbooks often pass over it in silence. In fixed asset and inventory accounts, an 8 in the second position means depreciation, and a 9 means impairment adjustment. These are contra accounts: they don't add value, they subtract it."
   },
   {
    "tip": "tabel",
-   "titlu": "The Base Account and Its Corrective Accounts",
+   "titlu": "The Base Account and Its Contra Accounts",
    "cap": [
     "Account",
     "What It Tells You",
@@ -297,50 +297,69 @@
    "randuri": [
     [
      "213 Equipment",
-     "how much the machine cost",
+     "how much the equipment cost",
      "debit balance"
     ],
     [
-     "281 Accumulated Depreciation",
-     "how much of it has been consumed",
+     "281 Depreciation",
+     "how much of it has been used up",
      "credit balance — SUBTRACTED"
     ],
     [
-     "291 Impairment Adjustments",
-     "how much of the remaining value is likely lost",
+     "291 Adjustments",
+     "how much of the remaining value is probably lost",
      "credit balance — SUBTRACTED"
     ]
    ],
-   "nota": "On the balance sheet, only a single figure appears: net value, i.e., 213 minus 281 minus 291. The three accounts exist so it can be shown what that figure is made of."
+   "nota": "On the balance sheet, only one figure appears: the net value, i.e. 213 minus 281 minus 291. The three accounts exist so that you can say what that figure is made of."
   },
   {
    "tip": "exercitiu",
    "titlu": "Exercise 3.1 — Read the Symbol",
    "enunt": [
-    "Without looking it up in the chart, say what kind of account each of these is and on which side its balance normally sits: 401, 5121, 607, 707, 4423, 1012, 2813.",
-    "Hint: the first digit gives the class; classes 1, 4 (partially) and 7 are generally credit accounts, classes 2, 3, 5 and 6 are debit accounts."
+    "Without looking in the chart, say what kind of account each one is and on which side its balance normally sits: 401, 5121, 607, 707, 4423, 1012, 2813.",
+    "Hint: the first digit gives the class; classes 1, 4 (partially), and 7 are usually credit accounts, classes 2, 3, 5, and 6 are debit accounts."
    ],
    "rezolvare": [
-    "401 — class 4, third parties: liability toward suppliers, credit balance.",
-    "5121 — class 5, treasury: money in the account, debit balance.",
+    "401 — class 4, third parties: payable to suppliers, credit balance.",
+    "5121 — class 5, treasury: money in the bank account, debit balance.",
     "607 — class 6, expenses: cost of goods sold, debit balance.",
-    "707 — class 7, revenue: sales of goods, credit balance.",
-    "4423 — class 4: VAT payable, liability toward the budget, credit balance.",
+    "707 — class 7, revenue: sale of merchandise, credit balance.",
+    "4423 — class 4: VAT payable, liability to the budget, credit balance.",
     "1012 — class 1, equity: shareholders' contribution, credit balance.",
-    "2813 — class 2 with an 8 in the second position: depreciation of vehicles, a CORRECTIVE account, credit balance even though it belongs to the asset class.",
+    "2813 — class 2 with an 8 in the second position: depreciation of transport vehicles, a CONTRA account, credit balance even though it belongs to the assets class.",
     "The last one is the only one that requires attention, and it's exactly the pattern from the previous section: an 8 in the second position means the balance is subtracted, not added."
    ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "consistent classification in the chart of accounts and useful analytical accounts",
+     "chart of accounts, policies, nomenclatures, and analytical trial balance",
+     "test the mapping of transaction–account–report and consistency across periods",
+     "miscellaneous accounts with high turnover or analytical accounts created only at closing"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",
    "titlu": "Key Takeaways from This Chapter",
    "puncte": [
-    "An account is a card with two columns that gathers movements of the same kind; the difference between the columns is the balance.",
-    "The first digit gives the class. Classes 1–5 form the balance sheet, classes 6 and 7 the income statement.",
+    "An account is a record with two columns that gathers movements of the same kind; the difference between the columns is the balance.",
+    "The first digit gives the class. Classes 1–5 form the balance sheet, classes 6 and 7 form the income statement.",
     "Accounts 1–5 carry their balance forward from one year to the next; revenue and expense accounts are emptied annually into 121, because they measure a period.",
-    "The code is read like an address: class, group, first- and second-degree synthetic accounts — fixed by law — then the analytical account, opened by the company.",
-    "What you have increases on the debit side; what you owe and what you earn increase on the credit side. Apparent exceptions are corrective accounts.",
-    "The chart is not learned by heart: it is read whenever you're checking a figure."
+    "The code is read like an address: class, group, first- and second-degree synthetic — fixed by law — then the analytical account, opened by the company.",
+    "What you have increases on debit; what you owe and what you earn increase on credit. The apparent exceptions are contra accounts.",
+    "The chart isn't memorized: it's read whenever you're checking a figure."
    ]
   }
  ]

@@ -1,0 +1,270 @@
+{
+ "parte": "Part XII · Professional judgment · cross-cutting layer",
+ "nr": "54",
+ "titlu": "Related parties, shareholders, capital and financing",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "Cash moving between a company and its shareholders looks like any other cash in the bank statement. In substance it may be capital, a loan, a dividend, an expense advance, a reimbursement or an unsupported withdrawal. Each classification changes the rights, risk, maturity, tax and sometimes the legality of the payment."
+  },
+  {
+   "tip": "cheie",
+   "text": "The shareholder relationship is not a supporting document. “Money paid in” and “money taken out” describe the movement; the contract, resolution and economic substance determine its accounting nature."
+  },
+  {
+   "tip": "h",
+   "text": "First: map the related parties"
+  },
+  {
+   "tip": "p",
+   "text": "Identification is not limited to direct shareholders. Map direct and indirect control, joint control, significant influence, directors and key management, relevant relatives and entities they control, as well as linked enterprises under tax legislation. Accounting, tax and company-law definitions do not perfectly overlap; apply the definition in the instrument requiring each test."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Register of relations",
+   "cap": [
+    "Field",
+    "Why does it matter",
+    "Test"
+   ],
+   "randuri": [
+    [
+     "Person / entity and beneficial owner",
+     "identify the relationship beyond the partner's name",
+     "Trade register, declarations, group organisation chart"
+    ],
+    [
+     "Type of relationship and period",
+     "control may change during the year",
+     "articles of association, resolutions, contracts and effective entry/exit dates"
+    ],
+    [
+     "Transactions and balances",
+     "allows analysis of completeness and presentation",
+     "subledgers by counterparty, confirmations and intragroup reconciliation"
+    ],
+    [
+     "Conditions and price",
+     "separates the economic substance from the benefit granted to the affiliate",
+     "contract, comparability analysis, price policy"
+    ],
+    [
+     "Approvals and conflicts",
+     "demonstrates governance over the transaction",
+     "shareholders’/directors’ resolutions and declarations of interest"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Capital or loan?"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Substance of shareholder financing",
+   "cap": [
+    "Item",
+    "Capital",
+    "Loan"
+   ],
+   "randuri": [
+    [
+     "Right to repayment",
+     "no ordinary maturity; repayment follows capital-reduction procedures",
+     "exists under contract and legal restrictions"
+    ],
+    [
+     "Remuneration",
+     "dividend only from distributable profit and after a valid resolution",
+     "interest when contractually agreed and legally and fiscally supportable"
+    ],
+    [
+     "Risk",
+     "absorbs losses first",
+     "a shareholder receivable that may become subordinated or legally/contractually restricted"
+    ],
+    [
+     "Documents",
+     "resolution, amended constitutional document, subscription and payment",
+     "contract, amount, currency, maturity, interest, guarantees, approvals"
+    ],
+    [
+     "Common accounts",
+     "456, 1011, 1012 by stage",
+     "4551 principal and 4558 interest, with separate subledgers"
+    ]
+   ],
+   "nota": "The label used by the parties is evidence, not the conclusion. Financing with no contract, maturity and a perpetually rolled balance requires a fresh assessment of substance and presentation."
+  },
+  {
+   "tip": "p",
+   "text": "Interest between related parties requires three distinct analyses: accrual accounting over the financing term; arm’s-length pricing and tax documentation; and applicable deductibility limits for borrowing costs. Non-payment does not eliminate accrued expense or income when a contractual obligation exists. Recording interest does not prove that its rate is at arm’s length."
+  },
+  {
+   "tip": "h",
+   "text": "Money withdrawn by a shareholder"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Classifying the withdrawal",
+   "cap": [
+    "Question",
+    "Possible treatment",
+    "risk indicator"
+   ],
+   "randuri": [
+    [
+     "Is there company expense and documents?",
+     "advance for settlement, followed by documents and refund of the difference",
+     "old balance, round amounts, personal documents"
+    ],
+    [
+     "Is there a legally distributed dividend?",
+     "account 457 and payment/set-off, with the related tax and returns",
+     "payment before a resolution or in excess of distributable profit"
+    ],
+    [
+     "Is there a real loan from the company?",
+     "only after analysis of legal capacity, approval, conditions and restrictions",
+     "no contract, no maturity, no interest, only to the associate"
+    ],
+    [
+     "Is it work / mandate remuneration?",
+     "the corresponding income treatment and payroll/tax obligations",
+     "recurring payments labelled as “advances”"
+    ],
+    [
+     "There is no proven basis",
+     "recognise a clearly identified receivable and escalate it to management; do not conceal it in cash or expenses",
+     "artificial year-end netting"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Distribution and payment test in 2026"
+  },
+  {
+   "tip": "p",
+   "text": "A shareholders’ resolution cannot make an amount distributable when the law prohibits distribution. Before declaring a dividend, verify determined and approved profit, lawful loss coverage, reserves, net assets, contractual restrictions and interim-dividend status. The dividend tax is 16% for distributions governed by the regime effective from 1 January 2026, but the rate is only one of the tests."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Company restrictions with direct accounting effect",
+   "cap": [
+    "Situation",
+    "Practical consequence",
+    "Folder control"
+   ],
+   "randuri": [
+    [
+     "Distributed interim dividends",
+     "until regularisation, the company does not grant loans to members / shareholders or affiliates under the conditions of the legal restriction",
+     "resolutions, payments, balances in accounts 455/461 and annual settlement"
+    ],
+    [
+     "Net assets below half of subscribed share capital",
+     "dividends and repayments of shareholder/related-party loans are restricted until net assets are restored, under the applicable rules",
+     "net-assets calculation, subscribed capital, resolutions and subsequent payments"
+    ],
+    [
+     "share capital below the legal minimum",
+     "plan the increase within the deadline; do not cosmetically inflate equity through set-offs lacking due process",
+     "turnover, articles of association, paid-in capital and compliance timetable"
+    ]
+   ],
+   "nota": "The rules introduced by Law No 239/2025 have effect from 18 December 2025. For existing companies, the transitional term for the new minimum capital should be followed up to 18 December 2027."
+  },
+  {
+   "tip": "p",
+   "text": "For newly incorporated SRLs, minimum share capital is 500 lei. For limited-liability companies whose turnover exceeds 400.000 lei, the minimum is 5.000 lei, subject to the application and transition rules in Law No. 239/2025. Treat these as volatile statutory parameters: verify them before each decision rather than copying the prior-year file."
+  },
+  {
+   "tip": "h",
+   "text": "Confirmation and intra-group reconciliation"
+  },
+  {
+   "tip": "p",
+   "text": "Confirm related-party balances bilaterally by currency, document and nature. Break differences down into in-transit transactions, exchange rates, one-sided invoices, set-offs, interest and classification differences. Agreement on the amount does not prove correct classification: one entity may show a loan while the other shows an advance, with totals agreeing perfectly."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Annual package for each affiliate",
+   "cap": [
+    "Sheet",
+    "Content"
+   ],
+   "randuri": [
+    [
+     "Relationship",
+     "beneficial owner, control, period and relevant definitions"
+    ],
+    [
+     "Movements and balance",
+     "invoices, payments, offsets, loans, interest and balance per currency"
+    ],
+    [
+     "Conditions",
+     "contract, maturity, price, guarantees and comparability"
+    ],
+    [
+     "Confirmation",
+     "External response, differences, explanations and adjustments"
+    ],
+    [
+     "Disclosure and tax",
+     "notes, returns, transfer pricing, withholding tax and deductibility, as applicable"
+    ]
+   ]
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Maintain separate subledgers for every shareholder and nature: subscribed/paid-in capital, loan principal, interest, dividends, advances and other receivables. Do not offset balances merely because they concern the same person; set-off requires a documented right and intention. Update the related-party map annually and obtain management’s completeness representation. Establish the basis for every shareholder payment before payment, not at year-end. Calculate and retain net assets before dividends and financing repayments; verify the restrictions in Law No. 239/2025, interim-dividend settlement, arm’s-length terms and tax effects. Present a related-party transaction according to substance even when the trial balance is closed and both parties confirm the amount."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise 54.1 — the shareholder requests 200.000 lei",
+   "enunt": [
+    "The company distributed interim dividends in September 2026. In November, the shareholder requests repayment of an old 200.000 lei loan plus another 50.000 lei “until next month”. In the latest trial balance, net assets are below half of subscribed share capital. No contract exists for the 50.000 lei.",
+    "Determine the checks and the pre-payment control conclusion."
+   ],
+   "rezolvare": [
+    "Payment shall be stopped until the basis and restrictions are documented. The affiliation relationship shall not authorise the transfer.",
+    "For those 200.000 lei check the confirmed balance, contract and maturity, but also the restriction applicable to the repayment of loans when the net asset is less than half of the capital. The existence of the accounting debt does not automatically mean that payment is now allowed.",
+    "For the 50.000 lei, establish the proposed nature of the transfer. After interim dividends have been distributed, granting a loan to a shareholder or related party before settlement is subject to the statutory restriction; the contract, approval and terms are also missing.",
+    "The file contains the net-assets calculation, dividend resolutions, settlement status, account 455 ledger, old contract, legal and tax analyses and written communication to the director. Do not use account 542 or the cash account to bypass the conclusion."
+   ]
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "substance and legality of transactions with shareholders and related parties",
+     "related-party map, contracts, confirmations, net-assets calculation and resolutions",
+     "reconcile by nature and verify restrictions before payment",
+     "unsupported withdrawals, artificial set-offs or non-arm’s-length terms"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key points from this chapter",
+   "puncte": [
+    "Build the related-party map from control and substance, not only the list of direct shareholders.",
+    "Capital, loans, dividends, advances and remuneration create different rights and require different evidence; a bank statement does not classify them.",
+    "The intragroup balances shall be confirmed by nature, not only as a total.",
+    "In 2026, the net asset and interim dividends may block payments to associates even if there is an accounting balance.",
+    "Accounting treatment, company-law validity, arm’s-length pricing and tax effect are four distinct tests."
+   ]
+  }
+ ]
+}

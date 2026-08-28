@@ -183,8 +183,8 @@
    "randuri": [
     [
      "Firmă din România",
-     "codul de TVA, plus identificatorul ei",
-     "da — termenul de cinci zile curge"
+     "codul de identificare fiscală și, dacă există, codul de TVA",
+     "da — termenul de cinci zile lucrătoare curge"
     ],
     [
      "Persoană fizică",
@@ -209,7 +209,7 @@
   },
   {
    "tip": "p",
-   "text": "Termenul e de cinci zile calendaristice de la emiterea facturii. Calendaristice, nu lucrătoare — regula s-a schimbat, iar o factură emisă miercuri nu mai are timp până joia următoare. E una dintre puținele modificări recente care scurtează un termen în loc să-l lungească."
+   "text": "Termenul în vigoare este de cinci zile LUCRĂTOARE de la emiterea facturii, dar nu mai târziu de cinci zile lucrătoare de la data-limită legală pentru emiterea ei. Cele două repere trebuie urmărite împreună: amânarea emiterii până la termenul maxim nu creează încă cinci zile în plus peste limita prevăzută de lege. Calendarul trebuie să cunoască sărbătorile legale, nu doar weekendul."
   },
   {
    "tip": "p",
@@ -244,6 +244,18 @@
   {
    "tip": "p",
    "text": "Erorile de respingere sunt aproape întotdeauna despre date lipsă, nu despre sume: un cod fiscal greșit, un județ neprecizat, o unitate de măsură pe care nomenclatorul nu o cunoaște. De aceea merită completate corect în fișa partenerului o singură dată, nu reparate la fiecare factură."
+  },
+  {
+   "tip": "h",
+   "text": "Modificările aplicabile de la 1 iunie 2026"
+  },
+  {
+   "tip": "p",
+   "text": "Legea 88/2026 a redesenat registrele și excepțiile RO e-Factura. Furnizorii sau prestatorii care se identifică fiscal prin CNP nu mai au obligația transmiterii, dar pot opta și se înscriu atunci în registrul opțional. Pentru agricultorii persoane fizice aflați în regimul special, anumite entități fără scop patrimonial, culte, asociații de proprietari și institute culturale există reguli ori registre proprii. Înainte de a marca o factură «în afara obligației», profesionistul verifică atât statutul emitentului, cât și înscrierea beneficiarului în registrul public relevant."
+  },
+  {
+   "tip": "cheie",
+   "text": "Perimetrul RO e-Factura nu se decide numai din eticheta B2B/B2C. În 2026 contează identificarea fiscală a emitentului, locul operațiunii, categoria beneficiarului și înscrierea în registrele publice."
   },
   {
    "tip": "cheie",
@@ -387,6 +399,25 @@
    "text": "În forma electronică, aceleași elemente devin câmpuri într-un fișier structurat, iar validatorul le verifică pe toate înainte de a accepta factura. Efectul secundar e util: greșelile de formă care înainte se descopereau la control se descoperă acum la emitere, în câteva secunde."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "secvența, conținutul și transmiterea la termen a facturilor emise",
+     "decizie de numerotare, facturi, contracte, index e-Factura și mesaje",
+     "testează continuitatea seriei și termenul de 5 zile lucrătoare",
+     "goluri neexplicate, anulări șterse ori index lipsă"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [
@@ -397,7 +428,7 @@
     "TVA-ul colectat intră în firmă, dar nu-i aparține. Cine își socotește câștigul din total își supraestimează afacerea.",
     "Obligația de e-Factura se deduce din tipul operațiunii, nu dintr-o listă întreținută manual.",
     "Originalul facturii e fișierul sigilat de ANAF; hârtia și PDF-ul sunt copii pentru oameni.",
-    "Termenul e de cinci zile calendaristice, iar „urcată\" nu înseamnă „acceptată\"."
+    "Termenul este de cinci zile lucrătoare, cu limita raportată și la termenul legal de emitere; „urcată\" nu înseamnă „acceptată\"."
    ]
   }
  ]

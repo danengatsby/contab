@@ -285,6 +285,25 @@
    "text": "O firmă care a vândut anul acesta un utilaj cu câștig are un rezultat mai bun, dar nu o activitate mai bună. De aceea cedările de active se prezintă distinct, iar cine analizează o firmă scade întâi elementele care nu se repetă — o operațiune care nu e prevăzută de niciun formular, dar fără de care comparația cu anul trecut nu spune nimic."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "prezentarea completă și analiza calității performanței",
+     "balanță mapată, cont de profit, note și comparații",
+     "reconciliază fiecare rând și separă elementele recurente/neobișnuite",
+     "profit îmbunătățit prin reclasificare ori eveniment nerepetabil"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

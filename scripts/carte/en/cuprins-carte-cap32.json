@@ -338,11 +338,30 @@
      "the third-party balances, broken down analytically"
     ],
     [
-     "The fiscal record register",
+     "The tax records register",
      "the movements of expense accounts with special treatment"
     ]
    ],
    "nota": "All five start from the same place. That's why a wrong trial balance doesn't produce one error, but five."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "independence and integrity of reconciliations",
+     "signed reconciliation, external sources and differences register",
+     "reperform material items and investigate old unresolved differences",
+     "reconciliation that changes the source data merely to force agreement"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

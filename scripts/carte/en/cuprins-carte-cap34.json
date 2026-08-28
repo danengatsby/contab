@@ -285,6 +285,25 @@
    "text": "Receivables and payables are read together. Separately, each shows a list of names; together, they show whether the company is financing its growth or paying for it."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "completeness and accuracy of receivable and payable maturities",
+     "partner subledgers, contracts, due dates, confirmations and subsequent receipts/payments",
+     "reconcile to the trial balance and test maturity, ageing, disputes and cash flows",
+     "default due dates, old balances with no action, or assumed set-offs"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "To Remember From This Chapter",
    "puncte": [

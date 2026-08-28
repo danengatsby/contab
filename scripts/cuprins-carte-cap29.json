@@ -295,6 +295,25 @@
    "text": "Stornoul corectează CONTURI. Când operațiunea a mișcat și o cantitate, un registru sau un calcul, corecția trebuie făcută acolo unde s-a produs mișcarea — altfel cele două evidențe diverg tăcut."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "păstrarea urmei corecțiilor prin stornare controlată",
+     "document inițial, motiv, aprobare, storno și document corect",
+     "urmărește legătura bidirecțională și efectul în declarații",
+     "ștergeri, suprascrieri ori storno fără referință la original"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

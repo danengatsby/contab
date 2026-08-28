@@ -1,19 +1,19 @@
 {
  "parte": "Part III · The document · phase 2",
  "nr": "10",
- "titlu": "From Paper to Journal Entry",
+ "titlu": "From paper to journal entry",
  "blocuri": [
   {
    "tip": "p",
-   "text": "The document says what happened in the real world. Accounting needs the same information in a specific form: which account is debited, which account is credited, and for what amount. The translation between the two is called a journal entry, and this chapter shows what it looks like."
+   "text": "The document tells you what happened in the real world. Accounting needs the same information in a specific form: which account is debited, which account is credited, and for what amount. The translation between the two is called a journal entry, and this chapter shows what it looks like."
   },
   {
    "tip": "p",
-   "text": "The good news for a business owner: they don't have to do the translation themselves. The useful news: it's worth knowing how to read it, because it's the only place where you can check whether the software — or the accountant — has correctly understood the document."
+   "text": "The good news for a business owner: they don't have to do the translation themselves. The useful news: it's worth knowing how to read one, because it's the only place where you can check whether the software — or the accountant — has understood the document correctly."
   },
   {
    "tip": "h",
-   "text": "Anatomy of an Entry"
+   "text": "Anatomy of an entry"
   },
   {
    "tip": "p",
@@ -48,23 +48,23 @@
      "how much, in lei"
     ]
    ],
-   "nota": "The transaction date and the recording date can differ; in accounting, the first one counts."
+   "nota": "The transaction date and the recording date may differ; in accounting, the first one matters."
   },
   {
    "tip": "p",
-   "text": "The short form, used by everyone in the profession, puts the debit account before the credit account, separated by an equals sign: 371 = 401 means \"goods came in, the payable to the supplier increased.\" It's read from left to right: what we obtained, where it came from."
+   "text": "The short form, used by everyone in the profession, places the debit account before the credit account, separated by an equals sign: 371 = 401 means \"goods came in, the payable to the supplier increased.\" It's read from left to right: what we obtained, where it came from."
   },
   {
    "tip": "h",
-   "text": "An Invoice, Three Lines"
+   "text": "One invoice, three lines"
   },
   {
    "tip": "p",
-   "text": "The most common document in a company's life, the purchase invoice for goods with VAT, produces a three-line entry. Let's take an invoice for 1,000 lei plus 210 VAT, totaling 1,210."
+   "text": "The most frequent document in a company's life, the purchase invoice for goods with VAT, produces a three-line entry. Let's take an invoice of 1,000 lei plus 210 VAT, total 1,210."
   },
   {
    "tip": "tabel",
-   "titlu": "Purchase invoice for goods, 1,000 + 210 VAT",
+   "titlu": "Goods purchase invoice, 1,000 + 210 VAT",
    "cap": [
     "Debit",
     "Credit",
@@ -106,82 +106,82 @@
   },
   {
    "tip": "h",
-   "text": "Simple Entry and Compound Entry"
+   "text": "Simple entry and compound entry"
   },
   {
    "tip": "p",
-   "text": "When the transaction links a single account to a single account, the entry is simple: collection from a customer, 5121 = 4111. When one of the two sides splits into several accounts, as in the invoice above, the entry is compound."
+   "text": "When a transaction links a single account to a single account, the entry is simple: collection from a customer, 5121 = 4111. When one of the two sides splits into several accounts, as in the invoice above, the entry is compound."
   },
   {
    "tip": "p",
-   "text": "What is not allowed, though it may seem convenient, is an entry with multiple accounts on both sides at once, mixing unrelated transactions. Such an entry balances on the total, but it can no longer be read: a year later, no one can say which amount on the left corresponds to which amount on the right."
+   "text": "What is not allowed, though it may seem convenient, is an entry with multiple accounts on both sides at once, mixing unrelated transactions. Such an entry balances on the total, but can no longer be read: a year later, no one can say which amount on the left corresponds to which amount on the right."
   },
   {
    "tip": "h",
-   "text": "The Preview: How to Check Without Knowing Accounting"
+   "text": "The preview: how to check without knowing accounting"
   },
   {
    "tip": "p",
-   "text": "Here lies, for a business owner, the most useful habit in the entire book. Before saving a document, the software shows exactly what entry it will write. You don't need to know the formula to do the check; you just need to look at three things."
+   "text": "Here lies, for a business owner, the most useful habit in the whole book. Before saving a document, the software shows exactly what entry it will record. You don't need to know the formula to do the check; you just need to look at three things."
   },
   {
    "tip": "tabel",
    "titlu": "What to check in the preview",
    "cap": [
-    "You look at",
-    "And you ask yourself"
+    "Look at",
+    "And ask yourself"
    ],
    "randuri": [
     [
-     "The total amount",
+     "Total amount",
      "is it the one on the paper in your hand?"
     ],
     [
-     "The explanation",
-     "does it describe what actually happened?"
+     "Explanation",
+     "does it describe what really happened?"
     ],
     [
-     "The account names",
+     "Account names",
      "\"goods\" when you bought goods, \"services\" when you bought a service?"
     ]
    ],
-   "nota": "Accounts have names in ordinary language precisely so that this check is possible without accounting training."
+   "nota": "Accounts have names in plain language precisely so that this check can be made without accounting training."
   },
   {
    "tip": "p",
-   "text": "A detail that seems technical but is important: the preview must come from the same engine that produces the actual entry. If the software calculates the preview in one place and the entry in another, the two can silently drift apart, and what you checked is no longer what was saved."
+   "text": "A detail that seems technical but is important: the preview must come from the same engine that performs the actual recording. If the software calculates the preview in one place and the recording in another, the two can silently drift apart, and what you checked is no longer what got saved."
   },
   {
    "tip": "contabil",
-   "titlu": "For the Accountant",
-   "text": "Account correspondence is not arbitrary: it follows from the function of each account and the nature of the transaction, and entries that do not respect normal correspondences — for example, crediting an expense account outside of a reversal or closing — almost always signal a misclassification, not an exotic situation. The compound entry is acceptable; the \"mixed\" one, with multiple accounts on both sides, should be avoided: it loses the traceability of the correspondence, complicates the account ledger, and makes line-by-line verification impossible during an audit. The date that matters for recording is that of the transaction, not that of the document nor that of entry into the software — the distinction becomes critical at period boundaries, where an invoice dated the 30th of the month but received on the 5th belongs to the month in which delivery occurred, affecting VAT chargeability. Finally, the entry's explanation is not decoration: when reconstructing an old transaction, it is often the only element linking an amount to an economic fact, especially after the attached document has migrated between systems."
+   "titlu": "For the accountant",
+   "text": "Account correspondence is not free; it follows from the function of each account and the nature of the transaction, and entries that do not respect normal correspondences — for example, crediting an expense account outside of a reversal or closing — almost always signal a misclassification, not an exotic situation. The compound entry is acceptable; the \"mixed\" one, with several accounts on both sides, should be avoided: it loses traceability of the correspondence, complicates the account ledger, and makes line-by-line verification during an audit impossible. The date that matters for recording is that of the transaction, not that of the document nor that of entry into the software — the distinction becomes critical at period boundaries, where an invoice dated the 30th of the month but received on the 5th belongs to the month in which delivery occurred, affecting VAT chargeability. Finally, the entry's explanation is not decoration: when reconstructing an old transaction, it is often the only element linking an amount to an economic fact, especially after the attached document has migrated between systems."
   },
   {
    "tip": "h",
-   "text": "Who Does the Translation"
+   "text": "Who does the translation"
   },
   {
    "tip": "p",
-   "text": "In practice, no one composes entries by hand for ordinary documents. The software has the translation ready for each typical situation: you choose which document you have, fill in the amounts from it, and the entry composes itself."
+   "text": "In practice, no one composes entries by hand for routine documents. The software has the translation prepared for every typical situation: you choose which document you have, fill in the amounts from it, and the entry composes itself."
   },
   {
    "tip": "p",
-   "text": "This set of ready-made translations is called a chart of accounting treatments (monografie), and its richness determines how often you need to improvise. That's the subject of the next chapter."
+   "text": "This set of ready-made translations is called a chart of accounting treatments (monografie), and its richness determines how often you'll need to improvise. That's the subject of the next chapter."
   },
   {
    "tip": "h",
-   "text": "The Same Document, Translated Differently at Three Companies"
+   "text": "The translation, on the same document, at three different companies"
   },
   {
    "tip": "p",
-   "text": "The same piece of paper does not produce the same entry at every company. It's worth seeing in a case, because it clarifies what actually determines the translation: not the document, but WHAT the company does with what it bought."
+   "text": "The same piece of paper doesn't produce the same entry at every company. It's worth seeing on a case, because it clarifies what actually decides the translation: not the document, but WHAT the company does with what it bought."
   },
   {
    "tip": "tabel",
-   "titlu": "A 10,000-lei Invoice for a Laptop, at Three Companies",
+   "titlu": "A 10,000-lei invoice for a laptop, at three companies",
    "cap": [
     "Company",
-    "Account debited",
+    "Debited account",
     "Why"
    ],
    "randuri": [
@@ -193,7 +193,7 @@
     [
      "Consulting firm",
      "2131 Equipment",
-     "uses it for over a year, above the threshold"
+     "uses it for more than a year, above the threshold"
     ],
     [
      "Assembly company",
@@ -201,34 +201,53 @@
      "goes in as a part of a product"
     ]
    ],
-   "nota": "The document is identical in all three. What differs is the purpose, and the company knows the purpose, not the supplier."
+   "nota": "The document is identical in all three cases. What differs is the purpose, and the company knows the purpose, not the supplier."
   },
   {
    "tip": "p",
-   "text": "From this follows a surprising consequence: the accountant cannot make the translation alone, from the document, for every transaction. For ordinary ones, the pattern is clear. For ambiguous ones, information is needed that is written nowhere — and the question asked then is cheaper than the correction made a year later."
+   "text": "From this follows a surprising consequence: the accountant cannot always do the translation alone, from the document, for every transaction. For routine ones, the pattern is clear. For ambiguous ones, information is needed that is written nowhere — and the question asked at that moment is cheaper than the correction made a year later."
   },
   {
    "tip": "exercitiu",
-   "titlu": "Exercise 10.1 — From Paper to Entry",
+   "titlu": "Exercise 10.1 — from paper to entry",
    "enunt": [
-    "Invoice from a supplier: base 4,000 lei, VAT 21% = 840 lei, total 4,840 lei, for \"maintenance materials.\" The company will consume them this month.",
+    "Invoice from a supplier: base 4,000 lei, VAT 21% = 840 lei, total 4,840 lei, for \"maintenance materials.\" The company will consume them in the current month.",
     "Write the complete journal entry and say what changes if the company is NOT registered for VAT purposes."
    ],
    "rezolvare": [
     "VAT-registered company, two lines: 302 Consumable materials = 401 Suppliers, 4,000 lei; 4426 Deductible VAT = 401 Suppliers, 840 lei. Total payable to the supplier: 4,840.",
-    "Upon actual consumption, a third transaction, with a different document (consumption slip): 602 = 302, 4,000 lei.",
-    "Company NOT registered for VAT: the tax cannot be deducted, so it enters the COST of the item. A single line: 302 = 401, 4,840 lei. There is no 4426 account in the entry.",
-    "The practical consequence, often ignored: for a non-VAT-registered company, the VAT on received invoices is not a recoverable tax, but part of the price. Comparisons between offers from a VAT-registered company and a non-registered one must therefore be made on different amounts."
+    "At actual consumption, a third transaction, with another document (consumption slip): 602 = 302, 4,000 lei.",
+    "NON-VAT-registered company: the tax cannot be deducted, so it enters the COST of the good. A single line: 302 = 401, 4,840 lei. There is no 4426 account in the entry.",
+    "The practical consequence, often ignored: for a non-VAT-registered company, VAT on received invoices is not a recoverable tax, but part of the price. Price comparisons between a VAT-registered company and a non-registered one must therefore be made on different amounts."
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "faithful translation of the document into a journal entry",
+     "document, policy, chart of accounting treatments, entry, and journal",
+     "re-execute the classification, date, amounts, accounts, and explanation",
+     "accounting treatment chosen based on the supplier, not on the nature of the transaction"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
-   "titlu": "Key Takeaways from This Chapter",
+   "titlu": "Key takeaways from this chapter",
    "puncte": [
-    "A journal entry has five elements: the transaction date, the explanation, the debit account, the credit account, the amount.",
+    "A journal entry has five elements: transaction date, explanation, debit account, credit account, amount.",
     "It's read from left to right: what we obtained, where it came from. 371 = 401 means goods received on credit.",
     "Deductible VAT is neither goods nor an expense: it's a receivable from the state, which is why it has its own account.",
-    "The same document produces different entries depending on the company's tax regime — for a non-VAT-registered company, the tax becomes part of the cost of the item.",
+    "The same document produces different entries depending on the company's tax regime — for a non-VAT-registered company, the tax enters the cost of the good.",
     "The preview can be checked without accounting knowledge: the amount, the explanation, the account names.",
     "The date that matters is that of the transaction, not that of entry into the software."
    ]

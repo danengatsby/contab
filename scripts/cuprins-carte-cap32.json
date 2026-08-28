@@ -345,6 +345,25 @@
    "nota": "Toate cinci pornesc din același loc. De aceea o balanță greșită nu produce o eroare, ci cinci."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "independența și integritatea reconcilierilor",
+     "reconcilieri semnate, surse externe și registru de diferențe",
+     "reexecută elementele materiale și urmărește rezolvarea celor vechi",
+     "reconciliere care modifică sursa pentru a o face egală"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

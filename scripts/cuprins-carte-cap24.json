@@ -202,6 +202,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "clasificarea contractului de leasing și separarea componentelor sale",
+     "contract, grafic, proces-verbal, facturi, opțiuni și registrul activelor",
+     "citește substanța, reface principalul/dobânda și verifică activul, datoria și TVA",
+     "contract tratat după titlu ori rată înregistrată integral pe cheltuială"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

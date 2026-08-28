@@ -136,6 +136,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "recunoașterea veniturilor și cheltuielilor în perioada economică potrivită",
+     "contracte, facturi, recepții, abonamente și calcule de regularizare",
+     "testează facturi de primit/emis și cheltuieli/venituri în avans înainte/după închidere",
+     "data facturii folosită automat în locul perioadei prestației"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

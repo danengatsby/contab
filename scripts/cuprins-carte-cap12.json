@@ -117,7 +117,7 @@
    ],
    "rezolvare": [
     "(a) În stare de ciornă. Introducerea e o operațiune de execuție; postarea e actul prin care cineva își asumă cifra. Dacă cele 40 ar fi fost postate direct, cele trei ar fi intrat deja în evidența unei luni închise — sau ar fi fost respinse de garda de perioadă, ceea ce e chiar comportamentul dorit.",
-    "(b) Nu se înregistrează în luna închisă. Se înregistrează în luna curentă, iar dacă afectează TVA-ul sau rezultatul lunii precedente, se evaluează dacă e cazul unei declarații rectificative — decizie care ține de mărimea sumei și de termene.",
+    "(b) Nu se înregistrează în luna închisă. Se înregistrează în luna curentă, iar efectul asupra perioadei precedente se analizează separat: regularizare TVA, corecție fiscală ori declarație rectificativă numai pentru formularul care admite această cale, în funcție de natura erorii și de reguli.",
     "Ce arată exercițiul: separarea ciornă/postat nu e birocrație, ci locul în care se face verificarea. O firmă în care toți postează direct nu are unde să verifice, iar erorile ajung în declarații fără să treacă pe la nimeni."
    ]
   },
@@ -224,6 +224,25 @@
   {
    "tip": "p",
    "text": "Situația e, de altfel, exact motivul pentru care garda de perioadă verifică la POSTARE, nu la creare: o ciornă se poate compune oricând, dar intrarea în evidență se supune calendarului."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "separarea stadiilor și aprobarea înainte de impact contabil",
+     "workflow, drepturi, loguri și probe de aprobare",
+     "urmărește eșantionul din ciornă până la postare și blocare",
+     "postare automată fără criterii, excepții și jurnal de intervenție"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
   },
   {
    "tip": "recap",

@@ -121,7 +121,7 @@
    "rezolvare": [
     "(a) It refuses the entry and explains why: the period is closed. The operator corrects the date on the spot, in two seconds.",
     "(b) The invoice would have entered June. June's trial balance would no longer be the one on which the VAT return was filed, and the difference would be discovered at the earliest during an inspection — or never.",
-    "(c) Then it's not a typing error, it's a late document. It's recorded in July, and if it affects June's VAT or result, it should be assessed whether an amended return is needed. What is NOT done: reopening June just to \"make it look nice.\"",
+    "(c) Then this is not a typing error but a late document. It is recorded in July, while its effect on VAT and profit is handled through the applicable procedure: an adjustment in a subsequent D300 return, where that is the prescribed route, or an amended return for forms that permit one. What must NOT be done is to reopen June merely to make the figures look tidy.",
     "What the exercise shows: locking doesn't protect against bad faith — it protects against a wrongly pressed key, i.e., the case that actually happens. And if reopening is nevertheless necessary, it requires administrator rights, a written reason, and a permanent record: possible, but never comfortable."
    ]
   },
@@ -216,6 +216,25 @@
   {
    "tip": "cheie",
    "text": "Period locking establishes WHEN the correction is recorded. The materiality of the error establishes WHERE. These are two separate questions, and both require an answer."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "integrity of locked periods and control over reopening",
+     "permissions, logs, approvals, reasons and before/after outputs",
+     "inspect every subsequent posting and its propagation to returns and reports",
+     "informal reopening, or changes after filing without the required correction"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

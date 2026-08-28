@@ -244,6 +244,25 @@
    "text": "Applied to accounting, the test also explains why the month's file contains written notes, not just numbers: numbers can be recalculated anytime, judgments cannot. An allowance for receivables can be rebuilt from data; the reason the receivable was considered doubtful cannot."
   },
   {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "objective derivation of each workflow status from source data",
+     "status rules, source reports, exceptions and calculation log",
+     "recompute sample statuses and test the return from ready to open",
+     "manually checked status even though source data show unresolved items"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
+  },
+  {
    "tip": "recap",
    "titlu": "Key takeaways from this chapter",
    "puncte": [

@@ -254,6 +254,25 @@
    "nota": "Al treilea rând e cel mai des rezolvat greșit: diferența se „pierde” pe venituri, iar factura rămâne parțial neîncasată în scadențar, la nesfârșit."
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "reconcilierea fiecărei mișcări cu o sursă independentă",
+     "extrase, registru de casă, fișe contabile și registru de diferențe",
+     "punctează rând cu rând și urmărește diferențele până la document și rezolvare",
+     "diferențe vechi, reconciliere copiată ori sursă modificată ca să coincidă"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

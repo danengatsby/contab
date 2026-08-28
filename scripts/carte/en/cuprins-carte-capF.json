@@ -1,0 +1,335 @@
+{
+ "parte": "Annexes · to be used, not read",
+ "nr": "F",
+ "titlu": "Legislative map and update protocol",
+ "blocuri": [
+  {
+   "tip": "p",
+   "text": "This edition was verified as at 27 August 2026. The date forms part of the information: tax, electronic reporting, the minimum wage and forms change faster than core accounting treatments. This appendix explains which sources carry authority, which values require reverification and how to update a conclusion without confusing legislation, instructions and the technical operation of a portal."
+  },
+  {
+   "tip": "cheie",
+   "text": "An up-to-date book cannot promise that a figure will remain valid. It states the verification date, source, scope, transition rule and procedure for checking the figure again."
+  },
+  {
+   "tip": "h",
+   "text": "Scope of the edition"
+  },
+  {
+   "tip": "p",
+   "text": "The accounting treatments address Romanian entities applying OMFP No. 1.802/2014. IFRS reporters, public institutions, not-for-profit organisations, persons using single-entry bookkeeping and prudentially or specially regulated sectors require their own map. Tax examples target ordinary Romanian companies; non-residence, tax groups, excise duties, customs regimes and complex cross-border transactions require separate analysis."
+  },
+  {
+   "tip": "h",
+   "text": "Source hierarchy"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "What can every source prove",
+   "cap": [
+    "Level",
+    "Examples",
+    "Correct use"
+   ],
+   "randuri": [
+    [
+     "Published normative act",
+     "laws, ordinances, government decisions, orders and their annexes",
+     "sets out the obligation, conditions, date of entry into force and the transition"
+    ],
+    [
+     "Official consolidated form",
+     "Legislative Portal",
+     "show the integrated text; check history and form applicable to the date of operation"
+    ],
+    [
+     "Authorised instructions and forms",
+     "orders ANAF/MF, nomenclature, schemes and instructions for completion",
+     "govern reporting and validations within the authority of the higher-level instrument"
+    ],
+    [
+     "Official Guide / Communication",
+     "ANAF or Ministry of Finance material",
+     "explain the application; do not amend the text of the law and do not replace the missed conditions"
+    ],
+    [
+     "Portal and validator",
+     "SPV, e- Invoice, assistance programs",
+     "evidences technical operation at a particular date; document technical errors separately"
+    ],
+    [
+     "Secondary source",
+     "article, seminar, commercial base",
+     "initial warning and guidance; return to the official source for the substantive conclusion"
+    ]
+   ],
+   "nota": "When two sources appear to conflict, check the transaction date, effective date, transition rule, scope and legal authority before assuming either source is wrong."
+  },
+  {
+   "tip": "h",
+   "text": "Professional basic map"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Official theme and landmark",
+   "cap": [
+    "Theme",
+    "Main marker",
+    "Working document"
+   ],
+   "randuri": [
+    [
+     "Organisation of accounting and accountability",
+     "Accounting law No. 82/1991",
+     "liability matrices, inventories, registers, signatures and archiving"
+    ],
+    [
+     "Recognition, valuation and financial statements",
+     "OMFP nr. 1.802/2014, as applicable",
+     "policy manual, estimates, notes and mapping on forms"
+    ],
+    [
+     "Financial-accounting documents",
+     "OMFP 2.634/2015 and special rules",
+     "document register, workflow, numbering and retention period"
+    ],
+    [
+     "Inventory",
+     "Law No. 82/1991 and OMFP No 2.861/2009",
+     "resolution, committees, lists, confirmations, minutes and accounting for differences"
+    ],
+    [
+     "Taxes and contributions",
+     "Law no. 227/2015 on the Tax Code and amending acts",
+     "Tax register by type of tax, year and article"
+    ],
+    [
+     "Procedure and declarations",
+     "Law No 207/2015, orders ANAF and instructions for forms",
+     "calendar, form version, filing receipt and reconciliation"
+    ],
+    [
+     "Companies, capital and distributions",
+     "Law No 31/1990 and Law No 239/2025",
+     "net-assets calculation, resolutions, restrictions and subsequent payments"
+    ],
+    [
+     "Work and payroll",
+     "Labour code, tax code, minimum wage decision and special acts",
+     "dated parameters sheet, payrolls, timesheets and D112"
+    ],
+    [
+     "Electronic reporting",
+     "OUG No 120/2021, applicable technical orders and specifications",
+     "message register, transmitted file, index, response and incident"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Volatile parameters checked for this edition"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Update sheet at 27 August 2026",
+   "cap": [
+    "Parameter",
+    "Value / rule used in the book",
+    "Reference and next verification"
+   ],
+   "randuri": [
+    [
+     "Microenterprise",
+     "single 1% rate; EUR 100.000 threshold; cumulative conditions and linked enterprises",
+     "OUG 89/2025 and OUG 8/2026; before option and quarterly"
+    ],
+    [
+     "General minimum wage",
+     "4.325 lei from 1 July 2026",
+     "HG No. 146/2026; for every payroll and contractual change"
+    ],
+    [
+     "Tax-exempt amount at the minimum wage",
+     "200 lei in the second half of 2026 when the conditions and 4.600 lei gross-income ceiling are met",
+     "OUG 89/2025; monthly, per employee"
+    ],
+    [
+     "Medical leave",
+     "for certificates 1 February 2026 - 31 December 2027: one-day decrease, once per continuous episode; employer days 2 - 6 for regular incapacity, with legal exceptions",
+     "OUG No 91/2025, Law No 64/2026 and Order No 506/2026; on certificate and episode"
+    ],
+    [
+     "Dividend tax",
+     "16% for the regime applicable from 1 January 2026",
+     "Tax code / OUG nr 89/2025; on distribution and payment date"
+    ],
+    [
+     "Fixed asset for tax purposes",
+     "5.000 lei threshold from 2026; the tax threshold is not the accounting capitalisation policy",
+     "OUG No. 8/2026; when the asset is recognised"
+    ],
+    [
+     "Tax depreciation 2026",
+     "up to 65% in the first year for eligible new assets in subgroups 2.1 and 2.4",
+     "OUG 8/2026; when putting into service and choosing the method"
+    ],
+    [
+     "Cash-accounting VAT scheme",
+     "5.000.000 lei threshold for 1 March–31 December 2026; 5.500.000 lei from 2027",
+     "OUG nr. 8/2026; monthly and before regime change"
+    ],
+    [
+     "RO e-Factura",
+     "transmission in 5 working days, not exceeding the legal issuance deadline; exceptions and registers updated in 2026",
+     "OUG 120/2021, OUG 89/2025 and OUG 8/2026; for each flow version"
+    ],
+    [
+     "Correction of D300",
+     "no amended VAT return is filed; use adjustments in a subsequent return or the material-error procedure, according to the cause",
+     "OPANAF 174/2026 and OPANAF 3.604/2015; at each error"
+    ],
+    [
+     "Financial statements 2025",
+     "2 June 2026 deadline and electronic filing only",
+     "OMF No. 2.036/2025 and the official calendar; annually"
+    ],
+    [
+     "Minimum SRL share capital",
+     "500 lei for new companies; 5.000 lei when turnover exceeds 400.000 lei, subject to the statutory transition",
+     "Law No. 239/2025; on incorporation, at annual closing and through 18 December 2027"
+    ]
+   ],
+   "nota": "The table is a checklist, not a substitute for the law. The exact rule depends on the chargeable-event date, taxpayer category and transitional provisions."
+  },
+  {
+   "tip": "h",
+   "text": "Eight-step update protocol"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Controlled update flow",
+   "cap": [
+    "Step",
+    "Action",
+    "Exit"
+   ],
+   "randuri": [
+    [
+     "1. Trigger",
+     "monitor a new instrument, form, validator, deadline or incident",
+     "Ticket with source and date"
+    ],
+    [
+     "2. Authenticity",
+     "the published act and the official form are obtained, not only the comments",
+     "copy / link, issuer, number, publication"
+    ],
+    [
+     "3. Applicability",
+     "identify subject, operation, date, entry into force and transition",
+     "scope memorandum"
+    ],
+    [
+     "4. Difference",
+     "old text versus new text, condition by condition",
+     "changes matrix"
+    ],
+    [
+     "5. Impact",
+     "accounts, policies, contracts, taxes, returns, systems, controls and clients",
+     "list of affected objects"
+    ],
+    [
+     "6. Implementation",
+     "procedure, parameters, migration, communication and accountable owner",
+     "approved and tested plan"
+    ],
+    [
+     "7. Validation",
+     "before/after cases, independent recalculation and deliverable verification",
+     "test and acceptance evidence"
+    ],
+    [
+     "8. Traceability",
+     "version, reference date, author, reviewer and archival of the old rule",
+     "version log"
+    ]
+   ]
+  },
+  {
+   "tip": "h",
+   "text": "Sheet of a volatile rule"
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Mandatory fields",
+   "cap": [
+    "Field",
+    "Example of content"
+   ],
+   "randuri": [
+    [
+     "Short rule",
+     "e-Factura deadline: 5 business days"
+    ],
+    [
+     "Exact authority",
+     "act, Article, paragraph and applicable form"
+    ],
+    [
+     "Validity",
+     "from / to, including the transitional rule"
+    ],
+    [
+     "Scope and exceptions",
+     "B2B/B2C, tax identification, registers and exempted situations"
+    ],
+    [
+     "System parameter",
+     "“business day” unit, calendar and alert"
+    ],
+    [
+     "Control",
+     "daily report invoices issued versus loading index"
+    ],
+    [
+     "Last check",
+     "date, author, source and version"
+    ],
+    [
+     "Next event",
+     "Expiry date, new ceiling or scheduled revision"
+    ]
+   ]
+  },
+  {
+   "tip": "contabil",
+   "titlu": "For the accountant",
+   "text": "Maintain a legislative register with an accountable owner for each area, official sources, alerts and periodic review. For every change, distinguish publication date, effective date and the first affected reporting period. Retain the version applicable to the transaction, not only the consolidated text consulted today. Link each rule to the software parameter, procedure, control and communication to the client or management. Test an ordinary transaction, boundary cases and the transition. A form change without a change in law may still require implementation; an official communication may require attention but cannot, on its own, rewrite policy."
+  },
+  {
+   "tip": "exercitiu",
+   "titlu": "Exercise F.1 — from official communication to a controlled rule",
+   "enunt": [
+    "You receive an official statement announcing the change of a ceiling in two months. The programme uses the old ceiling and three customers are close to the limit. Describe the flow until implementation."
+   ],
+   "rezolvare": [
+    "Identify and archive the published legal instrument. Verify the article, scope, definition of the base, exchange rate or reference period, effective date and transition; retain the communication as explanatory material.",
+    "Extract affected clients using the statutory definition, not an approximate report. For each client, simulate the threshold-crossing date and notification or filing obligations.",
+    "Modify the parameter with validity date, keeping the old rule for previous periods. Test below the ceiling, exactly at the ceiling, above the ceiling and during the transitional period.",
+    "The relevant procedure, control, timing and material shall be updated; the responsible shall be notified. The author and reviewer sign the rule sheet, and the log keeps the source and the tests."
+   ]
+  },
+  {
+   "tip": "recap",
+   "titlu": "Key points from this appendix",
+   "puncte": [
+    "The date of verification and the field are part of any legislative statement.",
+    "The published act establishes the rule; the consolidated form, instruction, communication and validator have different roles.",
+    "Each volatile parameter has grounds, validity, domain, exceptions, implementation, control and owner.",
+    "The update follows the impact up to accounting, taxation, declarations, contracts, system and communication.",
+    "The old rule is archived with its period; it does not overwrite history."
+   ]
+  }
+ ]
+}

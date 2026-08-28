@@ -135,6 +135,25 @@
    ]
   },
   {
+   "tip": "tabel",
+   "titlu": "Dosarul de lucru al expertului",
+   "cap": [
+    "Obiectiv",
+    "Probe de păstrat",
+    "Procedură de revizie",
+    "Semnal de risc"
+   ],
+   "randuri": [
+    [
+     "trasabilitatea acțiunilor și segregarea accesului",
+     "loguri imuabile, utilizatori, roluri, aprobări și incidente",
+     "urmărește cine a creat, modificat, aprobat și exportat operațiunea",
+     "conturi comune, loguri editabile ori intervenții administrative neexplicate"
+    ]
+   ],
+   "nota": "Concluzia se datează și se semnează de întocmitor; revizorul documentează observațiile și închiderea lor. Referințele trebuie să permită refacerea traseului până la balanță, document și livrabil."
+  },
+  {
    "tip": "recap",
    "titlu": "De reținut din acest capitol",
    "puncte": [

@@ -163,7 +163,7 @@
   {
    "tip": "contabil",
    "titlu": "For the accountant",
-   "text": "The rates in force are 21% standard and 11% reduced, applicable from August 1, 2025 under Law 141/2025, and the exemption threshold for small enterprises is 395,000 lei. Four practical observations. First: chargeability, not the chargeable event, determines the month in which the tax enters the return — for supplies of goods and services the two usually coincide, but for advances chargeability occurs upon collection, and for intra-Community acquisitions on the date the invoice is issued or, at the latest, on the fifteenth day of the month following the chargeable event; treating them according to the document date is a constant source of discrepancies between the accounting records and the return. Second: the right of deduction is exercised in the return for the period in which the substantive and formal conditions are met, but it may also be exercised later, within the limitation period, through a subsequent return or a corrective return — the distinction between the two paths has procedural consequences, so it is not chosen at random. Third: the carry-forward line in the return must correspond exactly to the balance of account 4424 in the previous period's trial balance; checking this correlation before filing catches practically all carry-forward errors. Fourth: the return is corrected through a corrective return, but this cannot be filed after a tax inspection for that period has begun — the practical correction deadline is, therefore, shorter than the legal one."
+   "text": "The rates in force are 21% standard and 11% reduced, applicable from 1 August 2025 under Law 141/2025, while the small-enterprise exemption threshold is 395.000 lei. Four practical observations follow. First, chargeability — rather than the chargeable event — determines the month in which VAT enters the return. The two normally coincide for supplies of goods and services; for advances, however, VAT becomes chargeable upon receipt, while for intra-Community acquisitions it becomes chargeable on the invoice date or, at the latest, on the fifteenth day of the month following the chargeable event. Posting solely by document date is a recurring source of differences between the accounting records and the VAT return. Second, the right of deduction is exercised once the substantive and formal conditions are met and may be exercised later, within the statutory time limit, through a subsequent VAT return; Form D300 is not filed as an amended return for the same period. Third, omissions and corrections covered by the form instructions are reported, according to their nature, in the adjustment rows of a subsequent return. Strictly defined material errors — such as calculation or transcription errors — follow the correction-request procedure handled by the tax authority under OPANAF No. 3.604/2015. Fourth, the carry-forward line must agree exactly with the VAT balance in the preceding return and the trial balance. The cause must be established before any correction, because a tax adjustment, a material-error request and a correction of the accounting records are not interchangeable."
   },
   {
    "tip": "h",
@@ -297,6 +297,25 @@
   {
    "tip": "p",
    "text": "The regularization of the advance is done in the final invoice itself, not as a separate operation — and this is why the document type for the final invoice with an advance is distinct from the ordinary one. It is the same pattern as the inventory write-off in chapter 11: a line that is not visible from the document, but without which the result is wrong."
+  },
+  {
+   "tip": "tabel",
+   "titlu": "Professional working papers",
+   "cap": [
+    "Objective",
+    "Evidence to retain",
+    "Review procedure",
+    "Risk indicator"
+   ],
+   "randuri": [
+    [
+     "recognition of VAT only when the legal and documentary requirements are met",
+     "invoices, VAT registers, counterparty status, use and reporting period",
+     "test chargeability, deduction entitlement, rate and restrictions",
+     "VAT deducted solely because it is separately stated on the invoice"
+    ]
+   ],
+   "nota": "The conclusion is dated and signed by the preparer; the reviewer documents each review note and its resolution. Cross-references must allow the trail back to the trial balance, supporting document and deliverable to be reperformed."
   },
   {
    "tip": "recap",

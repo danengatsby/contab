@@ -3,7 +3,8 @@
  "subtitlu": "O carte despre contabilitatea românească, așezată nu pe capitole de manual, ci pe ciclul contabil — drumul real al unei sume, de la documentul primit până la bilanțul depus.",
  "teza": [
   "Manualele predau contabilitatea pe teme: conturile, apoi TVA-ul, apoi salariile. Practica nu se întâmplă așa. O firmă parcurge în fiecare lună aceeași secvență, în aceeași ordine, iar fiecare pas depinde de cel dinainte.",
-  "Cartea urmează secvența. Fiecare parte e o fază a ciclului; fiecare capitol răspunde la o întrebare pe care ți-o pui exact în acel moment, nu cu trei luni mai devreme."
+  "Cartea urmează secvența. Fiecare parte e o fază a ciclului; fiecare capitol răspunde la o întrebare pe care ți-o pui exact în acel moment, nu cu trei luni mai devreme.",
+  "Ediția profesională revizuită, cu legislația verificată la 27 august 2026. Domeniu: entități din România care aplică reglementările contabile aprobate prin OMFP nr. 1.802/2014; tratamentele IFRS, sectorul public și organizațiile fără scop patrimonial cer reguli distincte."
  ],
  "doua": [
   {
@@ -411,6 +412,38 @@
    ]
   },
   {
+   "nr": "XII",
+   "titlu": "Raționamentul profesionist",
+   "faza": "strat transversal",
+   "rezumat": "Zona în care contabilitatea nu mai este introducere de date: alegerea tratamentului, estimarea, evaluarea riscului, documentarea concluziei și revizia unei lucrări care trebuie să poată fi apărată.",
+   "capitole": [
+    {
+     "nr": "52",
+     "titlu": "Politici contabile, estimări, erori și praguri de semnificație",
+     "nota": "Cum separi o alegere permisă de o estimare și de o eroare; efect prospectiv, corecție prin rezultat reportat și documentarea materialității.",
+     "semn": false
+    },
+    {
+     "nr": "53",
+     "titlu": "Provizioane, evenimente ulterioare și continuitatea activității",
+     "nota": "Obligația prezentă, probabilitatea, estimarea credibilă, evenimentul ajustabil și testul prin care semnătura de continuitate devine o concluzie probată.",
+     "semn": false
+    },
+    {
+     "nr": "54",
+     "titlu": "Părți afiliate, asociați, capital și finanțare",
+     "nota": "Substanța economică a banilor dintre firmă și asociați, condiții de piață, active nete, dividende și restricțiile aplicabile în 2026.",
+     "semn": false
+    },
+    {
+     "nr": "55",
+     "titlu": "Dosarul de lucru și revizia profesionistului",
+     "nota": "Aserțiuni, probe, praguri, eșantionare, foi conducătoare, puncte deschise și concluzia care leagă balanța de situațiile financiare.",
+     "semn": false
+    }
+   ]
+  },
+  {
    "nr": "—",
    "titlu": "Anexe",
    "faza": "de folosit, nu de citit",
@@ -445,6 +478,12 @@
      "titlu": "Verificările de coerență",
      "nota": "Lista scurtă de confruntat înainte de fiecare depunere, în ordinea în care prinde cele mai multe erori.",
      "semn": false
+    },
+    {
+     "nr": "F",
+     "titlu": "Harta legislativă și protocolul de actualizare",
+     "nota": "Sursele oficiale, ierarhia lor, valorile volatile la 27 august 2026 și procedura prin care cartea rămâne actuală fără a confunda un comunicat cu legea.",
+     "semn": false
     }
    ]
   }
@@ -452,7 +491,7 @@
  "subsol": [
   {
    "cap": "Structura",
-   "txt": "11 părți, 51 de capitole, 5 anexe. Fiecare parte corespunde unei faze din ciclul contabil, iar capitolele urmează ordinea în care întrebările apar în practică."
+   "txt": "12 părți, 55 de capitole, 6 anexe. Primele 11 părți urmează ciclul contabil; partea a XII-a documentează raționamentul profesionist care traversează toate fazele."
   },
   {
    "cap": "Cele două niveluri",
