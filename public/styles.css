@@ -1,6 +1,7 @@
 :root{
   /* Temă caldă, stil Claude/Anthropic: paper crem + accent clay/terracotta */
-  --ink:#2c2b27; --muted:#76746c; --line:#e8e4d8; --bg:#f0ede4; --card:#fbfaf6;
+  /* #68665f păstrează ierarhia vizuală și trece WCAG AA pe toate suprafețele temei (minim 4,52:1). */
+  --ink:#2c2b27; --muted:#68665f; --line:#e8e4d8; --bg:#f0ede4; --card:#fbfaf6;
   --head:#2f2e2a; --accent:#c2613c; --accent2:#a8512f; --danger:#be3b34; --good:#0b6e4f;
   --soft:#f4f0e7; --soft2:#efeadf; --line-strong:#ddd6c7;  /* neutre calde — înlocuiesc albastrele reci din chrome */
   --radius:14px; --radius-sm:10px;
@@ -16,6 +17,9 @@ h1{font-size:19px}h2{font-size:17px}h3{font-size:15px}
 /* Accesibilitate: focus vizibil clar pentru navigarea cu tastatura */
 :focus-visible{outline:3px solid #1769aa;outline-offset:2px;border-radius:4px}
 button:focus-visible,.link:focus-visible,a:focus-visible{outline:3px solid #1769aa;outline-offset:2px}
+/* Containerele de tabel primesc `tabindex` numai când chiar au conținut ascuns. Focusul este
+   trasat în interior, ca să nu fie tăiat de `overflow:auto` și să rămână vizibil pe mobil. */
+.scroll-focus:focus-visible{outline:3px solid #1769aa;outline-offset:-3px;border-radius:8px}
 /* Respecta preferinta de miscare redusa */
 @media(prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important;scroll-behavior:auto !important}
   .qa:hover{transform:none}}
@@ -223,8 +227,8 @@ th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;white-
 .grid2>*,.grid3>*{min-width:0}
 th{background:var(--soft2);position:sticky;top:0;font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:700}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-/* zero stins in tabelele numerice — scris, dar nu concurent vizual cu sumele reale */
-.zero{color:var(--muted);opacity:.55}
+/* zero stins prin culoarea secundară, fără opacitate care ar coborî din nou sub pragul AA */
+.zero{color:var(--muted)}
 tr.total td{font-weight:700;background:var(--soft)}
 tr.sys td{color:#8a6d00}
 /* Ciorna (nu inca in contabilitate): rand estompat, cu bara de accent la stanga */

@@ -1106,11 +1106,14 @@ sect('15. Registrele late spun ca mai e continut la dreapta');
       .filter((x) => x.getBoundingClientRect().width > 0)
       .sort((a, c) => c.scrollWidth - a.scrollWidth)[0];
     if (!t) return null;
-    const w = t.parentElement;
+    const w = t.closest('.tablewrap');
+    const c = w && w.scrollWidth - w.clientWidth > 1 ? w : t;
     return {
-      rest: t.scrollWidth - t.clientWidth,
+      rest: c.scrollWidth - c.clientWidth,
       inTablewrap: !!w && w.classList.contains('tablewrap'),
       marcat: !!w && w.classList.contains('are-derulare'),
+      focusabil: c.tabIndex === 0 && c.classList.contains('scroll-focus'),
+      etichetat: /Tabel derulabil/.test(c.getAttribute('aria-label') || ''),
     };
   });
 
@@ -1124,13 +1127,17 @@ sect('15. Registrele late spun ca mai e continut la dreapta');
   ok('la 900px balanta chiar are continut ascuns (poarta nu masoara gol): ' + (stramt && stramt.rest) + 'px',
     !!stramt && stramt.inTablewrap && stramt.rest > 1);
   ok('...si containerul ei poarta indiciul de derulare', !!stramt && stramt.marcat);
+  ok('...iar tastatura poate focaliza exact containerul care deruleaza',
+    !!stramt && stramt.focusabil && stramt.etichetat);
 
   await adm.evaluate(() => {
     const t = [...document.querySelectorAll('main table')]
       .filter((x) => x.getBoundingClientRect().width > 0)
       .sort((a, c) => c.scrollWidth - a.scrollWidth)[0];
-    t.scrollLeft = t.scrollWidth;
-    t.dispatchEvent(new Event('scroll'));
+    const w = t.closest('.tablewrap');
+    const c = w && w.scrollWidth - w.clientWidth > 1 ? w : t;
+    c.scrollLeft = c.scrollWidth;
+    c.dispatchEvent(new Event('scroll'));
   });
   await adm.waitForTimeout(400);
   const laCapat = await cite();
@@ -1142,6 +1149,7 @@ sect('15. Registrele late spun ca mai e continut la dreapta');
   const larg = await cite();
   ok('la 1920px acelasi registru incape si NU poarta indiciul (fara zgomot fals): '
     + (larg && larg.rest) + 'px', !!larg && larg.rest <= 1 && !larg.marcat);
+  ok('un tabel care încape nu adaugă o oprire inutilă în ordinea de tab', !!larg && !larg.focusabil);
   await adm.setViewportSize({ width: 1440, height: 900 });
 }
 

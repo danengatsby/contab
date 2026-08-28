@@ -177,6 +177,21 @@ await pg.evaluate(() => goTab('dashboard'));
 await pg.click('#qaWizard');
 ok('selectorul ghidat nu arată „Înapoi” la primul nivel', !(await pg.locator('#opwBack').isVisible()));
 await pg.click('#opwClose');
+// Control generat dinamic, ca în rândurile de documente/administrare. MutationObserver-ul trebuie
+// să-i convertească simbolul în SVG decorativ fără să-i piardă numele accesibil.
+await pg.evaluate(() => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'del e2e-icon-only'; b.textContent = '✕';
+  document.querySelector('.shell > main').appendChild(b);
+});
+await pg.waitForTimeout(100);
+ok('controlul dinamic numai cu pictogramă primește un nume accesibil explicit', await pg.evaluate(() => {
+  const b = document.querySelector('.e2e-icon-only');
+  const rezultat = b?.getAttribute('aria-label') === 'Elimină'
+    && b.querySelector('.app-icon')?.getAttribute('aria-hidden') === 'true';
+  b?.remove();
+  return rezultat;
+}));
 const clickTool = async (selector) => {
   if (!(await pg.locator(selector).isVisible())) await pg.click('#navgrupUnelte > .navlabel');
   await pg.click(selector);
@@ -566,6 +581,18 @@ ok('mobil: mesajul de glisare este vizibil și alegerea Rulaj schimbă valorile 
       const sf = [...table.querySelectorAll('tbody .bal-col-sf')].filter((el) => el.offsetParent);
       return table.dataset.mobileColumns === 'ru' && ru.length > 0 && sf.length === 0;
     })));
+await pm.selectOption('#balantaMobileColumns', 'all');
+await pm.waitForTimeout(150);
+ok('mobil: când apar toate coloanele, zona care derulează intră imediat în ordinea de tab',
+  await pm.evaluate(() => {
+    const zona = document.querySelector('#balantaView');
+    zona?.focus();
+    return zona && zona.scrollWidth - zona.clientWidth > 1
+      && zona.tabIndex === 0 && zona.classList.contains('scroll-focus')
+      && zona.getAttribute('role') === 'region'
+      && /Tabel derulabil.*Solduri conturi/.test(zona.getAttribute('aria-label') || '')
+      && document.activeElement === zona;
+  }));
 await pm.evaluate(() => document.querySelector('#tabs button[data-tab="dashboard"]')?.click());
 await pm.waitForTimeout(150);
 await pm.setViewportSize({ width: 320, height: 700 });

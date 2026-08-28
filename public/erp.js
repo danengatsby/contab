@@ -114,6 +114,48 @@
     '🎉': 'spark', '🤖': 'settings', '🗄': 'folder', '📉': 'chart', '🔮': 'spark'
   };
 
+  var SYMBOL_LABELS = {
+    '✕': 'Închide', '✗': 'Închide', '✘': 'Închide', '❌': 'Închide',
+    '✎': 'Editează', '✏': 'Editează', '⧉': 'Copiază', '🔍': 'Caută', '🔎': 'Caută',
+    '☰': 'Deschide meniul', '⋮': 'Mai multe opțiuni', '⋯': 'Mai multe opțiuni'
+  };
+
+  /* Textul pictogramelor decorative nu este un nume accesibil. Îl ignorăm când verificăm dacă
+     un control sau un titlu are deja text real, inclusiv pentru componentele vechi cu emoji. */
+  function textFaraPictograme(nod) {
+    var text = '';
+    Array.prototype.forEach.call((nod && nod.childNodes) || [], function (n) {
+      if (n.nodeType === 3) { text += n.nodeValue; return; }
+      if (n.nodeType !== 1 || n.getAttribute('aria-hidden') === 'true') return;
+      if (n.matches('.app-icon, .ic, .al-ic, .kpi-ic, .ws-ic, .ei, .notice-icon, .navbadge, .cinfo')) return;
+      text += textFaraPictograme(n);
+    });
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  /* După înlocuirea unui simbol cu SVG, pictograma devine intenționat `aria-hidden`. Un buton
+     numai cu pictogramă ar rămâne astfel fără nume. Titlul explicit are prioritate, iar clasele
+     de acțiune și simbolul inițial oferă fallback pentru controalele generate dinamic. */
+  function eticheteazaControlPictograma(nod, simbol, nume) {
+    if (!nod || !nod.matches || !nod.matches('button, a[href], [role="button"]')) return;
+    if (nod.hasAttribute('aria-label') || nod.hasAttribute('aria-labelledby')) return;
+    if (/[\p{L}\p{N}]/u.test(textFaraPictograme(nod))) return;
+
+    var eticheta = nod.getAttribute('title') || '';
+    var clase = String(nod.className || '');
+    if (!eticheta && /(^|\s)(del|[^\s]*del|[^\s]*remove)(\s|$)/i.test(clase)) eticheta = 'Elimină';
+    if (!eticheta && (/close|inchide/i.test(clase) || /close|inchide/i.test(nod.id || ''))) eticheta = 'Închide';
+    if (!eticheta && /edit/i.test(clase)) eticheta = 'Editează';
+    if (!eticheta && /copy|cop/i.test(clase)) eticheta = 'Copiază';
+    if (!eticheta && /search|caut/i.test(clase)) eticheta = 'Caută';
+    if (!eticheta && simbol) eticheta = SYMBOL_LABELS[simbol] || '';
+    if (!eticheta && nume) {
+      var dupaIcon = { close: 'Închide', edit: 'Editează', copy: 'Copiază', search: 'Caută', menu: 'Deschide meniul', more: 'Mai multe opțiuni' };
+      eticheta = dupaIcon[nume] || '';
+    }
+    if (eticheta) nod.setAttribute('aria-label', trad(eticheta));
+  }
+
   function icon(name, cls) {
     var s = el('span', cls || 'app-icon');
     s.setAttribute('aria-hidden', 'true');
@@ -153,25 +195,35 @@
 
   function decoreaza(nod) {
     if (!nod) return;
+    var info = simbolInitial(nod);
     // Componentele cu pictogramă semantică proprie (alertă, acțiune rapidă, KPI)
     // nu primesc încă una derivată din destinația `data-go`. Altfel o alertă de
     // sold negativ afișa simultan pictograma „Bancă” și pictograma „Avertizare”.
     if (nod.matches && nod.matches('button, a, summary')
-      && nod.querySelector(':scope > .ic, :scope > .al-ic, :scope > .kpi-ic, :scope > .ws-ic, :scope > .ei, :scope > .notice-icon')) return;
+      && nod.querySelector(':scope > .ic, :scope > .al-ic, :scope > .kpi-ic, :scope > .ws-ic, :scope > .ei, :scope > .notice-icon')) {
+      eticheteazaControlPictograma(nod, info ? info.simbol : '', '');
+      return;
+    }
     var existent = $(':scope > .app-icon', nod);
-    var info = simbolInitial(nod);
     // După prima conversie textul nu mai are simbol. Păstrăm pictograma deja aleasă,
     // în loc s-o înlocuim cu pictograma generică a paginii la fiecare MutationObserver.
-    if (!info && existent) return;
+    if (!info && existent) {
+      eticheteazaControlPictograma(nod, '', existent.dataset.icon || '');
+      return;
+    }
     var simbol = info ? info.simbol : '';
     var nume = numeIcon(nod, simbol);
-    if (!nume) return;
+    if (!nume) {
+      eticheteazaControlPictograma(nod, simbol, '');
+      return;
+    }
     if (info) info.nod.nodeValue = info.nod.nodeValue.slice(info.prefix.length);
     if (!existent || existent.dataset.icon !== nume) {
       var nou = icon(nume);
       if (existent) existent.replaceWith(nou); else nod.insertBefore(nou, nod.firstChild);
     }
     nod.dataset.uiIcon = '1';
+    eticheteazaControlPictograma(nod, simbol, nume);
   }
 
   function modernizeazaPictograme(root) {
@@ -410,27 +462,67 @@
     return t.replace(/\s+/g, ' ').trim();
   }
 
-  // Tabelele de registru sunt ELE INSELE containerul de derulare: `styles.css` le da
-  // `display:block; overflow-x:auto`. Cand continutul nu incape, ultima coloana pare TAIATA, nu
-  // derulabila — pe balanta, la 1440px, „Sold final / credit" sta la 30px dincolo de margine si
-  // nimic nu spune ca mai e ceva acolo (la 1280px sunt 190px). Marcam containerul PARINTE, care
-  // nu deruleaza, ca CSS-ul sa poata pune un indiciu care ramane pe loc.
-  function areDerulareOrizontala(t) {
-    return t.scrollWidth - t.clientWidth > 1 && t.scrollLeft + t.clientWidth < t.scrollWidth - 1;
+  // În mod obișnuit tabelul este containerul de derulare (`display:block; overflow-x:auto`). În
+  // balanța mobilă derulează însă `.tablewrap`, ca primele coloane sticky să rămână fixe. Detectăm
+  // elementul care derulează EFECTIV și îl facem focusabil numai cât există conținut ascuns.
+  function areContinutOrizontalAscuns(t) {
+    return !!t && t.scrollWidth - t.clientWidth > 1;
   }
+  function areDerulareOrizontala(t) {
+    return areContinutOrizontalAscuns(t) && t.scrollLeft + t.clientWidth < t.scrollWidth - 1;
+  }
+
+  function numeTabelDerulabil(t) {
+    var caption = t.querySelector && t.querySelector('caption');
+    var reper = caption || (t.closest && t.closest('.card, .tab'));
+    var titlu = caption ? textFaraPictograme(caption)
+      : textFaraPictograme(reper && reper.querySelector('h2, h3'));
+    return trad('Tabel derulabil') + (titlu ? ': ' + titlu : '')
+      + '. ' + trad('Folosește tastele săgeată pentru detalii.');
+  }
+
+  function seteazaContainerDerulabil(nod, activ, tabel) {
+    if (!nod) return;
+    nod.classList.toggle('scroll-focus', activ);
+    if (activ) {
+      if (!nod.hasAttribute('tabindex')) {
+        nod.setAttribute('tabindex', '0');
+        nod.dataset.scrollTabindex = '1';
+      }
+      if (!nod.hasAttribute('aria-label') && !nod.hasAttribute('aria-labelledby')) {
+        nod.setAttribute('aria-label', numeTabelDerulabil(tabel));
+        nod.dataset.scrollLabel = '1';
+      }
+      // Nu suprascriem semantica nativă a unui <table>; numai wrapperul primește rol de regiune.
+      if (nod !== tabel && !nod.hasAttribute('role')) {
+        nod.setAttribute('role', 'region');
+        nod.dataset.scrollRole = '1';
+      }
+      return;
+    }
+    if (nod.dataset.scrollTabindex) { nod.removeAttribute('tabindex'); delete nod.dataset.scrollTabindex; }
+    if (nod.dataset.scrollLabel) { nod.removeAttribute('aria-label'); delete nod.dataset.scrollLabel; }
+    if (nod.dataset.scrollRole) { nod.removeAttribute('role'); delete nod.dataset.scrollRole; }
+  }
+
   function marcheazaTabeleDerulabile() {
     $$('.tab table').forEach(function (t) {
-      var wrap = t.parentElement && t.parentElement.classList
-        && t.parentElement.classList.contains('tablewrap') ? t.parentElement : null;
-      if (!wrap) return;
-      var aplica = function () { wrap.classList.toggle('are-derulare', areDerulareOrizontala(t)); };
+      var wrap = t.closest ? t.closest('.tablewrap') : null;
+      var aplica = function () {
+        var container = areContinutOrizontalAscuns(wrap) ? wrap
+          : (areContinutOrizontalAscuns(t) ? t : null);
+        seteazaContainerDerulabil(t, container === t, t);
+        seteazaContainerDerulabil(wrap, container === wrap, t);
+        if (wrap) wrap.classList.toggle('are-derulare', !!container && areDerulareOrizontala(container));
+      };
       aplica();
       // Indiciul dispare cand ai ajuns la capat, deci se recalculeaza si la derulare, o singura
       // data per tabel (`sincronizeaza` ruleaza la fiecare mutatie din DOM).
-      if (!t.dataset.derulareLegata) {
-        t.dataset.derulareLegata = '1';
-        t.addEventListener('scroll', aplica, { passive: true });
-      }
+      [t, wrap].forEach(function (container) {
+        if (!container || container.dataset.derulareLegata) return;
+        container.dataset.derulareLegata = '1';
+        container.addEventListener('scroll', aplica, { passive: true });
+      });
     });
   }
 
@@ -590,7 +682,10 @@
     });
     ['#currentPeriod', '#userBadge', '#tabs', '.topbar', '.shell > main'].forEach(function (sel) {
       var n = $(sel);
-      if (n) obs.observe(n, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      if (n) obs.observe(n, { childList: true, characterData: true, subtree: true, attributes: true,
+        // Balanța mobilă schimbă lățimea prin coloane ascunse, fără noduri noi; focusul trebuie
+        // recalculat imediat când utilizatorul alege „Toate coloanele”.
+        attributeFilter: ['class', 'data-mobile-columns'] });
     });
     window.addEventListener('resize', marcheazaTabeleDerulabile);
     window.addEventListener('online', sincronizeaza);

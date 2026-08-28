@@ -822,6 +822,43 @@ section('Pagina nu derulează pe orizontală: convenția tabelelor ține la oric
     !/body\.erp \.shell > main\s*\{[^}]*overflow-x:\s*hidden/.test(erpCss));
 }
 
+section('Accesibilitate: contrast, tabele derulabile și controale cu pictogramă');
+{
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  const erp = fs.readFileSync(path.join(PUB, 'erp.js'), 'utf8');
+  const hex = (n) => {
+    const v = n.replace('#', '');
+    const rgb = [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16) / 255);
+    return rgb.map((c) => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  };
+  const contrast = (a, b) => {
+    const la = hex(a); const lb = hex(b);
+    const ya = 0.2126 * la[0] + 0.7152 * la[1] + 0.0722 * la[2];
+    const yb = 0.2126 * lb[0] + 0.7152 * lb[1] + 0.0722 * lb[2];
+    return (Math.max(ya, yb) + 0.05) / (Math.min(ya, yb) + 0.05);
+  };
+  const vars = css.match(/:root\s*\{[\s\S]*?\}/)[0];
+  const color = (name) => vars.match(new RegExp('--' + name + ':\\s*(#[0-9a-f]{6})', 'i'))[1];
+  ok('tokenul muted trece WCAG AA pe toate suprafețele temei',
+    ['bg', 'card', 'soft', 'soft2', 'line'].every((fundal) => contrast(color('muted'), color(fundal)) >= 4.5)
+      && !/\.zero\{[^}]*opacity:/.test(css));
+  ok('numai containerul care chiar derulează intră în ordinea de tab',
+    /function areContinutOrizontalAscuns\(/.test(erp)
+      && /setAttribute\('tabindex', '0'\)/.test(erp)
+      && /removeAttribute\('tabindex'\)/.test(erp)
+      && /container === wrap/.test(erp)
+      && /attributeFilter: \['class', 'data-mobile-columns'\]/.test(erp));
+  ok('focusul containerului derulabil rămâne vizibil în interiorul zonei cu overflow',
+    /\.scroll-focus:focus-visible\{outline:3px solid #1769aa;outline-offset:-3px/.test(css));
+  ok('regiunea derulabilă primește un nume și păstrează semantica nativă a tabelului',
+    /Folosește tastele săgeată pentru detalii/.test(erp)
+      && /nod !== tabel && !nod\.hasAttribute\('role'\)/.test(erp));
+  ok('controalele numai cu pictogramă primesc o etichetă explicită după conversia SVG',
+    /function eticheteazaControlPictograma\(/.test(erp)
+      && /nod\.setAttribute\('aria-label', trad\(eticheta\)\)/.test(erp)
+      && /eticheteazaControlPictograma\(nod, simbol, nume\)/.test(erp));
+}
+
 section('Scanerul local: oprit înseamnă ascuns, nu gri');
 {
   // Butonul „🖨️ Scanează (scaner local)" stătea `disabled` în cardul PRINCIPAL de încărcare, iar
@@ -1017,7 +1054,7 @@ section('Carcasa aplicației: o singură navigație și context unic');
     /querySelector\(':scope > \.ic, :scope > \.al-ic/.test(erp));
   ok('un simbol este scos din text numai după găsirea unui SVG echivalent',
     /if \(simbol\) return SYMBOL_ICONS\[simbol\] \|\| ''/.test(erp)
-      && /if \(!nume\) return;[\s\S]{0,100}info\.nod\.nodeValue/.test(erp));
+      && /if \(!nume\) \{[\s\S]{0,180}return;\s*\}[\s\S]{0,100}info\.nod\.nodeValue/.test(erp));
   ok('pictograma își păstrează identitatea și poate fi actualizată la schimbarea etichetei',
     /s\.dataset\.icon = name/.test(erp) && /existent\.dataset\.icon !== nume/.test(erp));
 
