@@ -738,6 +738,40 @@ section('Adaugă document este un workbench unic: Încarcă → Verifică → Po
     /@media\(max-width:680px\)[\s\S]*\.workbench-options\{grid-template-columns:1fr/.test(css));
 }
 
+section('Selector operațiuni: căutare, recomandări, recente, favorite și scop');
+{
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  const js = fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8');
+  const catalog = (await imp(ROOT, 'src', 'documentTypes', 'index.js')).default.TYPES;
+
+  ok('catalogul mare chiar este în perimetrul controlului', catalog.length >= 137);
+  eq('normalizarea caută la fel cu și fără diacritice',
+    docflow.normalizeOperationQuery('  Încasări / PLĂȚI  '), 'incasari plati');
+  const dupaNume = docflow.filterOperationTypes(catalog, 'factura servicii primita');
+  ok('căutarea găsește după denumirea operațiunii', dupaNume.some((type) => type.id === 'factura_servicii_primita'));
+  const dupaScop = docflow.filterOperationTypes(catalog, 'vanzari clienti');
+  ok('căutarea găsește și după scop, nu numai după denumire',
+    dupaScop.some((type) => type.id === 'factura_vanzare_marfuri'));
+  const grupuri = docflow.groupOperationTypes(catalog);
+  eq('gruparea nu pierde operațiuni', grupuri.reduce((sum, group) => sum + group.types.length, 0), catalog.length);
+  ok('grupul tehnic este prezentat ca scop pentru utilizator',
+    grupuri.some((group) => group.key === 'Vanzari' && group.label === 'Vânzări și clienți'));
+
+  ok('controlul accesibil păstrează un singur select canonic și expune comboboxul căutabil',
+    (html.match(/id="tipSelect"/g) || []).length === 1
+      && /id="operationTypeSearch"[^>]*role="combobox"/.test(html)
+      && /aria-controls="operationTypeResults"/.test(html));
+  ok('recomandările, favoritele și recentele sunt funcții reale, nu doar etichete',
+    /OPERATION_RECOMMENDATIONS/.test(js) && /toggleFavoriteOperation/.test(js)
+      && /rememberOperationType\(payload\.tip\)/.test(js) && /OPERATION_RECENT_LIMIT = 6/.test(js));
+  ok('rezultatele complete și cele filtrate folosesc aceeași grupare după scop',
+    (js.match(/operationGroupedSection\(/g) || []).length >= 3 && /groupOperationTypes\(types\)/.test(js));
+  ok('lista lungă are limită de înălțime și derulare proprie inclusiv pe mobil',
+    /\.operation-type-results\{[^}]*max-height:[^}]*overflow:auto/.test(css)
+      && /@media\(max-width:680px\)[\s\S]*\.operation-type-results\{max-height:48vh/.test(css));
+}
+
 section('Pagina nu derulează pe orizontală: convenția tabelelor ține la orice lățime');
 {
   // Convenția repo-ului („tabelele late derulează în propriul container, pagina rămâne fixă") era

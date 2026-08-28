@@ -761,9 +761,25 @@
             <!-- formularul e UNIC in aplicatie: JS il muta intre gazda de aici si cea din „Emite factura" -->
             <div id="formHostDoc">
             <form id="entryForm" class="hidden">
-              <label class="full">Tip document
-                <select id="tipSelect"></select>
-              </label>
+              <div id="operationTypePicker" class="operation-type-picker full">
+                <label for="operationTypeSearch">Tip operațiune</label>
+                <div class="operation-type-control">
+                  <span class="operation-type-search-icon" aria-hidden="true">⌕</span>
+                  <input id="operationTypeSearch" type="search" role="combobox"
+                    autocomplete="off" spellcheck="false" aria-autocomplete="list"
+                    aria-expanded="false" aria-controls="operationTypeResults"
+                    placeholder="Caută după document, operațiune sau scop…" />
+                  <button id="operationTypeFavorite" class="operation-type-control-btn" type="button"
+                    aria-label="Adaugă operațiunea curentă la favorite" title="Adaugă la favorite">☆</button>
+                  <button id="operationTypeToggle" class="operation-type-control-btn" type="button"
+                    aria-label="Deschide lista de operațiuni" title="Deschide lista">⌄</button>
+                </div>
+                <div id="operationTypeContext" class="operation-type-context muted" aria-live="polite"></div>
+                <div id="operationTypeResults" class="operation-type-results hidden" role="listbox"
+                  aria-label="Tipuri de operațiuni"></div>
+                <!-- Sursa canonica ramane selectul alimentat din /api/meta; comboboxul il controleaza. -->
+                <select id="tipSelect" class="operation-type-native" tabindex="-1" aria-hidden="true"></select>
+              </div>
               <div id="dynFields" class="dyn full"></div>
               <div class="full sect-form"><h3>Articol contabil propus</h3>
                 <p class="muted">Confirmă articolul și explică eventualele corecturi înainte de postare.</p></div>

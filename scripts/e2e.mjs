@@ -18,6 +18,15 @@ const ok = (name, cond) => { if (cond) { pass++; console.log('  ✓', name); } e
 const b = await chromium.launch();
 const pg = await b.newPage({ viewport: { width: 1440, height: 900 } });
 
+// Selectorul vizibil este comboboxul căutabil; #tipSelect rămâne doar contractul canonic ascuns.
+// Scenariile aleg prin controlul folosit de om, ca testele să nu poată trece ocolind ergonomia.
+async function chooseOperation(id) {
+  await pg.click('#operationTypeSearch');
+  await pg.fill('#operationTypeSearch', id);
+  const option = pg.locator(`.operation-type-option[data-type-id="${id}"]`).first();
+  await option.click();
+}
+
 // 1. health + pagini publice
 const health = await (await pg.request.get(BASE + '/api/health')).json().catch(() => ({}));
 ok('/api/health raspunde ok', health.ok === true);
@@ -231,7 +240,32 @@ ok('rezumatul executiv e vizibil in modul simplu', await pg.locator('#rezumatCar
 await pg.evaluate(() => goTab('documente'));
 await pg.click('#documentWorkbenchMore > summary');
 await pg.click('#manualBtn');
-await pg.selectOption('#tipSelect', 'factura_servicii_primita');
+await pg.click('#operationTypeSearch');
+ok('selectorul de operațiuni deschide recomandările și toate cele 137 de tipuri grupate după scop',
+  await pg.locator('#operationTypeResults').isVisible()
+  && (await pg.locator('#operationTypeResults .operation-type-section').count()) >= 2
+  && (await pg.locator('#operationTypeResults .operation-type-all .operation-type-option').count())
+    === (await pg.locator('#tipSelect option').count())
+  && (await pg.locator('#tipSelect option').count()) >= 130
+  && (await pg.locator('#operationTypeResults .operation-purpose-heading').count()) > 10);
+await pg.fill('#operationTypeSearch', 'vânzări clienți');
+ok('căutarea ignoră diacriticele și găsește după scop',
+  (await pg.locator('#operationTypeResults .operation-type-option').count()) > 0
+  && (await pg.locator('#operationTypeResults .operation-purpose-group').count()) === 1);
+await pg.fill('#operationTypeSearch', 'factura_servicii_primita');
+await pg.locator('.operation-type-option[data-type-id="factura_servicii_primita"]').first()
+  .locator('..').locator('.operation-type-star').click();
+await pg.keyboard.press('Escape');
+await pg.click('#operationTypeSearch');
+ok('operațiunea marcată apare în Favorite', await pg.evaluate(() =>
+  [...document.querySelectorAll('#operationTypeResults .operation-type-section')].some((section) =>
+    /Favorite/.test(section.querySelector('h4')?.textContent || '')
+      && !!section.querySelector('[data-type-id="factura_servicii_primita"]'))));
+await pg.fill('#operationTypeSearch', 'factura_servicii_primita');
+await pg.keyboard.press('ArrowDown');
+await pg.keyboard.press('Enter');
+ok('selectorul se poate opera din tastatură și sincronizează tipul canonic',
+  await pg.locator('#tipSelect').inputValue() === 'factura_servicii_primita');
 await pg.waitForTimeout(300);
 ok('modul simplu ascunde selectorul de cont și pliază situațiile fiscale rare',
   !(await pg.locator('#fld_contChelt').isVisible())
@@ -368,7 +402,7 @@ ok('formularul manual folosește lățimea completă, nu o coloană îngustă î
   const grid = document.querySelector('#tab-documente .grid2.pas12');
   return grid && getComputedStyle(grid).gridTemplateColumns.split(' ').length === 1;
 }));
-await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
+await chooseOperation('factura_vanzare_marfuri');
 await pg.waitForTimeout(700);
 await pg.fill('#fld_baza', '1000');
 await pg.fill('#fld_tva', '210');
@@ -383,7 +417,7 @@ for (const v of ['1', '12', '123', '1234']) { await pg.fill('#fld_baza', v); awa
 await pg.waitForTimeout(1500);
 ok('previzualizarea e debounced (4 taste rapide -> 1 cerere, nu 4)', previewReq.length === 1);
 // schimbarea tipului nu lasa pe ecran articolul precedent nici macar o clipa
-await pg.selectOption('#tipSelect', 'incasare_client');
+await chooseOperation('incasare_client');
 const imediat = await prevTxt();
 ok('la schimbarea tipului previzualizarea veche dispare imediat', !/707/.test(imediat));
 await pg.waitForTimeout(1500);
@@ -402,7 +436,7 @@ await pg.route('**/api/entries', async (route) => {
   await new Promise((resolve) => setTimeout(resolve, 250));
   await route.abort();
 });
-await pg.selectOption('#tipSelect', 'factura_vanzare_marfuri');
+await chooseOperation('factura_vanzare_marfuri');
 await pg.waitForTimeout(700);
 await pg.fill('#fld_partener', 'Client E2E');
 // Tipul anterior (`incasare_client`) nu are campul `baza`; schimbarea corect reseteaza acest camp.
@@ -438,7 +472,7 @@ ok('linia completa pleaca cu valorile tastate', items[0] && items[0].nume === 'P
 ok('campurile simple pleaca din formular', trimis && trimis.fields && trimis.fields.partener === 'Client E2E');
 // bifele trebuie sa plece ca BOOLEAN (prin .checked), nu ca sirul „on" al unui input
 await pg.click('#entryForm > .form-step:first-of-type > summary');
-await pg.selectOption('#tipSelect', 'factura_cumparare_marfuri');
+await chooseOperation('factura_cumparare_marfuri');
 await pg.waitForTimeout(700);
 await pg.fill('#fld_data', '2026-06-15');
 await pg.fill('#fld_baza', '100');

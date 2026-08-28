@@ -411,6 +411,53 @@ main#main:focus{outline:none}
 .document-workbench #workbenchReviewStatus:not(:empty){margin-bottom:14px}
 .document-workbench #entryForm{margin-top:4px}
 .document-workbench #entryForm>.row:last-child{padding-top:5px}
+/* Catalogul are 137 de operațiuni: controlul păstrează selectul canonic în DOM, dar oferă
+   căutare, recomandări și scurtături. Panoul plutește peste formular ca lista să nu împingă
+   câmpurile cu sute de pixeli; pe mobil devine o suprafață mai joasă, ușor de derulat. */
+.operation-type-picker{position:relative;z-index:18;min-width:0}
+.operation-type-picker>label{margin-top:0}
+.operation-type-control{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 42px 42px;align-items:center}
+.operation-type-control input{grid-column:1/-1;grid-row:1;padding-left:40px;padding-right:92px;font-weight:650;
+  text-overflow:ellipsis;appearance:none;-webkit-appearance:none}
+.operation-type-control input::-webkit-search-cancel-button{display:none}
+.operation-type-search-icon{position:absolute;z-index:2;left:13px;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:22px;line-height:1;pointer-events:none}
+.operation-type-control-btn{position:relative;z-index:2;grid-row:1;width:38px;height:38px;min-height:0;padding:0;
+  color:var(--muted);background:transparent;border:0;border-left:1px solid var(--line);cursor:pointer;font-size:20px}
+.operation-type-control-btn:hover,.operation-type-control-btn:focus-visible{color:var(--accent);background:var(--soft);outline:none}
+#operationTypeFavorite{grid-column:2}
+#operationTypeToggle{grid-column:3;font-size:18px;transition:transform .15s}
+#operationTypeToggle.is-open{transform:rotate(180deg)}
+#operationTypeFavorite.is-favorite,.operation-type-star.is-favorite{color:#b36b00}
+.operation-type-context{margin:5px 2px 0;line-height:1.35}
+.operation-type-native{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;
+  overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;border:0!important;white-space:nowrap!important}
+.operation-type-results{position:absolute;z-index:40;top:calc(100% + 7px);left:0;right:0;max-height:min(430px,60vh);
+  overflow:auto;overscroll-behavior:contain;padding:6px;color:var(--ink);background:var(--card);
+  border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 18px 45px rgba(20,24,40,.22)}
+.operation-type-results.hidden{display:none}
+.operation-type-section{padding:5px}
+.operation-type-section+.operation-type-section{margin-top:5px;padding-top:10px;border-top:1px solid var(--line)}
+.operation-type-section>h4{position:sticky;z-index:3;top:-6px;margin:0;padding:7px 8px;color:var(--muted);
+  background:var(--card);font-size:11px;font-weight:850;letter-spacing:.055em;text-transform:uppercase}
+.operation-purpose-group{margin:2px 0 7px}
+.operation-purpose-heading{display:flex;align-items:center;gap:8px;padding:7px 9px;color:var(--head);background:var(--soft);
+  border-radius:8px;font-size:12px;font-weight:800}
+.operation-purpose-heading span{flex:1}.operation-purpose-heading small{color:var(--muted);font-size:11px}
+.operation-type-option-row{display:grid;grid-template-columns:minmax(0,1fr) 38px;align-items:stretch;margin-top:2px;border-radius:8px}
+.operation-type-option-row.is-selected{background:color-mix(in srgb,var(--accent) 9%,var(--card))}
+.operation-type-option{display:flex;align-items:center;gap:8px;min-width:0;padding:9px 10px;color:var(--ink);background:transparent;
+  border:0;border-radius:8px;text-align:left;cursor:pointer;font:inherit}
+.operation-type-option:hover,.operation-type-option.is-active{background:var(--soft2);outline:none}
+.operation-type-option[aria-selected="true"] .operation-type-option-name{color:var(--accent);font-weight:800}
+.operation-type-option-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.operation-type-badge{flex:0 0 auto;padding:2px 6px;color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);
+  border-radius:999px;font-size:10px;font-weight:800}
+.operation-type-star{width:38px;min-height:38px;padding:0;color:var(--muted);background:transparent;border:0;border-radius:8px;
+  cursor:pointer;font-size:18px}
+.operation-type-star:hover,.operation-type-star:focus-visible{color:#b36b00;background:var(--soft2);outline:none}
+.operation-type-empty{display:grid;gap:5px;padding:24px 18px;text-align:center}.operation-type-empty span{color:var(--muted);font-size:12px}
+body.dark .operation-type-results{box-shadow:0 18px 48px rgba(0,0,0,.48)}
 .workbench-more{border-top:1px solid var(--line);background:var(--soft)}
 .workbench-more>summary{display:flex;align-items:center;gap:7px;width:max-content;max-width:100%;padding:14px 24px;
   color:var(--muted);cursor:pointer;font-size:13px;font-weight:750;list-style:none}
@@ -446,6 +493,8 @@ body.dark .workbench-steps li.is-active>span{box-shadow:0 0 0 4px rgba(92,187,14
   .workbench-option-wide{grid-column:auto}.workbench-option-manual{align-items:flex-start;flex-direction:column}
   .workbench-option-manual .btn{width:100%}
   .document-workbench #entryForm>.row:last-child{align-items:stretch}.document-workbench #entryForm>.row:last-child .btn{width:100%}
+  .operation-type-results{max-height:48vh}.operation-type-option-name{white-space:normal;line-height:1.35}
+  .operation-type-badge{display:none}.operation-type-control{grid-template-columns:minmax(0,1fr) 40px 40px}
 }
 .emitgrid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .emitgrid .emit{font-weight:800}

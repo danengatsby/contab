@@ -35,14 +35,316 @@ function setDocumentWorkbenchStep(step) {
   });
 }
 setDocumentWorkbenchStep('upload');
+
+// Selectorul de operațiuni lucrează peste catalogul canonic din META.types. Selectul nativ rămâne
+// contractul formularului (preview, ciorne, postare); controlul căutabil îi schimbă doar valoarea.
+// Preferințele sunt ale utilizatorului, nu ale firmei: un contabil păstrează aceleași favorite când
+// trece de la un client la altul, fără să scriem preferințe de interfață în datele contabile.
+const OPERATION_PICKER_STORAGE = 'contab:operation-picker:v1';
+const OPERATION_RECENT_LIMIT = 6;
+const OPERATION_PURPOSES = Object.freeze({
+  Vanzari: 'Vânzări și clienți',
+  Cumparari: 'Cumpărări și furnizori',
+  Trezorerie: 'Încasări, plăți și bancă',
+  Salarii: 'Salarii și personal',
+  Diverse: 'Alte operațiuni',
+  Stocuri: 'Stocuri și gestiuni',
+  Constructii: 'Construcții',
+  HoReCa: 'HoReCa',
+  'TVA la incasare': 'TVA la încasare',
+  Leasing: 'Leasing',
+  Imobilizari: 'Imobilizări',
+  Valuta: 'Valută și curs valutar',
+  Provizioane: 'Provizioane și ajustări',
+  'Asociati / Grup': 'Asociați și grup',
+  Dividende: 'Dividende',
+  'Capital social': 'Capital social',
+  Subventii: 'Subvenții',
+  Regularizari: 'Regularizări',
+  'Efecte de comert': 'Efecte de comerț',
+  Acreditive: 'Acreditive',
+  'Retineri la sursa': 'Rețineri la sursă',
+});
+const OPERATION_RECOMMENDATIONS = Object.freeze({
+  documente: ['factura_servicii_primita', 'factura_cumparare_marfuri', 'factura_utilitati',
+    'factura_combustibil', 'factura_imobilizare'],
+  emite: ['factura_vanzare_servicii', 'factura_vanzare_marfuri', 'factura_vanzare_produse', 'bon_fiscal_z'],
+  cashbook: ['incasare_client', 'plata_furnizor', 'comision_bancar', 'depunere_numerar', 'ridicare_numerar'],
+});
+
+export function normalizeOperationQuery(value) {
+  return String(value == null ? '' : value).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('ro-RO').replace(/[_/]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function operationPurpose(type) {
+  return OPERATION_PURPOSES[type && type.grup] || (type && type.grup) || 'Alte operațiuni';
+}
+
+export function filterOperationTypes(types, query) {
+  const tokens = normalizeOperationQuery(query).split(' ').filter(Boolean);
+  if (!tokens.length) return Array.from(types || []);
+  return Array.from(types || []).filter((type) => {
+    const haystack = normalizeOperationQuery([type.nume, type.id, type.grup, operationPurpose(type)].join(' '));
+    return tokens.every((token) => haystack.includes(token));
+  });
+}
+
+export function groupOperationTypes(types) {
+  const groups = [];
+  const byPurpose = new Map();
+  Array.from(types || []).forEach((type) => {
+    const key = type.grup || 'Alte operațiuni';
+    let group = byPurpose.get(key);
+    if (!group) {
+      group = { key, label: operationPurpose(type), types: [] };
+      byPurpose.set(key, group); groups.push(group);
+    }
+    group.types.push(type);
+  });
+  return groups;
+}
+
+function operationStorageKey() {
+  return OPERATION_PICKER_STORAGE + ':' + String((USER && (USER.id || USER.username)) || 'anonim');
+}
+
+function readOperationPreferences() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(operationStorageKey()) || '{}');
+    return {
+      favorites: Array.isArray(parsed.favorites) ? parsed.favorites.map(String) : [],
+      recent: Array.isArray(parsed.recent) ? parsed.recent.map(String).slice(0, OPERATION_RECENT_LIMIT) : [],
+    };
+  } catch (e) { return { favorites: [], recent: [] }; }
+}
+
+function writeOperationPreferences(preferences) {
+  try { localStorage.setItem(operationStorageKey(), JSON.stringify(preferences)); } catch (e) { /* preferință opțională */ }
+}
+
+function knownOperationIds(ids) {
+  const available = new Set((META.types || []).map((type) => type.id));
+  return Array.from(new Set(ids || [])).filter((id) => available.has(id));
+}
+
+function operationTypesByIds(ids) {
+  const byId = new Map((META.types || []).map((type) => [type.id, type]));
+  return knownOperationIds(ids).map((id) => byId.get(id)).filter(Boolean);
+}
+
+function toggleFavoriteOperation(id) {
+  if (!id) return;
+  const preferences = readOperationPreferences();
+  const favorites = knownOperationIds(preferences.favorites);
+  const index = favorites.indexOf(id);
+  if (index >= 0) favorites.splice(index, 1); else favorites.unshift(id);
+  writeOperationPreferences({ favorites, recent: knownOperationIds(preferences.recent) });
+  syncOperationTypePicker();
+  if (operationPickerOpen) renderOperationTypeResults();
+}
+
+function rememberOperationType(id) {
+  if (!id) return;
+  const preferences = readOperationPreferences();
+  const recent = [id, ...knownOperationIds(preferences.recent).filter((item) => item !== id)]
+    .slice(0, OPERATION_RECENT_LIMIT);
+  writeOperationPreferences({ favorites: knownOperationIds(preferences.favorites), recent });
+}
+
+let operationPickerOpen = false;
+let operationPickerActive = -1;
+let operationPickerQuery = '';
+
+function selectedOperationType() {
+  const select = $('#tipSelect');
+  return (META.types || []).find((type) => select && type.id === select.value) || null;
+}
+
+function recommendationIds() {
+  const form = $('#entryForm');
+  const host = form ? activeFormHost(form) : 'documente';
+  const contextual = OPERATION_RECOMMENDATIONS[host] || OPERATION_RECOMMENDATIONS.documente;
+  const suggested = CURRENT && CURRENT.suggestedType;
+  return knownOperationIds([suggested, ...contextual]).slice(0, 5);
+}
+
+function operationOptionHtml(type, preferences, sequence, badge) {
+  const favorite = preferences.favorites.includes(type.id);
+  const current = selectedOperationType();
+  const selected = !!current && current.id === type.id;
+  const name = H(type.nume);
+  return `<div class="operation-type-option-row${selected ? ' is-selected' : ''}">
+    <button id="operationTypeOption${sequence}" class="operation-type-option" type="button" role="option"
+      aria-selected="${selected ? 'true' : 'false'}" data-type-id="${H(type.id)}">
+      <span class="operation-type-option-name">${name}</span>
+      ${badge ? `<span class="operation-type-badge">${H(badge)}</span>` : ''}
+    </button>
+    <button class="operation-type-star${favorite ? ' is-favorite' : ''}" type="button" data-favorite-type="${H(type.id)}"
+      aria-label="${favorite ? 'Elimină' : 'Adaugă'} ${name} ${favorite ? 'din' : 'la'} favorite"
+      title="${favorite ? 'Elimină din favorite' : 'Adaugă la favorite'}">${favorite ? '★' : '☆'}</button>
+  </div>`;
+}
+
+function operationFlatSection(label, types, preferences, sequenceRef, badge) {
+  if (!types.length) return '';
+  return `<section class="operation-type-section"><h4>${H(label)}</h4>${types.map((type) =>
+    operationOptionHtml(type, preferences, sequenceRef.value++, badge)).join('')}</section>`;
+}
+
+function operationGroupedSection(types, preferences, sequenceRef, heading) {
+  if (!types.length) return '';
+  return `<section class="operation-type-section operation-type-all"><h4>${H(heading)}</h4>${groupOperationTypes(types).map((group) =>
+    `<div class="operation-purpose-group" role="group" aria-label="${H(group.label)}">
+      <div class="operation-purpose-heading"><span>${H(group.label)}</span><small>${group.types.length}</small></div>
+      ${group.types.map((type) => operationOptionHtml(type, preferences, sequenceRef.value++)).join('')}
+    </div>`).join('')}</section>`;
+}
+
+function renderOperationTypeResults() {
+  const panel = $('#operationTypeResults');
+  if (!panel) return;
+  const preferences = readOperationPreferences();
+  preferences.favorites = knownOperationIds(preferences.favorites);
+  preferences.recent = knownOperationIds(preferences.recent);
+  const sequence = { value: 0 };
+  if (operationPickerQuery) {
+    const found = filterOperationTypes(META.types || [], operationPickerQuery);
+    panel.innerHTML = found.length
+      ? operationGroupedSection(found, preferences, sequence,
+        found.length + (found.length === 1 ? ' rezultat, grupat după scop' : ' rezultate, grupate după scop'))
+      : `<div class="operation-type-empty"><b>Nicio operațiune găsită</b><span>Încearcă „factură”, „bancă”, „salarii” sau un scop mai larg.</span></div>`;
+  } else {
+    panel.innerHTML = operationFlatSection('Recomandate pentru acest flux',
+      operationTypesByIds(recommendationIds()), preferences, sequence, 'recomandat')
+      + operationFlatSection('Favorite', operationTypesByIds(preferences.favorites), preferences, sequence)
+      + operationFlatSection('Folosite recent', operationTypesByIds(preferences.recent), preferences, sequence)
+      + operationGroupedSection(META.types || [], preferences, sequence,
+        'Toate operațiunile · ' + (META.types || []).length);
+  }
+  $$('.operation-type-option', panel).forEach((button) => button.addEventListener('click', () => {
+    chooseOperationType(button.dataset.typeId);
+  }));
+  $$('[data-favorite-type]', panel).forEach((button) => button.addEventListener('click', (event) => {
+    event.stopPropagation(); toggleFavoriteOperation(button.dataset.favoriteType);
+  }));
+  operationPickerActive = -1;
+  const input = $('#operationTypeSearch');
+  if (input) input.removeAttribute('aria-activedescendant');
+}
+
+function syncOperationTypePicker() {
+  const input = $('#operationTypeSearch');
+  const context = $('#operationTypeContext');
+  const favoriteButton = $('#operationTypeFavorite');
+  const selected = selectedOperationType();
+  if (!operationPickerOpen && input) input.value = selected ? selected.nume : '';
+  if (context) context.textContent = selected
+    ? operationPurpose(selected) + ' · ' + (META.types || []).length + ' operațiuni disponibile'
+    : (META.types || []).length + ' operațiuni disponibile';
+  if (favoriteButton) {
+    const favorite = !!selected && readOperationPreferences().favorites.includes(selected.id);
+    favoriteButton.textContent = favorite ? '★' : '☆';
+    favoriteButton.classList.toggle('is-favorite', favorite);
+    favoriteButton.setAttribute('aria-label', favorite
+      ? 'Elimină operațiunea curentă din favorite' : 'Adaugă operațiunea curentă la favorite');
+    favoriteButton.title = favorite ? 'Elimină din favorite' : 'Adaugă la favorite';
+    favoriteButton.disabled = !selected;
+  }
+}
+
+function openOperationTypePicker() {
+  const panel = $('#operationTypeResults'); const input = $('#operationTypeSearch');
+  if (!panel || !input) return;
+  operationPickerOpen = true; operationPickerQuery = '';
+  panel.classList.remove('hidden'); input.setAttribute('aria-expanded', 'true');
+  const toggle = $('#operationTypeToggle'); if (toggle) toggle.classList.add('is-open');
+  renderOperationTypeResults();
+  input.select();
+}
+
+function closeOperationTypePicker() {
+  const panel = $('#operationTypeResults'); const input = $('#operationTypeSearch');
+  operationPickerOpen = false; operationPickerQuery = ''; operationPickerActive = -1;
+  if (panel) panel.classList.add('hidden');
+  if (input) { input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); }
+  const toggle = $('#operationTypeToggle'); if (toggle) toggle.classList.remove('is-open');
+  syncOperationTypePicker();
+}
+
+function moveOperationTypeActive(delta) {
+  const options = $$('.operation-type-option', $('#operationTypeResults'));
+  if (!options.length) return;
+  options.forEach((option) => option.classList.remove('is-active'));
+  operationPickerActive = (operationPickerActive + delta + options.length) % options.length;
+  const active = options[operationPickerActive];
+  active.classList.add('is-active'); active.scrollIntoView({ block: 'nearest' });
+  $('#operationTypeSearch').setAttribute('aria-activedescendant', active.id);
+}
+
+function chooseOperationType(id) {
+  const select = $('#tipSelect');
+  if (!select || !(META.types || []).some((type) => type.id === id)) return;
+  const changed = select.value !== id;
+  select.value = id;
+  closeOperationTypePicker();
+  if (changed) select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function setOperationTypeValue(id) {
+  const select = $('#tipSelect');
+  if (!select) return;
+  const fallback = (META.types || []).some((type) => type.id === id) ? id : 'nota_contabila';
+  select.value = fallback;
+  syncOperationTypePicker();
+}
+
 function fillTipSelect() {
   const sel = $('#tipSelect');
+  const previous = sel.value;
   const groups = {};
   META.types.forEach((t) => { (groups[t.grup] = groups[t.grup] || []).push(t); });
   sel.innerHTML = Object.keys(groups).map((g) =>
     `<optgroup label="${g}">${groups[g].map((t) => `<option value="${t.id}">${H(t.nume)}</option>`).join('')}</optgroup>`
   ).join('');
+  if (previous && META.types.some((type) => type.id === previous)) sel.value = previous;
+  syncOperationTypePicker();
 }
+
+$('#operationTypeSearch') && $('#operationTypeSearch').addEventListener('focus', () => {
+  if (!operationPickerOpen) openOperationTypePicker();
+});
+$('#operationTypeSearch') && $('#operationTypeSearch').addEventListener('input', (event) => {
+  if (!operationPickerOpen) openOperationTypePicker();
+  operationPickerQuery = event.target.value;
+  renderOperationTypeResults();
+});
+$('#operationTypeSearch') && $('#operationTypeSearch').addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault(); if (!operationPickerOpen) openOperationTypePicker();
+    moveOperationTypeActive(event.key === 'ArrowDown' ? 1 : -1);
+  } else if (event.key === 'Enter' && operationPickerOpen) {
+    const active = $$('.operation-type-option', $('#operationTypeResults'))[operationPickerActive];
+    if (active) { event.preventDefault(); chooseOperationType(active.dataset.typeId); }
+  } else if (event.key === 'Escape' && operationPickerOpen) {
+    event.preventDefault(); closeOperationTypePicker();
+  }
+});
+$('#operationTypeToggle') && $('#operationTypeToggle').addEventListener('click', () => {
+  if (operationPickerOpen) closeOperationTypePicker();
+  else { openOperationTypePicker(); $('#operationTypeSearch').focus(); }
+});
+$('#operationTypeFavorite') && $('#operationTypeFavorite').addEventListener('click', () => {
+  const selected = selectedOperationType(); if (selected) toggleFavoriteOperation(selected.id);
+});
+document.addEventListener('click', (event) => {
+  const picker = $('#operationTypePicker');
+  if (operationPickerOpen && picker && !picker.contains(event.target)) closeOperationTypePicker();
+});
+document.addEventListener('keydown', (event) => {
+  // Escape trebuie să funcționeze și când focusul este pe steaua unei opțiuni, nu doar în căutare.
+  if (event.key === 'Escape' && operationPickerOpen) { event.preventDefault(); closeOperationTypePicker(); }
+});
 const drop = $('#drop'), fileInput = $('#file');
 drop.addEventListener('click', () => fileInput.click());
 drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
@@ -207,7 +509,10 @@ function pickWizardType(tip) {
   D.goTab(dest);
   CURRENT = { documentId: null, fields: {}, suggestedType: real, sourceLabel: 'Înregistrare manuală' };
   openForm(real, { data: new Date().toISOString().slice(0, 10) }, dest);
-  setTimeout(() => { const el = $('#entryForm'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (tip === '__all__') { const t = $('#tipSelect'); if (t) t.focus(); } }, 80);
+  setTimeout(() => {
+    const el = $('#entryForm'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (tip === '__all__') { const search = $('#operationTypeSearch'); if (search) { search.focus(); openOperationTypePicker(); } }
+  }, 80);
 }
 $('#qaWizard') && $('#qaWizard').addEventListener('click', openWizard);
 $('#opwBack') && $('#opwBack').addEventListener('click', () => { opwCat = null; renderWizard(); });
@@ -427,7 +732,7 @@ function openForm(tipId, fields, host) {
     if (more) more.open = false;
     setDocumentWorkbenchStep('verify');
   }
-  $('#tipSelect').value = tipId || 'nota_contabila';
+  setOperationTypeValue(tipId || 'nota_contabila');
   renderFields(fields || {});
   DRAFT_CONTEXT = CURRENT ? {
     documentId: CURRENT.documentId || null,
@@ -447,7 +752,7 @@ function closeForm(options = {}) {
   CURRENT = null;
   DRAFT_CONTEXT = null;
 }
-$('#tipSelect').addEventListener('change', () => renderFields(collectFields()));
+$('#tipSelect').addEventListener('change', () => { syncOperationTypePicker(); renderFields(collectFields()); });
 function accountOptions(val) {
   return META.accounts.map((a) => `<option value="${H(a.cod)}" ${a.cod === String(val) ? 'selected' : ''}>${H(a.cod)} — ${H(a.nume)}</option>`).join('');
 }
@@ -766,6 +1071,7 @@ async function submitEntry(ciorna) {
     const warns = (res.stoc && res.stoc.warns) || [];
     if (warns.length) toast(warns.join(' '), true);
     else toast(ciorna ? 'Ciornă salvată: ' + res.entry.id + ' (o postezi din listă)' : 'Înregistrare salvată: ' + res.entry.id);
+    rememberOperationType(payload.tip);
     const eraCash = form.parentElement === $('#formHostCash');
     formFlowSaved(form);
     closeForm({ discard: false });
@@ -798,7 +1104,7 @@ function restoreEntryDraft(form, draft) {
   if (!draft || !draft.tip) return;
   const available = (META.types || []).some((type) => type.id === draft.tip);
   const tip = available ? draft.tip : ($('#tipSelect').value || 'nota_contabila');
-  $('#tipSelect').value = tip;
+  setOperationTypeValue(tip);
   renderFields(draft.fields || {});
   if ($('#motivRevizuire')) $('#motivRevizuire').value = draft.motivRevizuire || '';
   DRAFT_CONTEXT = draft.context || null;
@@ -812,6 +1118,7 @@ window.addEventListener('contab:company-context', () => {
   togglePlaceholders(false);
   CURRENT = null;
   DRAFT_CONTEXT = null;
+  closeOperationTypePicker();
   const more = $('#documentWorkbenchMore'); if (more) more.open = false;
   setDocumentWorkbenchStep('upload');
   formFlowLoaded(form, 'nou', { restore: false });
