@@ -1542,7 +1542,7 @@ section('Poarta: scenariul video nu poate rămâne în urma vocii din film');
   ok('epilogul exista si declara numarul real de scene',
     epilog.includes(`prin cele ${scene.length} de scene`));
   ok('epilogul trimite durata publicata la manifest',
-    epilog.includes('public/descarcari/video.json'));
+    epilog.includes('/descarcari/video.json'));
   const durateScrise = epilog.match(/\b\d{1,2}:\d{2}\b/g) || [];
   ok('epilogul nu pastreaza o durata scrisa de mana' +
     (durateScrise.length ? ' — GASITE: ' + durateScrise.join(', ') : ''), durateScrise.length === 0);

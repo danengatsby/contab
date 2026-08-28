@@ -626,7 +626,7 @@ Scenariul nu e doar pe hârtie: **filmul există**, produs automat și reproduct
 `scripts/video-prezentare.mjs` conduce aplicația prin cele 74 de scene și înregistrează ecranul
 (Playwright înregistrează nativ, fără ffmpeg pe gazdă), iar `scripts/video-montaj.mjs` așază vocea
 peste imagine și scoate mp4-ul. Rezultatul publicat este la **1280×720, cu narațiune în română**;
-durata, dimensiunea și amprenta lui se citesc din `public/descarcari/video.json`, manifest scris
+durata, dimensiunea și amprenta lui se citesc din `/descarcari/video.json`, manifest scris
 automat la publicare, ca documentația să nu păstreze o durată veche după următorul montaj.
 
 **Vocea** e sintetizată local cu [piper](https://github.com/rhasspy/piper) și vocea românească
