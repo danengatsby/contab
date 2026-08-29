@@ -2598,11 +2598,31 @@ section('Administrare: lista de contabili si cererile de servicii');
   ok('lista contabililor avertizeaza vizibil ca autorizatiile sunt declarate, nu verificate',
     /numărul autorizației sunt declarate de utilizatori, nu verificate de Contabo/.test(appHtml)
     && /neverificat de Contabo/.test(appHtml));
+  const tabColaborare = (appHtml.match(/<section id="tab-colaborare"[\s\S]*?<\/section>/) || [''])[0];
   const tabMesaje = (appHtml.match(/<section id="tab-mesaje"[\s\S]*?<\/section>/) || [''])[0];
-  ok('Mesaje separa colaborarea firmei de suportul Contabo',
-    /id="msgCollabView"/.test(tabMesaje) && /id="msgUserView"/.test(tabMesaje) && /Suport Contabo/.test(tabMesaje));
-  ok('colaborarea are solicitari cu responsabil, termen si legatura la document',
-    /id="collabRequestForm"/.test(tabMesaje) && /Responsabil/.test(tabMesaje) && /Termen/.test(tabMesaje) && /document\/articol/.test(tabMesaje));
+  ok('Colaborare este tab principal, nu intrare ascunsă în Unelte',
+    /<button data-tab="colaborare" id="toolColaborare"/.test(appHtml)
+      && /id="navgrupUnelte"[\s\S]*?data-tab="mesaje"/.test(appHtml)
+      && !/id="navgrupUnelte"[\s\S]*?data-tab="colaborare"[\s\S]*?<\/div>\s*<\/div>/.test(appHtml));
+  ok('panoul are exact cele trei perspective operaționale',
+    /De făcut de mine/.test(tabColaborare) && /Aștept de la cealaltă parte/.test(tabColaborare) && /Rezolvate/.test(tabColaborare));
+  ok('solicitarea cere tip, responsabil, termen și obiect real asociat',
+    /id="collabRequestForm"/.test(tabColaborare) && /name="requestType"/.test(tabColaborare)
+      && /Responsabil/.test(tabColaborare) && /Termen/.test(tabColaborare)
+      && /Document sau pas asociat/.test(tabColaborare) && /id="collabEntity" required/.test(tabColaborare));
+  ok('Suport Contabo rămâne separat și nu mai găzduiește colaborarea firmei',
+    /id="msgUserView"/.test(tabMesaje) && /Suport Contabo/.test(tabMesaje) && !/id="msgCollabView"/.test(tabMesaje));
+  ok('fluxul frontend publică toate cele cinci stări recomandate',
+    Object.keys(messages.REQUEST_STATUS).join(',') === 'deschisa,asteapta_patronul,asteapta_contabilul,in_verificare,rezolvata');
+  const requestHtml = messages.requestCard({ id: 'w<1>', title: '<Clarifică>', description: '<script>',
+    requestType: 'clarificare', requestTypeLabel: 'Clarificare', companyName: '<Firma>', createdByName: '<Patron>',
+    assignedName: '<Contabil>', assignedTo: 2, status: 'rezolvata', due: '2026-08-31', canEdit: false,
+    entityType: 'document', entityId: 'doc1', entity: { href: '/api/document/doc1/file" onclick="x', label: '<Factura>' },
+    resolutionEvidence: { note: '<confirmat>', recordedByName: '<Patron>' } });
+  ok('fișa solicitării escapează obiectul, conversația și dovada înainte de injectarea HTML',
+    requestHtml.includes('&lt;Clarifică&gt;') && requestHtml.includes('&lt;script&gt;')
+      && requestHtml.includes('&lt;Factura&gt;') && requestHtml.includes('&lt;confirmat&gt;')
+      && !requestHtml.includes('<script>') && !requestHtml.includes(' onclick="x'));
   ok('textele de acceptare nu mai promit acces nediferentiat la toate datele',
     !/Aprobarea le dă acces la toate datele firmei/.test(appHtml) && !/Acceptarea îți dă acces la toate datele firmei/.test(appHtml));
 }

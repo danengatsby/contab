@@ -813,21 +813,31 @@ body:not(.dark) .explain b{color:var(--head)}
 .typing .dots i:nth-child(2){animation-delay:.2s}
 .typing .dots i:nth-child(3){animation-delay:.4s}
 @keyframes typedot{0%,60%,100%{opacity:.25}30%{opacity:1}}
-/* colaborare patron-contabil: conversatia si solicitarile raman vizual distincte de suport */
-.collab-layout{align-items:start}.collab-layout>.card{min-width:0}
+/* colaborare patron-contabil: obiectul real, responsabilul si conversația stau în aceeași fișă */
 .collab-system{text-align:center;color:var(--muted);font-size:12px;margin:8px 0;padding:5px 8px;border-radius:8px;background:var(--bg)}
 .collab-system small{margin-left:5px;opacity:.75}
 .collab-request-link{display:block;border:0;background:transparent;color:inherit;text-decoration:underline;cursor:pointer;padding:5px 0 0;font-size:11px}
-.collab-request-form{margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.collab-request-group{margin-top:15px}.collab-request-group h4{display:flex;align-items:center;gap:7px;margin:0 0 8px}
-.collab-request{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:9px;padding:10px;margin-bottom:9px;background:var(--card);transition:box-shadow .2s}
+.collab-create-card{margin-bottom:18px}.collab-create-intro h3{margin-bottom:3px}.collab-create-intro p{margin-top:0}
+.collab-request-form{margin-top:12px}.collab-request-form .btn{align-self:end}
+.collab-board-head{display:flex;align-items:end;justify-content:space-between;margin:14px 0 8px}.collab-board-head h3,.collab-board-head p{margin:0}.collab-board-head p{margin-top:3px}
+.collab-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.collab-lane{min-width:0;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--bg) 72%,var(--card));padding:10px}
+.collab-lane>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 9px}.collab-lane>header h3{font-size:14px;margin:0}
+.collab-empty{text-align:center;color:var(--muted);font-size:12px;padding:22px 8px;margin:0}
+.collab-request{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:9px;padding:11px;margin-bottom:9px;background:var(--card);transition:box-shadow .2s;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .collab-request.flash{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}
-.collab-request-head{display:flex;justify-content:space-between;gap:8px;align-items:start}.collab-request p{margin:6px 0;white-space:pre-wrap}
-.collab-request-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:9px;align-items:end}
-.collab-request-controls label{font-size:11px;color:var(--muted)}.collab-request-controls select,.collab-request-controls input{margin-top:3px}
+.collab-request-head{display:flex;justify-content:space-between;gap:8px;align-items:start}.collab-request-head h4{font-size:14px;line-height:1.35;margin:2px 0 0}.collab-request-type{color:var(--accent);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.collab-request>p{margin:8px 0;white-space:pre-wrap;font-size:13px}
+.collab-request-meta{display:flex;flex-wrap:wrap;gap:3px 9px;color:var(--muted);font-size:11px;margin:7px 0}.collab-request-meta span:not(:last-child)::after{content:' ·';opacity:.55}
+.collab-object{display:block;width:100%;box-sizing:border-box;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:7px;background:color-mix(in srgb,var(--accent) 6%,var(--card));color:var(--ink);font:inherit;font-size:11px;text-align:left;text-decoration:none;padding:7px 8px;cursor:pointer}.collab-object:hover{border-color:var(--accent)}.collab-object.missing{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--line));cursor:default}
+.collab-evidence{border-left:3px solid var(--good);background:color-mix(in srgb,var(--good) 7%,var(--card));border-radius:6px;padding:8px;margin-top:8px;font-size:12px}.collab-evidence p{margin:4px 0;white-space:pre-wrap}.collab-evidence small{color:var(--muted)}
+.collab-request-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line);align-items:end}
+.collab-request-controls label{font-size:11px;color:var(--muted)}.collab-request-controls select,.collab-request-controls input,.collab-request-controls textarea{margin-top:3px}
 .collab-request-controls .full{grid-column:1/-1}
+.collab-request-thread{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}.collab-request-thread>summary{cursor:pointer;color:var(--muted);font-size:12px}.collab-inline-thread{max-height:260px;overflow:auto;margin-top:8px}.collab-inline-thread .msg-b{max-width:92%;font-size:12px}.collab-inline-form{margin-top:7px}.collab-inline-form textarea{min-height:48px}
+.collab-general{margin-top:16px}.collab-general>summary{cursor:pointer}.collab-general .chat{margin-top:12px}
 .task-unread>td{background:color-mix(in srgb,var(--accent) 8%,var(--card))}
 body.dark .task-unread>td{background:color-mix(in srgb,var(--accent) 16%,var(--card))}
+@media(max-width:1200px){.collab-board{grid-template-columns:1fr}.collab-lane{padding:12px}}
 @media(max-width:800px){.collab-request-controls{grid-template-columns:1fr}.collab-request-controls .full{grid-column:auto}}
 /* ───────────── Tur ghidat (prima logare) ───────────── */
 /* Fond INCHIS, in ambele teme: turul e un strat peste aplicatie, nu o parte din ea — se vede ca

@@ -200,6 +200,42 @@ const MIGRATIONS = [
       return n;
     },
   },
+  {
+    v: 8,
+    desc: 'aliniază solicitările istorice la fluxul patron–contabil și materializează dovada rezolvării',
+    up(d) {
+      // „În lucru” nu demonstrează că rezultatul ajunsese deja la verificare, deci revine onest
+      // la „deschisă”. Pentru vechiul „blocat” putem deduce partea așteptată din responsabil.
+      // Solicitările deja rezolvate primesc o dovadă legacy explicit marcată; nu pretindem că
+      // textul liber vechi a fost o probă structurată creată în noul flux.
+      const owners = new Map((d.firme || []).map((f) => [Number(f.id), Number(f.ownerId)]));
+      let n = 0;
+      for (const r of d.workRequests || []) {
+        let changed = false;
+        if (r.status === 'in_lucru') { r.status = 'deschisa'; changed = true; }
+        if (r.status === 'blocata') {
+          r.status = owners.get(Number(r.firmaId)) === Number(r.assignedTo)
+            ? 'asteapta_patronul' : 'asteapta_contabilul';
+          changed = true;
+        }
+        if (!r.requestType) {
+          r.requestType = ['document', 'bank_statement'].includes(r.entityType) ? 'document' : 'alta';
+          changed = true;
+        }
+        if (r.status === 'rezolvata' && !r.resolutionEvidence) {
+          r.resolutionEvidence = {
+            note: String(r.resolution || 'Rezolvare istorică; dovada structurată nu era disponibilă.').slice(0, 1000),
+            entityType: r.entityType || '', entityId: r.entityId || '', legacy: true,
+            recordedBy: r.resolvedBy || null,
+            recordedAt: r.resolvedAt || r.updatedAt || r.createdAt || null,
+          };
+          changed = true;
+        }
+        if (changed) n += 1;
+      }
+      return n;
+    },
+  },
 ];
 
 const LATEST = MIGRATIONS.reduce((m, x) => Math.max(m, x.v), 0);

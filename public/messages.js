@@ -3,6 +3,7 @@
 // arhivare, atasamente, notificari (badge/titlu/sunet), indicator „scrie acum" si polling
 // aproape in timp real. Extras din app.js (Etapa 1 a modularizarii). Depinde doar de nucleu.
 import { $, $$, api, toast, USER, escMsg, escAttr, withCsrf, confirmAction, uiLocale } from './core.js';
+import { setWorkMonth } from './periods.js';
 
 function fmtMsgTime(iso) {
   try { return new Date(iso).toLocaleString(uiLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
@@ -66,7 +67,10 @@ let MSG_ADMIN_TARGET = null; // userId-ul conversatiei deschise in vederea de ad
 let MSG_SEARCH_Q = '';       // textul de cautare activ (admin)
 let COLLAB_DATA = null;
 
-const REQUEST_STATUS = { deschisa: 'Deschisă', in_lucru: 'În lucru', blocata: 'Blocată', rezolvata: 'Rezolvată' };
+const REQUEST_STATUS = {
+  deschisa: 'Deschisă', asteapta_patronul: 'Așteaptă patronul',
+  asteapta_contabilul: 'Așteaptă contabilul', in_verificare: 'În verificare', rezolvata: 'Rezolvată',
+};
 function collabBubble(m) {
   if (m.kind === 'system') return `<div class="collab-system">${escMsg(m.text)} <small>${fmtMsgTime(m.createdAt)}</small></div>`;
   const mine = Number(m.fromUserId) === Number(USER.id);
@@ -76,71 +80,113 @@ function collabBubble(m) {
 function memberOptions(selected) {
   return ((COLLAB_DATA && COLLAB_DATA.members) || []).map((m) => `<option value="${escAttr(m.id)}"${Number(m.id) === Number(selected) ? ' selected' : ''}>${escMsg(m.name)} · ${m.kind === 'patron' ? 'patron' : 'contabil'}</option>`).join('');
 }
+function requestTypeOptions(selected) {
+  return ((COLLAB_DATA && COLLAB_DATA.requestTypes) || []).map((x) => `<option value="${escAttr(x.value)}"${x.value === selected ? ' selected' : ''}>${escMsg(x.label)}</option>`).join('');
+}
+function entityOptions(selectedType, selectedId, placeholder) {
+  const types = (COLLAB_DATA && COLLAB_DATA.entityTypes) || {};
+  const rows = ((COLLAB_DATA && COLLAB_DATA.linkables) || []).map((x) => {
+    const selected = x.type === selectedType && String(x.id) === String(selectedId);
+    return `<option value="${escAttr(x.type + '|' + x.id)}"${selected ? ' selected' : ''}>${escMsg(types[x.type] || x.type)} · ${escMsg(x.label)}</option>`;
+  });
+  return `<option value="">${escMsg(placeholder || 'Alege obiectul real…')}</option>` + rows.join('');
+}
+function entityLink(entity) {
+  if (!entity) return '<span class="collab-object missing">⚠ Legătură lipsă</span>';
+  if (entity.href) return `<a class="collab-object" href="${escAttr(entity.href)}" target="_blank" rel="noopener">↗ ${escMsg(entity.label)}</a>`;
+  if (entity.tab) return `<button type="button" class="collab-object collab-object-go" data-tab="${escAttr(entity.tab)}" data-period="${escAttr(entity.period || '')}">↗ ${escMsg(entity.label)}</button>`;
+  return `<span class="collab-object${entity.available ? '' : ' missing'}">${escMsg(entity.label)}</span>`;
+}
 function requestCard(r) {
-  const linked = r.entityId ? `<span class="pill">${r.entityType === 'document' ? 'Document' : 'Articol'} #${escMsg(r.entityId)}</span>` : '';
-  const due = r.due ? ` · termen ${escMsg(r.due.split('-').reverse().join('.'))}` : '';
-  return `<article class="collab-request" id="collab-request-${escAttr(r.id)}" data-id="${escAttr(r.id)}">
-    <div class="collab-request-head"><b>${escMsg(r.title)}</b><span class="pill">${escMsg(REQUEST_STATUS[r.status] || r.status)}</span></div>
-    ${r.description ? `<p>${escMsg(r.description)}</p>` : ''}
-    <div class="muted">Creată de ${escMsg(r.createdByName)}${due} ${linked}</div>
-    <div class="collab-request-controls">
+  const due = r.due ? `Termen ${escMsg(r.due.split('-').reverse().join('.'))}` : 'Fără termen';
+  const conversation = ((COLLAB_DATA && COLLAB_DATA.messages) || []).filter((m) => String(m.requestId || '') === String(r.id));
+  const discussionCount = conversation.filter((m) => m.kind === 'message').length;
+  const evidence = r.resolutionEvidence;
+  const controls = r.canEdit ? `<div class="collab-request-controls">
+      <label>Tip <select class="collab-req-type">${requestTypeOptions(r.requestType)}</select></label>
       <label>Responsabil <select class="collab-req-assigned">${memberOptions(r.assignedTo)}</select></label>
       <label>Stare <select class="collab-req-status">${Object.entries(REQUEST_STATUS).map(([v, l]) => `<option value="${v}"${v === r.status ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
       <label>Termen <input class="collab-req-due" type="date" value="${escAttr(r.due || '')}"></label>
-      <label class="full">Rezoluție <input class="collab-req-resolution" value="${escAttr(r.resolution || '')}" maxlength="1000" placeholder="Ce s-a rezolvat / ce lipsește"></label>
-      <button type="button" class="btn small primary collab-req-save">Actualizează</button>
-      <button type="button" class="btn small collab-req-discuss">Scrie despre ea</button>
-    </div>
+      ${r.entity ? '' : `<label class="full">Document sau pas asociat <select class="collab-req-entity" required>${entityOptions('', '', 'Alege obiectul real…')}</select></label>`}
+      <label class="full">Dovadă de rezolvare <textarea class="collab-req-resolution" rows="2" maxlength="1000" placeholder="Obligatorie când marchezi solicitarea Rezolvată">${escMsg(r.resolution || '')}</textarea></label>
+      <button type="button" class="btn small primary collab-req-save">Salvează</button>
+    </div>` : '';
+  return `<article class="collab-request" id="collab-request-${escAttr(r.id)}" data-id="${escAttr(r.id)}">
+    <div class="collab-request-head"><div><span class="collab-request-type">${escMsg(r.requestTypeLabel || r.requestType)}</span><h4>${escMsg(r.title)}</h4></div><span class="pill">${escMsg(REQUEST_STATUS[r.status] || r.status)}</span></div>
+    ${r.description ? `<p>${escMsg(r.description)}</p>` : ''}
+    <div class="collab-request-meta"><span>${escMsg(r.companyName || '')}</span><span>Solicitant: ${escMsg(r.createdByName)}</span><span>Responsabil: ${escMsg(r.assignedName)}</span><span>${due}</span></div>
+    ${entityLink(r.entity)}
+    ${evidence ? `<div class="collab-evidence"><b>Dovadă de rezolvare</b><p>${escMsg(evidence.note || '')}</p><small>${escMsg(evidence.recordedByName || '')}${evidence.recordedAt ? ' · ' + fmtMsgTime(evidence.recordedAt) : ''}${evidence.legacy ? ' · importată din istoricul vechi' : ''}</small></div>` : ''}
+    ${controls}
+    <details class="collab-request-thread"${discussionCount ? ' open' : ''}>
+      <summary>Conversație <span class="navbadge">${discussionCount}</span></summary>
+      <div class="collab-inline-thread">${conversation.length ? conversation.map(collabBubble).join('') : '<p class="muted">Nicio clarificare încă.</p>'}</div>
+      <form class="collab-inline-form chat-compose"><textarea rows="2" maxlength="4000" placeholder="Scrie despre această solicitare…" required></textarea><button class="btn small" type="submit">Trimite</button></form>
+    </details>
   </article>`;
 }
 function renderCollabRequests(requests) {
   const box = $('#collabRequests');
   const groups = [
-    ['mine', 'Așteaptă de la mine'],
-    ['patron', 'Așteaptă patronul'],
-    ['contabil', 'Așteaptă contabilul'],
+    ['mine', 'De făcut de mine'],
+    ['other', 'Aștept de la cealaltă parte'],
     ['resolved', 'Rezolvate'],
   ];
-  const keyed = { mine: [], patron: [], contabil: [], resolved: [] };
+  const keyed = { mine: [], other: [], resolved: [] };
   for (const r of requests || []) {
-    const key = r.bucket === 'resolved' ? 'resolved' : (r.bucket === 'mine' ? 'mine' : (r.assignedKind || 'contabil'));
-    (keyed[key] || keyed.contabil).push(r);
+    const key = r.bucket === 'resolved' ? 'resolved' : (r.bucket === 'mine' ? 'mine' : 'other');
+    keyed[key].push(r);
   }
-  box.innerHTML = groups.filter(([key]) => keyed[key].length).map(([key, title]) => `<section class="collab-request-group"><h4>${title} <span class="navbadge">${keyed[key].length}</span></h4>${keyed[key].map(requestCard).join('')}</section>`).join('')
-    || '<p class="muted">Nicio solicitare. Creează prima cerere de document sau acțiune mai sus.</p>';
+  box.innerHTML = groups.map(([key, title]) => `<section class="collab-lane" data-lane="${key}"><header><h3>${title}</h3><span class="navbadge">${keyed[key].length}</span></header><div>${keyed[key].length ? keyed[key].map(requestCard).join('') : '<p class="collab-empty">Nicio solicitare aici.</p>'}</div></section>`).join('');
   $$('#collabRequests .collab-req-save').forEach((btn) => btn.addEventListener('click', async () => {
     const card = btn.closest('.collab-request');
+    const entitySelect = card.querySelector('.collab-req-entity');
+    const rawEntity = entitySelect ? entitySelect.value : ''; const split = rawEntity.indexOf('|');
     try {
+      const body = {
+        requestType: card.querySelector('.collab-req-type').value,
+        assignedTo: Number(card.querySelector('.collab-req-assigned').value),
+        status: card.querySelector('.collab-req-status').value,
+        due: card.querySelector('.collab-req-due').value,
+        resolutionEvidence: card.querySelector('.collab-req-resolution').value,
+      };
+      if (entitySelect) Object.assign(body, { entityType: split < 0 ? '' : rawEntity.slice(0, split),
+        entityId: split < 0 ? '' : rawEntity.slice(split + 1) });
       await api('/api/collaboration/requests/' + encodeURIComponent(card.dataset.id), {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          assignedTo: Number(card.querySelector('.collab-req-assigned').value),
-          status: card.querySelector('.collab-req-status').value,
-          due: card.querySelector('.collab-req-due').value,
-          resolution: card.querySelector('.collab-req-resolution').value,
-        }),
+        body: JSON.stringify(body),
       });
-      toast('Solicitare actualizată'); loadMessages();
+      toast('Solicitare actualizată'); loadCollaboration();
     } catch (e) { toast(e.message, true); }
   }));
-  $$('#collabRequests .collab-req-discuss').forEach((btn) => btn.addEventListener('click', () => {
-    const card = btn.closest('.collab-request');
-    $('#collabMessageRequestId').value = card.dataset.id;
-    $('#collabMessageContext').textContent = '↪ Mesaj legat de: ' + (card.querySelector('.collab-request-head b') || {}).textContent;
-    $('#collabMessageContext').classList.remove('hidden'); $('#collabMessageText').focus();
+  $$('#collabRequests .collab-inline-form').forEach((form) => form.addEventListener('submit', async (e) => {
+    e.preventDefault(); const card = form.closest('.collab-request'); const text = form.querySelector('textarea').value.trim();
+    if (!text) return;
+    try {
+      await api('/api/collaboration/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, requestId: card.dataset.id }) });
+      await loadCollaboration();
+    } catch (err) { toast(err.message, true); }
   }));
+  $$('#collabRequests .collab-object-go').forEach((b) => b.addEventListener('click', () => openLinkedObject(b.dataset.tab, b.dataset.period)));
+}
+function openLinkedObject(tab, period) {
+  if (period) setWorkMonth(period);
+  const nav = document.querySelector('#tabs button[data-tab="' + String(tab || '').replace(/[^a-z0-9-]/g, '') + '"]');
+  if (nav) nav.click();
 }
 function renderCollaboration(data) {
   COLLAB_DATA = data;
   $('#msgCollabView').classList.remove('hidden');
   $('#collabTitle').textContent = 'Conversația „' + data.company.name + '”';
-  const box = $('#collabThread');
-  box.innerHTML = (data.messages || []).length ? data.messages.map(collabBubble).join('')
+  const box = $('#collabThread'); const general = (data.messages || []).filter((m) => !m.requestId);
+  box.innerHTML = general.length ? general.map(collabBubble).join('')
     : '<p class="muted">Niciun mesaj în această firmă. Pornește conversația aici.</p>';
   box.scrollTop = box.scrollHeight;
   $('#collabAssigned').innerHTML = memberOptions(USER.id);
+  $('#collabRequestType').innerHTML = requestTypeOptions('document');
   const entity = $('#collabEntity');
-  entity.innerHTML = '<option value="">Fără legătură</option>' + (data.linkables || []).map((x) => `<option value="${escAttr(x.type + '|' + x.id)}">${x.type === 'document' ? 'Document' : 'Articol'} · ${escMsg(x.label)}</option>`).join('');
+  entity.innerHTML = entityOptions('', '', 'Alege obiectul real…');
   renderCollabRequests(data.requests || []);
   let openTask = '';
   try { openTask = sessionStorage.getItem('contab_open_task') || ''; sessionStorage.removeItem('contab_open_task'); } catch (_) { /* indisponibil */ }
@@ -154,12 +200,22 @@ function renderCollaboration(data) {
   }));
 }
 
+export async function loadCollaboration() {
+  try {
+    const data = await api('/api/collaboration');
+    renderCollaboration(data); lastCollabReload = Date.now(); setCollabBadge(0);
+  } catch (e) {
+    $('#msgCollabView').classList.add('hidden');
+    toast(e.message, true);
+  }
+}
+
 export async function loadMessages() {
   // admin cu o cautare activa: pastreaza rezultatele filtrate
   if (isAdminView() && MSG_SEARCH_Q) {
     try {
       const r = await api('/api/messages/search?q=' + encodeURIComponent(MSG_SEARCH_Q));
-      $('#msgUserView').classList.add('hidden'); $('#msgCollabView').classList.add('hidden'); $('#msgAdminView').classList.remove('hidden');
+      $('#msgUserView').classList.add('hidden'); $('#msgAdminView').classList.remove('hidden');
       renderAdminInbox(r.threads || []);
     } catch (e) { /* ignora */ }
     refreshMsgBadge(); return;
@@ -167,15 +223,12 @@ export async function loadMessages() {
   if (isAdminView()) {
     let data; try { data = await api('/api/messages'); } catch (e) { return; }
     $('#msgUserView').classList.add('hidden');
-    $('#msgCollabView').classList.add('hidden');
     $('#msgAdminView').classList.remove('hidden');
     renderAdminInbox(data.threads || []);
   } else {
-    const [collab, support] = await Promise.allSettled([api('/api/collaboration'), api('/api/messages')]);
+    const support = await Promise.allSettled([api('/api/messages')]);
     $('#msgAdminView').classList.add('hidden');
-    if (collab.status === 'fulfilled') renderCollaboration(collab.value);
-    else $('#msgCollabView').classList.add('hidden');
-    if (support.status === 'fulfilled') { $('#msgUserView').classList.remove('hidden'); renderUserThread(support.value.thread || []); }
+    if (support[0].status === 'fulfilled') { $('#msgUserView').classList.remove('hidden'); renderUserThread(support[0].value.thread || []); }
   }
   refreshMsgBadge();
 }
@@ -185,7 +238,7 @@ $('#collabMessageForm') && $('#collabMessageForm').addEventListener('submit', as
   try {
     await api('/api/collaboration/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, requestId: $('#collabMessageRequestId').value || null }) });
     $('#collabMessageText').value = ''; $('#collabMessageRequestId').value = ''; $('#collabMessageContext').classList.add('hidden');
-    loadMessages();
+    loadCollaboration();
   } catch (err) { toast(err.message, true); }
 });
 $('#collabRequestForm') && $('#collabRequestForm').addEventListener('submit', async (e) => {
@@ -193,10 +246,10 @@ $('#collabRequestForm') && $('#collabRequestForm').addEventListener('submit', as
   try {
     await api('/api/collaboration/requests', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: f.title.value, description: f.description.value, assignedTo: Number(f.assignedTo.value), due: f.due.value,
+      body: JSON.stringify({ requestType: f.requestType.value, title: f.title.value, description: f.description.value, assignedTo: Number(f.assignedTo.value), due: f.due.value,
         entityType: split < 0 ? '' : rawEntity.slice(0, split), entityId: split < 0 ? '' : rawEntity.slice(split + 1) }),
     });
-    f.reset(); toast('Solicitare creată'); loadMessages();
+    f.reset(); toast('Solicitare creată'); loadCollaboration();
   } catch (err) { toast(err.message, true); }
 });
 function renderUserThread(thread) {
@@ -267,6 +320,7 @@ $('#msgAdminForm').addEventListener('submit', async (e) => {
   catch (err) { toast(err.message, true); }
 });
 $('#msgRefresh').addEventListener('click', loadMessages);
+$('#collabRefresh') && $('#collabRefresh').addEventListener('click', loadCollaboration);
 (() => {
   const c = $('#msgSound'); if (!c) return;
   c.checked = soundOn();
@@ -308,22 +362,31 @@ function beep() {
     o.start(t); o.stop(t + 0.3);
   } catch (e) { /* audio blocat pana la o interactiune -> ignora */ }
 }
-function pulseBadge() { const b = $('#msgBadge'); if (!b) return; b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); }
-function notifyNewMessage() { beep(); pulseBadge(); }
+function pulseBadge(selector) { const b = $(selector); if (!b) return; b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); }
+function notifyNewMessage(selector) { beep(); pulseBadge(selector); }
+function updateCombinedTitle() { updateTitle(lastUnread + lastCollabUnread); }
 export function setMsgBadge(n) {
-  const b = $('#msgBadge');
-  updateTitle(n);
+  const b = $('#msgBadge'); lastUnread = Number(n) || 0;
+  updateCombinedTitle();
   if (!b) return;
-  if (n > 0) { b.textContent = n; b.classList.remove('hidden'); } else { b.classList.add('hidden'); }
+  if (lastUnread > 0) { b.textContent = lastUnread; b.classList.remove('hidden'); } else { b.classList.add('hidden'); }
+}
+export function setCollabBadge(n) {
+  const b = $('#collabBadge'); lastCollabUnread = Number(n) || 0;
+  updateCombinedTitle();
+  if (!b) return;
+  if (lastCollabUnread > 0) { b.textContent = lastCollabUnread; b.classList.remove('hidden'); } else { b.classList.add('hidden'); }
 }
 async function refreshMsgBadge() {
-  try { const r = await api('/api/messages/unread'); setMsgBadge(r.unread || 0); lastUnread = r.unread || 0; } catch (e) { /* ignora */ }
+  try { const r = await api('/api/messages/unread'); setMsgBadge(r.unread || 0); } catch (e) { /* ignora */ }
 }
-// Notificare aproape în timp real + indicator „scrie acum…”. Poll rapid pe tabul Mesaje (3s),
-// rar in rest (~15s). Fetch silentios (fara bara de incarcare).
-let MSG_POLL = null; let lastUnread = 0; let pollTick = 0; let lastThreadReload = 0;
+// Notificare aproape în timp real pentru suport și colaborare. Poll rapid pe tabul deschis (3s),
+// rar în rest (~15s). Fetch silențios (fără bara de încărcare).
+let MSG_POLL = null; let lastUnread = 0; let lastCollabUnread = 0; let pollTick = 0;
+let lastThreadReload = 0; let lastCollabReload = 0;
 // applySessionState (app.js) initializeaza contorul de necitite din starea de sesiune.
-export function setLastUnread(n) { lastUnread = n; }
+export function setLastUnread(n) { setMsgBadge(n); }
+export function setLastCollabUnread(n) { setCollabBadge(n); }
 function isAdminView() { return USER && USER.role === 'admin' && !USER.impersonating; }
 function setTypingIndicator(on) {
   const el = isAdminView() ? $('#msgTypingAdmin') : $('#msgTypingUser');
@@ -338,21 +401,36 @@ async function chatPoll() {
   if (!USER || !USER.username) return;
   pollTick += 1;
   const onTab = $('#tab-mesaje').classList.contains('active');
-  if (!onTab && pollTick % 5 !== 0) return; // off-tab: efectiv la ~15s
+  const onCollab = $('#tab-colaborare').classList.contains('active');
+  if (!onTab && !onCollab && pollTick % 5 !== 0) return; // off-tab: efectiv la ~15s
   try {
     const openUid = (onTab && isAdminView()) ? (MSG_ADMIN_TARGET || '') : '';
-    const r = await fetch('/api/messages/poll' + (openUid ? '?userId=' + encodeURIComponent(openUid) : ''));
-    if (!r.ok) return;
-    const data = await r.json();
-    const n = data.unread || 0;
-    const grew = n > lastUnread;
-    lastUnread = n; setMsgBadge(n);
-    if (grew) notifyNewMessage();
-    if (grew && !onTab) toast('💬 Ai un mesaj nou');
-    if (onTab) {
-      setTypingIndicator(!!data.typing);
-      const editing = !!document.querySelector('.msg-edit-box');
-      if (!editing && (grew || Date.now() - lastThreadReload > 8000)) reloadOpenThread();
+    const results = await Promise.all([
+      fetch('/api/messages/poll' + (openUid ? '?userId=' + encodeURIComponent(openUid) : '')),
+      fetch('/api/collaboration/unread'),
+    ]);
+    if (results[0].ok) {
+      const data = await results[0].json(); const n = data.unread || 0; const grew = n > lastUnread;
+      setMsgBadge(n);
+      if (grew) notifyNewMessage('#msgBadge');
+      if (grew && !onTab) toast('💬 Ai un mesaj nou de la suport');
+      if (onTab) {
+        setTypingIndicator(!!data.typing);
+        const editing = !!document.querySelector('.msg-edit-box');
+        if (!editing && (grew || Date.now() - lastThreadReload > 8000)) reloadOpenThread();
+      }
+    }
+    if (results[1].ok) {
+      const data = await results[1].json(); const n = data.unread || 0; const grew = n > lastCollabUnread;
+      setCollabBadge(n);
+      if (grew) notifyNewMessage('#collabBadge');
+      if (grew && !onCollab) toast('🤝 Ai o actualizare în Colaborare');
+      if (onCollab) {
+        const editing = !!document.querySelector('#tab-colaborare input:focus, #tab-colaborare textarea:focus, #tab-colaborare select:focus');
+        if (!editing && (grew || Date.now() - lastCollabReload > 8000)) {
+          lastCollabReload = Date.now(); loadCollaboration();
+        }
+      }
     }
   } catch (e) { /* delogat / offline -> ignora */ }
 }
@@ -369,4 +447,4 @@ function pingTyping() {
 }
 
 // Exportate pentru testele unitare de frontend (randarea firului de chat, escapare): test/frontend.mjs
-export { bubble, attachHtml, fmtSize };
+export { bubble, attachHtml, fmtSize, requestCard, REQUEST_STATUS };

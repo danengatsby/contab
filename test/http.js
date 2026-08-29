@@ -3644,6 +3644,8 @@ async function main() {
         { cookie: patron.cookie, body: { text: mesajFirma } })).status, 200);
       ok('mesajul de colaborare aprinde badge-ul contabilului',
         (await req('GET', '/api/collaboration/unread', { cookie: contabil.cookie })).json.unread >= 1);
+      eq('badge-ul de suport nu amestecă mesajele patron–contabil',
+        (await req('GET', '/api/messages/unread', { cookie: contabil.cookie })).json.unread, 0);
       const spatiuC = await req('GET', '/api/collaboration?firma=' + fidP, { cookie: contabil.cookie });
       ok('contabilul citeste mesajul in firma corecta', spatiuC.json.messages.some((m) => m.text === mesajFirma));
       eq('deschiderea conversatiei marcheaza mesajul citit',
@@ -3656,14 +3658,24 @@ async function main() {
         body: { tip: 'nota_contabila', fields: { data: '2026-08-20', explicatie: 'Articol pentru colaborare', debit: '5311', credit: '5121', suma: 1 } } });
       ok('fixture: articolul legabil a fost creat in firma', entryLink.status === 200 && entryLink.json.entry.id);
       const patronMembru = spatiuC.json.members.find((m) => m.kind === 'patron');
+      eq('o solicitare nouă fără obiect real asociat este refuzată',
+        (await req('POST', '/api/collaboration/requests?firma=' + fidP, { cookie: contabil.cookie,
+          body: { requestType: 'document', title: 'Solicitare fără obiect', assignedTo: patronMembru.id } })).status, 400);
       const solicitare = await req('POST', '/api/collaboration/requests?firma=' + fidP, { cookie: contabil.cookie,
-        body: { title: 'Trimite extrasul bancar', description: 'Este necesar pentru închiderea lunii.', assignedTo: patronMembru.id,
+        body: { requestType: 'clarificare', title: 'Clarifică articolul de casă', description: 'Este necesar pentru închiderea lunii.', assignedTo: patronMembru.id,
           due: '2026-08-31', entityType: 'entry', entityId: entryLink.json.entry.id } });
-      ok('contabilul creeaza solicitare cu responsabil, termen si articol legat', solicitare.status === 200
-        && solicitare.json.request.assignedKind === 'patron' && solicitare.json.request.entityId === entryLink.json.entry.id);
+      ok('contabilul creeaza solicitare tipizată cu responsabil, termen si articol legat', solicitare.status === 200
+        && solicitare.json.request.requestType === 'clarificare' && solicitare.json.request.assignedKind === 'patron'
+        && solicitare.json.request.entityId === entryLink.json.entry.id
+        && solicitare.json.request.entity.type === 'entry' && solicitare.json.request.entity.tab === 'jurnal');
+      eq('conversația poate fi legată direct de solicitare',
+        (await req('POST', '/api/collaboration/messages?firma=' + fidP, { cookie: patron.cookie,
+          body: { requestId: solicitare.json.request.id, text: 'Este cheltuială de protocol.' } })).status, 200);
       const asteaptaPatron = await req('GET', '/api/collaboration?firma=' + fidP, { cookie: patron.cookie });
       const taskPatron = asteaptaPatron.json.requests.find((r) => r.id === solicitare.json.request.id);
-      ok('patronul vede explicit ca solicitarea asteapta de la el', taskPatron && taskPatron.bucket === 'mine');
+      ok('patronul vede solicitarea la „De făcut de mine”, cu conversația atașată', taskPatron
+        && taskPatron.bucket === 'mine' && taskPatron.conversationCount >= 1
+        && asteaptaPatron.json.messages.some((m) => m.requestId === solicitare.json.request.id && /protocol/.test(m.text)));
       const sarciniPatron = await req('GET', '/api/tasks/mine', { cookie: patron.cookie });
       ok('Sarcinile mele agregă solicitarea alocată și o marchează nouă', sarciniPatron.status === 200
         && sarciniPatron.json.items.some((t) => t.id === solicitare.json.request.id && t.source === 'request' && t.unread)
@@ -3683,10 +3695,24 @@ async function main() {
       const sarciniCuInchidere = await req('GET', '/api/tasks/mine', { cookie: patron.cookie });
       ok('Sarcinile mele include și pasul lunar alocat', sarciniCuInchidere.json.items.some((t) => t.source === 'monthly-close'
         && t.step === pasDeschis.key && t.period === '2026-08'));
+      const asteapta = await req('PATCH', '/api/collaboration/requests/' + solicitare.json.request.id + '?firma=' + fidP,
+        { cookie: patron.cookie, body: { status: 'asteapta_patronul' } });
+      ok('starea explicită „așteaptă patronul” corespunde responsabilului patron',
+        asteapta.status === 200 && asteapta.json.request.status === 'asteapta_patronul');
+      const verificare = await req('PATCH', '/api/collaboration/requests/' + solicitare.json.request.id + '?firma=' + fidP,
+        { cookie: patron.cookie, body: { status: 'in_verificare' } });
+      ok('responsabilul trimite solicitarea în verificare',
+        verificare.status === 200 && verificare.json.request.status === 'in_verificare');
+      eq('solicitarea nu poate fi închisă fără dovada rezolvării',
+        (await req('PATCH', '/api/collaboration/requests/' + solicitare.json.request.id + '?firma=' + fidP,
+          { cookie: patron.cookie, body: { status: 'rezolvata' } })).status, 400);
       const actualizata = await req('PATCH', '/api/collaboration/requests/' + solicitare.json.request.id + '?firma=' + fidP,
-        { cookie: patron.cookie, body: { status: 'in_lucru', resolution: 'Extrasul este în curs de încărcare.' } });
-      ok('responsabilul actualizeaza starea si rezolutia', actualizata.status === 200
-        && actualizata.json.request.status === 'in_lucru' && /curs/.test(actualizata.json.request.resolution));
+        { cookie: patron.cookie, body: { status: 'rezolvata', resolutionEvidence: 'Încadrarea ca protocol a fost confirmată în conversație.' } });
+      ok('rezolvarea păstrează dovada, actorul și obiectul contabil asociat', actualizata.status === 200
+        && actualizata.json.request.status === 'rezolvata'
+        && /protocol/.test(actualizata.json.request.resolutionEvidence.note)
+        && actualizata.json.request.resolutionEvidence.recordedBy === patronMembru.id
+        && actualizata.json.request.resolutionEvidence.entityId === entryLink.json.entry.id);
       const firmaContabilului = (await req('GET', '/api/firme', { cookie: contabil.cookie })).json.firme.find((f) => f.id !== fidP);
       if (firmaContabilului) {
         const izolat = await req('GET', '/api/collaboration?firma=' + firmaContabilului.id, { cookie: contabil.cookie });

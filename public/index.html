@@ -381,6 +381,7 @@
       <button type="button" class="nav-action" id="glossaryBtn" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
       <label class="language-picker nav-language"><span>🌐 Limbă</span><select class="language-switch" aria-label="Limba aplicației"><option value="ro">RO</option><option value="en">EN</option></select></label>
       <button data-tab="notificari" title="Sarcini alocate și termene fiscale">🔔 Notificări<span id="notifBadge" class="navbadge hidden">0</span></button>
+      <button data-tab="colaborare" id="toolColaborare" title="Solicitări și conversații patron–contabil">🤝 Colaborare<span id="collabBadge" class="navbadge hidden">0</span></button>
       <div class="navgroup">
         <button class="navlabel" type="button">📥 Documente & facturi</button>
         <div class="navmenu">
@@ -508,7 +509,7 @@
         <div class="navmenu" id="sideTools">
           <a href="/carte/" id="toolCartea" target="_blank" rel="noopener" class="navlink"
              title="Cartea de contabilitate — 51 de capitole și 5 anexe, de citit în browser">📚 Cartea</a>
-          <button data-tab="mesaje" id="toolMesaje">💬 Mesaje<span id="msgBadge" class="navbadge hidden">0</span></button>
+          <button data-tab="mesaje" id="toolMesaje">💬 Suport<span id="msgBadge" class="navbadge hidden">0</span></button>
           <button id="densityBtn" title="Comută densitatea afișării">⊟ Compact</button>
           <button id="tourBtn" title="Turul meniului — îți arată în câțiva pași cum e organizată aplicația">🧭 Tur meniu</button>
         </div>
@@ -687,37 +688,41 @@
     </section>
 
     <!-- ─────────────── COLABORARE PE FIRMA + SUPORT ─────────────── -->
-    <section id="tab-mesaje" class="tab">
-      <div class="toolbar"><h2>💬 Mesaje</h2><div class="spacer"></div><label class="muted msg-sound-lbl"><input type="checkbox" id="msgSound"> 🔔 Sunet la mesaj nou</label><button id="msgRefresh" class="btn" type="button">↻ Reîmprospătează</button></div>
-      <!-- vedere utilizator: colaborare strict pe firma activa -->
+    <section id="tab-colaborare" class="tab">
+      <div class="toolbar"><div><h2>🤝 Colaborare</h2><p class="muted">Solicitări legate direct de documentele și pașii reali ai firmei active.</p></div><div class="spacer"></div><button id="collabRefresh" class="btn" type="button">↻ Reîmprospătează</button></div>
       <div id="msgCollabView" class="hidden">
-        <div class="grid2 collab-layout">
-          <div class="card">
-            <h3 id="collabTitle">Conversația firmei active</h3>
-            <p class="muted">Mesajele de aici sunt vizibile numai membrilor firmei active. Suportul Contabo rămâne separat, mai jos.</p>
-            <div id="collabThread" class="chat"></div>
-            <form id="collabMessageForm" class="chat-compose">
-              <textarea id="collabMessageText" rows="2" placeholder="Scrie patronului sau contabilului…" maxlength="4000"></textarea>
-              <input type="hidden" id="collabMessageRequestId">
-              <button class="btn primary" type="submit">Trimite</button>
-              <span id="collabMessageContext" class="filechip-sel hidden"></span>
-            </form>
-          </div>
-          <div class="card">
-            <h3>Solicitări și documente așteptate</h3>
-            <p class="muted">Fiecare solicitare are un responsabil: vezi imediat ce așteaptă patronul și ce așteaptă contabilul.</p>
-            <form id="collabRequestForm" class="dyn collab-request-form">
-              <label class="full">Ce trebuie făcut <input name="title" maxlength="160" placeholder="ex. Încarcă extrasul bancar pe august" required></label>
-              <label>Responsabil <select name="assignedTo" id="collabAssigned" required></select></label>
-              <label>Termen <input name="due" type="date"></label>
-              <label class="full">Detalii <textarea name="description" rows="2" maxlength="2000" placeholder="Context sau informații necesare"></textarea></label>
-              <label class="full">Leagă de un document/articol <select name="entity" id="collabEntity"><option value="">Fără legătură</option></select></label>
-              <button class="btn primary" type="submit">+ Creează solicitarea</button>
-            </form>
-            <div id="collabRequests"></div>
-          </div>
+        <div class="card collab-create-card">
+          <div class="collab-create-intro"><h3>Solicitare nouă</h3><p class="muted">Spune ce lipsește, cine răspunde și obiectul concret pe care lucrați.</p></div>
+          <form id="collabRequestForm" class="dyn collab-request-form">
+            <label>Tip solicitare <select name="requestType" id="collabRequestType" required></select></label>
+            <label>Responsabil <select name="assignedTo" id="collabAssigned" required></select></label>
+            <label>Termen <input name="due" type="date"></label>
+            <label class="full">Ce trebuie făcut <input name="title" maxlength="160" placeholder="ex. Încarcă extrasul BT pentru iulie" required></label>
+            <label class="full">Detalii <textarea name="description" rows="2" maxlength="2000" placeholder="Contextul necesar celeilalte părți"></textarea></label>
+            <label class="full">Document sau pas asociat <select name="entity" id="collabEntity" required><option value="">Alege obiectul real…</option></select></label>
+            <button class="btn primary" type="submit">+ Creează solicitarea</button>
+          </form>
         </div>
+        <div class="collab-board-head">
+          <div><h3>Solicitările firmei</h3><p class="muted">De făcut de mine · Aștept de la cealaltă parte · Rezolvate</p></div>
+        </div>
+        <div id="collabRequests" class="collab-board" aria-live="polite"></div>
+        <details class="card collab-general">
+          <summary><b id="collabTitle">Conversația generală a firmei active</b></summary>
+          <p class="muted">Pentru un subiect concret, scrie în conversația solicitării. Aici rămân numai mesajele generale ale firmei.</p>
+          <div id="collabThread" class="chat"></div>
+          <form id="collabMessageForm" class="chat-compose">
+            <textarea id="collabMessageText" rows="2" placeholder="Scrie patronului sau contabilului…" maxlength="4000"></textarea>
+            <input type="hidden" id="collabMessageRequestId">
+            <button class="btn primary" type="submit">Trimite</button>
+            <span id="collabMessageContext" class="filechip-sel hidden"></span>
+          </form>
+        </details>
       </div>
+    </section>
+
+    <section id="tab-mesaje" class="tab">
+      <div class="toolbar"><h2>💬 Suport Contabo</h2><div class="spacer"></div><label class="muted msg-sound-lbl"><input type="checkbox" id="msgSound"> 🔔 Sunet la mesaj nou</label><button id="msgRefresh" class="btn" type="button">↻ Reîmprospătează</button></div>
       <!-- vedere utilizator: canal separat de suport catre administrator -->
       <div id="msgUserView" class="card hidden">
         <h3>Suport Contabo</h3>

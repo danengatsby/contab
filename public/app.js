@@ -1,6 +1,6 @@
 'use strict';
 import { $, $$, H, fmt, toast, api, META, USER, setMeta, setUser, setOnReconnect, escMsg, escAttr, isDemo, applyFiscalDefaults, fiscalText, setCsrf, umpleTemeiuri, legaCompletareCui, confirmAction, promptAction, alertAction } from './core.js';
-import { loadMessages, startMsgPolling, setMsgBadge, setLastUnread } from './messages.js';
+import { loadMessages, loadCollaboration, startMsgPolling, setMsgBadge, setCollabBadge, setLastUnread, setLastCollabUnread } from './messages.js';
 import { setBankRefresh } from './bank.js';
 import { render2FA, renderBackup, renderProfile, renderSessions, renderSmtp, renderFiscal, renderPachetWin, renderVideo, setSettingsDeps } from './settings.js';
 import { renderFirme, renderUsers, renderColaboratori, renderAudit, renderAccess, renderCommercialFunnel, renderCereriAcces, setAdminDeps } from './admin.js';
@@ -237,6 +237,7 @@ function onTab(t) {
   if (t === 'galerie-emise') loadGalerieEmise();
   if (t === 'abonament') loadSubscription();
   if (t === 'ghid') renderGhid();
+  if (t === 'colaborare') loadCollaboration();
   if (t === 'mesaje') loadMessages();
 }
 // ───────────────────────── FIRME (multi-firma) ─────────────────────────
@@ -344,6 +345,8 @@ function applySessionState(u) {
   }
   setMsgBadge((u && u.unreadMessages) || 0);
   setLastUnread((u && u.unreadMessages) || 0);
+  setCollabBadge((u && u.unreadCollaboration) || 0);
+  setLastCollabUnread((u && u.unreadCollaboration) || 0);
 }
 async function impersonate(userId) {
   const reason = await promptAction('Accesul este temporar și rămâne în jurnalul de audit.', {

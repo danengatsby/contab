@@ -86,7 +86,7 @@
   };
 
   var TAB_ICONS = {
-    dashboard: 'home', ghid: 'book', mesaje: 'chat', portofoliu: 'briefcase', notificari: 'bell',
+    dashboard: 'home', ghid: 'book', colaborare: 'users', mesaje: 'chat', portofoliu: 'briefcase', notificari: 'bell',
     documente: 'plus', emite: 'invoice', intrate: 'receive', galerie: 'folder', iesite: 'send',
     'galerie-emise': 'folder', cashbook: 'bank', reconciliere: 'bank', stocuri: 'box',
     productie: 'box', configstoc: 'settings', salarizare: 'users', angajati: 'users',
@@ -97,11 +97,11 @@
   };
 
   var SYMBOL_ICONS = {
-    '🏠': 'home', '📖': 'book', '📚': 'book', '💬': 'chat', '🗂': 'folder', '🔔': 'bell',
+    '🏠': 'home', '📖': 'book', '📚': 'book', '💬': 'chat', '🤝': 'users', '🗂': 'folder', '🔔': 'bell',
     '📥': 'receive', '📤': 'send', '📄': 'file', '🧾': 'invoice', '🏦': 'bank', '📦': 'box',
     '👥': 'users', '👤': 'user', '🏢': 'building', '📒': 'ledger', '📘': 'ledger', '📗': 'book',
     '🔒': 'lock', '📊': 'chart', '📈': 'chart', '⚙': 'settings', '🔎': 'search', '❓': 'help',
-    '🌙': 'theme', '🎓': 'mode', '🧭': 'compass', '➕': 'plus', '☰': 'menu', '🤝': 'users',
+    '🌙': 'theme', '🎓': 'mode', '🧭': 'compass', '➕': 'plus', '☰': 'menu',
     '📁': 'folder', '⚖': 'chart', '⏰': 'calendar', '📅': 'calendar', '🏭': 'building',
     '⚡': 'spark', '⚠': 'warning', '✓': 'check', '✔': 'check', '✅': 'check', '🌱': 'spark',
     '📋': 'file', '🛠': 'mode', '☀': 'theme', '⬇': 'download', '⬆': 'send', '🏧': 'bank',

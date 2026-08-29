@@ -2081,6 +2081,33 @@ section('Migrari DB versionate (src/migrations.js)');
     ok('v7 este idempotentă pe date deja materializate',
       mig.runMigrations(d7, { log: quiet }).some((x) => x.v === 7 && x.changed === 0));
   }
+  {
+    const d8 = {
+      schemaVersion: 7,
+      firme: [{ id: 1, ownerId: 7 }],
+      workRequests: [
+        { id: 'w1', firmaId: 1, assignedTo: 8, status: 'in_lucru', entityType: 'entry', entityId: 'e1' },
+        { id: 'w2', firmaId: 1, assignedTo: 7, status: 'blocata', entityType: 'document', entityId: 'd1' },
+        { id: 'w3', firmaId: 1, assignedTo: 8, status: 'rezolvata', resolution: 'Confirmat prin mesaj.',
+          resolvedBy: 8, resolvedAt: '2026-08-20T10:00:00.000Z', entityType: 'declaration', entityId: 'dd1' },
+        { id: 'w4', firmaId: 1, assignedTo: 8, status: 'in_verificare', requestType: 'confirmare',
+          entityType: 'closing_step', entityId: '2026-08|aprobare' },
+      ],
+    };
+    const ap8 = mig.runMigrations(d8, { log: quiet });
+    ok('v8 aliniază stările vechi fără să pretindă că „în lucru” ajunsese la verificare',
+      ap8.some((x) => x.v === 8 && x.changed === 3)
+        && d8.workRequests[0].status === 'deschisa'
+        && d8.workRequests[1].status === 'asteapta_patronul');
+    ok('v8 materializează tipul și marchează explicit dovada rezolvării ca legacy',
+      d8.workRequests[1].requestType === 'document'
+        && d8.workRequests[2].requestType === 'alta'
+        && d8.workRequests[2].resolutionEvidence.legacy === true
+        && d8.workRequests[2].resolutionEvidence.note === 'Confirmat prin mesaj.');
+    d8.schemaVersion = 7;
+    ok('v8 este idempotentă pe date deja aliniate',
+      mig.runMigrations(d8, { log: quiet }).some((x) => x.v === 8 && x.changed === 0));
+  }
   // re-rulare pe baza deja migrata: idempotent prin VERSIUNE (niciun pas)
   const applied2 = mig.runMigrations(dOld, { log: quiet });
   eq('re-rulare: niciun pas aplicat', applied2.length, 0);

@@ -500,7 +500,9 @@ export function zileIntarziere(due, azi) {
 }
 let NOTIF_ITEMS = [];
 let MY_TASK_ITEMS = [];
-const TASK_STATUS = { deschisa: 'deschisă', in_lucru: 'în lucru', blocata: 'blocată', deschis: 'de făcut', blocat: 'așteaptă' };
+const TASK_STATUS = { deschisa: 'deschisă', asteapta_patronul: 'așteaptă patronul',
+  asteapta_contabilul: 'așteaptă contabilul', in_verificare: 'în verificare',
+  deschis: 'de făcut', blocat: 'așteaptă' };
 export function myTasksHtml(tasks) {
   if (!(tasks || []).length) return '<p class="muted">✓ Nu ai nicio sarcină deschisă alocată.</p>';
   return `<table><thead><tr><th></th><th>Firmă</th><th>Sarcină</th><th>Sursă</th><th>Termen</th><th>Stare</th><th></th></tr></thead><tbody>${
@@ -549,7 +551,7 @@ export async function rezolvaSarcina(task) {
       return;
     }
     try { sessionStorage.setItem('contab_open_task', String(task.id)); } catch (_) { /* indisponibil */ }
-    if (D.goTab) D.goTab('mesaje');
+    if (D.goTab) D.goTab('colaborare');
   } catch (e) { toast(e.message, true); }
 }
 // Firma, apoi luna, apoi ecranul — in ordinea asta: schimbarea firmei reincarca META si retrimite
