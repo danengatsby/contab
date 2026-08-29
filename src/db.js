@@ -116,6 +116,10 @@ const DEFAULT_DB = {
   audit: [],           // { id, ts, userId, username, firmaId, action, detail }
   auditOutbox: [],     // evenimente legate tranzactional de mutatiile contabile, replicate ulterior in NDJSON
   messages: [],        // { id, userId, fromAdmin, text, author, createdAt, readByUser, readByAdmin } - suport user<->admin
+  collaborationMessages: [], // conversatia patron-contabil, izolata per firma
+  workRequests: [],    // solicitari operationale cu responsabil/stare, izolate per firma
+  collaborationHandoffs: [], // incetari formale: solicitare -> dosar predat -> acces retras
+  ownershipTransfers: [], // transferuri de proprietar in doi pasi, cu acceptarea destinatarului
   recurringInvoices: [], // { id, firmaId, tip, partener, cuiPartener, fields, frecventa, ziua, activ, startDate, lastGenerated } - facturi recurente
   cursuriBnr: [],      // { id: 'YYYY-MM-DD', cursuri: { EUR: 5.231, ... } } - curs oficial BNR, GLOBAL (nu per firma)
   fiscalRuleSets: [],  // FiscalRuleSet-uri publicate ulterior, append-only; hash-ul se verifica la load
@@ -131,8 +135,8 @@ const DEFAULT_DB = {
   closings: [],        // { id, firmaId, period, steps, validari, aprobare, fortata, closedAt } - dosarul inchiderii lunare
   extractInterventions: [], // { id, firmaId, documentId, entryId, diff, controalePicate, partener, format } - corectiile operatorului peste extragere
   leasingContracts: [], // { id, firmaId, denumire, partener, cui, principal, months, dobandaAnuala, metoda, dataPrimeiRate, cotaTva } - contractele de leasing, sursa graficului de rate
-  accessRequests: [],  // { id, firmaId, userId, ts, status } - contabil care CERE acces la o firma existenta (aproba proprietarul)
-  serviceRequests: [], // { id, firmaId, ownerId, contabilId, mesaj, ts, status } - patron care ANGAJEAZA un contabil (accepta contabilul)
+  accessRequests: [],  // { id, firmaId, userId, rolSolicitat, ts, status } - contabil care CERE acces (aproba proprietarul)
+  serviceRequests: [], // { id, firmaId, ownerId, contabilId, rolAcordat, mesaj, ts, status } - patron care ANGAJEAZA un contabil
   visitors: [],        // { id=ip, ip, prima, ultima, cereri, pagini, ultimaCale, ua, bot, useri } - cine atinge site-ul, AGREGAT pe IP (src/visitors.js)
   customAccounts: [],  // { cod, nume, clasa, tip } - conturi personalizate (import)
   catalogDurate: [],   // { cod, denumire, aniMin, aniMax } - HG 2139/2004, GLOBAL (vezi src/catalogDurate.js)
@@ -241,6 +245,10 @@ function migrate(d) {
   if (!Array.isArray(d.audit)) d.audit = [];
   if (!Array.isArray(d.auditOutbox)) d.auditOutbox = [];
   if (!Array.isArray(d.messages)) d.messages = [];
+  if (!Array.isArray(d.collaborationMessages)) d.collaborationMessages = [];
+  if (!Array.isArray(d.workRequests)) d.workRequests = [];
+  if (!Array.isArray(d.collaborationHandoffs)) d.collaborationHandoffs = [];
+  if (!Array.isArray(d.ownershipTransfers)) d.ownershipTransfers = [];
   if (!Array.isArray(d.recipes)) d.recipes = [];
   if (!Array.isArray(d.budgets)) d.budgets = [];
   if (!Array.isArray(d.cashForecastSnapshots)) d.cashForecastSnapshots = [];

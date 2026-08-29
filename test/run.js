@@ -7204,6 +7204,23 @@ section('Matricea centrala de permisiuni (src/permissions.js)');
     !perm.requiresTwoFactor(operator, graph2fa)
       && !perm.requiresTwoFactor({ id: 21, role: 'user', username: 'demo', firmaRoluri: { 46: 'aprobator' } }, graph2fa));
   ok('restrictia readonly bate matricea rolului', !perm.can({ id: 8, role: 'user', firmaRoluri: { 44: 'aprobator' }, drepturi: { readonly: true } }, 44, 'annual.manage', firma));
+  const granular = { id: 22, role: 'user', firme: [44], firmaRoluri: { 44: 'operator' }, firmaRoluriDomenii: {
+    44: { contabilitate: 'fara_acces', salarizare: 'operator', trezorerie: 'verificator' },
+  } };
+  ok('rolurile pe arii nu mai vin la pachet', !perm.can(granular, 44, 'read', firma)
+    && perm.can(granular, 44, 'payroll.write', firma) && perm.can(granular, 44, 'treasury.approve', firma));
+  eq('verdictul numește aria care a refuzat accesul', perm.verdict(granular, 44, 'read', firma).domain, 'contabilitate');
+  ok('utilizatorii vechi fără hartă pe arii își păstrează rolul pe toate trei',
+    perm.DOMAIN_KEYS.every((domain) => perm.domainRolesFor(operator, 44, firma)[domain] === 'operator'));
+  const granularRead = { id: 23, role: 'user', firme: [44], firmaRoluri: { 44: 'vizualizare' }, firmaRoluriDomenii: {
+    44: { contabilitate: 'fara_acces', salarizare: 'vizualizare', trezorerie: 'vizualizare' },
+  } };
+  ok('„Doar vizualizare” acordat explicit într-o arie permite citirea acelei arii',
+    perm.can(granularRead, 44, 'payroll.read', firma) && perm.can(granularRead, 44, 'treasury.read', firma));
+  ok('rolul istoric vizualizare nu primește retroactiv salarii sau trezorerie',
+    !perm.can(faraRol, 44, 'payroll.read', firma) && !perm.can(faraRol, 44, 'treasury.read', firma));
+  ok('contractul permisiunilor publică cele trei arii',
+    perm.describe().domains.map((d) => d.key).join(',') === 'contabilitate,salarizare,trezorerie');
   ok('catalog ruta: import banca cere treasury.approve', perm.requiredActions('POST', '/api/bank/import', {}).includes('treasury.approve'));
   ok('catalog ruta: punctajul document-cu-document cere treasury.write',
     perm.requiredActions('POST', '/api/open-items/allocate', {}).includes('treasury.write')

@@ -17,6 +17,7 @@ const fiscal = require('./fiscal');
 const authlib = require('./auth');
 const accountSvc = require('./accountService');
 const messages = require('./messages');
+const collaboration = require('./collaborationService');
 const plans = require('./plans');
 const identitate = require('./identitate');
 const registruAnaf = require('./anafRegistru');
@@ -86,7 +87,7 @@ module.exports = function registerAuthRoutes(app, ctx) {
     const d = db.get();
     out.unreadMessages = (u.role === 'admin' && !req.impersonating)
       ? messages.unreadForAdmin(d.messages || [])
-      : messages.unreadForUser(d.messages || [], u.id);
+      : messages.unreadForUser(d.messages || [], u.id) + collaboration.unreadForUser(u);
     // Billing per-firma: starea abonamentului FIRMEI active + semnalul de read-only pentru banner.
     if (u.role !== 'admin') {
       // `activeId(req)` citeste req.user — dar /api/me e in PUBLIC_PATHS, deci middleware-ul de

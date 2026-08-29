@@ -599,6 +599,20 @@ section('Declarații: eticheta spune UNDE ești față de termen, nu doar „Ned
   eq('fără urgență se cade pe starea salvată', s('nedepusa', undefined).t, 'Nedepusă');
 }
 
+section('Sarcinile mele: solicitări și pași lunari într-un singur inbox');
+{
+  const html = livrabile.myTasksHtml([
+    { firma: 'ACME <SRL>', title: 'Trimite <extrasul>', description: 'Până la închidere', source: 'request', due: '2026-08-31', status: 'deschisa', unread: true },
+    { firma: 'BETA SRL', title: 'Documente complete', description: '', source: 'monthly-close', due: null, status: 'blocat', unread: false },
+  ]);
+  ok('inboxul reunește solicitările și pașii de închidere', html.includes('Solicitare') && html.includes('Închidere lunară'));
+  ok('alocarea nouă este marcată vizibil', html.includes('task-unread') && html.includes('nou'));
+  ok('termenul este afișat în format românesc', html.includes('31.08.2026'));
+  ok('datele sarcinii sunt escapate', html.includes('ACME &lt;SRL&gt;') && html.includes('Trimite &lt;extrasul&gt;')
+    && !html.includes('<extrasul>'));
+  ok('lista goală confirmă explicit că nu există sarcini', livrabile.myTasksHtml([]).includes('nicio sarcină'));
+}
+
 section('Primii pași: pasul 1 SPUNE ce lipsește, nu doar rămâne nebifat');
 {
   // Pasul stătea nebifat pe un ecran („Firma mea") cu ~40 de câmpuri, fără să spună care.
@@ -2014,6 +2028,11 @@ section('Cockpit de închidere lunară: compunerea pașilor (public/inchidere.js
   // ESCAPARE: numele partenerului ajunge în blocaj din documentele primite; username-ul din cont
   ok('motivul blocajului e escapat', hDeschis.includes('&lt;b&gt;ACME&lt;/b&gt;') && !hDeschis.includes('<b>ACME'));
   ok('numele utilizatorului e escapat în select', hDeschis.includes('maria&lt;script&gt;') && !hDeschis.includes('maria<script>'));
+  ok('nota poate fi editată și salvată direct pe pas', hDeschis.includes('class="cl-note"')
+    && hDeschis.includes('class="btn small cl-note-save"') && hDeschis.includes('maxlength="300"'));
+  const hNota = inchidere.stepHtml(Object.assign({}, pasDeschis, { nota: '<motiv> & clarificare' }), resp);
+  ok('nota existentă intră în control și rămâne escapata', hNota.includes('&lt;motiv&gt; &amp; clarificare')
+    && !hNota.includes('<motiv>'));
 
   // ALOCAREA SE PLIAZA cand nu e nimeni intre cine sa alegi (contabilul care lucreaza singur).
   // Invariantul care conteaza NU e „se pliaza", ci „nu se ascunde nimic din ce trebuie vazut":
@@ -2548,14 +2567,44 @@ section('Administrare: lista de contabili si cererile de servicii');
   ok('descrierea externa nu poate injecta markup', html.includes('&lt;b&gt;rapida&lt;/b&gt;') && !html.includes('<b>rapida'));
   ok('denumirea firmei din <option> e escapata', html.includes('ALFA &lt;SRL&gt;'));
   ok('id-urile ajung in atribute data- pentru butonul de cerere', html.includes('data-id="9"'));
-  ok('autorizatia declarata se arata ca pastila', /CECCAR 12\/2020/.test(html));
+  ok('autorizatia nu este prezentata ca validata de platforma',
+    /Autorizație declarată: 12\/2020 · neverificată/.test(html) && /neverificat[ăa] de Contabo/.test(html));
+  ok('cererea de servicii cere un rol explicit si porneste operational ca aprobator',
+    html.includes('class="srv-rol"') && /value="aprobator" selected/.test(html));
 
   const fara = admin.randContabil(c, []);
   ok('fara firme proprii nu se ofera butonul de cerere, ci explicatia', !fara.includes('srv-cere') && /firm[ăa] proprie/i.test(fara));
   ok('...si nici selectorul de firma', !fara.includes('srv-firma'));
 
+  const lifecycle = {
+    eu: 2, poateGestiona: false, demo: false,
+    handoffs: [{ id: 'predare_<x>', collaboratorId: 2, collaboratorName: '<Contabil>', initiatedBy: 1,
+      initiatedByName: 'patron', reason: '<img src=x onerror=alert(1)>', status: 'solicitata', createdAt: '2026-08-29T10:00:00Z' }],
+    ownershipTransfers: [{ id: 'transfer_<x>', fromUserId: 1, fromUserName: '<Patron>', toUserId: 2,
+      toUserName: '<Contabil>', status: 'in_asteptare', createdAt: '2026-08-29T10:00:00Z' }],
+  };
+  const predariHtml = admin.handoffsHtml(lifecycle);
+  ok('predarea afiseaza actiunea numai colaboratorului vizat', /handoffready/.test(predariHtml));
+  ok('motivul si partile predarii sunt escapate', predariHtml.includes('&lt;img src=x onerror=alert(1)&gt;')
+    && predariHtml.includes('&lt;Contabil&gt;') && !predariHtml.includes('<img src=x'));
+  const transferHtml = admin.ownershipTransfersHtml(lifecycle);
+  ok('destinatarul transferului poate accepta sau refuza', /transferaccept/.test(transferHtml) && /transfercancel/.test(transferHtml));
+  ok('numele partilor transferului sunt escapate', transferHtml.includes('&lt;Patron&gt;') && transferHtml.includes('&lt;Contabil&gt;'));
+
   ok('starile cererii au etichete romanesti', admin.STARE_SRV.in_asteptare === 'în așteptare'
     && admin.STARE_SRV.acceptata === 'acceptată' && admin.STARE_SRV.refuzata === 'refuzată' && admin.STARE_SRV.retrasa === 'retrasă');
+
+  const appHtml = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  ok('lista contabililor avertizeaza vizibil ca autorizatiile sunt declarate, nu verificate',
+    /numărul autorizației sunt declarate de utilizatori, nu verificate de Contabo/.test(appHtml)
+    && /neverificat de Contabo/.test(appHtml));
+  const tabMesaje = (appHtml.match(/<section id="tab-mesaje"[\s\S]*?<\/section>/) || [''])[0];
+  ok('Mesaje separa colaborarea firmei de suportul Contabo',
+    /id="msgCollabView"/.test(tabMesaje) && /id="msgUserView"/.test(tabMesaje) && /Suport Contabo/.test(tabMesaje));
+  ok('colaborarea are solicitari cu responsabil, termen si legatura la document',
+    /id="collabRequestForm"/.test(tabMesaje) && /Responsabil/.test(tabMesaje) && /Termen/.test(tabMesaje) && /document\/articol/.test(tabMesaje));
+  ok('textele de acceptare nu mai promit acces nediferentiat la toate datele',
+    !/Aprobarea le dă acces la toate datele firmei/.test(appHtml) && !/Acceptarea îți dă acces la toate datele firmei/.test(appHtml));
 }
 
 

@@ -380,7 +380,7 @@
       <button type="button" class="nav-action" id="uiModeBtn" title="Păstrează spațiul rolului activ. Simplu folosește vocabular accesibil și densitate confortabilă; Expert afișează termenii tehnici și o densitate mai mare.">🛠 Expert</button>
       <button type="button" class="nav-action" id="glossaryBtn" title="Dicționar contabil — termenii aplicației explicați pe înțelesul tuturor">❓ Dicționar</button>
       <label class="language-picker nav-language"><span>🌐 Limbă</span><select class="language-switch" aria-label="Limba aplicației"><option value="ro">RO</option><option value="en">EN</option></select></label>
-      <button data-tab="notificari" title="Notificări — termene fiscale">🔔 Notificări<span id="notifBadge" class="navbadge hidden">0</span></button>
+      <button data-tab="notificari" title="Sarcini alocate și termene fiscale">🔔 Notificări<span id="notifBadge" class="navbadge hidden">0</span></button>
       <div class="navgroup">
         <button class="navlabel" type="button">📥 Documente & facturi</button>
         <div class="navmenu">
@@ -686,13 +686,42 @@
       </div>
     </section>
 
-    <!-- ─────────────── MESAJE (suport user <-> admin) ─────────────── -->
+    <!-- ─────────────── COLABORARE PE FIRMA + SUPORT ─────────────── -->
     <section id="tab-mesaje" class="tab">
       <div class="toolbar"><h2>💬 Mesaje</h2><div class="spacer"></div><label class="muted msg-sound-lbl"><input type="checkbox" id="msgSound"> 🔔 Sunet la mesaj nou</label><button id="msgRefresh" class="btn" type="button">↻ Reîmprospătează</button></div>
-      <!-- vedere utilizator: conversație directă cu administratorul -->
+      <!-- vedere utilizator: colaborare strict pe firma activa -->
+      <div id="msgCollabView" class="hidden">
+        <div class="grid2 collab-layout">
+          <div class="card">
+            <h3 id="collabTitle">Conversația firmei active</h3>
+            <p class="muted">Mesajele de aici sunt vizibile numai membrilor firmei active. Suportul Contabo rămâne separat, mai jos.</p>
+            <div id="collabThread" class="chat"></div>
+            <form id="collabMessageForm" class="chat-compose">
+              <textarea id="collabMessageText" rows="2" placeholder="Scrie patronului sau contabilului…" maxlength="4000"></textarea>
+              <input type="hidden" id="collabMessageRequestId">
+              <button class="btn primary" type="submit">Trimite</button>
+              <span id="collabMessageContext" class="filechip-sel hidden"></span>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Solicitări și documente așteptate</h3>
+            <p class="muted">Fiecare solicitare are un responsabil: vezi imediat ce așteaptă patronul și ce așteaptă contabilul.</p>
+            <form id="collabRequestForm" class="dyn collab-request-form">
+              <label class="full">Ce trebuie făcut <input name="title" maxlength="160" placeholder="ex. Încarcă extrasul bancar pe august" required></label>
+              <label>Responsabil <select name="assignedTo" id="collabAssigned" required></select></label>
+              <label>Termen <input name="due" type="date"></label>
+              <label class="full">Detalii <textarea name="description" rows="2" maxlength="2000" placeholder="Context sau informații necesare"></textarea></label>
+              <label class="full">Leagă de un document/articol <select name="entity" id="collabEntity"><option value="">Fără legătură</option></select></label>
+              <button class="btn primary" type="submit">+ Creează solicitarea</button>
+            </form>
+            <div id="collabRequests"></div>
+          </div>
+        </div>
+      </div>
+      <!-- vedere utilizator: canal separat de suport catre administrator -->
       <div id="msgUserView" class="card hidden">
-        <h3>Cere informații sau ajutor administratorului</h3>
-        <p class="muted">Scrie-i administratorului — întrebări, probleme, cereri. Îți răspunde tot aici.</p>
+        <h3>Suport Contabo</h3>
+        <p class="muted">Acest canal ajunge la administratorul aplicației și este separat de conversația firmei.</p>
         <div id="msgThread" class="chat"></div>
         <div id="msgTypingUser" class="typing hidden">administratorul scrie<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>
         <form id="msgForm" class="chat-compose">
@@ -1541,11 +1570,12 @@
       <div class="card"><h3 class="card-titlu-mare">Activitate recentă</h3><div id="portoRecent" class="tablewrap"></div></div>
     </section>
 
-    <!-- ─────────────── NOTIFICARI (termene fiscale) ─────────────── -->
+    <!-- ─────────────── SARCINI + NOTIFICARI ─────────────── -->
     <section id="tab-notificari" class="tab">
-      <div class="toolbar"><h2>🔔 Notificări — termene fiscale</h2></div>
-      <div class="explain"><span class="ei">⏰</span><p>Restanțe și termene de depunere din următoarele 7 zile, pe toate firmele la care ai acces. O declarație dispare de aici când e marcată „depusă" sau „scutită" în registrul depunerilor.</p></div>
-      <div class="card"><div id="notifList" class="tablewrap"></div></div>
+      <div class="toolbar"><h2>🔔 Sarcinile mele și notificări</h2></div>
+      <div class="explain"><span class="ei">✓</span><p>Aici vezi într-un singur loc solicitările patron–contabil și pașii de închidere lunară care îți sunt alocați, peste toate firmele tale.</p></div>
+      <div class="card"><h3>Sarcinile mele</h3><div id="myTasksList" class="tablewrap"></div></div>
+      <div class="card"><h3>Termene fiscale</h3><p class="muted">Restanțe și termene de depunere din următoarele 7 zile. O declarație dispare când este marcată „depusă” sau „scutită”.</p><div id="notifList" class="tablewrap"></div></div>
     </section>
 
     <!-- ─────────────── RECONCILIERE ─────────────── -->
@@ -2734,6 +2764,10 @@ Cu stimă,
             <input name="notifyDeadlines" type="checkbox" checked data-u="u15" />
             Primește zilnic pe email termenele fiscale (restanțe + următoarele 7 zile)
           </label>
+          <label class="full">
+            <input name="notifyAssignments" type="checkbox" checked />
+            Anunță-mă imediat pe email când altcineva îmi alocă o sarcină
+          </label>
           <label class="full">CNP de test <span class="muted">(opțional; folosește numai o identitate fictivă în etapa actuală)</span>
             <input name="cnp" inputmode="numeric" maxlength="13" placeholder="1900101415238"
                    title="Nu introduce CNP-ul unei persoane reale. După salvare se afișează mascat." /></label>
@@ -2752,7 +2786,7 @@ Cu stimă,
             <label class="full">Adresă <input name="adresa" placeholder="Str. Exemplu nr. 1" /></label>
             <label>Oraș <input name="oras" /></label>
             <label>Județ <input name="judet" placeholder="ex. Cluj" /></label>
-            <label class="full hidden" id="autorizatieRow">Nr. autorizație / carnet CECCAR (contabil) <input name="autorizatie" placeholder="ex. 12345/2020" /></label>
+            <label class="full hidden" id="autorizatieRow">Nr. autorizație / carnet CECCAR (declarat de tine; neverificat de Contabo) <input name="autorizatie" placeholder="ex. 12345/2020" /></label>
           </div>
           <button class="btn primary">Salvează</button>
         </form>
@@ -2852,24 +2886,31 @@ Cu stimă,
           <a class="link" id="firmaProprieShow">Înscrie-o →</a></p>
 
         <p class="muted"><b>Firmă care există deja în aplicație.</b> Preiei contabilitatea unui client? Cere acces după CUI.
-          <b>Proprietarul firmei decide</b>; primești acces doar după ce aprobă el.</p>
+          <b>Proprietarul firmei decide rolul în Contabilitate</b>; Salarizarea și Trezoreria se acordă separat.</p>
         <form id="cerereAccesForm" class="dyn">
           <label>CUI-ul firmei <input name="cui" placeholder="RO12345678" required /></label>
+          <label>Rol solicitat în Contabilitate <select name="rol">
+            <option value="aprobator">Aprobator — verifică, aprobă și postează</option>
+            <option value="verificator">Verificator — validează și aprobă</option>
+            <option value="operator">Operator — introduce și validează</option>
+            <option value="vizualizare">Doar vizualizare</option>
+          </select></label>
           <button class="btn">Trimite cererea</button>
         </form>
         <div id="cerereAccesStatus" class="status"></div>
 
         <h3>Cereri de acces la firmele tale</h3>
-        <p class="muted">Conturi care au cerut acces la firmele al căror proprietar ești. Aprobarea le dă acces la toate datele firmei.</p>
+        <p class="muted">Conturi care au cerut acces la firmele al căror proprietar ești. La aprobare alegi explicit rolul în Contabilitate; celelalte arii rămân închise.</p>
         <div id="cereriPrimite" class="tablewrap"></div>
 
       </div>
       <div class="card" id="contabiliCard">
         <h2>🧮 Contabili și cereri de servicii</h2>
         <p class="muted">Ca <b>patron</b>: alegi un contabil din listă și îi trimiți o cerere pentru una dintre firmele tale —
-          el <b>acceptă sau refuză</b>, și abia atunci primește acces la datele firmei.
+          el <b>acceptă sau refuză</b>, iar cererea arată exact rolul pe care îl va primi în Contabilitate.
           Ca <b>contabil</b>: bifează „Apar în lista de contabili" în „Contul meu" ca să te poată găsi, și răspunzi mai jos cererilor primite.</p>
         <h3>Contabili disponibili</h3>
+        <p class="status warn"><b>Important:</b> datele profesionale și numărul autorizației sunt declarate de utilizatori, nu verificate de Contabo. Verifică direct în evidențele CECCAR înainte de a încheia contractul.</p>
         <div id="contabiliList" class="tablewrap"></div>
         <div id="cerereServiciiStatus" class="status"></div>
 
@@ -2877,21 +2918,43 @@ Cu stimă,
         <div id="serviciiTrimise" class="tablewrap"></div>
 
         <h3>Cereri primite de la patroni</h3>
-        <p class="muted">Firme care te-au cerut ca și contabil. Acceptarea îți dă acces la toate datele firmei.</p>
+        <p class="muted">Firme care te-au cerut ca și contabil. Acceptarea îți acordă rolul afișat în aria <b>Contabilitate</b>; Salarizarea și Trezoreria rămân închise până când proprietarul le acordă separat.</p>
         <div id="serviciiPrimite" class="tablewrap"></div>
 
       </div>
       <div class="card" id="colaboratoriBox">
         <h2>👥 Colaboratori pe firmă</h2>
-        <p class="muted">Dă acces la <b>firma activă</b> altei persoane — un <b>contabil</b> poate adăuga administratorul firmei, iar administratorul poate adăuga un contabil. Rolul implicit este doar vizualizare; acordă operare sau aprobare numai când este necesar.</p>
+        <p class="muted">Dă acces la <b>firma activă</b> altei persoane. Contabilitatea, salarizarea și trezoreria se acordă separat: accesul într-o arie nu deschide automat celelalte două.</p>
         <div id="colaboratoriList" class="tablewrap"></div>
+        <div id="collaborationLifecycle">
+          <h3>Încetări și predarea dosarului</h3>
+          <p class="muted">Accesul unui colaborator activ se retrage numai după ce acesta confirmă predarea, aplicația sigilează inventarul dosarului cu SHA-256, iar proprietarul confirmă primirea.</p>
+          <div id="handoffList"></div>
+          <h3>Transferul proprietății</h3>
+          <p class="muted">Proprietarul curent inițiază transferul către un colaborator activ. Noul proprietar trebuie să accepte explicit; fostul proprietar rămâne cu acces doar la vizualizarea Contabilității.</p>
+          <div id="ownershipTransferList"></div>
+        </div>
         <form id="colaboratorForm" class="dyn" data-u="u8">
           <label>Utilizator sau email <input id="colaboratorKey" name="key" placeholder="ex. contabil.ionescu sau nume@exemplu.ro" autocomplete="off" /></label>
-          <label>Rol pe firmă <select id="colaboratorRol" name="rol">
+          <label>Contabilitate <select id="colaboratorRolContabilitate" name="rolContabilitate">
             <option value="vizualizare">Doar vizualizare</option>
             <option value="operator">Operator — introduce și validează</option>
             <option value="verificator">Verificator — validează și aprobă</option>
             <option value="aprobator">Aprobator — verifică, aprobă și postează</option>
+          </select></label>
+          <label>Salarizare <select id="colaboratorRolSalarizare" name="rolSalarizare">
+            <option value="fara_acces">Fără acces</option>
+            <option value="vizualizare">Doar vizualizare</option>
+            <option value="operator">Operator</option>
+            <option value="verificator">Verificator</option>
+            <option value="aprobator">Aprobator</option>
+          </select></label>
+          <label>Trezorerie <select id="colaboratorRolTrezorerie" name="rolTrezorerie">
+            <option value="fara_acces">Fără acces</option>
+            <option value="vizualizare">Doar vizualizare</option>
+            <option value="operator">Operator</option>
+            <option value="verificator">Verificator</option>
+            <option value="aprobator">Aprobator</option>
           </select></label>
           <div class="row" data-u="u46">
             <button type="button" id="colaboratorAddExisting" class="btn primary">Adaugă cont existent</button>
@@ -2908,8 +2971,8 @@ Cu stimă,
         <div id="usersList" class="tablewrap"></div>
 
         <h3>Matricea de permisiuni pe firmă</h3>
-        <p class="muted">Este aceeași matrice aplicată de server. Restricțiile „doar citire” și
-          „fără salarii” se aplică suplimentar peste rolul colaboratorului.</p>
+        <p class="muted">Este aceeași matrice aplicată de server, separat pe Contabilitate,
+          Salarizare și Trezorerie. Restricțiile globale „doar citire” și „fără salarii” se aplică suplimentar.</p>
         <div id="permissionsMatrix" class="tablewrap"></div>
 
         <h3>Firmele și cine le gestionează</h3>

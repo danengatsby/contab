@@ -96,6 +96,13 @@ const ARRAY_COLLS = [
   // Catalogul duratelor HG 2139/2004: GLOBAL, ca planul de conturi — acelasi pentru toate firmele.
   { key: 'catalogDurate', firma: false, hasId: false },
   { key: 'messages', firma: false, hasId: true },
+  // Spatiul operational patron-contabil este separat de suportul global user-admin.
+  { key: 'collaborationMessages', firma: true, hasId: true },
+  { key: 'workRequests', firma: true, hasId: true },
+  // Incetarea colaborarii si transferul proprietatii sunt fluxuri persistente, nu simple
+  // stergeri de acces. Istoricul si fotografia dosarului raman in baza dupa finalizare.
+  { key: 'collaborationHandoffs', firma: true, hasId: true },
+  { key: 'ownershipTransfers', firma: true, hasId: true },
   { key: 'recurringInvoices', firma: true, hasId: true },
   { key: 'recipes', firma: true, hasId: true },
   { key: 'budgets', firma: true, hasId: true },

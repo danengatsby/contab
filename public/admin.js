@@ -9,6 +9,11 @@ import { stare, controaleHtml, leaga, MARIME_IMPLICITA } from './paginare.js';
 
 let deps = {};
 export function setAdminDeps(d) { deps = d; }
+export const ROL_COLAB = {
+  fara_acces: 'Fără acces', vizualizare: 'Doar vizualizare', operator: 'Operator', verificator: 'Verificator', aprobator: 'Aprobator',
+};
+const roleOptions = (selected) => Object.entries(ROL_COLAB).filter(([value]) => value !== 'fara_acces')
+  .map(([value, label]) => `<option value="${value}"${value === selected ? ' selected' : ''}>${label}</option>`).join('');
 
 // ── Cereri de acces la o firma existenta ──
 // Un contabil care preia o firma nu si-o mai creeaza a doua oara (ar iesi o firma goala, dublura),
@@ -18,18 +23,20 @@ export async function renderCereriAcces() {
   let d; try { d = await api('/api/firme/cereri'); } catch (e) { box.innerHTML = ''; return; }
   const c = d.cereri || [];
   box.innerHTML = c.length
-    ? `<table><thead><tr><th>Firma</th><th>Cine cere</th><th>Email</th><th>Când</th><th></th></tr></thead><tbody>${
+    ? `<table><thead><tr><th>Firma</th><th>Cine cere</th><th>Email</th><th>Rol Contabilitate</th><th>Când</th><th></th></tr></thead><tbody>${
       c.map((r) => `<tr><td>${H(r.firma)}</td><td>${H(r.username)}</td><td class="muted">${H(r.email)}</td>
+        <td><select class="cer-rol" data-id="${H(r.id)}">${roleOptions(r.rolSolicitat || 'aprobator')}</select></td>
         <td class="muted">${String(r.ts || '').slice(0, 10)}</td>
         <td><button class="btn small primary cer-ok" data-id="${H(r.id)}">Aprobă</button>
             <button class="btn small cer-nu" data-id="${H(r.id)}">Respinge</button></td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio cerere în așteptare.</p>';
   const decide = async (id, aprob) => {
     try {
+      const role = $(`#cereriPrimite .cer-rol[data-id="${id}"]`);
       const r = await api('/api/firme/cereri/' + encodeURIComponent(id), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aprob }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aprob, rol: role && role.value }),
       });
-      toast(aprob ? ('Acces acordat pentru „' + r.firma + '".') : 'Cerere respinsă.');
+      toast(aprob ? ('Acces acordat în Contabilitate pentru „' + r.firma + '" ca ' + (ROL_COLAB[r.rol] || r.rol) + '.') : 'Cerere respinsă.');
       renderCereriAcces();
     } catch (e) { toast(e.message, true); }
   };
@@ -42,7 +49,7 @@ $('#cerereAccesForm') && $('#cerereAccesForm').addEventListener('submit', async 
   try {
     const r = await api('/api/firme/cerere-acces', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cui: e.target.cui.value }),
+      body: JSON.stringify({ cui: e.target.cui.value, rol: e.target.rol.value }),
     });
     // mesajul e acelasi fie ca firma exista sau nu — ecranul nu are voie sa devina un mod de a
     // afla ce firme sunt in aplicatie, incercand CUI-uri
@@ -60,12 +67,14 @@ $('#cerereAccesForm') && $('#cerereAccesForm').addEventListener('submit', async 
 export function randContabil(c, firme) {
   const optiuni = firme.map((f) => `<option value="${H(f.id)}">${H(f.nume)}</option>`).join('');
   const contact = [c.oras, c.telefon].filter(Boolean).map(H).join(' · ');
+  const autorizatie = c.autorizatieDeclarata || c.autorizatie || '';
   return `<tr>
-    <td><b>${H(c.nume)}</b>${c.autorizatie ? ' <span class="pill" title="Număr de autorizație declarat">CECCAR ' + H(c.autorizatie) + '</span>' : ''}
+    <td><b>${H(c.nume)}</b>${autorizatie ? ' <span class="pill warn" title="Informație declarată de utilizator; neverificată de Contabo">Autorizație declarată: ' + H(autorizatie) + ' · neverificată</span>' : ''}
       <div class="muted">${H(c.username)}${contact ? ' — ' + contact : ''}</div></td>
     <td>${c.descriere ? H(c.descriere) : '<span class="muted">—</span>'}</td>
     <td>${firme.length
     ? `<div class="srv-actiune"><select class="srv-firma" data-id="${H(c.id)}">${optiuni}</select>
+         <select class="srv-rol" data-id="${H(c.id)}" aria-label="Rol acordat în Contabilitate">${roleOptions('aprobator')}</select>
          <button class="btn small primary srv-cere" data-id="${H(c.id)}" data-nume="${H(c.nume)}">Trimite cererea</button></div>`
     : '<span class="muted">Ai nevoie de o firmă proprie ca să ceri servicii.</span>'}</td></tr>`;
 }
@@ -94,6 +103,7 @@ export async function renderContabili() {
     : '<p class="muted">Deocamdată niciun contabil nu s-a declarat disponibil. Revino mai târziu — sau, dacă tu ești contabil, bifează „Apar în lista de contabili" în „Contul meu".</p>';
   $$('#contabiliList .srv-cere').forEach((b) => b.addEventListener('click', async () => {
     const sel = $(`#contabiliList .srv-firma[data-id="${b.dataset.id}"]`);
+    const role = $(`#contabiliList .srv-rol[data-id="${b.dataset.id}"]`);
     const st = $('#cerereServiciiStatus');
     const mesaj = await promptAction('Mesajul va însoți cererea de acces trimisă către ' + b.dataset.nume + '.', {
       title: 'Ceri servicii contabile', label: 'Mesaj (opțional)', multiline: true, confirmLabel: 'Trimite cererea',
@@ -102,10 +112,10 @@ export async function renderContabili() {
     try {
       const r = await api('/api/firme/servicii', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firmaId: Number(sel.value), contabilId: Number(b.dataset.id), mesaj }),
+        body: JSON.stringify({ firmaId: Number(sel.value), contabilId: Number(b.dataset.id), rol: role.value, mesaj }),
       });
       st.className = 'status ok';
-      st.textContent = 'Cerere trimisă către ' + r.contabil + ' pentru „' + r.firma + '". Primește acces doar dacă acceptă.';
+      st.textContent = 'Cerere trimisă către ' + r.contabil + ' pentru „' + r.firma + '”, cu rolul ' + (ROL_COLAB[r.rol] || r.rol) + ' în Contabilitate. Salarizarea și Trezoreria rămân închise.';
       renderContabili();
     } catch (e) { st.className = 'status err'; st.textContent = e.message; }
   }));
@@ -114,8 +124,9 @@ export async function renderContabili() {
   const t = $('#serviciiTrimise');
   const tr = srv.trimise || [];
   t.innerHTML = tr.length
-    ? `<table><thead><tr><th>Firma</th><th>Contabil</th><th>Stare</th><th></th></tr></thead><tbody>${
+    ? `<table><thead><tr><th>Firma</th><th>Contabil</th><th>Rol</th><th>Stare</th><th></th></tr></thead><tbody>${
       tr.map((r) => `<tr><td>${H(r.firma)}</td><td>${H(r.contabil)}</td>
+        <td>${H(ROL_COLAB[r.rol] || r.rol)}</td>
         <td>${H(STARE_SRV[r.status] || r.status)}</td>
         <td>${r.status === 'in_asteptare' ? `<button class="btn small srv-retrag" data-id="${H(r.id)}">Retrage</button>` : ''}</td></tr>`).join('')}</tbody></table>`
     : '<p class="muted">Nicio cerere trimisă.</p>';
@@ -128,8 +139,9 @@ export async function renderContabili() {
   const p2 = $('#serviciiPrimite');
   const pr = srv.primite || [];
   p2.innerHTML = pr.length
-    ? `<table><thead><tr><th>Firma</th><th>Patron</th><th>Mesaj</th><th></th></tr></thead><tbody>${
+    ? `<table><thead><tr><th>Firma</th><th>Patron</th><th>Rol</th><th>Mesaj</th><th></th></tr></thead><tbody>${
       pr.map((r) => `<tr><td>${H(r.firma)}</td><td>${H(r.patron)}</td>
+        <td><b>${H(ROL_COLAB[r.rol] || r.rol)}</b></td>
         <td class="muted">${H(r.mesaj)}</td>
         <td><button class="btn small primary srv-da" data-id="${H(r.id)}">Accept</button>
             <button class="btn small srv-nu" data-id="${H(r.id)}">Refuz</button></td></tr>`).join('')}</tbody></table>`
@@ -139,7 +151,7 @@ export async function renderContabili() {
       const r = await api('/api/firme/servicii/' + encodeURIComponent(id), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accept }),
       });
-      toast(accept ? ('Ai primit acces la „' + r.firma + '".') : 'Cerere refuzată.');
+      toast(accept ? ('Ai primit acces la Contabilitate pentru „' + r.firma + '” ca ' + (ROL_COLAB[r.rol] || r.rol) + '.') : 'Cerere refuzată.');
       // acceptarea aduce o firma noua in cont: reincarca META si redeseneaza tot tabul,
       // altfel lista „Firmele mele" ramane cea de dinainte si pare ca nu s-a intamplat nimic
       if (accept) { await deps.init(); deps.onTab('setari'); return; }
@@ -388,6 +400,51 @@ export async function renderUsers() {
 
 // Colaboratori pe firma ACTIVA (pentru ORICE utilizator, nu doar admin): contabil <-> necontabil.
 const COLAB_PILL = { admin: 'background:#2f2e2a;color:#fff', contabil: 'background:#e2f5e8;color:#0a7d33', necontabil: 'background:#e7eefc;color:#1652d6', tester: 'background:#fff4e0;color:#b26a00' };
+export const STARE_PREDARE = { solicitata: 'predare solicitată', pregatita: 'dosar predat', finalizata: 'finalizată', anulata: 'anulată' };
+export const STARE_TRANSFER = { in_asteptare: 'așteaptă acceptarea', finalizat: 'finalizat', anulat: 'anulat', refuzat: 'refuzat' };
+const lifecycleDate = (value) => value ? String(value).slice(0, 16).replace('T', ' ') : '—';
+
+/** Markup pur, exportat si pentru testele de securitate frontend. */
+export function handoffsHtml(data) {
+  const rows = (data.handoffs || []).slice(-20).reverse();
+  const ownerOrAdmin = !!data.poateGestiona && !data.demo;
+  if (!rows.length) return '<p class="muted">Nicio încetare formală înregistrată.</p>';
+  return rows.map((r) => {
+    const active = r.status === 'solicitata' || r.status === 'pregatita';
+    const buttons = [];
+    if (r.status === 'solicitata' && Number(r.collaboratorId) === Number(data.eu)) {
+      buttons.push(`<button class="btn small primary handoffready" data-id="${H(r.id)}">Confirmă predarea dosarului</button>`);
+    }
+    if (r.status === 'pregatita' && ownerOrAdmin) {
+      buttons.push(`<button class="btn small primary handoffcomplete" data-id="${H(r.id)}" data-nume="${H(r.collaboratorName)}">Confirmă primirea și retrage accesul</button>`);
+    }
+    if (r.rootHash) buttons.push(`<a class="btn small" href="/api/colaboratori/handoffs/${encodeURIComponent(r.id)}/dossier">Descarcă procesul-verbal JSON</a>`);
+    if (active && (ownerOrAdmin || Number(r.initiatedBy) === Number(data.eu))) {
+      buttons.push(`<button class="btn small handoffcancel" data-id="${H(r.id)}">Anulează</button>`);
+    }
+    return `<div class="status"><b>${H(r.collaboratorName)}</b> · <span class="pill">${H(STARE_PREDARE[r.status] || r.status)}</span>
+      <div class="muted">Motiv: ${H(r.reason)} · inițiat de ${H(r.initiatedByName)} la ${H(lifecycleDate(r.createdAt))}${r.rootHash ? ' · SHA-256 ' + H(String(r.rootHash).slice(0, 16)) + '…' : ''}</div>
+      ${buttons.length ? `<div class="row">${buttons.join(' ')}</div>` : ''}</div>`;
+  }).join('');
+}
+
+export function ownershipTransfersHtml(data) {
+  const rows = (data.ownershipTransfers || []).slice(-20).reverse();
+  if (!rows.length) return '<p class="muted">Niciun transfer de proprietate înregistrat.</p>';
+  return rows.map((r) => {
+    const buttons = [];
+    if (r.status === 'in_asteptare' && Number(r.toUserId) === Number(data.eu)) {
+      buttons.push(`<button class="btn small primary transferaccept" data-id="${H(r.id)}">Acceptă proprietatea</button>`);
+      buttons.push(`<button class="btn small transfercancel" data-id="${H(r.id)}">Refuză</button>`);
+    } else if (r.status === 'in_asteptare' && Number(r.fromUserId) === Number(data.eu)) {
+      buttons.push(`<button class="btn small transfercancel" data-id="${H(r.id)}">Anulează transferul</button>`);
+    }
+    return `<div class="status"><b>${H(r.fromUserName)}</b> → <b>${H(r.toUserName)}</b> · <span class="pill">${H(STARE_TRANSFER[r.status] || r.status)}</span>
+      <div class="muted">Inițiat la ${H(lifecycleDate(r.createdAt))}. Proprietatea nu se schimbă până la acceptare.</div>
+      ${buttons.length ? `<div class="row">${buttons.join(' ')}</div>` : ''}</div>`;
+  }).join('');
+}
+
 export async function renderColaboratori() {
   const box = $('#colaboratoriBox'); if (!box) return;
   box.classList.remove('hidden');
@@ -396,13 +453,41 @@ export async function renderColaboratori() {
   const cols = data.colaboratori || [];
   const demo = !!data.demo;
   const poateGestiona = !!data.poateGestiona;
+  const isOwner = Number(data.ownerId) === Number(data.eu);
+  const handoffTargets = new Set((data.handoffs || []).filter((r) => r.status === 'solicitata' || r.status === 'pregatita').map((r) => Number(r.collaboratorId)));
+  const transferTargets = new Set((data.ownershipTransfers || []).filter((r) => r.status === 'in_asteptare').map((r) => Number(r.toUserId)));
   const pill = (c) => `<span class="pill" data-style="${COLAB_PILL[c.tip] || ''}">${c.tip || '—'}</span>`;
-  const roluri = { proprietar: 'Proprietar', aprobator: 'Aprobator', verificator: 'Verificator', operator: 'Operator', vizualizare: 'Doar vizualizare' };
-  $('#colaboratoriList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Rol pe firmă</th><th></th></tr></thead><tbody>${
-    cols.map((c) => `<tr><td><b>${H(c.username)}</b>${c.id === data.eu ? ' <span class="muted">(tu)</span>' : ''}${c.pending ? ' <span class="pill warn">invitație</span>' : ''}${c.email ? ` <span class="muted" data-u="u148">${H(c.email)}</span>` : ''}</td><td>${pill(c)}</td>
-      <td>${c.rol === 'proprietar' || !poateGestiona ? H(roluri[c.rol] || c.rol || 'Aprobator') : `<select class="colrole" data-id="${c.id}">${['aprobator','verificator','operator','vizualizare'].map((r) => `<option value="${r}"${c.rol === r ? ' selected' : ''}>${H(roluri[r])}</option>`).join('')}</select>`}</td>
-      <td>${!poateGestiona || c.id === data.eu || c.rol === 'proprietar' ? '' : `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>`}</td></tr>`).join('')
-    || '<tr><td colspan="4" class="muted">Deocamdată ești singurul cu acces la această firmă.</td></tr>'}</tbody></table>`;
+  const roluri = { proprietar: 'Proprietar', ...ROL_COLAB };
+  const domains = ['contabilitate', 'salarizare', 'trezorerie'];
+  const domainRole = (c, domain) => (c.roluri && c.roluri[domain]) || c.rol || 'vizualizare';
+  const domainCell = (c, domain) => {
+    if (c.rol === 'proprietar') return '<span class="pill ok">Acces complet</span>';
+    const selected = domainRole(c, domain);
+    if (!poateGestiona) return H(roluri[selected] || selected);
+    return `<select class="coldomain" data-id="${c.id}" data-domain="${domain}" aria-label="Rol ${domain}">${
+      ['fara_acces', 'vizualizare', 'operator', 'verificator', 'aprobator'].map((r) => `<option value="${r}"${selected === r ? ' selected' : ''}>${H(roluri[r])}</option>`).join('')}</select>`;
+  };
+  const actions = (c) => {
+    if (c.rol === 'proprietar') return '';
+    if (demo) return poateGestiona && c.id !== data.eu ? `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ scoate</button>` : '';
+    if (c.pending) return poateGestiona && c.id !== data.eu ? `<button class="del colremove" data-id="${c.id}" data-nume="${H(c.username)}">✕ anulează invitația</button>` : '';
+    const out = [];
+    if (!handoffTargets.has(Number(c.id)) && (poateGestiona || Number(c.id) === Number(data.eu))) {
+      out.push(`<button class="btn small colhandoff" data-id="${c.id}" data-nume="${H(c.username)}">Încheie colaborarea…</button>`);
+    }
+    if (isOwner && Number(c.id) !== Number(data.eu) && !transferTargets.has(Number(c.id))) {
+      out.push(`<button class="btn small coltransfer" data-id="${c.id}" data-nume="${H(c.username)}">Transferă proprietatea…</button>`);
+    }
+    return out.join(' ');
+  };
+  $('#colaboratoriList').innerHTML = `<table><thead><tr><th>Utilizator</th><th>Tip</th><th>Contabilitate</th><th>Salarizare</th><th>Trezorerie</th><th></th></tr></thead><tbody>${
+    cols.map((c) => `<tr data-col-id="${c.id}"><td><b>${H(c.username)}</b>${c.id === data.eu ? ' <span class="muted">(tu)</span>' : ''}${c.pending ? ' <span class="pill warn">invitație</span>' : ''}${c.email ? ` <span class="muted" data-u="u148">${H(c.email)}</span>` : ''}</td><td>${pill(c)}</td>
+      ${domains.map((domain) => `<td>${domainCell(c, domain)}</td>`).join('')}
+      <td>${actions(c)}</td></tr>`).join('')
+    || '<tr><td colspan="6" class="muted">Deocamdată ești singurul cu acces la această firmă.</td></tr>'}</tbody></table>`;
+  const lifecycle = $('#collaborationLifecycle'); if (lifecycle) lifecycle.classList.toggle('hidden', demo);
+  if ($('#handoffList')) $('#handoffList').innerHTML = demo ? '' : handoffsHtml(data);
+  if ($('#ownershipTransferList')) $('#ownershipTransferList').innerHTML = demo ? '' : ownershipTransfersHtml(data);
   const form = $('#colaboratorForm');
   if (form) { form.classList.toggle('hidden', !poateGestiona); form.querySelectorAll('input,select,button').forEach((el) => { el.disabled = !poateGestiona; }); }
   const note = $('#colaboratorInviteResult');
@@ -420,22 +505,80 @@ export async function renderColaboratori() {
     if (note) note.innerHTML = '';
   }
   $$('#colaboratoriList .colremove').forEach((b) => b.addEventListener('click', async () => {
-    if (!await confirmAction('„' + b.dataset.nume + '" nu va mai putea vedea sau modifica firma activă.', { title: 'Retragi accesul?', confirmLabel: 'Retrage accesul', danger: true })) return;
+    if (!await confirmAction('Invitația pentru „' + b.dataset.nume + '" va fi anulată.', { title: 'Anulezi invitația?', confirmLabel: 'Anulează invitația', danger: true })) return;
     try { await api('/api/colaboratori/' + b.dataset.id, { method: 'DELETE' }); renderColaboratori(); toast('Colaborator scos'); }
     catch (e) { toast(e.message, true); }
   }));
-  $$('#colaboratoriList .colrole').forEach((s) => s.addEventListener('change', async () => {
+  $$('#colaboratoriList .colhandoff').forEach((b) => b.addEventListener('click', async () => {
+    const reason = await promptAction('Motivul va rămâne în istoricul predării. Accesul nu se retrage încă.', {
+      title: 'Închei colaborarea cu ' + b.dataset.nume, label: 'Motivul încetării', required: true, minLength: 3,
+      multiline: true, confirmLabel: 'Pornește predarea', danger: true,
+    });
+    if (reason == null) return;
     try {
-      await api('/api/colaboratori/' + s.dataset.id + '/rol', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rol: s.value }) });
-      toast('Rol actualizat'); renderColaboratori();
+      await api('/api/colaboratori/handoffs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ collaboratorId: Number(b.dataset.id), reason }) });
+      await renderColaboratori(); toast('Procesul formal de predare a fost pornit');
+    } catch (e) { toast(e.message, true); }
+  }));
+  $$('#colaboratoriList .coltransfer').forEach((b) => b.addEventListener('click', async () => {
+    const confirmName = await promptAction('Transferul către „' + b.dataset.nume + '" va rămâne în așteptare până când persoana acceptă. Tastează exact denumirea firmei: ' + data.firmaName, {
+      title: 'Transferi proprietatea?', label: 'Denumirea exactă', required: true, confirmLabel: 'Trimite transferul', danger: true,
+    });
+    if (confirmName == null) return;
+    try {
+      await api('/api/colaboratori/ownership-transfers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetId: Number(b.dataset.id), confirmName }) });
+      await renderColaboratori(); toast('Transferul așteaptă acceptarea noului proprietar');
+    } catch (e) { toast(e.message, true); }
+  }));
+  $$('#handoffList .handoffready').forEach((b) => b.addEventListener('click', async () => {
+    if (!await confirmAction('Confirmi că documentele și clarificările firmei au fost puse la dispoziția proprietarului? Aplicația va sigila acum inventarul dosarului.', { title: 'Confirmi predarea?', confirmLabel: 'Sigilează dosarul' })) return;
+    try { await api('/api/colaboratori/handoffs/' + encodeURIComponent(b.dataset.id) + '/ready', { method: 'POST' }); await renderColaboratori(); toast('Dosarul a fost marcat ca predat'); }
+    catch (e) { toast(e.message, true); }
+  }));
+  $$('#handoffList .handoffcomplete').forEach((b) => b.addEventListener('click', async () => {
+    if (!await confirmAction('Confirmi primirea dosarului de la „' + b.dataset.nume + '"? După confirmare, accesul colaboratorului la firmă este retras.', { title: 'Finalizezi predarea?', confirmLabel: 'Confirmă și retrage accesul', danger: true })) return;
+    try { await api('/api/colaboratori/handoffs/' + encodeURIComponent(b.dataset.id) + '/complete', { method: 'POST' }); await renderColaboratori(); toast('Predare finalizată; accesul a fost retras'); }
+    catch (e) { toast(e.message, true); }
+  }));
+  $$('#handoffList .handoffcancel').forEach((b) => b.addEventListener('click', async () => {
+    if (!await confirmAction('Accesul rămâne neschimbat, iar procesul va apărea ca anulat în istoric.', { title: 'Anulezi predarea?', confirmLabel: 'Anulează procesul' })) return;
+    try { await api('/api/colaboratori/handoffs/' + encodeURIComponent(b.dataset.id) + '/cancel', { method: 'POST' }); await renderColaboratori(); toast('Procesul de predare a fost anulat'); }
+    catch (e) { toast(e.message, true); }
+  }));
+  $$('#ownershipTransferList .transferaccept').forEach((b) => b.addEventListener('click', async () => {
+    const confirmName = await promptAction('Prin acceptare devii proprietarul firmei și preiei deciziile privind accesul. Tastează exact denumirea: ' + data.firmaName, {
+      title: 'Accepți proprietatea?', label: 'Denumirea exactă', required: true, confirmLabel: 'Acceptă proprietatea', danger: true,
+    });
+    if (confirmName == null) return;
+    try {
+      await api('/api/colaboratori/ownership-transfers/' + encodeURIComponent(b.dataset.id) + '/accept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmName }) });
+      if (deps.init) await deps.init(); else await renderColaboratori();
+      if (deps.onTab) deps.onTab('setari'); toast('Acum ești proprietarul firmei');
+    } catch (e) { toast(e.message, true); }
+  }));
+  $$('#ownershipTransferList .transfercancel').forEach((b) => b.addEventListener('click', async () => {
+    if (!await confirmAction('Proprietatea firmei rămâne neschimbată.', { title: 'Închizi transferul?', confirmLabel: 'Confirmă' })) return;
+    try { await api('/api/colaboratori/ownership-transfers/' + encodeURIComponent(b.dataset.id) + '/cancel', { method: 'POST' }); await renderColaboratori(); toast('Transferul a fost închis'); }
+    catch (e) { toast(e.message, true); }
+  }));
+  $$('#colaboratoriList .coldomain').forEach((s) => s.addEventListener('change', async () => {
+    try {
+      const row = s.closest('tr'); const roluriNoi = {};
+      row.querySelectorAll('.coldomain').forEach((select) => { roluriNoi[select.dataset.domain] = select.value; });
+      await api('/api/colaboratori/' + s.dataset.id + '/access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roluri: roluriNoi }) });
+      toast('Accesul pe arii a fost actualizat'); renderColaboratori();
     } catch (e) { toast(e.message, true); renderColaboratori(); }
   }));
 }
 async function addColaborator(mod) {
   const key = ($('#colaboratorKey').value || '').trim();
   if (!key) { toast('Completează utilizatorul sau emailul.', true); return; }
-  const rol = ($('#colaboratorRol') && $('#colaboratorRol').value) || 'vizualizare';
-  const body = mod === 'invite' ? { mod: 'invite', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '', rol } : { mod: 'existing', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '', rol };
+  const roluri = {
+    contabilitate: ($('#colaboratorRolContabilitate') && $('#colaboratorRolContabilitate').value) || 'vizualizare',
+    salarizare: ($('#colaboratorRolSalarizare') && $('#colaboratorRolSalarizare').value) || 'fara_acces',
+    trezorerie: ($('#colaboratorRolTrezorerie') && $('#colaboratorRolTrezorerie').value) || 'fara_acces',
+  };
+  const body = mod === 'invite' ? { mod: 'invite', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '', roluri } : { mod: 'existing', username: key.includes('@') ? '' : key, email: key.includes('@') ? key : '', roluri };
   if (mod === 'invite' && !body.username) { toast('Pentru invitație alege un nume de utilizator (nu email).', true); return; }
   try {
     const r = await api('/api/colaboratori', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

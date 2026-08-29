@@ -1125,11 +1125,38 @@ async function main() {
       ok('colaboratori: lista firmei active cu marcaj „eu"', colList.status === 200 && Array.isArray(colList.json.colaboratori) && colList.json.eu && colList.json.colaboratori.some((c) => c.id === colList.json.eu));
       eq('colaboratori: fără sesiune -> 401 (sub garda /api)', (await req('GET', '/api/colaboratori')).status, 401);
       // adaugare cont existent: expirat (firma 3) capata acces si la firma 1
-      eq('colaboratori: adaugare cont existent -> 200', (await req('POST', '/api/colaboratori', { cookie: c1, body: { mod: 'existing', username: 'expirat' } })).status, 200);
+      eq('colaboratori: adaugare cont existent cu arii distincte -> 200', (await req('POST', '/api/colaboratori', { cookie: c1, body: {
+        mod: 'existing', username: 'expirat', roluri: { contabilitate: 'vizualizare', salarizare: 'operator', trezorerie: 'fara_acces' },
+      } })).status, 200);
       ok('colaboratori: expirat are acum acces la firma 1', ((await req('GET', '/api/me', { cookie: c3 })).json.firme || []).includes(1));
-      // scoatere -> expirat pierde firma 1 (starea revine curata)
-      eq('colaboratori: scoatere -> 200', (await req('DELETE', '/api/colaboratori/3', { cookie: c1 })).status, 200);
+      const colExpirat = (await req('GET', '/api/colaboratori', { cookie: c1 })).json.colaboratori.find((c) => c.id === 3);
+      ok('colaboratori: lista expune rolul separat pe fiecare arie', colExpirat.roluri.contabilitate === 'vizualizare'
+        && colExpirat.roluri.salarizare === 'operator' && colExpirat.roluri.trezorerie === 'fara_acces');
+      const accesSchimbat = await req('POST', '/api/colaboratori/3/access', { cookie: c1, body: {
+        roluri: { contabilitate: 'operator', salarizare: 'fara_acces', trezorerie: 'vizualizare' },
+      } });
+      ok('colaboratori: accesul pe arii se actualizează atomic', accesSchimbat.status === 200
+        && accesSchimbat.json.colaborator.roluri.contabilitate === 'operator'
+        && accesSchimbat.json.colaborator.roluri.salarizare === 'fara_acces');
+      // un colaborator activ nu dispare direct: contabilul confirma predarea, apoi proprietarul
+      eq('colaboratori: scoaterea directa a unui membru activ cere predare -> 409', (await req('DELETE', '/api/colaboratori/3', { cookie: c1 })).status, 409);
+      const predare = await req('POST', '/api/colaboratori/handoffs', { cookie: c1, body: { collaboratorId: 3, reason: 'Schimbarea prestatorului' } });
+      ok('colaboratori: proprietarul porneste predarea formala', predare.status === 200 && predare.json.handoff.status === 'solicitata');
+      const predareId = predare.json.handoff.id;
+      eq('colaboratori: proprietarul nu poate confirma in locul contabilului -> 403',
+        (await req('POST', '/api/colaboratori/handoffs/' + predareId + '/ready', { cookie: c1 })).status, 403);
+      const dosarPredat = await req('POST', '/api/colaboratori/handoffs/' + predareId + '/ready', { cookie: c3 });
+      ok('colaboratori: contabilul sigileaza inventarul dosarului', dosarPredat.status === 200
+        && dosarPredat.json.handoff.status === 'pregatita' && /^[0-9a-f]{64}$/.test(dosarPredat.json.handoff.rootHash));
+      const procesVerbal = await req('GET', '/api/colaboratori/handoffs/' + predareId + '/dossier', { cookie: c3 });
+      ok('colaboratori: procesul-verbal JSON este descarcabil de contabil', procesVerbal.status === 200
+        && procesVerbal.json.tip === 'proces-verbal-predare-dosar-contabil'
+        && procesVerbal.json.manifest.rootHash === dosarPredat.json.handoff.rootHash);
+      eq('colaboratori: proprietarul confirma primirea si retrage accesul -> 200',
+        (await req('POST', '/api/colaboratori/handoffs/' + predareId + '/complete', { cookie: c1 })).status, 200);
       ok('colaboratori: expirat a pierdut accesul la firma 1', !((await req('GET', '/api/me', { cookie: c3 })).json.firme || []).includes(1));
+      ok('colaboratori: fostul contabil isi poate descarca dovada si dupa retragere',
+        (await req('GET', '/api/colaboratori/handoffs/' + predareId + '/dossier', { cookie: c3 })).status === 200);
       // garzi: cont inexistent 404, adminul deja are acces 400
       eq('colaboratori: cont inexistent -> 404', (await req('POST', '/api/colaboratori', { cookie: c1, body: { mod: 'existing', username: 'nimeni-aici' } })).status, 404);
       eq('colaboratori: adminul deja are acces -> 400', (await req('POST', '/api/colaboratori', { cookie: c1, body: { mod: 'existing', username: 'admin2' } })).status, 400);
@@ -1139,6 +1166,17 @@ async function main() {
       const tok = (String(inv.json.link).match(/invite=([0-9a-f]+)/) || [])[1];
       const acc = await req('POST', '/api/invite/accept', { body: { token: tok, password: 'ParolaBuna2026' } });
       ok('colaboratori: acceptarea invitatiei -> user nou cu firma 1', acc.status === 200 && (acc.json.user.firme || []).includes(1));
+      // transferul poate fi pornit si anulat fara a schimba proprietarul; acceptarea integrala
+      // (inclusiv degradarea fostului proprietar) este acoperita la nivelul serviciului izolat.
+      const transfer = await req('POST', '/api/colaboratori/ownership-transfers', { cookie: c1,
+        body: { targetId: acc.json.user.id, confirmName: 'UNU SRL' } });
+      ok('colaboratori: transferul proprietatii porneste in asteptarea acceptarii', transfer.status === 200
+        && transfer.json.transfer.status === 'in_asteptare');
+      eq('colaboratori: alt utilizator nu poate accepta transferul -> 403',
+        (await req('POST', '/api/colaboratori/ownership-transfers/' + transfer.json.transfer.id + '/accept', { cookie: c3,
+          body: { confirmName: 'UNU SRL' } })).status, 403);
+      eq('colaboratori: proprietarul poate anula transferul in asteptare -> 200',
+        (await req('POST', '/api/colaboratori/ownership-transfers/' + transfer.json.transfer.id + '/cancel', { cookie: c1 })).status, 200);
       // curatenie: sterge userul nou (admin) ca sa nu intre in snapshotul testului de backup de mai jos
       const cAdmCol = (await req('POST', '/api/login', { body: { username: 'admin', password: ADMIN_PW } })).cookie;
       await req('DELETE', '/api/users/' + acc.json.user.id, { cookie: cAdmCol });
@@ -2097,7 +2135,22 @@ async function main() {
         && pmx.json.actions.some((a) => a.key === 'annual.manage')
         && pmx.json.actions.some((a) => a.key === 'treasury.approve')
         && pmx.json.actions.some((a) => a.key === 'declaration.submit')
-        && pmx.json.actions.some((a) => a.key === 'data.export'));
+        && pmx.json.actions.some((a) => a.key === 'data.export')
+        && pmx.json.domains.map((d) => d.key).join(',') === 'contabilitate,salarizare,trezorerie');
+      const separat = await req('POST', '/api/colaboratori/13/access', { cookie: c1, body: { roluri: {
+        contabilitate: 'fara_acces', salarizare: 'operator', trezorerie: 'fara_acces',
+      } } });
+      ok('roluri pe arii HTTP: proprietarul acordă exclusiv salarizare', separat.status === 200);
+      eq('roluri pe arii HTTP: salarizarea nu deschide contabilitatea',
+        (await req('GET', '/api/dashboard', { cookie: cOperatorSod })).status, 403);
+      const angSeparat = await req('POST', '/api/angajati', { cookie: cOperatorSod,
+        body: { nume: 'Test acces separat', salariuBrut: 1000 } });
+      ok('roluri pe arii HTTP: mutația salarială nu mai cere și write contabilitate',
+        angSeparat.status === 200 && angSeparat.json.angajat.nume === 'Test acces separat');
+      eq('roluri pe arii HTTP: trezoreria rămâne închisă',
+        (await req('GET', '/api/bank/statements', { cookie: cOperatorSod })).status, 403);
+      await req('DELETE', '/api/angajati/' + angSeparat.json.angajat.id, { cookie: cOperatorSod });
+      await req('POST', '/api/colaboratori/13/rol', { cookie: c1, body: { rol: 'operator' } });
       eq('SoD HTTP: operatorul poate citi trezoreria', (await req('GET', '/api/bank/statements', { cookie: cOperatorSod })).status, 200);
       eq('SoD HTTP: operatorul nu poate posta extrasul', (await req('POST', '/api/bank/import', {
         cookie: cOperatorSod, body: { statementId: 'x', transactions: [] } })).status, 403);
@@ -3552,7 +3605,7 @@ async function main() {
         (await enrollTwoFactor(contabil.cookie)).status === 200);
 
       // raspuns IDENTIC pentru firma care exista si pentru una inventata
-      const exista = await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: 'RO5550005' } });
+      const exista = await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: 'RO5550005', rol: 'operator' } });
       const nuExista = await req('POST', '/api/firme/cerere-acces', { cookie: contabil.cookie, body: { cui: 'RO9999999' } });
       ok('cerere: acelasi raspuns pentru firma reala si inexistenta (fara enumerare)',
         exista.status === 200 && nuExista.status === 200 && exista.text === nuExista.text);
@@ -3563,7 +3616,8 @@ async function main() {
 
       // patronul vede cererea; contabilul nu vede nimic (nu e proprietar)
       const cereriPatron = (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri;
-      ok('patronul vede cererea', cereriPatron.length === 1 && cereriPatron[0].username === 'contabil-t' && cereriPatron[0].firmaId === fidP);
+      ok('patronul vede cererea si rolul solicitat', cereriPatron.length === 1 && cereriPatron[0].username === 'contabil-t'
+        && cereriPatron[0].firmaId === fidP && cereriPatron[0].rolSolicitat === 'operator');
       eq('contabilul nu vede cereri (nu e proprietar)', (await req('GET', '/api/firme/cereri', { cookie: contabil.cookie })).json.cereri.length, 0);
 
       // cine NU e proprietar nu poate decide — nici macar cel care a cerut
@@ -3571,12 +3625,74 @@ async function main() {
         (await req('POST', '/api/firme/cereri/' + cereriPatron[0].id, { cookie: contabil.cookie, body: { aprob: true } })).status, 403);
 
       // aprobarea patronului da accesul
-      const ap = await req('POST', '/api/firme/cereri/' + cereriPatron[0].id, { cookie: patron.cookie, body: { aprob: true } });
-      ok('patronul aproba', ap.status === 200 && ap.json.status === 'aprobata');
+      const ap = await req('POST', '/api/firme/cereri/' + cereriPatron[0].id, { cookie: patron.cookie, body: { aprob: true, rol: 'aprobator' } });
+      ok('patronul aproba cu rol explicit', ap.status === 200 && ap.json.status === 'aprobata' && ap.json.rol === 'aprobator');
       ok('dupa aprobare contabilul are firma', (await req('GET', '/api/firme', { cookie: contabil.cookie })).json.firme.some((f) => f.id === fidP));
+      const echipaP = (await req('GET', '/api/colaboratori?firma=' + fidP, { cookie: patron.cookie })).json.colaboratori;
+      ok('rolul explicit este aplicat in aceeasi acceptare, fara pas separat',
+        echipaP.some((u) => u.username === 'contabil-t' && u.rol === 'aprobator'));
       eq('cererea nu se mai poate decide a doua oara',
         (await req('POST', '/api/firme/cereri/' + cereriPatron[0].id, { cookie: patron.cookie, body: { aprob: true } })).status, 404);
       eq('lista patronului e goala dupa rezolvare', (await req('GET', '/api/firme/cereri', { cookie: patron.cookie })).json.cereri.length, 0);
+
+      // ── COLABORARE PATRON <-> CONTABIL, strict pe firma activa ──
+      const spatiuP = await req('GET', '/api/collaboration?firma=' + fidP, { cookie: patron.cookie });
+      ok('spatiul firmei ii vede pe patron si contabil', spatiuP.status === 200
+        && spatiuP.json.members.some((m) => m.kind === 'patron') && spatiuP.json.members.some((m) => m.username === 'contabil-t'));
+      const mesajFirma = 'Lipsește extrasul din august ' + Date.now();
+      eq('patronul scrie in conversatia firmei', (await req('POST', '/api/collaboration/messages?firma=' + fidP,
+        { cookie: patron.cookie, body: { text: mesajFirma } })).status, 200);
+      ok('mesajul de colaborare aprinde badge-ul contabilului',
+        (await req('GET', '/api/collaboration/unread', { cookie: contabil.cookie })).json.unread >= 1);
+      const spatiuC = await req('GET', '/api/collaboration?firma=' + fidP, { cookie: contabil.cookie });
+      ok('contabilul citeste mesajul in firma corecta', spatiuC.json.messages.some((m) => m.text === mesajFirma));
+      eq('deschiderea conversatiei marcheaza mesajul citit',
+        (await req('GET', '/api/collaboration/unread', { cookie: contabil.cookie })).json.unread, 0);
+      ok('canalul de suport ramane separat de colaborarea firmei',
+        !(await req('GET', '/api/messages', { cookie: contabil.cookie })).json.thread.some((m) => m.text === mesajFirma));
+
+      // O solicitare reala legata de un articol: responsabilul vede clar „asteapta de la mine".
+      const entryLink = await req('POST', '/api/entries?firma=' + fidP, { cookie: patron.cookie,
+        body: { tip: 'nota_contabila', fields: { data: '2026-08-20', explicatie: 'Articol pentru colaborare', debit: '5311', credit: '5121', suma: 1 } } });
+      ok('fixture: articolul legabil a fost creat in firma', entryLink.status === 200 && entryLink.json.entry.id);
+      const patronMembru = spatiuC.json.members.find((m) => m.kind === 'patron');
+      const solicitare = await req('POST', '/api/collaboration/requests?firma=' + fidP, { cookie: contabil.cookie,
+        body: { title: 'Trimite extrasul bancar', description: 'Este necesar pentru închiderea lunii.', assignedTo: patronMembru.id,
+          due: '2026-08-31', entityType: 'entry', entityId: entryLink.json.entry.id } });
+      ok('contabilul creeaza solicitare cu responsabil, termen si articol legat', solicitare.status === 200
+        && solicitare.json.request.assignedKind === 'patron' && solicitare.json.request.entityId === entryLink.json.entry.id);
+      const asteaptaPatron = await req('GET', '/api/collaboration?firma=' + fidP, { cookie: patron.cookie });
+      const taskPatron = asteaptaPatron.json.requests.find((r) => r.id === solicitare.json.request.id);
+      ok('patronul vede explicit ca solicitarea asteapta de la el', taskPatron && taskPatron.bucket === 'mine');
+      const sarciniPatron = await req('GET', '/api/tasks/mine', { cookie: patron.cookie });
+      ok('Sarcinile mele agregă solicitarea alocată și o marchează nouă', sarciniPatron.status === 200
+        && sarciniPatron.json.items.some((t) => t.id === solicitare.json.request.id && t.source === 'request' && t.unread)
+        && sarciniPatron.json.unread >= 1);
+      eq('deschiderea inboxului poate marca alocările drept citite',
+        (await req('POST', '/api/tasks/mine/read', { cookie: patron.cookie })).status, 200);
+      eq('după marcare sarcina rămâne, dar nu mai este nouă',
+        (await req('GET', '/api/tasks/mine', { cookie: patron.cookie })).json.unread, 0);
+      const notaPas = await req('POST', '/api/monthly-close/step?firma=' + fidP, { cookie: contabil.cookie,
+        body: { period: '2026-08', step: 'documente', nota: 'Patronul clarifică documentele lipsă.' } });
+      ok('cockpitul salvează nota editată direct pe pas', notaPas.status === 200
+        && notaPas.json.steps.find((s) => s.key === 'documente').nota === 'Patronul clarifică documentele lipsă.');
+      const pasDeschis = notaPas.json.steps.find((s) => s.stare !== 'gata' && s.stare !== 'nuseaplica');
+      const alocarePas = await req('POST', '/api/monthly-close/step?firma=' + fidP, { cookie: contabil.cookie,
+        body: { period: '2026-08', step: pasDeschis.key, responsabilId: patronMembru.id } });
+      ok('fixture: un pas lunar deschis a fost alocat patronului', alocarePas.status === 200);
+      const sarciniCuInchidere = await req('GET', '/api/tasks/mine', { cookie: patron.cookie });
+      ok('Sarcinile mele include și pasul lunar alocat', sarciniCuInchidere.json.items.some((t) => t.source === 'monthly-close'
+        && t.step === pasDeschis.key && t.period === '2026-08'));
+      const actualizata = await req('PATCH', '/api/collaboration/requests/' + solicitare.json.request.id + '?firma=' + fidP,
+        { cookie: patron.cookie, body: { status: 'in_lucru', resolution: 'Extrasul este în curs de încărcare.' } });
+      ok('responsabilul actualizeaza starea si rezolutia', actualizata.status === 200
+        && actualizata.json.request.status === 'in_lucru' && /curs/.test(actualizata.json.request.resolution));
+      const firmaContabilului = (await req('GET', '/api/firme', { cookie: contabil.cookie })).json.firme.find((f) => f.id !== fidP);
+      if (firmaContabilului) {
+        const izolat = await req('GET', '/api/collaboration?firma=' + firmaContabilului.id, { cookie: contabil.cookie });
+        ok('mesajele si solicitarile nu se scurg in alta firma a contabilului', !izolat.json.messages.some((m) => m.text === mesajFirma)
+          && !izolat.json.requests.some((r) => r.id === solicitare.json.request.id));
+      }
 
       // Cazul care da sens cerintei „numai cu acordul patronului": contabilul are ACUM acces la
       // firma, dar tot NU poate aproba cererea altcuiva. Altfel accesul s-ar propaga singur —
@@ -3642,6 +3758,8 @@ async function main() {
           (await req('POST', '/api/profile', { cookie: cCon, body: { profil: { disponibilContabil: true, numeComplet: 'Maria Contabil', oras: 'Cluj', autorizatie: '123/2020' } } })).status === 200);
         const lst = (await req('GET', '/api/firme/contabili', { cookie: cPat })).json.contabili;
         ok('patronul vede contabilul disponibil', lst.length === 1 && lst[0].nume === 'Maria Contabil' && lst[0].oras === 'Cluj');
+        ok('API-ul marcheaza contractual autorizatia ca declarata si neverificata', lst[0].autorizatieDeclarata === '123/2020'
+          && lst[0].autorizatieVerificata === false && lst[0].autorizatieStatut === 'declarata_neverificata');
         ok('lista NU divulga emailul, CNP-ul sau firmele contabilului',
           !('email' in lst[0]) && !('cnp' in lst[0]) && !('firme' in lst[0]));
         const conId = lst[0].id;
@@ -3678,13 +3796,19 @@ async function main() {
           body: { nume: 'A DOUA A PATRONULUI SRL', cui: '5550048', confirmFictitious: true } }));
         ok('fara CNP real, patronul poate inscrie o firma declarata fictiva', f2Pat.status === 200);
         const fid2 = f2Pat.json.firma.id;
-        const cs3 = await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fid2, contabilId: conId } });
+        const cs3 = await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fid2, contabilId: conId, rol: 'verificator' } });
         eq('cerere pe a doua firma', cs3.status, 200);
-        const srv2 = (await req('GET', '/api/firme/servicii', { cookie: cCon })).json.primite[0].id;
+        const srvPrimit2 = (await req('GET', '/api/firme/servicii', { cookie: cCon })).json.primite[0];
+        const srv2 = srvPrimit2.id;
+        eq('cererea de servicii afiseaza rolul ce va fi acordat', srvPrimit2.rol, 'verificator');
         ok('contabilul NU avea acces inainte de acceptare',
           !(await req('GET', '/api/firme', { cookie: cCon })).json.firme.some((f) => f.id === fid2));
-        ok('contabilul accepta', (await req('POST', '/api/firme/servicii/' + srv2, { cookie: cCon, body: { accept: true } })).json.status === 'acceptata');
+        const acceptSrv = await req('POST', '/api/firme/servicii/' + srv2, { cookie: cCon, body: { accept: true } });
+        ok('contabilul accepta rolul explicit', acceptSrv.json.status === 'acceptata' && acceptSrv.json.rol === 'verificator');
         ok('...si abia acum are firma', (await req('GET', '/api/firme', { cookie: cCon })).json.firme.some((f) => f.id === fid2));
+        ok('...iar rolul este setat direct, nu ramane vizualizare',
+          (await req('GET', '/api/colaboratori?firma=' + fid2, { cookie: cPat })).json.colaboratori
+            .some((u) => u.username === 'contabil2-t' && u.rol === 'verificator'));
 
         // retragerea: doar cel care a trimis
         const cs4 = await req('POST', '/api/firme/servicii', { cookie: cPat, body: { firmaId: fidP, contabilId: conId } });

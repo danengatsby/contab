@@ -98,7 +98,8 @@ module.exports = function register(app, ctx) {
   }));
   app.post('/api/profile', ownAccount, (req, res) => run(res, () => {
     const r = svc.updateProfile(req.user, req.body);
-    return { ok: true, email: r.email, notifyDeadlines: r.notifyDeadlines, profil: r.profil };
+    return { ok: true, email: r.email, notifyDeadlines: r.notifyDeadlines,
+      notifyAssignments: r.notifyAssignments, profil: r.profil };
   }));
 
   app.delete('/api/account', ownAccount, async (req, res) => {

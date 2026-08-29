@@ -477,13 +477,14 @@ async function loadPortfolio() {
     : '<p class="muted">Nicio activitate recentă.</p>';
 }
 
-// ───────────────────────── NOTIFICARI (termene fiscale) ─────────────────────────
+// ───────────────────────── SARCINI PERSONALE + NOTIFICARI FISCALE ─────────────────────────
 async function refreshNotifBadge() {
   try {
-    const n = await api('/api/notifications');
+    const [n, tasks] = await Promise.all([api('/api/notifications'), api('/api/tasks/mine')]);
     const b = $('#notifBadge'); if (!b) return;
-    b.textContent = n.count;
-    b.classList.toggle('hidden', !n.count);
+    const total = (n.count || 0) + (tasks.unread || 0);
+    b.textContent = total;
+    b.classList.toggle('hidden', !total);
   } catch (e) { /* ignora */ }
 }
 // Ecranul de notificari era o FUNDATURA: 13 randuri rosii „RESTANȚĂ", niciun link, niciun buton,
@@ -498,9 +499,24 @@ export function zileIntarziere(due, azi) {
   return z > 0 ? z : 0;
 }
 let NOTIF_ITEMS = [];
+let MY_TASK_ITEMS = [];
+const TASK_STATUS = { deschisa: 'deschisă', in_lucru: 'în lucru', blocata: 'blocată', deschis: 'de făcut', blocat: 'așteaptă' };
+export function myTasksHtml(tasks) {
+  if (!(tasks || []).length) return '<p class="muted">✓ Nu ai nicio sarcină deschisă alocată.</p>';
+  return `<table><thead><tr><th></th><th>Firmă</th><th>Sarcină</th><th>Sursă</th><th>Termen</th><th>Stare</th><th></th></tr></thead><tbody>${
+    tasks.map((t, idx) => `<tr${t.unread ? ' class="task-unread"' : ''}>
+      <td>${t.unread ? '<span class="navbadge">nou</span>' : ''}</td><td>${H(t.firma)}</td>
+      <td><b>${H(t.title)}</b>${t.description ? `<div class="muted">${H(t.description)}</div>` : ''}</td>
+      <td>${t.source === 'monthly-close' ? `Închidere lunară · ${H(t.period)}` : 'Solicitare patron–contabil'}</td>
+      <td>${t.due ? H(dataRo(t.due)) : '<span class="muted">—</span>'}</td>
+      <td>${H(TASK_STATUS[t.status] || t.status || 'deschisă')}</td>
+      <td><button class="btn small task-go" data-i="${idx}">Deschide →</button></td></tr>`).join('')}</tbody></table>`;
+}
 async function loadNotifications() {
-  const n = await api('/api/notifications');
+  const [n, tasks] = await Promise.all([api('/api/notifications'), api('/api/tasks/mine')]);
   NOTIF_ITEMS = n.items;
+  MY_TASK_ITEMS = tasks.items || [];
+  const taskBox = $('#myTasksList'); if (taskBox) taskBox.innerHTML = myTasksHtml(MY_TASK_ITEMS);
   $('#notifList').innerHTML = n.items.length
     ? `<table><thead><tr><th></th><th>Firma</th><th>Declarația</th><th>Luna</th><th>Termen</th><th>Stare</th><th></th></tr></thead><tbody>${
       n.items.map((i, idx) => {
@@ -516,7 +532,25 @@ async function loadNotifications() {
       }).join('')}</tbody></table>`
     : '<p class="muted">✓ Nicio restanță și niciun termen în următoarele 7 zile. Totul e la zi.</p>';
   $$('#notifList .notif-go').forEach((b) => b.addEventListener('click', () => rezolvaNotificare(NOTIF_ITEMS[Number(b.dataset.i)])));
+  $$('#myTasksList .task-go').forEach((b) => b.addEventListener('click', () => rezolvaSarcina(MY_TASK_ITEMS[Number(b.dataset.i)])));
+  if (tasks.unread) {
+    try { await api('/api/tasks/mine/read', { method: 'POST' }); } catch (_) { /* ramane necitita */ }
+  }
   refreshNotifBadge();
+}
+
+export async function rezolvaSarcina(task) {
+  if (!task) return;
+  try {
+    if (task.firmaId && D.activateFirma) await D.activateFirma(task.firmaId);
+    if (task.source === 'monthly-close') {
+      if (task.period && D.setWorkMonth) { D.setWorkMonth(task.period); if (D.applyWorkMonth) D.applyWorkMonth(); }
+      if (D.goTab) D.goTab('inchideri');
+      return;
+    }
+    try { sessionStorage.setItem('contab_open_task', String(task.id)); } catch (_) { /* indisponibil */ }
+    if (D.goTab) D.goTab('mesaje');
+  } catch (e) { toast(e.message, true); }
 }
 // Firma, apoi luna, apoi ecranul — in ordinea asta: schimbarea firmei reincarca META si retrimite
 // tab-ul activ, deci o luna pusa inainte s-ar pierde.

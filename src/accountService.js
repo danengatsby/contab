@@ -195,6 +195,7 @@ function getProfile(u) {
   return {
     username: u.username, email: u.email || '', role: u.role,
     tip: plans.userKind(u), notifyDeadlines: u.notifyDeadlines !== false,
+    notifyAssignments: u.notifyAssignments !== false,
     // CNP-ul nu se intoarce niciodata intreg, nici propriului cont: ecranul serveste la a-l
     // RECUNOASTE, nu la a-l copia, iar o captura de ecran nu are ce sa divulge.
     profil: Object.assign({}, p, { cnp: identitate.maskCNP(p.cnp || ''), cnpSetat: !!p.cnp }),
@@ -205,6 +206,7 @@ function updateProfile(u, b) {
   reqNotDemo(u); b = b || {};
   if (b.email != null) u.email = String(b.email);
   if (b.notifyDeadlines != null) u.notifyDeadlines = !!b.notifyDeadlines;
+  if (b.notifyAssignments != null) u.notifyAssignments = !!b.notifyAssignments;
   // date personale (necontabil / contabil): nume, telefon, adresa + autorizatia contabilului
   if (b.profil && typeof b.profil === 'object') {
     const p = u.profil || {};
@@ -229,7 +231,8 @@ function updateProfile(u, b) {
     u.profil = p;
   }
   db.save();
-  return Object.assign({ email: u.email, notifyDeadlines: u.notifyDeadlines !== false }, { profil: getProfile(u).profil });
+  return Object.assign({ email: u.email, notifyDeadlines: u.notifyDeadlines !== false,
+    notifyAssignments: u.notifyAssignments !== false }, { profil: getProfile(u).profil });
 }
 
 /** Stergere self-service a contului. Firmele detinute trebuie sterse sau transferate intai;

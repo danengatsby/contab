@@ -53,6 +53,9 @@ const matrix = {
   administrator: ALL,
 };
 const ROLES = ['vizualizare', 'operator', 'verificator', 'aprobator', 'proprietar', 'administrator'];
+const COLLABORATOR_ROLES = ['vizualizare', 'operator', 'verificator', 'aprobator'];
+const DOMAIN_KEYS = ['contabilitate', 'salarizare', 'trezorerie'];
+const NO_ACCESS = 'fara_acces';
 
 // Alias numai pentru apelurile vechi din extensii/instalari. Matricea publicata si codul nou
 // folosesc exclusiv numele canonic `fiscal.manage`.
@@ -74,10 +77,69 @@ function roleFor(user, fid, firma) {
   return 'vizualizare';
 }
 
+/** Aria este derivata din actiune, nu din ruta sau din eticheta ecranului. Astfel aceeasi
+ * verificare ramane valabila si pentru apelurile interne din servicii. Actiunile fara prefix
+ * sunt activitati de contabilitate generala/fiscalitate/inchidere. */
+function domainFor(requestedAction) {
+  const action = canonical(requestedAction);
+  if (action.startsWith('payroll.')) return 'salarizare';
+  if (action.startsWith('treasury.')) return 'trezorerie';
+  return 'contabilitate';
+}
+
+function validDomainRole(role) {
+  return COLLABORATOR_ROLES.includes(role) || role === NO_ACCESS;
+}
+
+/** Normalizeaza o configuratie trimisa de interfata. Lipsurile mostenesc rolul vechi, ca API-urile
+ * si utilizatorii existenti sa nu piarda drepturi in momentul migrarii la cele trei arii. */
+function normalizeDomainRoles(input, fallbackRole) {
+  const fallback = COLLABORATOR_ROLES.includes(fallbackRole) ? fallbackRole : 'vizualizare';
+  const raw = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const out = {};
+  for (const domain of DOMAIN_KEYS) {
+    const value = Object.prototype.hasOwnProperty.call(raw, domain) ? String(raw[domain]) : fallback;
+    if (!validDomainRole(value)) {
+      const e = new Error('Rol invalid pentru aria „' + domain + '”.'); e.status = 400; throw e;
+    }
+    out[domain] = value;
+  }
+  return out;
+}
+
+/** Proiectia completa a rolurilor pe arii. Pentru datele istorice fara configuratie distincta,
+ * rolul unic ramane fallback pe toate ariile; aceasta este compatibilitatea explicita, nu o
+ * noua acordare tacita. */
+function domainRolesFor(user, fid, firma) {
+  const base = roleFor(user, fid, firma);
+  if (base === 'administrator' || base === 'proprietar') {
+    return Object.fromEntries(DOMAIN_KEYS.map((domain) => [domain, base]));
+  }
+  if (!base) return Object.fromEntries(DOMAIN_KEYS.map((domain) => [domain, NO_ACCESS]));
+  const all = user && user.firmaRoluriDomenii || {};
+  const raw = all[String(fid)] || all[fid];
+  return normalizeDomainRoles(raw, base);
+}
+
+function effectiveRoleFor(user, fid, action, firma) {
+  const base = roleFor(user, fid, firma);
+  if (base === 'administrator' || base === 'proprietar') return base;
+  return domainRolesFor(user, fid, firma)[domainFor(action)] || null;
+}
+
+function hasExplicitDomainRole(user, fid, domain) {
+  const all = user && user.firmaRoluriDomenii || {};
+  const raw = all[String(fid)] || all[fid];
+  return !!(raw && typeof raw === 'object' && Object.prototype.hasOwnProperty.call(raw, domain));
+}
+
 function verdict(user, fid, requestedAction, firma) {
   const action = canonical(requestedAction);
   if (!ALL.has(action)) return { ok: false, role: roleFor(user, fid, firma), reason: 'Actiune de permisiune necunoscuta: ' + requestedAction };
-  const role = roleFor(user, fid, firma);
+  const domain = domainFor(action);
+  const baseRole = roleFor(user, fid, firma);
+  const role = effectiveRoleFor(user, fid, action, firma);
+  if (role === NO_ACCESS) return { ok: false, role, baseRole, domain, reason: 'Nu ai acces la aria „' + domain + '” pentru această firmă.' };
   if (!role || !matrix[role]) return { ok: false, role, reason: 'Nu ai un rol activ pe aceasta firma.' };
   const rights = user && user.drepturi || {};
   if (rights.faraSalarii && action.startsWith('payroll.')) {
@@ -89,10 +151,16 @@ function verdict(user, fid, requestedAction, firma) {
   if (rights.readonly && !readOnlyActions.includes(action)) {
     return { ok: false, role, reason: 'Cont doar-citire: poti vizualiza datele, dar nu le poti modifica.' };
   }
-  if (!matrix[role].has(action)) {
+  // Rolul istoric `vizualizare` nu deschidea datele sensibile de salarii/trezorerie. Cand
+  // proprietarul alege insa explicit „Doar vizualizare” chiar in acea arie, citirea ariei este
+  // exact dreptul cerut; distinctia pastreaza si compatibilitatea, si sensul noului selector.
+  const explicitDomainRead = role === 'vizualizare' && hasExplicitDomainRole(user, fid, domain)
+    && ((domain === 'salarizare' && action === 'payroll.read')
+      || (domain === 'trezorerie' && action === 'treasury.read'));
+  if (!matrix[role].has(action) && !explicitDomainRead) {
     return { ok: false, role, reason: 'Rolul „' + role + '” nu permite actiunea „' + action + '”.' };
   }
-  return { ok: true, role, action };
+  return { ok: true, role, baseRole, domain, action };
 }
 
 function can(user, fid, action, firma) { return verdict(user, fid, action, firma).ok; }
@@ -108,12 +176,11 @@ function requiresTwoFactor(user, graph) {
   if (user.role === 'admin') return true;
   const d = graph || {}; const firme = Array.isArray(d.firme) ? d.firme : [];
   if (firme.some((f) => !f.demo && Number(f.ownerId) === Number(user.id))) return true;
-  const roles = user.firmaRoluri || {};
-  return Object.keys(roles).some((fid) => {
+  const ids = new Set([...(user.firme || []).map(String), ...Object.keys(user.firmaRoluri || {}), ...Object.keys(user.firmaRoluriDomenii || {})]);
+  return [...ids].some((fid) => {
     const firma = firme.find((f) => Number(f.id) === Number(fid));
     if (firma && firma.demo) return false;
-    const role = roles[fid]; const rights = matrix[role];
-    return !!(rights && (rights.has('declaration.submit') || rights.has('data.export')));
+    return can(user, fid, 'declaration.submit', firma) || can(user, fid, 'data.export', firma);
   });
 }
 
@@ -141,8 +208,8 @@ function requiredActions(method, path, body) {
     else add('treasury.write');
   }
   if (/^\/api\/plati(?:\/|$)/.test(path)) add(safe ? 'treasury.read' : 'treasury.write');
-  if (!safe && (path === '/api/open-items/allocate' || path === '/api/reconcile/link')) add('treasury.write');
-  if (/^\/api\/(?:cashbook|cash-valuta|cash-control)(?:\/|$)/.test(path)) add('treasury.read');
+  if (/^\/api\/(?:open-items|reconcile)(?:\/|$)/.test(path)) add(safe ? 'treasury.read' : 'treasury.write');
+  if (/^\/api\/(?:cashbook|cash-valuta|cash-control)(?:\/|$)/.test(path)) add(safe ? 'treasury.read' : 'treasury.write');
   if (/^\/api\/cash-forecast(?:\/|$)/.test(path)) add(safe ? 'treasury.read' : 'treasury.write');
   if (/^\/api\/cash-flow\/classification(?:\/|$)/.test(path)) add(safe ? 'treasury.read' : 'treasury.approve');
   if (path === '/pdf/cash-forecast-13-weeks') add('treasury.read');
@@ -180,7 +247,12 @@ function describe() {
   return {
     roles: ROLES.map((role) => ({ role, actions: ACTIONS.map((a) => ({ key: a.key, label: a.label, allowed: matrix[role].has(a.key) })) })),
     actions: ACTIONS.map((a) => Object.assign({}, a)),
+    domains: DOMAIN_KEYS.map((key) => ({ key, roles: [...COLLABORATOR_ROLES, NO_ACCESS] })),
   };
 }
 
-module.exports = { ACTIONS, ROLES, roleFor, verdict, can, assert, requiresTwoFactor, requiredActions, describe };
+module.exports = {
+  ACTIONS, ROLES, COLLABORATOR_ROLES, DOMAIN_KEYS, NO_ACCESS,
+  roleFor, domainFor, domainRolesFor, effectiveRoleFor, normalizeDomainRoles,
+  verdict, can, assert, requiresTwoFactor, requiredActions, describe,
+};

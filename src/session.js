@@ -69,7 +69,7 @@ function publicUser(u) {
   const twofaMandatory = permissions.requiresTwoFactor(u, db.get());
   return {
     id: u.id, username: u.username, role: u.role, tip: plans.userKind(u), tipCont: tipCont(u), firme: allowedFirme(u),
-    drepturi: u.drepturi || {}, firmaRoluri: u.firmaRoluri || {},
+    drepturi: u.drepturi || {}, firmaRoluri: u.firmaRoluri || {}, firmaRoluriDomenii: u.firmaRoluriDomenii || {},
     mustChange: !!u.mustChange, twofa: !!u.twofa,
     twofaMandatory, twofaRequired: twofaMandatory && !u.twofa,
     twofaRecoveryCount: u.twofa && Array.isArray(u.twofaRecoveryHashes) ? u.twofaRecoveryHashes.length : 0,

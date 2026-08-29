@@ -101,7 +101,8 @@ module.exports = function register(app, ctx) {
   // Raspunsul e generic prin constructie (vezi serviciul): ruta nu are voie sa devina un oracol
   // prin care se afla ce firme exista in sistem.
   app.post('/api/firme/cerere-acces', (req, res) => run(res, () => {
-    const r = svc.cerereAcces(req.user, (req.body || {}).cui);
+    const b = req.body || {};
+    const r = svc.cerereAcces(req.user, b.cui, b.rol);
     logAudit('firma.cerere-acces', 'cerere trimisa (CUI ' + String((req.body || {}).cui || '').slice(0, 20) + ')', { req, firmaId: null });
     return r;
   }));
@@ -128,7 +129,8 @@ module.exports = function register(app, ctx) {
     return r;
   }));
   app.post('/api/firme/cereri/:id', (req, res) => run(res, () => {
-    const r = svc.decideCerere(req.user, req.params.id, !!(req.body || {}).aprob);
+    const b = req.body || {};
+    const r = svc.decideCerere(req.user, req.params.id, !!b.aprob, b.rol);
     logAudit('firma.cerere-' + r.status, 'firma ' + r.firmaId, { req, firmaId: r.firmaId });
     return r;
   }));
@@ -281,8 +283,9 @@ module.exports = function register(app, ctx) {
 
   app.get('/api/colaboratori', (req, res) => run(res, () => {
     const fid = activeFirma(req);
-    return { firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id,
-      demo: isDemoUser(req.user), poateGestiona: svc.canManageCollaborators(req.user, fid, isDemoUser(req.user)) };
+    return Object.assign({ firmaActiva: fid, colaboratori: svc.listCollaborators(fid), eu: req.user && req.user.id,
+      demo: isDemoUser(req.user), poateGestiona: svc.canManageCollaborators(req.user, fid, isDemoUser(req.user)) },
+    svc.collaborationLifecycle(req.user, fid));
   }));
 
   app.post('/api/colaboratori', wrap(async (req, res) => {
@@ -312,6 +315,60 @@ module.exports = function register(app, ctx) {
     }
   }));
 
+  // Incetarea unei colaborari este un protocol in doi pasi. Colaboratorul confirma fotografia
+  // dosarului, apoi proprietarul confirma primirea; accesul dispare numai la ultimul pas.
+  app.post('/api/colaboratori/handoffs', (req, res) => run(res, () => {
+    const fid = activeFirma(req); const b = req.body || {};
+    const r = svc.initiateCollaborationHandoff(req.user, fid, b.collaboratorId, b.reason);
+    logAudit('colaborator.handoff.request', r.collaboratorName + ' / ' + r.id, { req, firmaId: fid });
+    return { ok: true, handoff: r };
+  }));
+
+  app.post('/api/colaboratori/handoffs/:id/ready', (req, res) => run(res, () => {
+    const r = svc.prepareCollaborationHandoff(req.user, req.params.id);
+    logAudit('colaborator.handoff.ready', r.collaboratorName + ' / ' + r.rootHash, { req, firmaId: r.firmaId });
+    return { ok: true, handoff: r };
+  }));
+
+  app.post('/api/colaboratori/handoffs/:id/complete', (req, res) => run(res, () => {
+    const r = svc.completeCollaborationHandoff(req.user, req.params.id);
+    logAudit('colaborator.handoff.complete', r.collaboratorName + ' / acces retras', { req, firmaId: r.firmaId });
+    return { ok: true, handoff: r };
+  }));
+
+  app.post('/api/colaboratori/handoffs/:id/cancel', (req, res) => run(res, () => {
+    const r = svc.cancelCollaborationHandoff(req.user, req.params.id);
+    logAudit('colaborator.handoff.cancel', r.collaboratorName + ' / ' + r.id, { req, firmaId: r.firmaId });
+    return { ok: true, handoff: r };
+  }));
+
+  app.get('/api/colaboratori/handoffs/:id/dossier', (req, res) => run(res, () => {
+    const dossier = svc.handoffDossier(req.user, req.params.id);
+    res.setHeader('Content-Disposition', 'attachment; filename="proces-verbal-predare-' + String(req.params.id).replace(/[^\w-]/g, '') + '.json"');
+    return dossier;
+  }));
+
+  // Proprietatea nu se schimba prin editarea unui rol: proprietarul curent initiaza, iar
+  // destinatarul confirma explicit numele firmei si accepta responsabilitatea.
+  app.post('/api/colaboratori/ownership-transfers', (req, res) => run(res, () => {
+    const fid = activeFirma(req); const b = req.body || {};
+    const r = svc.initiateOwnershipTransfer(req.user, fid, b.targetId, b.confirmName);
+    logAudit('firma.owner-transfer.request', r.fromUserName + ' -> ' + r.toUserName, { req, firmaId: fid });
+    return { ok: true, transfer: r };
+  }));
+
+  app.post('/api/colaboratori/ownership-transfers/:id/accept', (req, res) => run(res, () => {
+    const r = svc.acceptOwnershipTransfer(req.user, req.params.id, (req.body || {}).confirmName);
+    logAudit('firma.owner-transfer.complete', r.fromUserName + ' -> ' + r.toUserName, { req, firmaId: r.firmaId });
+    return { ok: true, transfer: r };
+  }));
+
+  app.post('/api/colaboratori/ownership-transfers/:id/cancel', (req, res) => run(res, () => {
+    const r = svc.cancelOwnershipTransfer(req.user, req.params.id);
+    logAudit('firma.owner-transfer.cancel', r.fromUserName + ' -> ' + r.toUserName + ' / ' + r.status, { req, firmaId: r.firmaId });
+    return { ok: true, transfer: r };
+  }));
+
   app.delete('/api/colaboratori/:uid', (req, res) => run(res, () => {
     const fid = activeFirma(req);
     if (isDemoUser(req.user)) { const t = db.get().users.find((u) => u.id === Number(req.params.uid)); demoManageGuard(req, t && t.username); }
@@ -324,6 +381,13 @@ module.exports = function register(app, ctx) {
     const fid = activeFirma(req);
     const r = svc.setCollaboratorRole(req.user, fid, req.params.uid, String((req.body || {}).rol || ''), isDemoUser(req.user));
     logAudit('colaborator.role', r.username + ' -> ' + r.rol + ', firma ' + fid, { req, firmaId: fid });
+    return { ok: true, colaborator: r };
+  }));
+
+  app.post('/api/colaboratori/:uid/access', (req, res) => run(res, () => {
+    const fid = activeFirma(req);
+    const r = svc.setCollaboratorAccess(req.user, fid, req.params.uid, (req.body || {}).roluri, isDemoUser(req.user));
+    logAudit('colaborator.access', r.username + ' -> ' + JSON.stringify(r.roluri) + ', firma ' + fid, { req, firmaId: fid });
     return { ok: true, colaborator: r };
   }));
 };

@@ -144,6 +144,9 @@ function activeId(req) {
   if (!allowed.includes(id)) id = allowed[0];
   return id || db.firmaActiva();
 }
+// Conversatia si solicitarile patron <-> contabil folosesc firma activa, deci se inregistreaza
+// dupa definirea garzii activeId. Canalul de suport user <-> admin ramane la /api/messages.
+require('./src/routes/collaboration')(app, { activeId, logAudit });
 const S = (req) => {
   const v = db.scoped(activeId(req));
   // Datele personale ale utilizatorului (necontabil/contabil) ajung in subsolul PDF-urilor

@@ -64,30 +64,141 @@ function wireMsgEdit(scopeSel, reload) {
 
 let MSG_ADMIN_TARGET = null; // userId-ul conversatiei deschise in vederea de admin
 let MSG_SEARCH_Q = '';       // textul de cautare activ (admin)
+let COLLAB_DATA = null;
+
+const REQUEST_STATUS = { deschisa: 'Deschisă', in_lucru: 'În lucru', blocata: 'Blocată', rezolvata: 'Rezolvată' };
+function collabBubble(m) {
+  if (m.kind === 'system') return `<div class="collab-system">${escMsg(m.text)} <small>${fmtMsgTime(m.createdAt)}</small></div>`;
+  const mine = Number(m.fromUserId) === Number(USER.id);
+  const context = m.requestId ? `<button type="button" class="collab-request-link" data-request="${escAttr(m.requestId)}">solicitarea #${escMsg(m.requestId)}</button>` : '';
+  return `<div class="msg ${mine ? 'mine' : 'other'}"><div class="msg-b"><div class="msg-meta">${escMsg(m.author || 'Utilizator')} · ${fmtMsgTime(m.createdAt)}</div>${escMsg(m.text).replace(/\n/g, '<br>')}${context}</div></div>`;
+}
+function memberOptions(selected) {
+  return ((COLLAB_DATA && COLLAB_DATA.members) || []).map((m) => `<option value="${escAttr(m.id)}"${Number(m.id) === Number(selected) ? ' selected' : ''}>${escMsg(m.name)} · ${m.kind === 'patron' ? 'patron' : 'contabil'}</option>`).join('');
+}
+function requestCard(r) {
+  const linked = r.entityId ? `<span class="pill">${r.entityType === 'document' ? 'Document' : 'Articol'} #${escMsg(r.entityId)}</span>` : '';
+  const due = r.due ? ` · termen ${escMsg(r.due.split('-').reverse().join('.'))}` : '';
+  return `<article class="collab-request" id="collab-request-${escAttr(r.id)}" data-id="${escAttr(r.id)}">
+    <div class="collab-request-head"><b>${escMsg(r.title)}</b><span class="pill">${escMsg(REQUEST_STATUS[r.status] || r.status)}</span></div>
+    ${r.description ? `<p>${escMsg(r.description)}</p>` : ''}
+    <div class="muted">Creată de ${escMsg(r.createdByName)}${due} ${linked}</div>
+    <div class="collab-request-controls">
+      <label>Responsabil <select class="collab-req-assigned">${memberOptions(r.assignedTo)}</select></label>
+      <label>Stare <select class="collab-req-status">${Object.entries(REQUEST_STATUS).map(([v, l]) => `<option value="${v}"${v === r.status ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label>Termen <input class="collab-req-due" type="date" value="${escAttr(r.due || '')}"></label>
+      <label class="full">Rezoluție <input class="collab-req-resolution" value="${escAttr(r.resolution || '')}" maxlength="1000" placeholder="Ce s-a rezolvat / ce lipsește"></label>
+      <button type="button" class="btn small primary collab-req-save">Actualizează</button>
+      <button type="button" class="btn small collab-req-discuss">Scrie despre ea</button>
+    </div>
+  </article>`;
+}
+function renderCollabRequests(requests) {
+  const box = $('#collabRequests');
+  const groups = [
+    ['mine', 'Așteaptă de la mine'],
+    ['patron', 'Așteaptă patronul'],
+    ['contabil', 'Așteaptă contabilul'],
+    ['resolved', 'Rezolvate'],
+  ];
+  const keyed = { mine: [], patron: [], contabil: [], resolved: [] };
+  for (const r of requests || []) {
+    const key = r.bucket === 'resolved' ? 'resolved' : (r.bucket === 'mine' ? 'mine' : (r.assignedKind || 'contabil'));
+    (keyed[key] || keyed.contabil).push(r);
+  }
+  box.innerHTML = groups.filter(([key]) => keyed[key].length).map(([key, title]) => `<section class="collab-request-group"><h4>${title} <span class="navbadge">${keyed[key].length}</span></h4>${keyed[key].map(requestCard).join('')}</section>`).join('')
+    || '<p class="muted">Nicio solicitare. Creează prima cerere de document sau acțiune mai sus.</p>';
+  $$('#collabRequests .collab-req-save').forEach((btn) => btn.addEventListener('click', async () => {
+    const card = btn.closest('.collab-request');
+    try {
+      await api('/api/collaboration/requests/' + encodeURIComponent(card.dataset.id), {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignedTo: Number(card.querySelector('.collab-req-assigned').value),
+          status: card.querySelector('.collab-req-status').value,
+          due: card.querySelector('.collab-req-due').value,
+          resolution: card.querySelector('.collab-req-resolution').value,
+        }),
+      });
+      toast('Solicitare actualizată'); loadMessages();
+    } catch (e) { toast(e.message, true); }
+  }));
+  $$('#collabRequests .collab-req-discuss').forEach((btn) => btn.addEventListener('click', () => {
+    const card = btn.closest('.collab-request');
+    $('#collabMessageRequestId').value = card.dataset.id;
+    $('#collabMessageContext').textContent = '↪ Mesaj legat de: ' + (card.querySelector('.collab-request-head b') || {}).textContent;
+    $('#collabMessageContext').classList.remove('hidden'); $('#collabMessageText').focus();
+  }));
+}
+function renderCollaboration(data) {
+  COLLAB_DATA = data;
+  $('#msgCollabView').classList.remove('hidden');
+  $('#collabTitle').textContent = 'Conversația „' + data.company.name + '”';
+  const box = $('#collabThread');
+  box.innerHTML = (data.messages || []).length ? data.messages.map(collabBubble).join('')
+    : '<p class="muted">Niciun mesaj în această firmă. Pornește conversația aici.</p>';
+  box.scrollTop = box.scrollHeight;
+  $('#collabAssigned').innerHTML = memberOptions(USER.id);
+  const entity = $('#collabEntity');
+  entity.innerHTML = '<option value="">Fără legătură</option>' + (data.linkables || []).map((x) => `<option value="${escAttr(x.type + '|' + x.id)}">${x.type === 'document' ? 'Document' : 'Articol'} · ${escMsg(x.label)}</option>`).join('');
+  renderCollabRequests(data.requests || []);
+  let openTask = '';
+  try { openTask = sessionStorage.getItem('contab_open_task') || ''; sessionStorage.removeItem('contab_open_task'); } catch (_) { /* indisponibil */ }
+  if (openTask) setTimeout(() => {
+    const target = document.getElementById('collab-request-' + openTask);
+    if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.classList.add('flash'); setTimeout(() => target.classList.remove('flash'), 1500); }
+  }, 80);
+  $$('#collabThread .collab-request-link').forEach((b) => b.addEventListener('click', () => {
+    const target = document.getElementById('collab-request-' + b.dataset.request);
+    if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'center' }); target.classList.add('flash'); setTimeout(() => target.classList.remove('flash'), 1500); }
+  }));
+}
 
 export async function loadMessages() {
   // admin cu o cautare activa: pastreaza rezultatele filtrate
   if (isAdminView() && MSG_SEARCH_Q) {
     try {
       const r = await api('/api/messages/search?q=' + encodeURIComponent(MSG_SEARCH_Q));
-      $('#msgUserView').classList.add('hidden'); $('#msgAdminView').classList.remove('hidden');
+      $('#msgUserView').classList.add('hidden'); $('#msgCollabView').classList.add('hidden'); $('#msgAdminView').classList.remove('hidden');
       renderAdminInbox(r.threads || []);
     } catch (e) { /* ignora */ }
     refreshMsgBadge(); return;
   }
-  let data;
-  try { data = await api('/api/messages'); } catch (e) { return; }
-  if (data.admin) {
+  if (isAdminView()) {
+    let data; try { data = await api('/api/messages'); } catch (e) { return; }
     $('#msgUserView').classList.add('hidden');
+    $('#msgCollabView').classList.add('hidden');
     $('#msgAdminView').classList.remove('hidden');
     renderAdminInbox(data.threads || []);
   } else {
+    const [collab, support] = await Promise.allSettled([api('/api/collaboration'), api('/api/messages')]);
     $('#msgAdminView').classList.add('hidden');
-    $('#msgUserView').classList.remove('hidden');
-    renderUserThread(data.thread || []);
+    if (collab.status === 'fulfilled') renderCollaboration(collab.value);
+    else $('#msgCollabView').classList.add('hidden');
+    if (support.status === 'fulfilled') { $('#msgUserView').classList.remove('hidden'); renderUserThread(support.value.thread || []); }
   }
   refreshMsgBadge();
 }
+
+$('#collabMessageForm') && $('#collabMessageForm').addEventListener('submit', async (e) => {
+  e.preventDefault(); const text = $('#collabMessageText').value.trim(); if (!text) return;
+  try {
+    await api('/api/collaboration/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, requestId: $('#collabMessageRequestId').value || null }) });
+    $('#collabMessageText').value = ''; $('#collabMessageRequestId').value = ''; $('#collabMessageContext').classList.add('hidden');
+    loadMessages();
+  } catch (err) { toast(err.message, true); }
+});
+$('#collabRequestForm') && $('#collabRequestForm').addEventListener('submit', async (e) => {
+  e.preventDefault(); const f = e.target; const rawEntity = f.entity.value; const split = rawEntity.indexOf('|');
+  try {
+    await api('/api/collaboration/requests', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: f.title.value, description: f.description.value, assignedTo: Number(f.assignedTo.value), due: f.due.value,
+        entityType: split < 0 ? '' : rawEntity.slice(0, split), entityId: split < 0 ? '' : rawEntity.slice(split + 1) }),
+    });
+    f.reset(); toast('Solicitare creată'); loadMessages();
+  } catch (err) { toast(err.message, true); }
+});
 function renderUserThread(thread) {
   const box = $('#msgThread');
   box.innerHTML = thread.length ? thread.map((m) => bubble(m, false)).join('')

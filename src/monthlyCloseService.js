@@ -70,12 +70,13 @@ function firmUsers(fid) {
 }
 
 /** Aloca un pas: responsabil (cont din firma), termen si nota. Campurile absente raman neatinse. */
-function setStep(fid, period, step, b, user) {
+function setStepDetailed(fid, period, step, b, user) {
   fid = reqFirma(fid); period = reqPeriod(period); step = reqStep(step);
   if (user) permissions.assert(user, fid, 'write', db.getFirma(fid));
   b = b || {};
   const rec = ensureRecord(fid, period);
   const cur = rec.steps[step] || {};
+  const beforeResponsible = cur.responsabilId == null ? null : Number(cur.responsabilId);
   if ('responsabilId' in b) {
     if (b.responsabilId === null || b.responsabilId === '') delete cur.responsabilId;
     else {
@@ -90,7 +91,7 @@ function setStep(fid, period, step, b, user) {
     else cur.due = String(b.due);
   }
   if ('nota' in b) {
-    const n = String(b.nota == null ? '' : b.nota).slice(0, 300);
+    const n = String(b.nota == null ? '' : b.nota).trim().slice(0, 300);
     if (n) cur.nota = n; else delete cur.nota;
   }
   if (user) {
@@ -98,10 +99,35 @@ function setStep(fid, period, step, b, user) {
     cur.updatedByName = String(user.username || '').slice(0, 80);
     cur.updatedAt = new Date().toISOString();
   }
+  let assignment = null;
+  const afterResponsible = cur.responsabilId == null ? null : Number(cur.responsabilId);
+  if (beforeResponsible !== afterResponsible) {
+    if (afterResponsible != null) {
+      cur.assignedAt = new Date().toISOString();
+      cur.assignedBy = user && user.id != null ? user.id : null;
+      cur.assignedByName = String(user && user.username || '').slice(0, 80);
+      if (!user || Number(user.id) !== afterResponsible) {
+        const recipient = firmUsers(fid).find((u) => Number(u.id) === afterResponsible);
+        const def = mc.STEPS.find((x) => x.key === step) || {};
+        assignment = { userId: afterResponsible, firmaId: fid, firma: (db.getFirma(fid) || {}).nume || '',
+          title: def.nume || step, due: cur.due || null, period, source: 'monthly-close',
+          assignedBy: String(user && user.username || ''), recipient: recipient && recipient.username };
+      }
+    } else {
+      delete cur.assignedAt; delete cur.assignedBy; delete cur.assignedByName;
+    }
+  }
   if (Object.keys(cur).length) rec.steps[step] = cur; else delete rec.steps[step];
   db.save();
-  return state(fid, period);
+  const currentState = state(fid, period);
+  if (assignment && !assignment.due) {
+    const currentStep = currentState.steps.find((x) => x.key === step);
+    if (currentStep) assignment.due = currentStep.due || null;
+  }
+  return { state: currentState, assignment };
 }
+
+function setStep(fid, period, step, b, user) { return setStepDetailed(fid, period, step, b, user).state; }
 
 /** Urmele de pregatire ale utilizatorului in luna pe care ar urma sa o aprobe. Nu deducem
  * contributia din rol, ci din dovezile persistente: articole, banca, pasi, validari si XML-uri. */
@@ -305,5 +331,5 @@ function validatableTypes(fid, period) {
     .map((e) => ({ tip: e.tip, nume: e.nume, due: e.due }));
 }
 
-module.exports = { state, setStep, recordOperationalEvidence, validateDeclaration, approve, unapprove, close,
+module.exports = { state, setStep, setStepDetailed, recordOperationalEvidence, validateDeclaration, approve, unapprove, close,
   firmUsers, validatableTypes, monthContributions, approvalException };

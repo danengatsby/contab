@@ -7,6 +7,7 @@
 const svc = require('../monthlyCloseService');
 const db = require('../db');
 const permissions = require('../permissions');
+const notify = require('../notify');
 
 module.exports = function register(app, ctx) {
   const { activeId, logAudit } = ctx;
@@ -50,9 +51,12 @@ module.exports = function register(app, ctx) {
   // Alocarea unui pas: responsabil / termen / nota.
   app.post('/api/monthly-close/step', (req, res) => run(res, () => {
     const b = req.body || {};
-    const st = svc.setStep(activeId(req), b.period, b.step, b, req.user);
-    logAudit('inchidere.pas', b.period + ' ' + b.step + ': ' + JSON.stringify({ responsabilId: b.responsabilId, due: b.due }), { req });
-    return st;
+    const r = svc.setStepDetailed(activeId(req), b.period, b.step, b, req.user);
+    logAudit('inchidere.pas', b.period + ' ' + b.step + ': ' + JSON.stringify({ responsabilId: b.responsabilId, due: b.due,
+      nota: Object.prototype.hasOwnProperty.call(b, 'nota') ? 'actualizata' : undefined }), { req });
+    if (r.assignment) notify.sendAssignmentNotification(r.assignment)
+      .catch((e) => console.error('notificare alocare inchidere:', e.message));
+    return r.state;
   }));
 
   // Validarea unei declaratii, cu pastrarea dovezii (cine, cand, ce verdict).

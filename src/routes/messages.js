@@ -9,6 +9,7 @@
 const db = require('../db');
 const messages = require('../messages');
 const svc = require('../messagesService');
+const collaboration = require('../collaborationService');
 const { capList } = require('../paginate');
 
 // Indicator „scrie acum…": stare efemera in memorie (nu se persista).
@@ -73,7 +74,8 @@ module.exports = function register(app, ctx) {
   // ── citiri + stare efemera (fara logica de business) ──
   app.get('/api/messages/unread', (req, res) => {
     const d = db.get(); d.messages = d.messages || [];
-    const n = actor(req).isAdmin ? messages.unreadForAdmin(d.messages) : messages.unreadForUser(d.messages, req.user.id);
+    const n = actor(req).isAdmin ? messages.unreadForAdmin(d.messages)
+      : messages.unreadForUser(d.messages, req.user.id) + collaboration.unreadForUser(req.user);
     res.json({ unread: n });
   });
   app.get('/api/messages/search', requireAdmin, (req, res) => {
@@ -89,7 +91,8 @@ module.exports = function register(app, ctx) {
   app.get('/api/messages/poll', (req, res) => {
     const d = db.get(); d.messages = d.messages || [];
     const isAdmin = actor(req).isAdmin;
-    const unread = isAdmin ? messages.unreadForAdmin(d.messages) : messages.unreadForUser(d.messages, req.user.id);
+    const unread = isAdmin ? messages.unreadForAdmin(d.messages)
+      : messages.unreadForUser(d.messages, req.user.id) + collaboration.unreadForUser(req.user);
     let typing = false;
     if (isAdmin) { const uid = Number(req.query.userId); if (uid) typing = isTyping(uid, 'user'); }
     else typing = isTyping(req.user.id, 'admin');

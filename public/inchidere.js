@@ -101,6 +101,13 @@ export function stepHtml(s, responsabili) {
   // lor in bara de actiuni a cockpitului, deci nu-si dubleaza actiunea aici.
   const actiune = (s.stare === 'gata' || s.stare === 'nuseaplica' || !s.tab) ? ''
     : `<button class="btn cl-go" data-tab="${H(s.tab)}">${H(s.eticheta)}</button>`;
+  const nota = `<div class="cl-note-box">
+    <label class="closefield">Notă / clarificare
+      <textarea class="cl-note" data-step="${H(s.key)}" maxlength="300" rows="2" placeholder="Consemnează motivul, clarificarea sau următorul pas…">${H(s.nota || '')}</textarea>
+    </label>
+    <button type="button" class="btn small cl-note-save" data-step="${H(s.key)}">Salvează nota</button>
+    <span class="muted">maximum 300 caractere</span>
+  </div>`;
   return `<li class="closestep is-${H(s.stare)}" data-step="${H(s.key)}">
     <div class="closestep-h"><span class="closeicon">${m.icon}</span>
       <b>${H(s.nume)}</b> <span class="pill ${m.pill}">${m.text}</span></div>
@@ -108,7 +115,7 @@ export function stepHtml(s, responsabili) {
     ${temeiHtml(s.temei)}
     ${motiv}${blocatDe}${blocaje}
     ${alocare}
-    ${s.nota ? `<p class="muted">Notă: ${H(s.nota)}</p>` : ''}
+    ${nota}
     ${actiune}</li>`;
 }
 
@@ -237,6 +244,16 @@ async function saveStep(step, patch) {
 function wire() {
   $$('#closeCockpit .cl-resp').forEach((el) => el.addEventListener('change', () => saveStep(el.dataset.step, { responsabilId: el.value || null })));
   $$('#closeCockpit .cl-due').forEach((el) => el.addEventListener('change', () => saveStep(el.dataset.step, { due: el.value || null })));
+  $$('#closeCockpit .cl-note-save').forEach((button) => button.addEventListener('click', () => {
+    const textarea = $(`#closeCockpit .cl-note[data-step="${button.dataset.step}"]`);
+    if (textarea) saveStep(button.dataset.step, { nota: textarea.value.trim() });
+  }));
+  $$('#closeCockpit .cl-note').forEach((textarea) => textarea.addEventListener('keydown', (event) => {
+    if (!(event.ctrlKey || event.metaKey) || event.key !== 'Enter') return;
+    event.preventDefault();
+    const button = $(`#closeCockpit .cl-note-save[data-step="${textarea.dataset.step}"]`);
+    if (button) button.click();
+  }));
   $$('#closeCockpit .cl-go').forEach((b) => b.addEventListener('click', () => { if (D.goTab) D.goTab(b.dataset.tab); }));
   $$('#closeProofs .cl-val').forEach((b) => b.addEventListener('click', async () => {
     b.disabled = true;

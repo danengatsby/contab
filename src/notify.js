@@ -27,6 +27,24 @@ async function sendNotifMail(to, subject, text) {
   return sendResend(key, { from: 'Contab <comenzi@poetio.site>', to, subject, text, ua: 'contab-app/1.0' });
 }
 
+/** Notificare imediata, best-effort la nivel de ruta, cand altcineva aloca o sarcina. */
+async function sendAssignmentNotification(assignment) {
+  if (!assignment || !assignment.userId) return { skipped: true };
+  const u = (db.get().users || []).find((x) => Number(x.id) === Number(assignment.userId));
+  if (!u || !u.email || u.pending || u.notifyAssignments === false || u.username === 'demo' || u.username === 'demo-contabil') return { skipped: true };
+  const smtp = db.get().settings.smtp || {};
+  if (!smtp.host && !process.env.RESEND_API_KEY) return { skipped: true, reason: 'mail-not-configured' };
+  const due = assignment.due ? '\nTermen: ' + assignment.due : '';
+  const period = assignment.period ? '\nLuna: ' + assignment.period : '';
+  const text = 'Ți-a fost alocată o sarcină în Contabo.\n\nFirmă: ' + (assignment.firma || ('#' + assignment.firmaId))
+    + '\nSarcină: ' + assignment.title + due + period
+    + (assignment.assignedBy ? '\nAlocată de: ' + assignment.assignedBy : '')
+    + '\n\nVezi „Notificări → Sarcinile mele” în ' + billing.appUrl() + '.\n'
+    + 'Poți dezactiva emailurile de alocare din Setări → Contul meu.\n';
+  await sendNotifMail(u.email, '[Contabo] Sarcină nouă: ' + String(assignment.title || '').slice(0, 100), text);
+  return { sent: true, email: u.email };
+}
+
 function digestText(n) {
   const line = (i) => '  • [' + (i.firma || 'firma') + '] ' + i.nume + ' — luna ' + i.period + ', termen ' + i.due;
   const rest = n.items.filter((i) => i.kind === 'restanta');
@@ -57,4 +75,4 @@ async function sendDeadlineDigests() {
   return out;
 }
 
-module.exports = { sendMail, sendNotifMail, digestText, sendDeadlineDigests };
+module.exports = { sendMail, sendNotifMail, sendAssignmentNotification, digestText, sendDeadlineDigests };

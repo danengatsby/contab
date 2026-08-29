@@ -157,6 +157,7 @@ export async function renderProfile() {
     const f = $('#profileForm');
     f.email.value = p.email || '';
     f.notifyDeadlines.checked = p.notifyDeadlines !== false;
+    if (f.notifyAssignments) f.notifyAssignments.checked = p.notifyAssignments !== false;
     // datele personale: doar pentru abonati (necontabil = Start, contabil = Pro)
     const abonat = p.tip === 'necontabil' || p.tip === 'contabil';
     const pr0 = p.profil || {};
@@ -189,7 +190,10 @@ $('#profileForm').addEventListener('submit', async (e) => {
   if (f.cnp) profil.cnp = f.cnp.value;
   if (f.disponibilContabil) profil.disponibilContabil = f.disponibilContabil.checked;
   try {
-    await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email.value, notifyDeadlines: f.notifyDeadlines.checked, profil }) });
+    await api('/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      email: f.email.value, notifyDeadlines: f.notifyDeadlines.checked,
+      notifyAssignments: f.notifyAssignments ? f.notifyAssignments.checked : true, profil,
+    }) });
   } catch (err) { return toast(err.message, true); } // CNP invalid: mesajul serverului, nu o eroare tacuta
   formFlowSaved(f);
   toast('Profil salvat');

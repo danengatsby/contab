@@ -22,6 +22,8 @@ const { naturalCompare } = require('./util');
 const backup = require('./backup');
 const identitate = require('./identitate');
 const legal = require('./legalCompliance');
+const permissions = require('./permissions');
+const { canonicalJson } = require('./globalChain');
 const { cuiKey } = identitate;
 const { allowedFirme, isDemoUser } = require('./session');
 
@@ -29,6 +31,42 @@ const { allowedFirme, isDemoUser } = require('./session');
 // interfata. Textul mesajului nu e contract: se rescrie oricand, si o potrivire pe el ar
 // pica tacut la prima reformulare.
 function fail(status, message, code) { const e = new Error(message); e.status = status; if (code) e.code = code; throw e; }
+
+// Rolurile sunt explicite si in cererile care acorda acces, nu doar in ecranul de colaboratori.
+// Pentru un contabil angajat sa poata incepe lucrul, rolul operational implicit este aprobator;
+// „vizualizare” ramane disponibil numai cand patronul il alege intentionat.
+const COLLAB_ROLES = new Set(['vizualizare', 'operator', 'verificator', 'aprobator']);
+function collaboratorRole(role) { return COLLAB_ROLES.has(role) ? role : 'vizualizare'; }
+function requestedRole(role) {
+  const value = String(role || 'aprobator');
+  if (!COLLAB_ROLES.has(value)) fail(400, 'Rol invalid (vizualizare/operator/verificator/aprobator).');
+  return value;
+}
+
+function accountingOnlyRoles(role) {
+  return { contabilitate: collaboratorRole(role), salarizare: permissions.NO_ACCESS, trezorerie: permissions.NO_ACCESS };
+}
+
+function accessSelection(b) {
+  b = b || {};
+  if (!Object.prototype.hasOwnProperty.call(b, 'roluri')) return { base: collaboratorRole(b.rol), domains: null };
+  if (!b.roluri || typeof b.roluri !== 'object' || Array.isArray(b.roluri)) {
+    fail(400, 'Trimite rolurile pentru Contabilitate, Salarizare și Trezorerie.');
+  }
+  const domains = permissions.normalizeDomainRoles(b.roluri, collaboratorRole(b.rol));
+  const active = permissions.DOMAIN_KEYS.map((key) => domains[key]).filter((role) => role !== permissions.NO_ACCESS);
+  if (!active.length) fail(400, 'Acordă acces la cel puțin una dintre arii.');
+  return { base: domains.contabilitate !== permissions.NO_ACCESS ? domains.contabilitate : active[0], domains };
+}
+
+function setUserFirmAccess(u, fid, selection) {
+  u.firmaRoluri = Object.assign({}, u.firmaRoluri || {}, { [fid]: selection.base });
+  if (selection.domains) {
+    u.firmaRoluriDomenii = Object.assign({}, u.firmaRoluriDomenii || {}, { [fid]: selection.domains });
+  } else if (u.firmaRoluriDomenii) {
+    delete u.firmaRoluriDomenii[String(fid)];
+  }
+}
 
 function reqOperationalFirma(firma, action) {
   const state = legal.firmState(firma);
@@ -133,7 +171,7 @@ function createFirma(user, b) {
  * oricine cu un cont poate afla ce firme sunt in sistem, incercand CUI-uri. Acelasi rationament
  * ca la resetarea parolei.
  */
-function cerereAcces(user, cui) {
+function cerereAcces(user, cui, rolSolicitat) {
   reqNotDemo(user);
   const key = cuiKey(cui);
   if (!key) fail(400, 'Completează CUI-ul firmei.');
@@ -149,7 +187,8 @@ function cerereAcces(user, cui) {
   if (existenta) return generic;
   d.accessRequests.push({
     id: db.nextId('acc'),
-    firmaId: f.id, userId: user.id, ts: new Date().toISOString(), status: 'in_asteptare',
+    firmaId: f.id, userId: user.id, rolSolicitat: requestedRole(rolSolicitat),
+    ts: new Date().toISOString(), status: 'in_asteptare',
   });
   db.save();
   return generic;
@@ -164,13 +203,13 @@ function cereriPrimite(user) {
     .map((r) => {
       const u = (d.users || []).find((x) => x.id === r.userId) || {};
       const f = db.getFirma(r.firmaId) || {};
-      return { id: r.id, firmaId: r.firmaId, firma: f.nume || '', ts: r.ts, username: u.username || '', email: u.email || '' };
+      return { id: r.id, firmaId: r.firmaId, firma: f.nume || '', ts: r.ts, username: u.username || '', email: u.email || '', rolSolicitat: requestedRole(r.rolSolicitat) };
     });
   return capList(out, 0, 'cereri-acces').items;
 }
 
 /** Aprobare/respingere — DOAR proprietarul firmei din cerere. */
-function decideCerere(user, id, aprob) {
+function decideCerere(user, id, aprob, rolAcordat) {
   reqNotDemo(user);
   const d = db.get();
   const r = (d.accessRequests || []).find((x) => String(x.id) === String(id));
@@ -181,16 +220,19 @@ function decideCerere(user, id, aprob) {
   // ar putea da mai departe acces la datele patronului
   if (f.ownerId !== user.id) fail(403, 'Doar proprietarul firmei poate decide cererile de acces.');
   if (aprob) reqOperationalFirma(f, 'Acordarea accesului');
+  const role = aprob ? requestedRole(rolAcordat || r.rolSolicitat) : null;
   r.status = aprob ? 'aprobata' : 'respinsa';
   r.decidedBy = user.id; r.decidedAt = new Date().toISOString();
+  if (role) r.rolAcordat = role;
   if (aprob) {
     const u = (d.users || []).find((x) => x.id === r.userId);
     if (!u) fail(404, 'Contul care a cerut accesul nu mai există.');
     u.firme = u.firme || [];
     if (!u.firme.includes(f.id)) u.firme.push(f.id);
+    setUserFirmAccess(u, f.id, { base: role, domains: accountingOnlyRoles(role) });
   }
   db.save();
-  return { ok: true, status: r.status, firma: f.nume || '', firmaId: f.id };
+  return { ok: true, status: r.status, firma: f.nume || '', firmaId: f.id, rol: role };
 }
 
 // ═══════════ ANGAJAREA UNUI CONTABIL: patron -> contabil (sensul invers) ═══════════
@@ -202,13 +244,20 @@ function decideCerere(user, id, aprob) {
 /** Proiectia publica a unui contabil din lista — fara email, fara CNP, fara firmele lui. */
 function contabilPublic(u) {
   const p = u.profil || {};
+  const autorizatie = p.autorizatie || '';
   return {
     id: u.id,
     username: u.username,
     nume: p.numeComplet || u.username,
     oras: p.oras || '', judet: p.judet || '',
     telefon: p.telefon || '',
-    autorizatie: p.autorizatie || '',
+    // Compatibilitate pentru clientii vechi + contract explicit pentru cei noi. Contabo nu are
+    // inca o integrare de verificare cu CECCAR, deci simpla completare a profilului nu devine
+    // niciodata, prin prezentare, o acreditare validata de platforma.
+    autorizatie,
+    autorizatieDeclarata: autorizatie,
+    autorizatieVerificata: false,
+    autorizatieStatut: autorizatie ? 'declarata_neverificata' : 'nedeclarata',
     descriere: p.descriere || '',
     tip: plans.userKind(u),
   };
@@ -253,6 +302,7 @@ function cerereServicii(user, fid, b) {
   const r = {
     id: db.nextId('srv'),
     firmaId: f.id, ownerId: user.id, contabilId: c.id,
+    rolAcordat: requestedRole(b.rol),
     mesaj: String(b.mesaj || '').slice(0, 1000).trim(),
     ts: new Date().toISOString(), status: 'in_asteptare',
   };
@@ -260,7 +310,7 @@ function cerereServicii(user, fid, b) {
   db.save();
   // acelasi nume ca in lista din care a fost ales (profil, altfel contul) — mesajul de confirmare
   // trebuie sa spuna cui i-ai trimis, nu un identificator pe care patronul nu l-a vazut niciodata
-  return { ok: true, id: r.id, contabil: (c.profil || {}).numeComplet || c.username, firma: f.nume || '', firmaId: f.id };
+  return { ok: true, id: r.id, contabil: (c.profil || {}).numeComplet || c.username, firma: f.nume || '', firmaId: f.id, rol: r.rolAcordat };
 }
 
 /** Cererile de servicii care ma privesc: primite (sunt contabilul) si trimise (sunt patronul). */
@@ -275,9 +325,9 @@ function cereriServicii(user) {
     return u ? ((u.profil || {}).numeComplet || u.username) : '';
   };
   const primite = all.filter((r) => r.contabilId === user.id && r.status === 'in_asteptare')
-    .map((r) => ({ id: r.id, firmaId: r.firmaId, firma: numeFirma(r.firmaId), patron: numeUser(r.ownerId), mesaj: r.mesaj || '', ts: r.ts }));
+    .map((r) => ({ id: r.id, firmaId: r.firmaId, firma: numeFirma(r.firmaId), patron: numeUser(r.ownerId), mesaj: r.mesaj || '', rol: requestedRole(r.rolAcordat), ts: r.ts }));
   const trimise = all.filter((r) => r.ownerId === user.id)
-    .map((r) => ({ id: r.id, firmaId: r.firmaId, firma: numeFirma(r.firmaId), contabil: numeUser(r.contabilId), status: r.status, ts: r.ts }));
+    .map((r) => ({ id: r.id, firmaId: r.firmaId, firma: numeFirma(r.firmaId), contabil: numeUser(r.contabilId), rol: requestedRole(r.rolAcordat), status: r.status, ts: r.ts }));
   return {
     primite: capList(primite, 0, 'servicii-primite').items,
     trimise: capList(trimise, 0, 'servicii-trimise').items,
@@ -301,9 +351,11 @@ function decideServicii(user, id, accept) {
   if (accept) {
     user.firme = user.firme || [];
     if (!user.firme.includes(f.id)) user.firme.push(f.id);
+    const role = requestedRole(r.rolAcordat);
+    setUserFirmAccess(user, f.id, { base: role, domains: accountingOnlyRoles(role) });
   }
   db.save();
-  return { ok: true, status: r.status, firma: f.nume || '', firmaId: f.id };
+  return { ok: true, status: r.status, firma: f.nume || '', firmaId: f.id, rol: accept ? requestedRole(r.rolAcordat) : null };
 }
 
 /** Patronul isi retrage o cerere netrimisa inca la capat (sau pe cea la care nu mai vrea raspuns). */
@@ -691,6 +743,7 @@ function deleteFirma(user, id, impersonating, confirmName, deferFiles) {
   d.users.forEach((u) => {
     if (Array.isArray(u.firme)) u.firme = u.firme.filter((x) => x !== id);
     if (u.firmaRoluri) delete u.firmaRoluri[String(id)];
+    if (u.firmaRoluriDomenii) delete u.firmaRoluriDomenii[String(id)];
     if (u.firmaActiva === id) u.firmaActiva = (u.firme || [])[0] || null;
   });
   // daca firma stearsa era cea activa a utilizatorului, muta-l pe prima ramasa a lui
@@ -718,8 +771,6 @@ function deleteFirmaFiles(files) {
 // ───────────────────────── Colaboratori pe firma ─────────────────────────
 // Gestionarea echipei este o decizie a PROPRIETARULUI, nu a oricarui membru. Rolul per firma
 // separa vizualizarea/operarea/verificarea/aprobarea fara sa schimbe rolul global al contului.
-const COLLAB_ROLES = new Set(['vizualizare', 'operator', 'verificator', 'aprobator']);
-function collaboratorRole(role) { return COLLAB_ROLES.has(role) ? role : 'vizualizare'; }
 function canManageCollaborators(user, fid, allowDemo) {
   const f = db.getFirma(Number(fid));
   return !!(f && user && ((user.role === 'admin') || Number(f.ownerId) === Number(user.id) || allowDemo));
@@ -735,9 +786,270 @@ function listCollaborators(fid) {
   // proiectie marginita (vezi capList): lista alimenteaza ecranul de colaboratori
   return capList(db.get().users
     .filter((u) => u.role !== 'admin' && Array.isArray(u.firme) && u.firme.includes(fid))
-    .map((u) => ({ id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending,
-      rol: f && Number(f.ownerId) === Number(u.id) ? 'proprietar' : ((u.firmaRoluri || {})[String(fid)] || 'vizualizare') })),
+    .map((u) => {
+      const owner = f && Number(f.ownerId) === Number(u.id);
+      return { id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending,
+        rol: owner ? 'proprietar' : ((u.firmaRoluri || {})[String(fid)] || 'vizualizare'),
+        roluri: permissions.domainRolesFor(u, fid, f) };
+    }),
   0, 'colaboratori').items;
+}
+
+const HANDOFF_ACTIVE = new Set(['solicitata', 'pregatita']);
+const TRANSFER_ACTIVE = new Set(['in_asteptare']);
+
+function actorName(user) { return String((user && (user.username || user.email)) || 'utilizator'); }
+function historyEvent(action, user, extra) {
+  return Object.assign({ action, at: new Date().toISOString(), by: Number(user && user.id), byName: actorName(user) }, extra || {});
+}
+function reqExactFirmName(firma, confirmName) {
+  if (String(confirmName || '').trim() !== String(firma.nume || '').trim()) {
+    fail(400, 'Confirmarea nu corespunde denumirii firmei. Tastează exact „' + (firma.nume || '') + '”.');
+  }
+}
+function firmMember(d, fid, uid) {
+  return d.users.find((u) => Number(u.id) === Number(uid) && u.role !== 'admin'
+    && Array.isArray(u.firme) && u.firme.includes(Number(fid)));
+}
+function detachCollaborator(d, firma, u, allowOwner) {
+  if (!firma) fail(404, 'Firma nu există.');
+  if (!allowOwner && Number(firma.ownerId) === Number(u.id)) fail(409, 'Proprietarul nu poate fi retras. Transferă mai întâi proprietatea firmei.', 'OWNERSHIP_TRANSFER_REQUIRED');
+  const membri = d.users.filter((x) => x.role !== 'admin' && Array.isArray(x.firme) && x.firme.includes(Number(firma.id)));
+  if (membri.length <= 1) fail(400, 'Nu poți scoate ultimul utilizator al firmei — firma ar rămâne fără acces.');
+  u.firme = u.firme.filter((x) => Number(x) !== Number(firma.id));
+  if (u.firmaRoluri) delete u.firmaRoluri[String(firma.id)];
+  if (u.firmaRoluriDomenii) delete u.firmaRoluriDomenii[String(firma.id)];
+  if (Number(u.firmaActiva) === Number(firma.id)) u.firmaActiva = u.firme[0] || null;
+}
+
+/** Proiectia scurta folosita in ecran. Manifestul complet se obtine numai din ruta de dosar. */
+function handoffPublic(row) {
+  return {
+    id: row.id, firmaId: row.firmaId, collaboratorId: row.collaboratorId,
+    collaboratorName: row.collaboratorName, initiatedBy: row.initiatedBy,
+    initiatedByName: row.initiatedByName, reason: row.reason, status: row.status,
+    createdAt: row.createdAt, preparedAt: row.preparedAt || null,
+    completedAt: row.completedAt || null, cancelledAt: row.cancelledAt || null,
+    rootHash: row.manifest && row.manifest.rootHash || null,
+    history: row.history || [],
+  };
+}
+function transferPublic(row) {
+  return {
+    id: row.id, firmaId: row.firmaId, fromUserId: row.fromUserId, fromUserName: row.fromUserName,
+    toUserId: row.toUserId, toUserName: row.toUserName, status: row.status,
+    createdAt: row.createdAt, completedAt: row.completedAt || null, cancelledAt: row.cancelledAt || null,
+    history: row.history || [],
+  };
+}
+
+/** Fluxurile vizibile utilizatorului pe firma activa. Membrii obisnuiti nu vad incetarile altora. */
+function collaborationLifecycle(user, fid) {
+  fid = Number(fid);
+  const d = db.get(); const firma = db.getFirma(fid);
+  if (!firma) fail(404, 'Firma nu există.');
+  if (!user || (user.role !== 'admin' && !firmMember(d, fid, user.id))) fail(403, 'Fără acces la această firmă.');
+  const owner = user.role === 'admin' || Number(firma.ownerId) === Number(user.id);
+  const relevantHandoff = (r) => Number(r.firmaId) === fid && (owner
+    || Number(r.collaboratorId) === Number(user.id) || Number(r.initiatedBy) === Number(user.id));
+  const relevantTransfer = (r) => Number(r.firmaId) === fid && (owner
+    || Number(r.fromUserId) === Number(user.id) || Number(r.toUserId) === Number(user.id));
+  const handoffs = capList((d.collaborationHandoffs || []).filter(relevantHandoff).map(handoffPublic), 0, 'predari-colaborare').items;
+  const ownershipTransfers = capList((d.ownershipTransfers || []).filter(relevantTransfer).map(transferPublic), 0, 'transferuri-proprietate').items;
+  return {
+    firmaName: firma.nume || '', ownerId: Number(firma.ownerId),
+    handoffs, ownershipTransfers,
+  };
+}
+
+function rowHash(row) {
+  return crypto.createHash('sha256').update(canonicalJson(row), 'utf8').digest('hex');
+}
+
+/** Fotografie imuabila a dosarului la momentul in care contabilul declara predarea. Nu expune
+ * continut contabil in procesul-verbal: pentru fiecare colectie pastreaza doar numarul de randuri
+ * si amprenta lor, iar pentru fisiere numele, dimensiunea si SHA-256 calculat efectiv. */
+function buildHandoffManifest(firma, owner, collaborator, preparedBy) {
+  const d = db.get();
+  const excluded = new Set(['collaborationHandoffs', 'ownershipTransfers', 'auditOutbox']);
+  const collections = ARRAY_COLLS.filter((c) => c.firma && !excluded.has(c.key)).map((c) => {
+    const rows = (Array.isArray(d[c.key]) ? d[c.key] : []).filter((r) => Number(r.firmaId) === Number(firma.id));
+    const hashes = rows.map((row) => rowHash(row)).sort();
+    return { name: c.key, count: rows.length, sha256: rowHash(hashes) };
+  });
+  const documents = (d.documents || []).filter((doc) => Number(doc.firmaId) === Number(firma.id)).map((doc) => {
+    let bytes = Number(doc.bytes) || 0; let sha256 = String(doc.sha256 || '');
+    const stored = doc.storedName && path.join(db.UPLOAD_DIR, path.basename(doc.storedName));
+    if (stored) {
+      try {
+        const content = fs.readFileSync(stored);
+        bytes = content.length; sha256 = crypto.createHash('sha256').update(content).digest('hex');
+      } catch (_) { /* fisierul absent ramane vizibil prin amprenta goala/stocata */ }
+    }
+    return { id: doc.id, name: String(doc.fileName || doc.originalName || ''), bytes, sha256 };
+  }).sort((a, b) => naturalCompare(String(a.id), String(b.id)));
+  const partners = (d.partners && d.partners[firma.id]) || {};
+  const openingBalances = (d.openingBalances && d.openingBalances[firma.id]) || {};
+  const documentSeries = (d.settings && d.settings.docSeries && d.settings.docSeries[firma.id]) || {};
+  const maps = [
+    { name: 'partners', count: Object.keys(partners).length, sha256: rowHash(partners) },
+    { name: 'openingBalances', count: Object.keys(openingBalances).length, sha256: rowHash(openingBalances) },
+    { name: 'documentSeries', count: Object.keys(documentSeries).length, sha256: rowHash(documentSeries) },
+  ];
+  const relationshipRows = ['accessRequests', 'serviceRequests'].map((name) => {
+    const rows = (Array.isArray(d[name]) ? d[name] : []).filter((r) => Number(r.firmaId) === Number(firma.id));
+    return { name, count: rows.length, sha256: rowHash(rows.map(rowHash).sort()) };
+  });
+  const generatedAt = new Date().toISOString();
+  const snapshot = {
+    version: 1, generatedAt,
+    firma: { id: firma.id, nume: firma.nume || '', cui: firma.cui || '', regCom: firma.regCom || '', lockedUntil: firma.lockedUntil || null },
+    parties: { owner: { id: owner.id, username: owner.username }, collaborator: { id: collaborator.id, username: collaborator.username } },
+    preparedBy: { id: preparedBy.id, username: actorName(preparedBy) },
+    collections, maps, relationshipRows, documents,
+  };
+  return Object.assign(snapshot, { rootHash: rowHash(snapshot) });
+}
+
+/** Porneste incetarea. Poate cere proprietarul sau chiar colaboratorul vizat. */
+function initiateCollaborationHandoff(user, fid, collaboratorId, reason) {
+  reqNotDemo(user); fid = Number(fid); collaboratorId = Number(collaboratorId);
+  const d = db.get(); const firma = db.getFirma(fid); const collaborator = firmMember(d, fid, collaboratorId);
+  if (!firma) fail(404, 'Firma nu există.');
+  if (!collaborator || collaborator.pending) fail(404, 'Colaboratorul activ nu există pe această firmă.');
+  if (Number(firma.ownerId) === collaboratorId) fail(409, 'Pentru proprietar folosește transferul de proprietate.', 'OWNERSHIP_TRANSFER_REQUIRED');
+  const allowed = user.role === 'admin' || Number(firma.ownerId) === Number(user.id) || Number(user.id) === collaboratorId;
+  if (!allowed) fail(403, 'Doar proprietarul sau colaboratorul vizat poate începe încetarea.');
+  if ((d.collaborationHandoffs || []).some((r) => Number(r.firmaId) === fid && Number(r.collaboratorId) === collaboratorId && HANDOFF_ACTIVE.has(r.status))) {
+    fail(409, 'Există deja o predare în curs pentru acest colaborator.');
+  }
+  if ((d.ownershipTransfers || []).some((r) => Number(r.firmaId) === fid && Number(r.toUserId) === collaboratorId && TRANSFER_ACTIVE.has(r.status))) {
+    fail(409, 'Colaboratorul este deja destinatarul unui transfer de proprietate. Finalizează sau anulează transferul mai întâi.');
+  }
+  reason = String(reason || '').trim().slice(0, 1000);
+  if (!reason) fail(400, 'Consemnează motivul încetării colaborării.');
+  const createdAt = new Date().toISOString();
+  const row = {
+    id: db.nextId('predare_'), firmaId: fid, collaboratorId, collaboratorName: collaborator.username,
+    initiatedBy: Number(user.id), initiatedByName: actorName(user), reason,
+    status: 'solicitata', createdAt, history: [historyEvent('incetare_solicitata', user, { reason })],
+  };
+  d.collaborationHandoffs.push(row); db.save(); return handoffPublic(row);
+}
+
+/** Colaboratorul confirma predarea; abia aici se sigileaza fotografia dosarului. */
+function prepareCollaborationHandoff(user, handoffId) {
+  reqNotDemo(user);
+  const d = db.get(); const row = (d.collaborationHandoffs || []).find((r) => String(r.id) === String(handoffId));
+  if (!row) fail(404, 'Procesul de predare nu există.');
+  if (row.status !== 'solicitata') fail(409, 'Predarea nu mai este în starea „solicitată”.');
+  if (Number(row.collaboratorId) !== Number(user.id)) fail(403, 'Doar colaboratorul vizat poate confirma că dosarul a fost predat.');
+  const firma = db.getFirma(Number(row.firmaId)); const collaborator = firmMember(d, row.firmaId, row.collaboratorId);
+  const owner = firma && d.users.find((u) => Number(u.id) === Number(firma.ownerId));
+  if (!firma || !collaborator || !owner) fail(409, 'Părțile colaborării nu mai sunt active pe firmă.');
+  row.manifest = buildHandoffManifest(firma, owner, collaborator, user);
+  row.status = 'pregatita'; row.preparedAt = row.manifest.generatedAt; row.preparedBy = Number(user.id);
+  row.history.push(historyEvent('dosar_predat', user, { rootHash: row.manifest.rootHash }));
+  db.save(); return handoffPublic(row);
+}
+
+/** Proprietarul confirma primirea; numai acum dispare accesul colaboratorului. */
+function completeCollaborationHandoff(user, handoffId) {
+  reqNotDemo(user);
+  const d = db.get(); const row = (d.collaborationHandoffs || []).find((r) => String(r.id) === String(handoffId));
+  if (!row) fail(404, 'Procesul de predare nu există.');
+  if (row.status !== 'pregatita' || !row.manifest) fail(409, 'Colaboratorul trebuie să confirme mai întâi predarea dosarului.');
+  const firma = db.getFirma(Number(row.firmaId));
+  if (!firma) fail(404, 'Firma nu mai există.');
+  if (user.role !== 'admin' && Number(firma.ownerId) !== Number(user.id)) fail(403, 'Doar proprietarul poate confirma primirea și retrage accesul.');
+  const collaborator = firmMember(d, row.firmaId, row.collaboratorId);
+  if (!collaborator) fail(409, 'Colaboratorul nu mai are acces; procesul nu poate fi finalizat a doua oară.');
+  detachCollaborator(d, firma, collaborator);
+  row.status = 'finalizata'; row.completedAt = new Date().toISOString(); row.completedBy = Number(user.id);
+  row.history.push(historyEvent('predare_acceptata_acces_retras', user, { rootHash: row.manifest.rootHash }));
+  db.save(); return handoffPublic(row);
+}
+
+function cancelCollaborationHandoff(user, handoffId) {
+  reqNotDemo(user);
+  const d = db.get(); const row = (d.collaborationHandoffs || []).find((r) => String(r.id) === String(handoffId));
+  if (!row) fail(404, 'Procesul de predare nu există.');
+  if (!HANDOFF_ACTIVE.has(row.status)) fail(409, 'Procesul de predare este deja închis.');
+  const firma = db.getFirma(Number(row.firmaId));
+  const allowed = user.role === 'admin' || (firma && Number(firma.ownerId) === Number(user.id)) || Number(row.initiatedBy) === Number(user.id);
+  if (!allowed) fail(403, 'Doar proprietarul sau inițiatorul poate anula predarea.');
+  row.status = 'anulata'; row.cancelledAt = new Date().toISOString(); row.cancelledBy = Number(user.id);
+  row.history.push(historyEvent('predare_anulata', user)); db.save(); return handoffPublic(row);
+}
+
+function handoffDossier(user, handoffId) {
+  const d = db.get(); const row = (d.collaborationHandoffs || []).find((r) => String(r.id) === String(handoffId));
+  if (!row) fail(404, 'Procesul de predare nu există.');
+  const firma = db.getFirma(Number(row.firmaId));
+  const allowed = user && (user.role === 'admin' || Number(user.id) === Number(row.collaboratorId)
+    || Number(user.id) === Number(row.initiatedBy) || (firma && Number(user.id) === Number(firma.ownerId)));
+  if (!allowed) fail(403, 'Nu ai acces la acest proces-verbal de predare.');
+  if (!row.manifest) fail(409, 'Dosarul nu a fost încă declarat predat.');
+  return {
+    tip: 'proces-verbal-predare-dosar-contabil', version: 1, handoffId: row.id,
+    status: row.status, reason: row.reason, manifest: row.manifest, history: row.history || [],
+  };
+}
+
+/** Transferul proprietatii cere confirmarea denumirii la initiere si acceptarea destinatarului. */
+function initiateOwnershipTransfer(user, fid, targetId, confirmName) {
+  reqNotDemo(user); fid = Number(fid); targetId = Number(targetId);
+  const d = db.get(); const firma = db.getFirma(fid);
+  if (!firma) fail(404, 'Firma nu există.');
+  if (Number(firma.ownerId) !== Number(user.id)) fail(403, 'Doar proprietarul curent poate iniția transferul.');
+  reqExactFirmName(firma, confirmName);
+  const target = firmMember(d, fid, targetId);
+  if (!target || target.pending || Number(target.id) === Number(user.id)) fail(404, 'Alege un colaborator activ al firmei.');
+  if ((d.ownershipTransfers || []).some((r) => Number(r.firmaId) === fid && TRANSFER_ACTIVE.has(r.status))) {
+    fail(409, 'Există deja un transfer de proprietate în așteptare pentru această firmă.');
+  }
+  if ((d.collaborationHandoffs || []).some((r) => Number(r.firmaId) === fid && Number(r.collaboratorId) === targetId && HANDOFF_ACTIVE.has(r.status))) {
+    fail(409, 'Există o încetare în curs pentru acest colaborator. Anuleaz-o sau finalizeaz-o înainte de transfer.');
+  }
+  const row = {
+    id: db.nextId('proprietar_'), firmaId: fid, fromUserId: Number(user.id), fromUserName: actorName(user),
+    toUserId: targetId, toUserName: target.username, status: 'in_asteptare', createdAt: new Date().toISOString(),
+    history: [historyEvent('transfer_initiat', user, { toUserId: targetId, toUserName: target.username })],
+  };
+  d.ownershipTransfers.push(row); db.save(); return transferPublic(row);
+}
+
+function acceptOwnershipTransfer(user, transferId, confirmName) {
+  reqNotDemo(user);
+  const d = db.get(); const row = (d.ownershipTransfers || []).find((r) => String(r.id) === String(transferId));
+  if (!row) fail(404, 'Transferul de proprietate nu există.');
+  if (row.status !== 'in_asteptare') fail(409, 'Transferul nu mai este în așteptare.');
+  if (Number(row.toUserId) !== Number(user.id)) fail(403, 'Doar destinatarul poate accepta proprietatea firmei.');
+  const firma = db.getFirma(Number(row.firmaId));
+  if (!firma || Number(firma.ownerId) !== Number(row.fromUserId)) fail(409, 'Proprietarul firmei s-a schimbat între timp.');
+  reqExactFirmName(firma, confirmName);
+  const target = firmMember(d, row.firmaId, row.toUserId);
+  const previousOwner = firmMember(d, row.firmaId, row.fromUserId);
+  if (!target || !previousOwner) fail(409, 'Ambele părți trebuie să aibă acces activ la firmă.');
+  firma.ownerId = Number(target.id);
+  setUserFirmAccess(previousOwner, firma.id, { base: 'vizualizare', domains: accountingOnlyRoles('vizualizare') });
+  row.status = 'finalizat'; row.completedAt = new Date().toISOString(); row.completedBy = Number(user.id);
+  row.history.push(historyEvent('transfer_acceptat', user, { previousOwnerRole: 'vizualizare', newOwnerId: target.id }));
+  db.save(); return transferPublic(row);
+}
+
+function cancelOwnershipTransfer(user, transferId) {
+  reqNotDemo(user);
+  const d = db.get(); const row = (d.ownershipTransfers || []).find((r) => String(r.id) === String(transferId));
+  if (!row) fail(404, 'Transferul de proprietate nu există.');
+  if (row.status !== 'in_asteptare') fail(409, 'Transferul nu mai este în așteptare.');
+  if (Number(user.id) !== Number(row.fromUserId) && Number(user.id) !== Number(row.toUserId)) {
+    fail(403, 'Doar proprietarul sau destinatarul poate închide transferul.');
+  }
+  const rejected = Number(user.id) === Number(row.toUserId);
+  row.status = rejected ? 'refuzat' : 'anulat'; row.cancelledAt = new Date().toISOString(); row.cancelledBy = Number(user.id);
+  row.history.push(historyEvent(rejected ? 'transfer_refuzat' : 'transfer_anulat', user));
+  db.save(); return transferPublic(row);
 }
 
 /** Adauga un cont EXISTENT (dupa username sau email exact) ca membru al firmei `fid`. Idempotent. */
@@ -754,9 +1066,11 @@ function addExistingCollaborator(user, fid, b, allowDemo) {
   u.firme = u.firme || [];
   if (u.firme.includes(fid)) fail(400, u.username + ' e deja colaborator pe această firmă.');
   u.firme.push(fid);
-  u.firmaRoluri = Object.assign({}, u.firmaRoluri || {}, { [fid]: collaboratorRole(b.rol) });
+  const selection = accessSelection(b);
+  setUserFirmAccess(u, fid, selection);
   db.save();
-  return { id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending };
+  return { id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: !!u.pending,
+    rol: selection.base, roluri: selection.domains || permissions.domainRolesFor(u, fid, db.getFirma(fid)) };
 }
 
 /** Creeaza o INVITATIE (pending user) cu acces la firma `fid` — aceeasi forma ca /api/invites.
@@ -771,29 +1085,34 @@ function inviteCollaborator(user, fid, b, allowDemo) {
   const d = db.get();
   if (d.users.some((u) => (u.username || '').toLowerCase() === username.toLowerCase())) fail(400, 'Există deja un cont „' + username + '". Adaugă-l ca „cont existent".');
   const token = crypto.randomBytes(24).toString('hex');
+  const selection = accessSelection(b);
   const u = {
     id: db.nextUserId(), username, email: String(b.email || '').trim(), salt: '', hash: '',
     pending: true, inviteToken: token, inviteExp: Date.now() + 7 * 24 * 3600 * 1000,
-    role: 'user', firme: [fid], firmaActiva: fid, firmaRoluri: { [fid]: collaboratorRole(b.rol) },
+    role: 'user', firme: [fid], firmaActiva: fid, firmaRoluri: { [fid]: selection.base },
   };
+  if (selection.domains) u.firmaRoluriDomenii = { [fid]: selection.domains };
   d.users.push(u);
   db.save();
   return { token, user: { id: u.id, username: u.username, email: u.email || '', tip: plans.userKind(u), pending: true } };
 }
 
-/** Scoate colaboratorul `uid` de pe firma `fid`. Refuza adminul, non-colaboratorul si scoaterea
- *  ultimului utilizator (firma nu ramane orfana). */
+/** Stergerea directa ramane numai pentru invitatii neacceptate si pentru demonstratia publica.
+ * Un colaborator real pleaca prin procesul formal de predare, ca motivul, fotografia dosarului si
+ * acceptarea proprietarului sa nu dispara intr-un simplu DELETE. */
 function removeCollaborator(user, fid, uid, allowDemo) {
   fid = Number(fid); uid = Number(uid);
   reqManageCollaborators(user, fid, allowDemo);
-  const d = db.get();
+  const d = db.get(); const firma = db.getFirma(fid);
   const u = d.users.find((x) => x.id === uid);
   if (!u || u.role === 'admin' || !Array.isArray(u.firme) || !u.firme.includes(fid)) fail(404, 'Utilizatorul nu e colaborator pe această firmă.');
-  const membri = d.users.filter((x) => x.role !== 'admin' && Array.isArray(x.firme) && x.firme.includes(fid));
-  if (membri.length <= 1) fail(400, 'Nu poți scoate ultimul utilizator al firmei — firma ar rămâne fără acces.');
-  u.firme = u.firme.filter((x) => x !== fid);
-  if (u.firmaRoluri) delete u.firmaRoluri[String(fid)];
-  if (u.firmaActiva === fid) u.firmaActiva = u.firme[0] || null;
+  if (!allowDemo && Number(firma && firma.ownerId) === uid) {
+    fail(409, 'Proprietarul nu poate fi retras. Inițiază transferul de proprietate către un colaborator activ.', 'OWNERSHIP_TRANSFER_REQUIRED');
+  }
+  if (!allowDemo && !u.pending) {
+    fail(409, 'Accesul unui colaborator activ se retrage numai după procesul formal de predare a dosarului.', 'HANDOFF_REQUIRED');
+  }
+  detachCollaborator(d, firma, u, !!allowDemo);
   db.save();
   return { id: u.id, username: u.username };
 }
@@ -808,8 +1127,24 @@ function setCollaboratorRole(user, fid, uid, role, allowDemo) {
   if (f && Number(f.ownerId) === uid) fail(400, 'Rolul proprietarului nu poate fi schimbat din lista colaboratorilor.');
   if (!COLLAB_ROLES.has(role)) fail(400, 'Rol invalid (vizualizare/operator/verificator/aprobator).');
   u.firmaRoluri = Object.assign({}, u.firmaRoluri || {}, { [fid]: role });
+  if (u.firmaRoluriDomenii) delete u.firmaRoluriDomenii[String(fid)];
   db.save();
   return { id: u.id, username: u.username, rol: role };
+}
+
+/** Acorda independent rolul pe contabilitate, salarizare si trezorerie. Rolul vechi ramane o
+ * proiectie de compatibilitate (prima arie activa); verdictul foloseste intotdeauna aria actiunii. */
+function setCollaboratorAccess(user, fid, uid, roles, allowDemo) {
+  fid = Number(fid); uid = Number(uid);
+  reqManageCollaborators(user, fid, allowDemo);
+  const d = db.get(); const f = db.getFirma(fid);
+  const u = d.users.find((x) => x.id === uid && x.role !== 'admin' && Array.isArray(x.firme) && x.firme.includes(fid));
+  if (!u) fail(404, 'Utilizatorul nu e colaborator pe această firmă.');
+  if (f && Number(f.ownerId) === uid) fail(400, 'Accesul proprietarului nu poate fi restrâns din lista colaboratorilor.');
+  const selection = accessSelection({ roluri: roles, rol: (u.firmaRoluri || {})[String(fid)] });
+  setUserFirmAccess(u, fid, selection);
+  db.save();
+  return { id: u.id, username: u.username, rol: selection.base, roluri: selection.domains };
 }
 
 module.exports = {
@@ -820,6 +1155,9 @@ module.exports = {
   createFirma, importBundle, importZip, testClone, addDemoFirma,
   exportBundle, exportZip, exportAllZip, firmaSlug,
   updateFirma, activateFirma, setFirmaSubscription, subscribeFirma, deleteFirma, deleteFirmaFiles,
-  listCollaborators, addExistingCollaborator, inviteCollaborator, removeCollaborator, setCollaboratorRole,
-  canManageCollaborators,
+  listCollaborators, addExistingCollaborator, inviteCollaborator, removeCollaborator, setCollaboratorRole, setCollaboratorAccess,
+  canManageCollaborators, collaborationLifecycle,
+  initiateCollaborationHandoff, prepareCollaborationHandoff, completeCollaborationHandoff,
+  cancelCollaborationHandoff, handoffDossier,
+  initiateOwnershipTransfer, acceptOwnershipTransfer, cancelOwnershipTransfer,
 };

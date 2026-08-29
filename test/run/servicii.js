@@ -124,6 +124,7 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   const acc = { id: 90002, username: 'contabilx', email: 'c@x.ro', role: 'user', firme: [999], subscription: { status: 'active', plan: 'pro' } };
   const adminU = { id: 90003, username: 'adminx', role: 'admin' };
   dC.users.push(owner, acc, adminU);
+  dC.workRequests.push({ id: 'work-predare', firmaId: fidC, title: 'Document lipsă', status: 'deschisa' });
   db.save();
   eq('list: initial doar proprietarul', fsvc.listCollaborators(fidC).map((c) => c.username).join(','), 'proprietar');
   eq('firma neclasificata nu poate acorda acces la date',
@@ -134,6 +135,14 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   eq('addExisting: contabilx capata firma', added.username + ':' + db.get().users.find((u) => u.id === acc.id).firme.includes(fidC), 'contabilx:true');
   eq('addExisting: contabil recunoscut ca tip', added.tip, 'contabil');
   eq('addExisting: rolul per firma este pastrat', db.get().users.find((u) => u.id === acc.id).firmaRoluri[fidC], 'operator');
+  const arii = fsvc.setCollaboratorAccess(owner, fidC, acc.id,
+    { contabilitate: 'vizualizare', salarizare: 'operator', trezorerie: 'fara_acces' });
+  ok('accesul colaboratorului se configurează separat pe cele trei arii', arii.roluri.contabilitate === 'vizualizare'
+    && arii.roluri.salarizare === 'operator' && arii.roluri.trezorerie === 'fara_acces');
+  ok('lista colaboratorilor expune rolurile efective pe arii',
+    fsvc.listCollaborators(fidC).find((c) => c.id === acc.id).roluri.salarizare === 'operator');
+  eq('nu se poate păstra un colaborator fără acces în nicio arie', errStatus(() => fsvc.setCollaboratorAccess(owner, fidC, acc.id,
+    { contabilitate: 'fara_acces', salarizare: 'fara_acces', trezorerie: 'fara_acces' })), 400);
   eq('addExisting: dubla -> 400', errStatus(() => fsvc.addExistingCollaborator(owner, fidC, { username: 'contabilx' })), 400);
   eq('addExisting: cont inexistent -> 404', errStatus(() => fsvc.addExistingCollaborator(owner, fidC, { username: 'nimeni' })), 404);
   eq('addExisting: adminul deja are acces -> 400', errStatus(() => fsvc.addExistingCollaborator(owner, fidC, { username: 'adminx' })), 400);
@@ -144,18 +153,50 @@ section('Colaboratori pe firmă (src/firmeService.js)');
   eq('inviteNew: username existent -> 400', errStatus(() => fsvc.inviteCollaborator(owner, fidC, { username: 'contabilx' })), 400);
   eq('list: acum 3 (proprietar + contabilx + invitatnou pending)', fsvc.listCollaborators(fidC).length, 3);
   ok('list: invitatia apare cu pending=true', fsvc.listCollaborators(fidC).some((c) => c.username === 'invitatnou' && c.pending));
-  // scoatere
+  // un colaborator activ nu mai dispare prin DELETE: predarea este obligatorie si auditabila
   eq('proprietarul schimba rolul', fsvc.setCollaboratorRole(owner, fidC, acc.id, 'aprobator').rol, 'aprobator');
-  fsvc.removeCollaborator(owner, fidC, acc.id);
-  ok('remove: contabilx pierde accesul', !db.get().users.find((u) => u.id === acc.id).firme.includes(fidC));
+  eq('remove direct: colaborator activ -> 409, cere predare', errStatus(() => fsvc.removeCollaborator(owner, fidC, acc.id)), 409);
+  const handoff = fsvc.initiateCollaborationHandoff(owner, fidC, acc.id, 'Schimbarea prestatorului');
+  eq('predare: porneste in starea solicitata', handoff.status, 'solicitata');
+  eq('predare: proprietarul nu poate declara in locul colaboratorului', errStatus(() => fsvc.prepareCollaborationHandoff(owner, handoff.id)), 403);
+  const ready = fsvc.prepareCollaborationHandoff(acc, handoff.id);
+  ok('predare: fotografia dosarului este sigilata SHA-256', ready.status === 'pregatita' && /^[0-9a-f]{64}$/.test(ready.rootHash));
+  const dossier = fsvc.handoffDossier(acc, handoff.id);
+  ok('predare: procesul-verbal inventariaza colectiile firmei fara continutul lor', dossier.manifest.collections.some((c) => c.name === 'workRequests' && c.count === 1 && /^[0-9a-f]{64}$/.test(c.sha256)));
+  ok('predare: fotografia include si hartile care nu sunt colectii-array',
+    dossier.manifest.maps.some((c) => c.name === 'partners' && /^[0-9a-f]{64}$/.test(c.sha256)));
+  eq('predare: colaboratorul nu-si poate retrage singur accesul dupa sigilare', errStatus(() => fsvc.completeCollaborationHandoff(acc, handoff.id)), 403);
+  const done = fsvc.completeCollaborationHandoff(owner, handoff.id);
+  ok('predare: confirmarea proprietarului finalizeaza si retrage accesul', done.status === 'finalizata' && !db.get().users.find((u) => u.id === acc.id).firme.includes(fidC));
+  ok('predare: fostul colaborator pastreaza acces la propriul proces-verbal', fsvc.handoffDossier(acc, handoff.id).manifest.rootHash === ready.rootHash);
+  eq('predare: finalizarea nu se poate repeta', errStatus(() => fsvc.completeCollaborationHandoff(owner, handoff.id)), 409);
   eq('remove: non-colaborator -> 404', errStatus(() => fsvc.removeCollaborator(owner, fidC, acc.id)), 404);
   eq('remove: admin -> 404 (nu e colaborator per-firma)', errStatus(() => fsvc.removeCollaborator(owner, fidC, adminU.id)), 404);
-  // pana ramane doar proprietarul: scot invitatia, apoi refuz scoaterea ultimului
+  // invitatia neacceptata se poate anula direct
   fsvc.removeCollaborator(owner, fidC, inv.user.id);
-  eq('remove: ultimul utilizator -> 400 (firma nu ramane orfana)', errStatus(() => fsvc.removeCollaborator(owner, fidC, owner.id)), 400);
+  // Transferul proprietatii este in doi pasi si cere denumirea exacta ambelor parti.
+  fsvc.addExistingCollaborator(owner, fidC, { username: 'contabilx', rol: 'operator' });
+  eq('transfer proprietar: confirmarea gresita -> 400', errStatus(() => fsvc.initiateOwnershipTransfer(owner, fidC, acc.id, 'Alta firma')), 400);
+  const transfer = fsvc.initiateOwnershipTransfer(owner, fidC, acc.id, firmaC.nume);
+  eq('transfer proprietar: asteapta acceptarea destinatarului', transfer.status, 'in_asteptare');
+  eq('transfer proprietar: initiatorul nu poate accepta pentru destinatar', errStatus(() => fsvc.acceptOwnershipTransfer(owner, transfer.id, firmaC.nume)), 403);
+  eq('transfer proprietar: destinatarul confirma denumirea exacta', errStatus(() => fsvc.acceptOwnershipTransfer(acc, transfer.id, 'gresit')), 400);
+  const transferred = fsvc.acceptOwnershipTransfer(acc, transfer.id, firmaC.nume);
+  ok('transfer proprietar: acceptarea schimba proprietarul', transferred.status === 'finalizat' && Number(firmaC.ownerId) === Number(acc.id));
+  ok('transfer proprietar: fostul proprietar ramane numai cu vizualizare in Contabilitate',
+    owner.firmaRoluriDomenii[fidC].contabilitate === 'vizualizare'
+    && owner.firmaRoluriDomenii[fidC].salarizare === 'fara_acces'
+    && owner.firmaRoluriDomenii[fidC].trezorerie === 'fara_acces');
+  const inapoi = fsvc.initiateOwnershipTransfer(acc, fidC, owner.id, firmaC.nume);
+  fsvc.acceptOwnershipTransfer(owner, inapoi.id, firmaC.nume);
+  eq('transfer proprietar: poate fi transferata ulterior inapoi, tot prin acceptare', firmaC.ownerId, owner.id);
+  eq('remove: proprietarul cere transfer, nu poate fi sters', errStatus(() => fsvc.removeCollaborator(owner, fidC, owner.id)), 409);
   // curatenie
   db.get().firme = db.get().firme.filter((f) => f.id !== fidC);
   db.get().users = db.get().users.filter((u) => ![owner.id, acc.id, adminU.id, inv.user.id].includes(u.id));
+  db.get().workRequests = db.get().workRequests.filter((r) => Number(r.firmaId) !== fidC);
+  db.get().collaborationHandoffs = db.get().collaborationHandoffs.filter((r) => Number(r.firmaId) !== fidC);
+  db.get().ownershipTransfers = db.get().ownershipTransfers.filter((r) => Number(r.firmaId) !== fidC);
   db.save();
 }
 
@@ -331,9 +372,11 @@ ok('logout-others pastreaza doar sesiunea curenta', u1.sessions.length === 1 && 
 asvc.revokeSession(u1, 's2');
 eq('revocare individuala: sesiunea dispare', u1.sessions.length, 0);
 // profil: campuri albe curatate, cheile necunoscute ignorate, email + notificari
-const prof = asvc.updateProfile(u1, { email: 'x@exemplu.ro', notifyDeadlines: false, profil: { numeComplet: '  Ion Pop  ', telefon: '0712', necunoscut: 'ignorat' } });
-ok('profil: email + notificari + campuri curatate', prof.email === 'x@exemplu.ro' && prof.notifyDeadlines === false && prof.profil.numeComplet === 'Ion Pop' && prof.profil.necunoscut === undefined);
-ok('getProfile reflecta starea', asvc.getProfile(u1).email === 'x@exemplu.ro' && asvc.getProfile(u1).notifyDeadlines === false);
+const prof = asvc.updateProfile(u1, { email: 'x@exemplu.ro', notifyDeadlines: false, notifyAssignments: false, profil: { numeComplet: '  Ion Pop  ', telefon: '0712', necunoscut: 'ignorat' } });
+ok('profil: email + notificari + campuri curatate', prof.email === 'x@exemplu.ro' && prof.notifyDeadlines === false
+  && prof.notifyAssignments === false && prof.profil.numeComplet === 'Ion Pop' && prof.profil.necunoscut === undefined);
+ok('getProfile reflecta starea', asvc.getProfile(u1).email === 'x@exemplu.ro' && asvc.getProfile(u1).notifyDeadlines === false
+  && asvc.getProfile(u1).notifyAssignments === false);
 
 section('Service layer articole contabile (src/entriesService.js)');
 const esvc = require('../../src/entriesService');
