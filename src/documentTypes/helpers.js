@@ -88,6 +88,18 @@ const F = {
       { value: 'major_financial_difficulty', label: 'Dificultati financiare majore asupra intregului patrimoniu' },
       { value: 'insurance_covered', label: 'Creanta acoperita de asigurare' }] },
   documenteJustificativeFiscal: { name: 'documenteJustificativeFiscal', label: 'Document justificativ fiscal (numar hotarare/decizie/polita; fisierul incarcat se leaga automat)', type: 'text' },
+  // Art. 310 alin. (2): aceeasi nota de credit/factura in valuta poate ajusta o operatiune
+  // taxabila, un export, o operatiune cu locul in strainatate ori o cedare de activ exclusa.
+  // Contul de venit nu raspunde la aceasta intrebare; natura se cere explicit.
+  naturaTvaArt310: { name: 'naturaTvaArt310', label: 'Natura operatiei pentru plafonul TVA (art. 310)', type: 'select', required: true,
+    options: [{ value: '', label: 'Alege obligatoriu…' },
+      { value: 'taxable', label: 'Taxabila in Romania (sau ar fi taxabila fara scutirea de mica intreprindere)' },
+      { value: 'exempt_with_deduction', label: 'Scutita cu drept de deducere (ex. export/livrare intracomunitara)' },
+      { value: 'exempt_without_deduction_main', label: 'Scutita fara drept art. 292(2) a/b/e/f, NEACCESORIE activitatii principale' },
+      { value: 'exempt_without_deduction_other', label: 'Alta scutire fara drept / operatiune accesorie — exclusa' },
+      { value: 'outside_romania', label: 'Locul livrarii/prestarii este in afara Romaniei — exclusa' },
+      { value: 'fixed_asset_transfer', label: 'Cedare de activ fix corporal — exclusa' },
+      { value: 'intangible_asset_transfer', label: 'Cesiune/transfer de activ necorporal — exclusa' }] },
   proRataMixt: { name: 'proRataMixt', label: 'Achiziția este folosită și pentru activități fără drept de deducere TVA', type: 'checkbox', special: true },
   // Codul de bun art. 331 (nomenclatorul oficial D394, sectiunea op11). Fara el, D394 e respins
   // („R233.5: trebuie completata cel putin o sectiune op11"). Se cere codul, nu o denumire aleasa

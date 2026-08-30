@@ -1197,7 +1197,7 @@ ok('121 = 4111 NU e linie de inchidere', !acc.isResultClosingLine({ debit: '121'
 {
   const fc = require('../src/fiscalControls');
   const yEnt = (view) => acc.postedEntries(view).filter((e) => String(e.period || '').startsWith('2026'));
-  eq('cifra de afaceri (plafon scutire TVA) neschimbata',
+  eq('cifra de afaceri contabila neschimbata',
     fc.cifraAfaceri(yEnt(vInchis)), fc.cifraAfaceri(yEnt(v)));
   ok('...si nu e zero, altfel egalitatea ar fi trecut degeaba', fc.cifraAfaceri(yEnt(v)) > 0);
   eq('veniturile clasei 7 (plafon micro) neschimbate',
@@ -7580,15 +7580,93 @@ ok('control: neplatitor TVA care colecteaza 4427 -> eroare + ok=false', fcNepl.f
 ok('control: micro peste plafonul de venituri -> atentie', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 600000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'micro-peste-plafon' && f.nivel === 'atentie'));
 // platitor TVA fara CAEN -> atentie
 ok('control: platitor TVA fara CAEN -> atentie', fctrl.check({ company: { tvaPlatitor: true, regimImpozit: 'profit' }, angajati: [{ id: 'a' }], entries: [] }, { year: '2026' }).findings.some((f) => f.cod === 'tva-fara-caen'));
-// neplatitor TVA cu cifra de afaceri (70x) PESTE plafonul de scutire (395.000) -> atentie obligatie inregistrare
-const fcTvaOver = fctrl.check({ company: { tvaPlatitor: false, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-06', data: '2026-06-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 420000 }] }] }, { year: '2026' });
-ok('control: neplatitor peste plafonul de scutire TVA -> atentie (inregistrare in 10 zile)', fcTvaOver.findings.some((f) => f.cod === 'tva-plafon-scutire-depasit' && f.nivel === 'atentie'));
+const art310Entry = (id, data, amount, category, tip, document) => ({
+  id, period: data.slice(0, 7), data, tip: tip || 'factura_vanzare_servicii', document: document || id,
+  status: 'postat', lines: amount >= 0
+    ? [{ debit: '4111', credit: '704', suma: amount }]
+    : [{ debit: '709', credit: '4111', suma: -amount }],
+  fiscalTaxonomy: { tvaArt310: { version: 1, category: category || 'taxable',
+    included: !['outside_romania', 'fixed_asset_transfer'].includes(category), amount, source: 'test' } },
+});
+// Calcul cronologic: exportul intra, dar serviciul cu locul in afara Romaniei si mijlocul fix nu.
+// Tranzactia F-3 este cea care trece baza exact de la 390.000 la 400.000 lei.
+const fcTvaOver = fctrl.check({ company: { tvaPlatitor: false, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [
+  art310Entry('F-1', '2026-02-10', 310000, 'taxable'),
+  art310Entry('EXT-1', '2026-02-11', 500000, 'outside_romania', 'prestare_servicii_intracomunitara'),
+  art310Entry('MF-1', '2026-02-12', 200000, 'fixed_asset_transfer', 'vanzare_mijloc_fix'),
+  art310Entry('EXP-1', '2026-03-15', 80000, 'exempt_with_deduction', 'export_extracomunitar'),
+  art310Entry('F-3', '2026-04-07', 10000, 'taxable'),
+] }, { year: '2026' });
+const fcTvaCross = fcTvaOver.findings.find((f) => f.cod === 'tva-plafon-scutire-depasit');
+ok('control art. 310: depasirea este blocanta si indica operatiunea/data exacta', fcTvaCross
+  && fcTvaCross.nivel === 'eroare' && fcTvaCross.details.data === '2026-04-07'
+  && fcTvaCross.details.entryId === 'F-3' && fcTvaCross.details.totalBefore === 390000
+  && fcTvaCross.details.totalAfter === 400000 && fcTvaOver.ok === false);
+ok('control art. 310: exportul intra, serviciul extern si activul fix sunt excluse',
+  fcTvaOver.tvaArt310.total === 400000 && fcTvaOver.tvaArt310.operationCount === 5);
+ok('control art. 310: mesajul cere inregistrarea in ziua depasirii si tranzactia intra in regim normal',
+  /cel târziu la data depășirii/.test(fcTvaCross.mesaj) && /începând chiar cu această tranzacție/.test(fcTvaCross.mesaj));
 // aproape de plafon (>90% din 395.000 = 355.500) dar sub -> info monitorizare, fara constatarea de depasire
-const fcTvaNear = fctrl.check({ company: { tvaPlatitor: false, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-06', data: '2026-06-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 380000 }] }] }, { year: '2026' });
+const fcTvaNear = fctrl.check({ company: { tvaPlatitor: false, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [art310Entry('F-N', '2026-06-01', 380000)] }, { year: '2026' });
 ok('control: neplatitor aproape de plafonul de scutire TVA -> info (fara depasire)', fcTvaNear.findings.some((f) => f.cod === 'tva-plafon-scutire-aproape' && f.nivel === 'info') && !fcTvaNear.findings.some((f) => f.cod === 'tva-plafon-scutire-depasit'));
-// reducerile comerciale (709, sold debitor) scad cifra de afaceri sub plafon -> nicio constatare de plafon
-const fcTvaRed = fctrl.check({ company: { tvaPlatitor: false, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-06', data: '2026-06-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 420000 }, { debit: '709', credit: '4111', suma: 100000 }] }] }, { year: '2026' });
-ok('control: 709 (reduceri) scade cifra de afaceri -> nicio constatare de plafon TVA', !fcTvaRed.findings.some((f) => /tva-plafon-scutire/.test(f.cod)));
+// O corectie clasificata ajusteaza baza cu semn, fara ca motorul sa ghiceasca tratamentul din 709.
+const fcTvaRed = fctrl.check({ company: { tvaPlatitor: false, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [
+  art310Entry('RC-1', '2026-05-20', -20000, 'taxable', 'reducere_comerciala_acordata'),
+  art310Entry('F-R', '2026-06-01', 380000),
+] }, { year: '2026' });
+ok('control art. 310: reducerea clasificata ajusteaza baza, nu simpla prezenta a contului 709',
+  fcTvaRed.tvaArt310.total === 360000 && !fcTvaRed.findings.some((f) => f.cod === 'tva-plafon-scutire-depasit'));
+// Un 70x liber nu este automat cifra de afaceri fiscala: concluzia ramane blocata pana la clasificare.
+const fcTvaUnknown = fctrl.check({ company: { tvaPlatitor: false, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [
+  { id: 'NC-70', period: '2026-06', data: '2026-06-01', tip: 'nota_contabila', status: 'postat', lines: [{ debit: '4111', credit: '704', suma: 500000 }] },
+] }, { year: '2026' });
+ok('control art. 310: rulajul 70x neclasificat cere revizuire, nu este declarat automat peste plafon',
+  fcTvaUnknown.tvaArt310.complete === false && fcTvaUnknown.findings.some((f) => f.cod === 'tva-art310-neclasificat' && f.nivel === 'eroare')
+  && !fcTvaUnknown.findings.some((f) => f.cod === 'tva-plafon-scutire-depasit'));
+const tva310 = require('../src/tvaArt310');
+let tvaGuardCode = '';
+try {
+  tva310.assertCanPost({ entries: [art310Entry('F-390', '2026-01-10', 390000)] },
+    art310Entry('F-DEP', '2026-01-11', 10000), { tvaPlatitor: false });
+} catch (error) { tvaGuardCode = error.code + '/' + error.status + '/' + error.details.data; }
+eq('garda art. 310: postarea tranzactiei care depaseste este refuzata cu detalii actionabile',
+  tvaGuardCode, 'TVA_THRESHOLD_REGISTRATION_REQUIRED/409/2026-01-11');
+const tvaExact = tva310.analyze([
+  art310Entry('F-EXACT-1', '2026-01-10', 390000), art310Entry('F-EXACT-2', '2026-01-11', 5000),
+], '2026');
+ok('garda art. 310: atingerea exacta a plafonului nu este depasire', tvaExact.total === 395000 && !tvaExact.crossing);
+const tvaAug2025 = tva310.analyze([art310Entry('AUG-395', '2025-08-20', 400000)], '2025');
+ok('art. III OG 22/2025: depasirea din august foloseste tranzitia la 10 septembrie',
+  tvaAug2025.crossing && tvaAug2025.crossing.regime === 'og22_transition_august'
+  && tvaAug2025.crossing.registrationDeadline === '2025-09-10'
+  && tvaAug2025.crossing.normalRegimeDate === '2025-09-10');
+const tvaLegacyOutside = tva310.analyze([
+  art310Entry('EXT-OLD', '2025-07-20', 310000, 'outside_romania', 'prestare_servicii_intracomunitara'),
+], '2025');
+ok('art. 310 istoric: pana in iulie 2025 operatiunea cu locul in strainatate ramane in baza veche',
+  tvaLegacyOutside.crossing && tvaLegacyOutside.crossing.basisVersion === 'legacy'
+  && tvaLegacyOutside.crossing.threshold === 300000);
+const tvaManual = tva310.normalizeManual({ category: 'exempt_without_deduction_main', amount: 25000,
+  reason: 'Operatiune financiara principala documentata contractual' });
+ok('taxonomia manuala art. 310 include scutirile art. 292 neaccesorii si pastreaza justificarea',
+  tvaManual.included === true && tvaManual.amount === 25000 && tvaManual.source === 'manual-review');
+const tvaAdvance = tva310.fromDocument('factura_avans_client', { baza: 100000 },
+  [{ debit: '4111', credit: '419', suma: 100000 }]);
+const tvaAdvanceReg = tva310.fromDocument('regularizare_avans_client', { baza: 100000 },
+  [{ debit: '4111', credit: '419', suma: -100000 }]);
+ok('art. 310: factura de avans intra la exigibilitate, iar regularizarea evita dubla numarare',
+  tvaAdvance.included === true && tvaAdvance.amount === 100000
+  && tvaAdvanceReg.included === true && tvaAdvanceReg.amount === -100000);
+const tvaAdvanceFinal = tva310.analyze([
+  art310Entry('AV-1', '2026-01-10', 300000, 'advance', 'factura_avans_client'),
+  art310Entry('FIN-1', '2026-02-10', 100000, 'taxable', 'factura_vanzare_servicii'),
+  art310Entry('REG-1', '2026-02-10', -100000, 'advance', 'regularizare_avans_client'),
+], '2026');
+ok('art. 310: factura finala si regularizarea avansului din aceeasi zi nu produc o depasire fictiva',
+  tvaAdvanceFinal.total === 300000 && !tvaAdvanceFinal.crossing);
+const tvaSalesTypes = require('../src/documentTypes').TYPES.filter((type) => type.grup === 'Vanzari');
+ok('poarta art. 310: fiecare tip din Vanzari declara o natura statica sau cere clasificarea explicita',
+  tvaSalesTypes.every((type) => tva310.STATIC_RULES[type.id] || tva310.DYNAMIC_TYPES.has(type.id)));
 // platitor de TVA (deja inregistrat) cu cifra de afaceri mare -> controlul de plafon NU se aplica
 ok('control: platitor TVA cu CA mare -> fara constatare de plafon scutire', !fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-06', data: '2026-06-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 900000 }] }] }, { year: '2026' }).findings.some((f) => /tva-plafon-scutire/.test(f.cod)));
 // operatiuni intracom fara Intrastat marcat -> info

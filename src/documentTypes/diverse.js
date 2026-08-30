@@ -23,7 +23,7 @@ module.exports = [
     eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
       { name: 'refFactura', label: 'Factura stornata (referinta)', type: 'text' },
-      F.baza, F.tva, F.cota],
+      F.naturaTvaArt310, F.baza, F.tva, F.cota],
     build: (d) => {
       const lines = [L('4111', '707', -d.baza, 'Storno venit (în roșu)')];
       if (d.tva > 0) lines.push(L('4111', '4427', -d.tva, 'Storno TVA colectată'));

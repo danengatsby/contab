@@ -325,12 +325,33 @@ Motorul folosește cursul BNR de la 31 decembrie al exercițiului precedent (ult
 înainte, dacă data nu este zi bancară). Valoarea orientativă din configurare este doar fallback
 vizibil și produce avertisment lângă plafon; nu mai este prezentată ca sursă legală.
 
-### 7.6 Clasificări orientative în rapoarte
+### 7.6 Baza fiscală art. 310 și data depășirii — rezolvat tehnic
+
+Controlul plafonului de scutire TVA nu mai folosește cifra de afaceri contabilă din 70x. Motorul
+`src/tvaArt310.js` păstrează pe fiecare articol natura operațiunii și valoarea fiscală, include
+operațiunile taxabile/scutite cu drept și scutirile fără drept expres prevăzute care nu sunt
+accesorii, dar exclude operațiunile cu locul în afara României și cedările de active corporale sau
+necorporale. Avizele și facturile ulterioare nu dublează aceeași livrare.
+Facturile de avans intră la data exigibilității, iar regularizarea lor scade baza când factura
+finală include întreaga valoare a livrării, evitând atât amânarea, cât și dubla numărare.
+
+Operațiunile sunt ordonate după dată și momentul creării. Rezultatul identifică articolul care
+depășește plafonul, totalul anterior și totalul după operațiune. De la 1 septembrie 2025 constatarea
+este blocantă: profilul TVA trebuie revizuit cu efect la data depășirii, iar postarea se reia în
+regimul normal chiar pentru tranzacția care a produs depășirea. Tranziția specială din august 2025
+recalculează baza pe definiția nouă și folosește data de 10 septembrie 2025 prevăzută de art. III
+OG 22/2025. Pentru depășirile anterioare lunii august, motorul păstrează definiția istorică (inclusiv
+operațiunile cu locul în străinătate); cedările de active din acea perioadă cer confirmarea condiției
+istorice de operațiune accesorie, care nu poate fi dedusă din cont.
+
+Articolele istorice ambigue nu sunt încadrate după cont. Ele intră în lista „necesită revizuire”,
+cu alegerea categoriei, valorii și justificării în interfață; modificarea este păstrată în istoricul
+taxonomiei și în audit.
+
+### 7.6.1 Alte clasificări orientative în rapoarte
 
 - `src/reporting.js:275` — clasificarea pro‑rata (cu/fără drept de deducere) se face aproximativ,
   din jurnal;
-- `src/reporting.js:252` — controlul plafonului de scutire TVA doar **avertizează**; încadrarea
-  finală rămâne la contribuabil;
 - `src/pdf/registre.js:202,236` — deductibilitățile din registrul de evidență fiscală sunt marcate
   explicit ca orientative.
 

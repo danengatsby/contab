@@ -19,6 +19,7 @@ const extractQuality = require('./extractQuality'); // guard de scriere derivat 
 const payrollHistory = require('./payrollHistory');
 const leasingService = require('./leasingService');
 const permissions = require('./permissions');
+const tvaArt310 = require('./tvaArt310');
 const { reqFirma } = require('./stocksService');
 const { round2, period: periodOf } = require('./util');
 
@@ -151,6 +152,10 @@ function createEntry(fid, b, deps) {
       duplicateId: b.duplicateId, reason: b.duplicateReason || b.motivDuplicat,
     })
     : null;
+  if (entryState(entry) === 'postat') {
+    const view = db.scoped(fid);
+    tvaArt310.assertCanPost(view, entry, fiscalProfile.profileAt(view, entry.data || entry.period));
+  }
   db.pushEntry(entry, {
     context: 'articol contabil', actor, duplicateOverride,
     auditDuplicateOverride: deps && deps.auditDuplicateOverride,
@@ -298,6 +303,12 @@ function stornoEntry(id, fallbackFid, canFid, dataStorno, actor) {
     // validatoarele oficiale (verificat: D406 lunar cu storno in rosu si D300, ambele valide).
     lines: (e.lines || []).map((l) => ({ debit: l.debit, credit: l.credit, suma: round2(-l.suma), explicatie: 'Storno ' + (l.explicatie || '') })),
   };
+  const originalArt310 = tvaArt310.classifyEntry(e, new Map((d.entries || []).filter((x) => x && x.id != null)
+    .map((x) => [String(x.id), x])));
+  if (originalArt310) se.fiscalTaxonomy = { tvaArt310: tvaArt310.snapshot(
+    originalArt310.category === 'review_required' ? null : originalArt310.category,
+    -Number(originalArt310.amount || 0), 'storno-inherited',
+    originalArt310.category === 'review_required' ? { reason: originalArt310.reason } : null) };
   markEntryActor(se, actor, 'postat');
   se.postedBy = actorId(actor); se.postedAt = new Date().toISOString();
   db.pushEntry(se, { context: 'stornare articol', actor });
@@ -343,6 +354,8 @@ function setEntryStatus(id, fallbackFid, canFid, target, actor) {
   if (target === 'postat') {
     db.assertPeriodOpen(fid, e.period || periodOf(e.data), 'Postarea'); // nu se posteaza intr-o luna inchisa
     leasingService.assertEntryCanPost(fid, e);
+    const view = db.scoped(fid);
+    tvaArt310.assertCanPost(view, e, fiscalProfile.profileAt(view, e.data || e.period));
     const mids = new Set(e.stocMovementIds || []);
     if (mids.size) {
       const miscari = (d.stockMovements || []).filter((m) => mids.has(m.id) && m.entryId === e.id);
@@ -432,6 +445,10 @@ function generateRecurring(fid, period, deps) {
       entry.dedupeKey = 'recurent:' + t.id + ':' + period;
       if (makerCheckerRequired(fid)) entry.status = 'ciorna';
       markEntryActor(entry, deps && deps.actor, entryState(entry));
+      if (entryState(entry) === 'postat') {
+        const view = db.scoped(fid);
+        tvaArt310.assertCanPost(view, entry, fiscalProfile.profileAt(view, entry.data || entry.period));
+      }
       db.pushEntry(entry, { context: 'sablon recurent', actor: deps && deps.actor });
       deps.upsertPartner(fid, entry);
       t.lastGenerated = period;

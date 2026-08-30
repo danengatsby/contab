@@ -51,6 +51,7 @@ module.exports = function register(app, ctx) {
       res.status(e.status).json({
         error: e.message,
         ...(e.code ? { code: e.code } : {}),
+        ...(e.details ? { details: e.details } : {}),
         ...(e.duplicateId ? { duplicateId: e.duplicateId } : {}),
         ...(Array.isArray(e.duplicateKeys) ? { duplicateKeys: e.duplicateKeys } : {}),
       });

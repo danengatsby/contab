@@ -2401,6 +2401,12 @@ async function main() {
       // document fara TVA permis (ciorna, ca sa nu polueze balanta si sa fie stergibila)
       const gNota = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'nota_contabila', ciorna: true, fields: { data: '2026-10-05', explicatie: 'Guard fara TVA', debit: '5311', credit: '707', suma: 500 } } });
       ok('guard: neplatitor TVA + document fara TVA -> permis', gNota.status === 200 && gNota.json.ok);
+      const gNotaTax = gNota.json.entry && await req('PATCH', '/api/entries/' + gNota.json.entry.id + '/fiscal-taxonomy/tva-art310', {
+        cookie: c1, body: { category: 'taxable', amount: 500, reason: 'Prestare interna verificata pe document' },
+      });
+      ok('taxonomia art. 310: operatiunea istorica se clasifica explicit si auditat', gNotaTax
+        && gNotaTax.status === 200 && gNotaTax.json.treatment.category === 'taxable'
+        && gNotaTax.json.treatment.amount === 500 && gNotaTax.json.treatment.classifiedBy != null);
       if (gNota.json.entry) await req('DELETE', '/api/entries/' + gNota.json.entry.id, { cookie: c1 }); // ciorna -> stergibila
       // guard de generare: neplatitor nu depune D300/D394
       eq('guard: /xml/d300 la neplatitor TVA -> 400', (await req('GET', '/xml/d300?period=2026-06', { cookie: c1 })).status, 400);

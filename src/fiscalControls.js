@@ -12,6 +12,7 @@ const bnr = require('./bnr'); // cursul oficial pentru plafonul micro
 const fiscalProfile = require('./fiscalProfile');
 const dateFirma = require('./dateFirma');
 const profitExpenseTaxonomy = require('./profitExpenseTaxonomy');
+const tvaArt310 = require('./tvaArt310');
 const { period: periodOf, round2 } = require('./util');
 
 const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
@@ -43,9 +44,10 @@ function venituriClasa7(entries) {
   return venit;
 }
 
-/** Cifra de afaceri neta (conturile 70x: 701-708 minus reducerile 709) — baza plafonului de
- *  scutire TVA (art. 310) si a cifrei de afaceri din bilant. Net (credit-debit): 709 (sold
- *  debitor) scade automat. Nu include 74x/75x/76x/78x (subventii, alte venituri, financiare). */
+/** Cifra de afaceri CONTABILA neta (conturile 70x: 701-708 minus reducerile 709), folosita de
+ *  raportarile financiare. NU este baza fiscala art. 310; aceea este calculata separat, dupa
+ *  natura si cronologia operatiunilor, de `tvaArt310`.
+ *  Net (credit-debit): 709 (sold debitor) scade automat. */
 function cifraAfaceri(entries) {
   const r = acc.accumulate(acc.resultLines(entries));
   let ca = 0;
@@ -151,7 +153,8 @@ function check(v, opts) {
   const posted = acc.postedEntries(v);
   const yearEntries = posted.filter((e) => String(e.period || periodOf(e.data)).startsWith(year));
   const findings = [];
-  const add = (nivel, cod, mesaj) => findings.push({ nivel, cod, mesaj });
+  const add = (nivel, cod, mesaj, details) => findings.push(Object.assign({ nivel, cod, mesaj },
+    details ? { details } : {}));
 
   const expenseReview = profitExpenseTaxonomy.analyze(posted, year);
   if (!expenseReview.complete) add('eroare', 'cheltuieli-fiscale-neclasificate',
@@ -164,15 +167,38 @@ function check(v, opts) {
     if (colecteaza) add('eroare', 'tva-neplatitor-colecteaza',
       'Firma nu e plătitoare de TVA, dar în ' + year + ' există TVA colectată (cont 4427). Verifică regimul TVA sau facturile emise.');
 
-    // 1b) Neplatitor aproape de / peste plafonul de scutire TVA (art. 310) -> obligatie de inregistrare.
-    //     La depasire, inregistrarea se cere in 10 zile de la finalul lunii depasirii; altfel ANAF
-    //     inregistreaza din oficiu retroactiv. Advisory pe cifra de afaceri (70x) cumulata pe an.
+    // 1b) Plafonul art. 310 se urmareste operatie cu operatie, pe baza FISCALA proprie. Codul TVA
+    //     anulat (D311) nu este regim de mica intreprindere si nu intra in aceasta verificare. De la
+    //     1 septembrie 2025, chiar tranzactia care depaseste plafonul intra in regim normal si
+    //     inregistrarea se solicita cel tarziu in acea zi (OG 22/2025).
     const plafonTva = Number(rates.plafonScutireTvaLei) || 0;
-    const ca = cifraAfaceri(yearEntries);
-    if (plafonTva > 0 && ca > plafonTva) add('atentie', 'tva-plafon-scutire-depasit',
-      'Cifra de afaceri a anului ' + year + ' (' + ca + ' lei) depășește plafonul de scutire TVA (' + plafonTva + ' lei) — ești obligat să ceri înregistrarea în scopuri de TVA în 10 zile de la finalul lunii depășirii (art. 310 Cod fiscal).');
-    else if (plafonTva > 0 && ca > round2(plafonTva * 0.9)) add('info', 'tva-plafon-scutire-aproape',
-      'Cifra de afaceri a anului ' + year + ' (' + ca + ' lei) se apropie de plafonul de scutire TVA (' + plafonTva + ' lei) — urmărește; la depășire ai 10 zile să ceri înregistrarea în scopuri de TVA.');
+    const art310 = tvaArt310.analyze(posted, year, { threshold: plafonTva });
+    if (!profile.tvaCodAnulat && !art310.complete) {
+      add('eroare', 'tva-art310-neclasificat',
+        art310.unresolved.length + ' operațiune/operațiuni nu au natura fiscală art. 310 documentată. '
+        + 'Baza exactă și data depășirii nu pot fi stabilite; controlul plafonului TVA este blocat până la revizuire.',
+      { unresolved: art310.unresolved });
+    } else if (!profile.tvaCodAnulat && art310.crossing) {
+      const c = art310.crossing;
+      let obligatie;
+      if (c.regime === 'same_day') {
+        obligatie = 'Înregistrarea în scopuri de TVA trebuie solicitată cel târziu la data depășirii, '
+          + 'iar regimul normal se aplică din ' + c.data + ', începând chiar cu această tranzacție.';
+      } else if (c.regime === 'og22_transition_august') {
+        obligatie = 'Se aplică regula tranzitorie OG 22/2025: solicitarea și regimul normal au data de 10.09.2025.';
+      } else {
+        obligatie = 'Este o depășire istorică; verifică îndeplinirea obligației potrivit regulii în vigoare la acea dată.';
+      }
+      add(c.regime === 'historical_rule' ? 'atentie' : 'eroare', 'tva-plafon-scutire-depasit',
+        'Baza fiscală art. 310 a depășit plafonul de ' + c.threshold + ' lei la data de ' + c.data
+        + ', prin operațiunea ' + (c.document || c.entryId || c.tip) + ' (de la ' + c.totalBefore
+        + ' la ' + c.totalAfter + ' lei). ' + obligatie, c);
+    } else if (!profile.tvaCodAnulat && plafonTva > 0 && art310.total > round2(plafonTva * 0.9)) {
+      add('info', 'tva-plafon-scutire-aproape',
+        'Baza fiscală art. 310 a anului ' + year + ' (' + art310.total + ' lei) se apropie de plafonul de scutire TVA ('
+        + plafonTva + ' lei). La depășire, înregistrarea se solicită cel târziu în ziua depășirii, '
+        + 'iar tranzacția care conduce la depășire intră în regimul normal.');
+    }
   }
 
   // 2) Platitor TVA fara cod CAEN — D300 il cere.
@@ -243,7 +269,12 @@ function check(v, opts) {
 
   const byLevel = { eroare: 0, atentie: 0, info: 0 };
   for (const f of findings) byLevel[f.nivel] += 1;
+  const art310Result = tvaArt310.analyze(posted, year, { threshold: Number(rates.plafonScutireTvaLei) || 0 });
   return { year, profil: profile, findings, byLevel,
+    tvaArt310: { threshold: art310Result.threshold, total: art310Result.total,
+      complete: art310Result.complete, crossing: art310Result.crossing,
+      unresolved: art310Result.unresolved, operationCount: art310Result.operations.length,
+      categories: tvaArt310.clientCategories() },
     ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
     ok: findings.every((f) => f.nivel !== 'eroare') };
 }

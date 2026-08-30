@@ -15,6 +15,8 @@ const { parseCsv, isHeaderRow } = require('./csv');
 const { parseRoNumber } = require('./extractor');
 const stocks = require('./stocks');
 const fiscal = require('./fiscal');
+const fiscalProfile = require('./fiscalProfile');
+const tvaArt310 = require('./tvaArt310');
 const coa = require('./chartOfAccounts');
 
 // Contul ales de UTILIZATOR pe un produs sau pe o gestiune ajunge in articolele de descarcare
@@ -564,6 +566,23 @@ function createInventory(fid, operator, b) {
   const drift = stocks.valuationDrift(v, plans.map((p) => p.movement).filter(Boolean));
   if (drift) fail(409, 'Inventarul retroactiv ar recalcula iesirea deja postata ' + drift.movementId
     + ' (' + drift.data + '). Storneaza si reia documentele de stoc in ordine cronologica.');
+  // Imputarea este singura nota din inventar care poate intra in baza art. 310. Preflight-ul
+  // ruleaza pentru intregul lot inainte de prima miscare/nota, iar fiecare candidat acceptat
+  // intra in baza urmatorului: depasirea cumulata nu poate lasa un inventar postat partial.
+  const art310Accepted = [];
+  for (let index = 0; index < plans.length; index += 1) {
+    const plan = plans[index];
+    if (!(plan.ln.imputa && plan.diff < 0 && plan.valoare > 0)) continue;
+    const candidate = {
+      id: 'inventory-art310-preflight-' + index, firmaId: fid, data, period: data.slice(0, 7),
+      tip: 'imputare_lipsa', document: doc, system: true,
+      fiscalTaxonomy: { tvaArt310: tvaArt310.snapshot('taxable', plan.valoare, 'inventory-imputation') },
+      lines: [{ debit: '4282', credit: '7588', suma: plan.valoare }],
+    };
+    const guardView = Object.assign({}, v, { entries: v.entries.concat(art310Accepted) });
+    tvaArt310.assertCanPost(guardView, candidate, fiscalProfile.profileAt(guardView, data));
+    art310Accepted.push(candidate);
+  }
   const addEntry = (e) => { db.pushEntry(e, { context: 'diferente de inventar' }); inv.entryIds.push(e.id); };
   const addMove = (mv) => { mv.inventoryId = inv.id; d.stockMovements.push(mv); inv.movementIds.push(mv.id); };
   for (const plan of plans) {
@@ -590,7 +609,8 @@ function createInventory(fid, operator, b) {
       // imputare gestionar: 4282 = 7588 + 4427
       if (ln.imputa && val > 0) {
         const tva = round2((val * tvaRate) / 100);
-        addEntry({ id: db.nextId('e'), firmaId: fid, data, period: data.slice(0, 7), tip: 'imputare_lipsa', tipNume: 'Imputare lipsa gestionar', partener: g.gestionar || '', partenerCui: '', document: doc, analitic: '', explicatie: 'Imputare ' + p.denumire + ' catre ' + (g.gestionar || 'gestionar'), fileId: null, system: true, lines: [
+        addEntry({ id: db.nextId('e'), firmaId: fid, data, period: data.slice(0, 7), tip: 'imputare_lipsa', tipNume: 'Imputare lipsa gestionar', partener: g.gestionar || '', partenerCui: '', document: doc, analitic: '', explicatie: 'Imputare ' + p.denumire + ' catre ' + (g.gestionar || 'gestionar'), fileId: null, system: true,
+          fiscalTaxonomy: { tvaArt310: tvaArt310.snapshot('taxable', val, 'inventory-imputation') }, lines: [
           { debit: '4282', credit: '7588', suma: val, explicatie: 'Imputare lipsă ' + p.cod },
           { debit: '4282', credit: '4427', suma: tva, explicatie: 'TVA imputare lipsă ' + p.cod },
         ] });

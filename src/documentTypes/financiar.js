@@ -15,6 +15,7 @@ module.exports = [
     // moneda nu schimba natura: si o factura in euro catre un client roman e in perimetru
     eFactura: 'da',
     fields: [F.data, F.partener, F.cuiPartener, F.document,
+      F.naturaTvaArt310,
       { name: 'valuta', label: 'Suma in valuta', type: 'number', required: true },
       { name: 'curs', label: 'Curs valutar (lei/valuta)', type: 'number', required: true },
       { name: 'contVenit', label: 'Cont de venit', type: 'account', default: '707' }],

@@ -11,11 +11,16 @@ const bankStatements = require('../bankStatements');
 const duplicateGuard = require('../duplicateGuard');
 const xml = require('../xml');
 const acc = require('../accounting');
+const fiscalProfile = require('../fiscalProfile');
+const tvaArt310 = require('../tvaArt310');
 const { period: periodOf, round2, validIsoDate } = require('../util');
 const { sendList } = require('../paginate');
 
 function businessError(message, status) { const e = new Error(message); e.status = status || 400; return e; }
-function fail(res, e) { return res.status(e.status || 400).json({ error: String(e.message || e) }); }
+function fail(res, e) {
+  return res.status(e.status || 400).json(Object.assign({ error: String(e.message || e) },
+    e.code ? { code: e.code } : {}, e.details ? { details: e.details } : {}));
+}
 function numberOrNull(value) { if (value == null || value === '') return null; const n = Number(value); return Number.isFinite(n) ? round2(n) : null; }
 function history(tx, status, actor, detail) {
   tx.statusHistory = Array.isArray(tx.statusHistory) ? tx.statusHistory : [];
@@ -260,6 +265,15 @@ module.exports = function register(app, ctx) {
       // autoritara si repeta aceste verificari la commit; aici evitam ca o perioada inchisa sau
       // un cont invalid pe linia N sa lase liniile 1..N-1 deja postate in memorie.
       for (const x of staged) db.assertEntryBasics(x.entry, { context: 'import extras bancar' });
+      // O propunere bancara poate fi reclasificata drept document de vanzare. Verificam lotul
+      // cronologic si cumulativ, astfel incat doua linii care depasesc impreuna plafonul sa fie
+      // respinse inainte de prima postare, cu aceeasi alerta blocanta ca formularul de documente.
+      const accepted = [];
+      for (const x of staged) {
+        const guardView = Object.assign({}, current, { entries: current.entries.concat(accepted) });
+        tvaArt310.assertCanPost(guardView, x.entry, fiscalProfile.profileAt(guardView, x.entry.data || x.entry.period));
+        accepted.push(x.entry);
+      }
       for (const x of staged) {
         db.pushEntry(x.entry, { context: 'import extras bancar' }); upsertPartner(activeId(req), x.entry);
         x.tx.proposal = x.proposal; history(x.tx, 'punctata', req.user, 'Punctaj confirmat la postare');

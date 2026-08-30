@@ -881,6 +881,17 @@ async function refreshFiscalProfile() {
         const icon = { eroare: '⛔', atentie: '⚠️', info: 'ℹ️' };
         ctrlHtml = '<div data-u="ctrl"><b>Controale de coerență:</b><ul class="checklist todo">'
           + c.findings.map((f) => `<li>${icon[f.nivel] || '•'} ${H(f.mesaj)}</li>`).join('') + '</ul></div>';
+        const review = c.tvaArt310 && Array.isArray(c.tvaArt310.unresolved) ? c.tvaArt310.unresolved : [];
+        if (review.length) {
+          const options = (c.tvaArt310.categories || []).map((category) => `<option value="${H(category.code)}">${H(category.label)} — ${category.included ? 'intră în plafon' : 'nu intră în plafon'}</option>`).join('');
+          ctrlHtml += `<div class="notice error"><b>Revizuire bază TVA art. 310</b><p>Alege natura și confirmă valoarea fiscală pentru fiecare operațiune istorică.</p>
+            <table><thead><tr><th>Operațiune</th><th>Natura fiscală</th><th>Valoare (lei)</th><th>Justificare</th><th></th></tr></thead><tbody>${review.map((row) => `<tr class="tva-art310-review" data-entry="${H(row.entryId)}">
+              <td>${H(row.data)} · ${H(row.document || row.entryId || row.tip)}<br><span class="muted">${H(row.reason || '')}</span></td>
+              <td><select class="tva-art310-category"><option value="">Alege…</option>${options}</select></td>
+              <td><input class="tva-art310-amount" type="number" step="0.01" value="${H(row.amount)}"></td>
+              <td><input class="tva-art310-reason" type="text" maxlength="500" placeholder="Document și motiv fiscal"></td>
+              <td><button class="btn small primary tva-art310-save">Clasifică</button></td></tr>`).join('')}</tbody></table></div>`;
+        }
       } else {
         ctrlHtml = '<div class="muted">✓ Controale de coerență: nicio problemă pe anul curent.</div>';
       }
@@ -888,6 +899,22 @@ async function refreshFiscalProfile() {
     const interval = p.fiscalValidFrom ? ` · valabil ${H(p.fiscalValidFrom)}–${H(p.fiscalValidTo || 'prezent')}` : '';
     const recorded = p.fiscalRecordedAt ? ` · înregistrat ${H(String(p.fiscalRecordedAt).replace('T', ' ').slice(0, 16))} UTC` : '';
     box.innerHTML = `<span class="ei">⚙️</span><p><b>Profil calculat:</b> ${tva} · ${regim} · D406 <b>${{ L: 'lunar', T: 'trimestrial', A: 'anual' }[p.d406] || p.d406}</b> · Intrastat ${p.intrastat ? '<b>da</b>' : 'nu'} · salariați ${p.areAngajati ? 'da' : 'nu'}${scutiri.length ? ' · scutiri: ' + scutiri.join(', ').toUpperCase() : ''}${interval}${recorded}<br><span class="muted">Declarațiile, termenele, alertele și controalele se generează din acest profil.</span></p>${ctrlHtml}`;
+    $$('#fiscalProfileSummary .tva-art310-save').forEach((button) => button.addEventListener('click', async () => {
+      const row = button.closest('.tva-art310-review');
+      const category = row.querySelector('.tva-art310-category').value;
+      const amount = Number(row.querySelector('.tva-art310-amount').value);
+      const reason = row.querySelector('.tva-art310-reason').value.trim();
+      if (!category || !Number.isFinite(amount) || reason.length < 5) {
+        toast('Alege natura, verifică valoarea și scrie o justificare de minimum 5 caractere.', true); return;
+      }
+      button.disabled = true;
+      try {
+        await api('/api/entries/' + encodeURIComponent(row.dataset.entry) + '/fiscal-taxonomy/tva-art310', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category, amount, reason }),
+        });
+        toast('Clasificarea art. 310 a fost salvată și auditată.'); await refreshFiscalProfile();
+      } catch (error) { toast(error.message, true); button.disabled = false; }
+    }));
   } catch (e) { box.innerHTML = `<span class="ei">⚙️</span><p class="muted">Profilul fiscal se calculează după salvarea firmei.</p>`; }
 }
 

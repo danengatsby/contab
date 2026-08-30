@@ -17,7 +17,8 @@ module.exports = function register(app, ctx) {
   const run = (res, fn) => {
     try { res.json(fn()); } catch (e) {
       if (!e.status) throw e;
-      res.status(e.status).json({ error: e.message });
+      res.status(e.status).json(Object.assign({ error: e.message },
+        e.code ? { code: e.code } : {}, e.details ? { details: e.details } : {}));
     }
   };
   const operator = (req) => (req.user && req.user.username) || '';

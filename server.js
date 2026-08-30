@@ -29,6 +29,7 @@ const d311 = require('./src/d311');
 const { D394_COD_331 } = require('./src/xml');
 const leasingService = require('./src/leasingService');
 const profitExpenseTaxonomy = require('./src/profitExpenseTaxonomy');
+const tvaArt310 = require('./src/tvaArt310');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
 // sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata.
@@ -202,6 +203,7 @@ require('./src/routes/cashFlowClassification')(app, { activeId, logAudit });
 // Taxonomie fiscala per articol si registrul explicit de ajustari ale bazei micro.
 require('./src/routes/microTax')(app, { activeId, logAudit });
 require('./src/routes/profitExpenseTax')(app, { activeId, logAudit });
+require('./src/routes/tvaArt310Tax')(app, { activeId, logAudit });
 
 // Nomenclatoare (parteneri, import CSV, conversie XLSX/XLS/DBF) + solduri initiale: src/routes/partners.js
 require('./src/routes/partners')(app, { upload, S, activeId, logAudit, requireAdmin, wrap });
@@ -393,6 +395,10 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     }
     if (itemsTax.length) profitExpenseTreatment = { version: 1, items: itemsTax.map((item) => Object.assign(item, { source: 'document-form' })) };
   }
+  // Baza plafonului de scutire TVA este o clasificare fiscala a OPERATIUNII, distincta de
+  // cifra de afaceri contabila. Fotografia ramane pe articol pentru ca natura si valoarea exacta
+  // sa nu fie reconstruite ulterior din conturile 70x.
+  const tvaArt310Treatment = tvaArt310.fromDocument(tipId, f, lines);
   // Codul de bun art. 331 (op11 din D394): validat la introducere, nu la depunere — o valoare
   // gresita ar trece pana la validatorul ANAF si ar respinge toata declaratia. Lipsa nu blocheaza
   // salvarea (articolul poate fi completat mai tarziu); o semnaleaza validarea pre-depunere.
@@ -474,7 +480,10 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     ...(leasingRef ? { leasingRef } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
-    ...(profitExpenseTreatment ? { fiscalTaxonomy: { profitExpense: profitExpenseTreatment } } : {}),
+    ...((profitExpenseTreatment || tvaArt310Treatment) ? { fiscalTaxonomy: {
+      ...(profitExpenseTreatment ? { profitExpense: profitExpenseTreatment } : {}),
+      ...(tvaArt310Treatment ? { tvaArt310: tvaArt310Treatment } : {}),
+    } } : {}),
     fileId: fileId || null,
     system: false,
     lines,
