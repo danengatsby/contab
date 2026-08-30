@@ -5374,7 +5374,7 @@ section('Un singur motor de nedeductibile: registrul fiscal = nota contabila = D
   const deduct = require('../src/deductibilitate');
   const { round2 } = require('../src/util');
   const E = (id, data, lines) => ({ id, data, period: data.slice(0, 7), tip: 'nota_contabila', tipNume: 'x', lines });
-  const tx = (account, category, pctNedeductibil, legalBasis, label) => ({ fiscalTaxonomy: { profitExpense: { version: 1, items: [{
+  const tx = (account, category, pctNedeductibil, legalBasis) => ({ fiscalTaxonomy: { profitExpense: { version: 1, items: [{
     version: 1, lineIndex: 0, account, category, reason: 'Clasificare de test documentata',
     pctNedeductibil, legalBasis,
   }] } }, tip: 'nota_contabila', tipNume: 'x' });
