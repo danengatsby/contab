@@ -4,9 +4,8 @@
 // autentificare (src/authRoutes.js), inregistrarea modulelor de rute cu ctx, buildEntry/
 // upsertPartner (folosite de mai multe rute), apoi joburile periodice (src/jobs.js),
 // handlerul global de erori (src/serverErrors.js) si ciclul de viata (src/lifecycle.js).
-const bootstrap = require('./src/bootstrap');
 const crypto = require('crypto');
-bootstrap.loadDotEnv(__dirname); // inainte de orice require care citeste variabile (cheie AI etc.)
+require('./src/loadDotEnv')(__dirname); // minimal: inainte de orice require care citeste configuratia
 // Secretele obligatorii, IMEDIAT dupa .env si INAINTE de a atinge baza: altfel o pornire fara
 // ele apuca sa creeze fisierul bazei (cu un authSecret generat) inainte sa refuze.
 require('./src/secretsGuard').assertSecrets();
@@ -15,6 +14,12 @@ require('./src/secretsGuard').assertSecrets();
 process.umask(0o077);
 
 const db = require('./src/db');
+const lifecycle = require('./src/lifecycle');
+// Lock-ul se obtine sincron AICI, inainte de Express, rute si orice deschidere a driverului.
+// `db.load` ramane functie lenesa si ruleaza numai dupa verificarea starii de deploy.
+const dbLoadReady = lifecycle.prepare(() => db.load());
+
+const bootstrap = require('./src/bootstrap');
 const coa = require('./src/chartOfAccounts');
 const { getType } = require('./src/documentTypes');
 const fiscal = require('./src/fiscal');
@@ -32,8 +37,10 @@ const profitExpenseTaxonomy = require('./src/profitExpenseTaxonomy');
 const tvaArt310 = require('./src/tvaArt310');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
-// sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata.
-const dbReady = Promise.resolve(db.load()).then(() => {
+// sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata. Functia de load
+// ramane LENESA pana cand lifecycle a obtinut lock-ul single-instance; altfel a doua instanta
+// poate astepta in driverul SQLite inainte sa ajunga la garda care trebuie s-o refuze.
+const dbReady = dbLoadReady.then(() => {
   coa.addAccounts(db.get().customAccounts); // inregistreaza conturile personalizate importate
   fiscal.configureRuleSets(db.get().fiscalRuleSets); // verifica hash-urile si incarca versiunile append-only
   if (db.get().settings.fiscal && Object.keys(db.get().settings.fiscal).length) {
@@ -575,7 +582,7 @@ require('./src/routes/stockdocs')(app, { S, activeId, canAccess });
 const { resetDemo, ensureDemoContabil } = require('./src/routes/demo')(app, { requireAdmin, logAudit });
 // Provisioning idempotent al perechii demo (patron + demo-contabil) DUPA hidratarea bazei — pe pg
 // hidratarea e async, deci nu se poate face la register (baza inca goala). No-op fara cont demo.
-dbReady.then(() => { try { if (ensureDemoContabil()) db.save(); } catch (e) { console.error('ensureDemoContabil:', e.message); } });
+dbReady.then(() => { try { if (ensureDemoContabil()) db.save(); } catch (e) { console.error('ensureDemoContabil:', e.message); } }, () => {});
 
 // Joburile periodice (backup zilnic, digest termene, demo-reset, igiena rate-limit,
 // auto-poll SPV): src/jobs.js — primeste doar dependintele de stare ale aplicatiei.
@@ -587,6 +594,6 @@ serverErrors.installErrorHandler(app);
 serverErrors.installProcessGuards();
 
 // Guard single-instance pe fisierul bazei + listen dupa hidratare + oprire curata: src/lifecycle.js
-require('./src/lifecycle').start({ app, dbReady });
+lifecycle.start({ app, dbReady });
 
 module.exports = { app, buildEntry, upsertPartner };

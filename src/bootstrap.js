@@ -13,21 +13,8 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
-
-// Incarca variabilele din .env (cheie AI etc.). Nu suprascrie o variabila deja prezenta in
-// mediu (chiar goala) — permite dezactivarea explicita (ex. STRIPE_SECRET_KEY='').
-function loadDotEnv(rootDir) {
-  try {
-    const p = path.join(rootDir || path.join(__dirname, '..'), '.env');
-    if (!fs.existsSync(p)) return;
-    for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
-    }
-  } catch (e) { /* ignora */ }
-}
+const loadDotEnv = require('./loadDotEnv');
 
 function createApp() {
   const app = express();

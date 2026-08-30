@@ -56,15 +56,22 @@ function releaseDbLock() {
   } catch (_) { /* ignora */ }
 }
 
-function start({ app, dbReady }) {
+/**
+ * Poarta de pornire ruleaza INAINTE de hidratarea bazei. `db.load()` trebuie primit ca functie
+ * lenesa: pe SQLite, simpla lui evaluare deschide fisierul si poate astepta lock-ul driverului.
+ * Daca l-am primi deja evaluat, a doua instanta ar putea ramane blocata in driver inainte sa
+ * ajunga la lockfile-ul nostru si exact protectia single-instance n-ar mai putea raspunde.
+ */
+function prepare(loadDb) {
   // Secretele obligatorii se verifica INAINTE de orice altceva: inaintea lock-ului, a hidratarii
   // si a lui listen(). O instanta care porneste si abia apoi descopera ca semneaza sesiuni cu un
   // secret din baza a apucat deja sa emita cookie-uri forjabile. Vezi src/secretsGuard.js.
   require('./secretsGuard').assertSecrets();
-  const PORT = process.env.PORT || 8080;
-  // Nginx este endpointul public; bind-ul local previne expunerea accidentala a portului Node.
-  const HOST = process.env.HOST || '127.0.0.1';
-  let server = null; // atribuit dupa hidratarea bazei (dbReady)
+  // Lock-ul este sincron si intentionat PRIMUL pas dupa secrete. Nu asteptam nici citirea Git,
+  // nici incarcarea Express: o a doua instanta trebuie refuzata in ~2 secunde chiar daca masina
+  // este sub presiune. Daca poarta de deploy pica ulterior, handlerul `exit` elibereaza lock-ul.
+  acquireDbLock();
+  process.on('exit', releaseDbLock);
   // CE COD PORNESTE. Poarta este in proces, nu in hook-ul npm, deci se aplica identic la
   // `npm start`, `node server.js`, pm2 si systemd. Fara CONTAB_DEV=1, un depozit murdar,
   // o alta ramura sau un `git status` imposibil de citit opresc procesul INAINTE de listen().
@@ -80,21 +87,26 @@ function start({ app, dbReady }) {
       return { v, p: deployState.pornirePermisa(v, { distributie, inDepozit }) };
     });
 
-  verificareDeploy.then(({ v, p }) => {
+  return verificareDeploy.then(({ v, p }) => {
     if (!p.ok) {
       const meta = v || {};
       log.error('deploy BLOCAT: ' + p.motiv, {
         ramura: meta.ramura, commit: meta.commit, nrModificate: meta.nrModificate,
       });
-      process.exitCode = 1;
-      return;
+      process.exit(1);
     }
     if (v && v.cunoscut) console.log('Cod: ' + v.ramura + '@' + v.commit + ' (arbore curat)');
-    acquireDbLock();
-    process.on('exit', releaseDbLock);
-    return Promise.resolve(dbReady).then(() => true);
-  }).then((gata) => {
-    if (!gata) return;
+    return Promise.resolve().then(loadDb);
+  });
+}
+
+function start({ app, dbReady }) {
+  const PORT = process.env.PORT || 8080;
+  // Nginx este endpointul public; bind-ul local previne expunerea accidentala a portului Node.
+  const HOST = process.env.HOST || '127.0.0.1';
+  let server = null; // atribuit dupa hidratarea bazei (dbReady)
+
+  Promise.resolve(dbReady).then(() => {
     server = app.listen(PORT, HOST, () => {
       console.log('Contabo ruleaza (asculta pe ' + HOST + ':' + PORT + ')');
       for (const u of bannerUrls(HOST, PORT, os.networkInterfaces())) console.log(u);
@@ -129,4 +141,4 @@ function start({ app, dbReady }) {
   process.on('SIGTERM', shutdown);
 }
 
-module.exports = { start, bannerUrls };
+module.exports = { prepare, start, bannerUrls };
