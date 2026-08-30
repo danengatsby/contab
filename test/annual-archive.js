@@ -5,8 +5,12 @@
 // reale: verifică atât serializarea, cât și idempotenta artefactului persistent.
 
 const AdmZip = require('adm-zip');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const integrity = require('../src/annualArchiveIntegrity');
 const dosarAnual = require('../src/dosarAnual');
+const annualFiling = require('../src/annualFilingDossier');
 
 let pass = 0; let fail = 0;
 function eq(name, got, expected) {
@@ -71,6 +75,92 @@ async function main() {
   let corruptError = null;
   try { dosarAnual.cashSnapshotsForYear({ cashForecastSnapshots: [corruptedCash] }, '2026'); } catch (e) { corruptError = e; }
   ok('o fotografie cash-flow alterată blochează sigilarea dosarului anual', corruptError && corruptError.status === 409);
+
+  // Matricea anexelor 2025: fiecare PDF este probă separată, aprobată pe hash, iar ZIP-ul
+  // transmis trebuie să conțină exact aceiași octeți (nu doar fișiere cu nume asemănător).
+  const evidenceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'contab-annual-filing-'));
+  try {
+    const filingView = {
+      firmaId: 17,
+      company: { tipEntitate: 'srl', auditStatut: '3' },
+      balanceCategoryHistory: [{
+        id: 'bch-2025', year: '2025', category: 'micro',
+        indicators: { totalActive: 1000000, cifraAfaceri: 2000000, numarMediuSalariati: 4 },
+        previousIndicators: { totalActive: 900000, cifraAfaceri: 1800000, numarMediuSalariati: 3 },
+      }],
+      documents: [],
+    };
+    const filingDb = { declarations: [{ id: 'bilant-2025', firmaId: 17, tip: 'bilant', period: '2025-12', status: 'depusa',
+      dossier: { id: 'dossier-bilant-2025' }, depuneri: [{ ordinal: 1, submissionId: 'submission-bilant-2025',
+        submissionHash: 'a'.repeat(64), submittedArtifactHash: 'b'.repeat(64), recipisa: 'R-BILANT-2025',
+        depusaLa: '2026-05-20T10:00:00.000Z' }] }] };
+    let docSeq = 0;
+    const addEvidence = (kind, buffer, approved = true) => {
+      const id = 'afd' + (++docSeq); const ext = kind === 'submitted_zip' ? '.zip' : '.pdf';
+      const storedName = id + ext; const fileName = kind + ext;
+      fs.writeFileSync(path.join(evidenceDir, storedName), buffer);
+      const meta = annualFiling.createEvidence({
+        year: '2025', kind, documentId: id, revision: 1, fileName, buffer,
+        mime: kind === 'submitted_zip' ? 'application/zip' : 'application/pdf',
+        signedBy: kind === 'submitted_zip' ? '' : 'Administrator Test',
+        signedAt: kind === 'submitted_zip' ? '' : '2026-04-10',
+        signatureType: kind === 'submitted_zip' ? '' : 'handwritten_scan',
+        uploadedBy: 7, uploadedByName: 'operator-test', uploadedAt: '2026-04-11T10:00:00.000Z',
+        filingBinding: kind === 'submitted_zip' ? annualFiling.filingBindingFor(filingDb, 17, '2025') : null,
+      });
+      if (approved) meta.approval = annualFiling.approveEvidence(meta, { id: 8, username: 'aprobator-test' }, 'aprobator', '2026-04-12T10:00:00.000Z');
+      const doc = { id, firmaId: 17, fileName, storedName, uploadedAt: meta.uploadedAt,
+        sha256: meta.fileSha256, bytes: meta.bytes, annualFilingEvidence: meta };
+      filingView.documents.push(doc); return { doc, buffer };
+    };
+    const annexes = [
+      addEvidence('administrators_report', Buffer.from('%PDF-raport-administratori')),
+      addEvidence('art30_declaration', Buffer.from('%PDF-declaratie-art-30')),
+      addEvidence('result_allocation_proposal', Buffer.from('%PDF-propunere-rezultat')),
+      addEvidence('aga_resolution', Buffer.from('%PDF-hotarare-aga')),
+      addEvidence('signed_first_page', Buffer.from('%PDF-prima-pagina-semnata')),
+    ];
+    const submittedZip = new AdmZip();
+    for (const item of annexes.filter((x) => x.doc.annualFilingEvidence.kind !== 'aga_resolution')) {
+      submittedZip.addFile('anexe/' + item.doc.fileName, item.buffer);
+    }
+    addEvidence('submitted_zip', submittedZip.toBuffer());
+    const filingReady = annualFiling.status(filingView, '2025', { uploadDir: evidenceDir, globalDb: filingDb });
+    ok('matricea 2025 devine completă numai cu probe aprobate și ZIP exact', filingReady.ready
+      && filingReady.rows.filter((row) => row.requiredInZip).every((row) => row.inSubmittedZip));
+    ok('matricea are hash propriu și păstrează hash-ul ZIP-ului transmis',
+      /^[a-f0-9]{64}$/.test(filingReady.matrixHash) && filingReady.package.zipSha256
+      === filingView.documents.find((d) => d.annualFilingEvidence.kind === 'submitted_zip').sha256);
+    eq('dosarul pregătit expune toate cele șase probe obligatorii pentru microentitate',
+      annualFiling.exactEvidenceFiles(filingView, '2025', { uploadDir: evidenceDir, globalDb: filingDb }).files.length, 6);
+
+    filingDb.declarations[0].depuneri.push({ ordinal: 2, submissionId: 'submission-bilant-2025-rectificata',
+      submissionHash: 'c'.repeat(64), submittedArtifactHash: 'd'.repeat(64), recipisa: 'R-BILANT-2025-2' });
+    const stalePackage = annualFiling.status(filingView, '2025', { uploadDir: evidenceDir, globalDb: filingDb });
+    ok('o depunere mai nouă invalidează legătura ZIP-ului vechi cu registrul și recipisa', !stalePackage.ready
+      && /altă depunere/.test(stalePackage.rows.find((row) => row.kind === 'submitted_zip').reason));
+    filingDb.declarations[0].depuneri.pop();
+
+    const firstPage = filingView.documents.find((d) => d.annualFilingEvidence.kind === 'signed_first_page');
+    fs.writeFileSync(path.join(evidenceDir, firstPage.storedName), Buffer.from('%PDF-octeti-schimbati'));
+    const changed = annualFiling.status(filingView, '2025', { uploadDir: evidenceDir, globalDb: filingDb });
+    ok('modificarea binarului după aprobare invalidează proba și blochează sigilarea', !changed.ready
+      && changed.rows.find((row) => row.kind === 'signed_first_page').reason.includes('SHA-256'));
+    fs.writeFileSync(path.join(evidenceDir, firstPage.storedName), annexes[4].buffer);
+
+    const largeView = JSON.parse(JSON.stringify(filingView));
+    largeView.company.auditStatut = '3'; largeView.balanceCategoryHistory[0].category = 'mare';
+    const large = annualFiling.status(largeView, '2025', { uploadDir: evidenceDir, globalDb: filingDb });
+    ok('entitatea mijlocie/mare cere raport de audit și refuză statutul neauditat', !large.ready
+      && large.rows.find((row) => row.kind === 'audit_report').required
+      && large.blockers.some((message) => message.includes('contrazice categoria')));
+
+    const pendingView = JSON.parse(JSON.stringify(filingView));
+    pendingView.documents.find((d) => d.annualFilingEvidence.kind === 'aga_resolution').annualFilingEvidence.approval = null;
+    const pending = annualFiling.status(pendingView, '2025', { uploadDir: evidenceDir, globalDb: filingDb });
+    ok('o anexă încărcată dar neaprobată nu este tratată drept completă', !pending.ready
+      && /aprobarea lipsește/.test(pending.rows.find((row) => row.kind === 'aga_resolution').reason));
+  } finally { fs.rmSync(evidenceDir, { recursive: true, force: true }); }
 
   console.log('\n' + (fail ? '✗ ' : '✓ ') + pass + ' verificari dosar anual trecute, ' + fail + ' esuate.');
   process.exitCode = fail ? 1 : 0;

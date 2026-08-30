@@ -6,6 +6,8 @@
 // si de modulele de raportare — extrase din server.js fara schimbare de comportament.
 // Modul de rute: register(app, ctx), ctx = { S }.
 
+const fs = require('fs');
+const path = require('path');
 const db = require('../db');
 const bunuriCapital = require('../bunuriCapital'); // registrul art. 305 alin. (4)
 const ptOpts = require('../profitTaxOptions'); // sursa unica a optiunilor de impozit pe profit
@@ -22,13 +24,14 @@ const annualArchiveIntegrity = require('../annualArchiveIntegrity');
 const globalChain = require('../globalChain');
 const auditLog = require('../auditLog');
 const annualClose = require('../annualClose');
+const annualFilingDossier = require('../annualFilingDossier');
 const permissions = require('../permissions');
 const { analyticBalance } = require('../analytic');
 const { sendList } = require('../paginate');
 const { statPlataPostata } = require('../payroll');
 
 module.exports = function register(app, ctx) {
-  const { S, wrap, activeId, logAudit } = ctx;
+  const { S, wrap, activeId, logAudit, upload } = ctx;
   const microYield = () => new Promise((resolve) => setImmediate(resolve));
 
   function globalDownloadGuard(res) {
@@ -213,6 +216,95 @@ module.exports = function register(app, ctx) {
     pdf.f4109Pdf(res, v.company, { period, aparate });
   });
   app.get('/pdf/obligatii', (req, res) => pdf.obligatiiPdf(res, S(req).company, rep.obligatii(S(req), req.query.period || null)));
+  function filingStatus(req, year) {
+    return annualFilingDossier.status(S(req), year, { uploadDir: db.UPLOAD_DIR, globalDb: db.get() });
+  }
+
+  app.get('/api/dosar-anual/filing-status', (req, res) => {
+    const year = String(req.query.year || new Date().getFullYear());
+    res.json(filingStatus(req, year));
+  });
+
+  // Fiecare încărcare creează o revizie nouă. Fișierul anterior rămâne în registrul de documente,
+  // dar este marcat supersedat; aprobarea lui nu se transferă la noii octeți.
+  app.post('/api/dosar-anual/evidence', upload.single('file'), (req, res) => {
+    let retained = false;
+    const cleanup = () => { if (!retained && req.file && req.file.path) try { fs.unlinkSync(req.file.path); } catch (_) { /* best effort */ } };
+    try {
+      if (!req.file) return res.status(400).json({ error: 'Selectează fișierul exact al anexei.' });
+      const year = annualFilingDossier.reqYear((req.body || {}).year); const fid = activeId(req);
+      permissions.assert(req.user, fid, 'annual.manage', db.getFirma(fid));
+      const kind = String((req.body || {}).kind || ''); const d = db.get();
+      const previous = (d.documents || []).filter((doc) => Number(doc.firmaId) === Number(fid)
+        && doc.annualFilingEvidence && String(doc.annualFilingEvidence.year) === year
+        && doc.annualFilingEvidence.kind === kind && !doc.annualFilingEvidence.supersededBy)
+        .sort((a, b) => Number(a.annualFilingEvidence.revision) - Number(b.annualFilingEvidence.revision));
+      const documentId = db.nextId('doc');
+      const bytes = fs.readFileSync(req.file.path);
+      const filingBinding = kind === 'submitted_zip'
+        ? annualFilingDossier.filingBindingFor(d, fid, year) : null;
+      const evidence = annualFilingDossier.createEvidence({
+        year, kind, documentId, revision: previous.length
+          ? Number(previous[previous.length - 1].annualFilingEvidence.revision) + 1 : 1,
+        fileName: req.file.originalname, mime: req.file.mimetype, buffer: bytes,
+        signedBy: (req.body || {}).signedBy, signedAt: (req.body || {}).signedAt,
+        signatureType: (req.body || {}).signatureType,
+        uploadedBy: req.user && req.user.id, uploadedByName: req.user && req.user.username,
+        filingBinding,
+      });
+      for (const old of previous) {
+        old.annualFilingEvidence.supersededBy = documentId;
+        old.annualFilingEvidence.supersededAt = evidence.uploadedAt;
+      }
+      d.documents.push({
+        id: documentId, firmaId: fid, fileName: path.basename(req.file.originalname),
+        storedName: path.basename(req.file.filename), uploadedAt: evidence.uploadedAt,
+        text: '', sha256: evidence.fileSha256, bytes: evidence.bytes, annualFilingEvidence: evidence,
+      });
+      db.save();
+      retained = true; // după persistare, fișierul este probă; o eroare ulterioară nu îl șterge
+      logAudit('dosar.anual.anexa.incarcata', year + ' · ' + kind + ' · SHA-256 '
+        + evidence.fileSha256.slice(0, 12) + ' · revizia ' + evidence.revision, { req });
+      return res.json({ ok: true, documentId, evidence, filing: filingStatus(req, year) });
+    } catch (error) {
+      cleanup();
+      return res.status(error.status || 500).json({ error: error.message, code: error.code });
+    }
+  });
+
+  app.post('/api/dosar-anual/evidence/:id/approve', (req, res) => {
+    try {
+      if (!((req.body || {}).confirm === true)) return res.status(400).json({ error: 'Confirmarea explicită a aprobării lipsește.' });
+      const fid = activeId(req); const company = db.getFirma(fid);
+      permissions.assert(req.user, fid, 'annual.manage', company);
+      const d = db.get(); const doc = (d.documents || []).find((item) => String(item.id) === String(req.params.id)
+        && Number(item.firmaId) === Number(fid));
+      if (!doc || !doc.annualFilingEvidence) return res.status(404).json({ error: 'Proba nu există în dosarul firmei.' });
+      const meta = doc.annualFilingEvidence;
+      if (meta.supersededBy) return res.status(409).json({ error: 'Revizia a fost înlocuită și nu mai poate fi aprobată.' });
+      const check = annualFilingDossier.verifyDocument(doc, db.UPLOAD_DIR, {
+        requireApproval: false,
+        filingBinding: meta.kind === 'submitted_zip'
+          ? annualFilingDossier.filingBindingFor(d, fid, meta.year) : null,
+      });
+      if (!check.ok) return res.status(409).json({ error: 'Fișierul nu poate fi aprobat: ' + check.reason });
+      const eligible = (d.users || []).filter((user) => user.role !== 'admin' && !user.pending
+        && permissions.can(user, fid, 'annual.manage', company));
+      if (company && company.controlDublu === true && eligible.length >= 2
+        && Number(meta.uploadedBy) === Number(req.user && req.user.id)) {
+        return res.status(409).json({ error: 'Controlul dublu este activ: anexa trebuie aprobată de alt utilizator cu drept de închidere anuală.' });
+      }
+      if (!meta.approval) meta.approval = annualFilingDossier.approveEvidence(meta, req.user,
+        permissions.roleFor(req.user, fid, company));
+      db.save();
+      logAudit('dosar.anual.anexa.aprobata', meta.year + ' · ' + meta.kind + ' · '
+        + meta.evidenceHash.slice(0, 12), { req });
+      res.json({ ok: true, documentId: doc.id, approval: meta.approval, filing: filingStatus(req, meta.year) });
+    } catch (error) {
+      res.status(error.status || 500).json({ error: error.message, code: error.code });
+    }
+  });
+
   app.get('/api/dosar-anual/status', (req, res) => {
     const year = String(req.query.year || new Date().getFullYear()); const fid = activeId(req);
     const rows = dosarAnual.archiveRows(db.get(), fid, year).map((row) => {
@@ -222,7 +314,7 @@ module.exports = function register(app, ctx) {
         zipSha256: row.zipSha256, contentRootHash: row.contentRootHash, verified: check.ok,
         verificationError: check.ok ? null : check.reason };
     });
-    res.json({ year, closed: dosarAnual.isYearClosed(S(req), year), versions: rows });
+    res.json({ year, closed: dosarAnual.isYearClosed(S(req), year), filing: filingStatus(req, year), versions: rows });
   });
 
   // Sigilarea este o SCRIERE explicita, numai dupa finalizarea cockpitului anual. Repetarea este
@@ -234,6 +326,7 @@ module.exports = function register(app, ctx) {
     if (!annual.sePoateFinaliza) {
       return res.status(409).json({ error: 'Dosarul se sigilează numai după finalizarea cockpitului anual.', blocante: annual.blocante });
     }
+    annualFilingDossier.assertReady(S(req), year, { uploadDir: db.UPLOAD_DIR, globalDb: db.get() });
     const out = await dosarAnual.seal(db.get(), S(req), year, {
       uploadDir: db.UPLOAD_DIR, nextId: db.nextId, userId: req.user && req.user.id,
       username: req.user && req.user.username, newRevision: !!(req.body || {}).newRevision,

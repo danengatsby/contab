@@ -445,6 +445,49 @@ function archiveSize(bytes) {
   return (n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0) + ' MB';
 }
 
+/** Matricea anexelor situațiilor financiare. Backendul stabilește aplicabilitatea și verifică
+ * octeții; interfața nu deduce obligații juridice din numele fișierului sau din categorie. */
+export function annualFilingMatrixHtml(filing, year) {
+  const state = filing || {};
+  if (!state.rows) return `<div class="notice warning"><span class="notice-icon">⚠️</span><div>
+    Matricea anexelor legale pentru ${H(year)} nu este disponibilă.</div></div>`;
+  const blockers = (state.blockers || []).length
+    ? `<div class="notice warning annual-filing-blockers"><span class="notice-icon">⚠️</span><div><b>Sigilare blocată</b><ul>${state.blockers.map((x) => `<li>${H(x)}</li>`).join('')}</ul></div></div>`
+    : '<div class="notice success annual-filing-ready"><span class="notice-icon">✅</span><div><b>Matrice completă.</b> Toate probele obligatorii sunt aprobate și se regăsesc în ZIP-ul exact transmis.</div></div>';
+  const rows = state.rows.map((row) => {
+    const e = row.evidence; let status;
+    if (!row.required && !e) status = '<span class="st">nu se aplică</span>';
+    else if (row.complete) status = '<span class="st st-postat">complet</span>';
+    else status = `<span class="st st-stornat" title="${H(row.reason || 'Probă incompletă')}">incomplet</span>`;
+    const evidence = e ? `<a class="linkbtn" href="/api/document/${encodeURIComponent(e.documentId)}/file" target="_blank">${H(e.fileName)}</a>
+      <div class="muted">rev. ${H(e.revision)} · ${H(archiveSize(e.bytes))}${e.filingBinding ? ` · depunerea ${H(e.filingBinding.ordinal)}${e.filingBinding.receiptReference ? ' · recipisa ' + H(e.filingBinding.receiptReference) : ''}` : ''}</div><code class="annual-archive-hash">${H(e.sha256)}</code>` : '<span class="muted">—</span>';
+    const signature = !row.signatureRequired ? '<span class="muted">nu se aplică fișierului ZIP</span>'
+      : e && e.signature ? `${H(e.signature.signedBy)}<div class="muted">${H(e.signature.signedAt)} · ${H(e.signature.type)}</div>`
+        : '<span class="muted">lipsește declarația semnăturii</span>';
+    const approval = e && e.approval
+      ? `${H(e.approval.approvedByName || '—')}<div class="muted">${H(String(e.approval.approvedAt || '').replace('T', ' ').slice(0, 16))} UTC</div>`
+      : e ? `<button class="btn small approve-annual-evidence" data-id="${H(e.documentId)}">✓ Aprobă hash-ul</button>` : '<span class="muted">—</span>';
+    const packageState = row.requiredInZip ? (row.inSubmittedZip
+      ? '<span class="st st-postat">hash găsit</span>' : '<span class="st st-stornat">hash absent</span>') : '<span class="muted">probă internă / pachet</span>';
+    return `<tr><td><b>${H(row.label)}</b><div class="muted">${H(row.basis)}</div></td><td>${row.required ? 'obligatoriu' : 'după caz'}</td>
+      <td>${evidence}</td><td>${signature}</td><td>${approval}</td><td>${packageState}</td><td>${status}</td></tr>`;
+  }).join('');
+  const ctx = state.context || {};
+  const context = ctx.type === 'pfa' ? 'PFA — matricea situațiilor financiare ale societăților nu se aplică.'
+    : `Categorie: ${ctx.category || 'neconfirmată'} · audit: ${ctx.auditReason || 'nedeterminat'}`;
+  const legal = (state.legalBasis || []).map((source) => `<a href="${H(source.url)}" target="_blank" rel="noopener">${H(source.title)}</a>`).join(' · ');
+  const upload = ctx.type === 'pfa' ? '' : `<form id="annualEvidenceForm" class="inlineform annual-evidence-form">
+    <label>Anexă <select name="kind">${state.rows.map((row) => `<option value="${H(row.kind)}" data-signature="${row.signatureRequired ? '1' : '0'}">${H(row.label)}</option>`).join('')}</select></label>
+    <label>Semnat de <input name="signedBy" placeholder="nume / funcție" /></label>
+    <label>Data semnării <input name="signedAt" type="date" /></label>
+    <label>Forma semnăturii <select name="signatureType"><option value="handwritten_scan">olografă scanată</option><option value="qualified_electronic">electronică calificată</option><option value="advanced_electronic">electronică avansată</option></select></label>
+    <label>Fișier exact <input name="file" type="file" accept="application/pdf,.pdf" required /></label>
+    <button class="btn small" type="submit">Încarcă revizie</button>
+  </form><p class="muted">Semnatarul și forma semnăturii sunt declarații ale operatorului; aplicația verifică hash-ul și aprobarea, nu certificatul criptografic din PDF.</p>`;
+  return `<div class="annual-filing-matrix">${blockers}<p class="muted">${H(context)}${legal ? ' · ' + legal : ''}</p>
+    <div class="tablewrap"><table><thead><tr><th>Document / temei</th><th>Cerință</th><th>Fișier exact și SHA-256</th><th>Semnături declarate</th><th>Aprobare pe hash</th><th>În ZIP transmis</th><th>Stare</th></tr></thead><tbody>${rows}</tbody></table></div>${upload}</div>`;
+}
+
 /** Istoricul permanent al dosarului anual. Funcție pură: serverul decide integritatea,
  * interfața afișează fiecare versiune și descarcă explicit octeții acelei versiuni. */
 export function annualArchiveVersionsHtml(status, year) {
@@ -518,7 +561,9 @@ async function loadArhiva() {
       <p class="muted">Registrele obligatorii și situațiile financiare.</p>
       ${L('/pdf/journal' + pq, '⬇ Registru-jurnal PDF')}${L('/csv/journal' + pq, 'Jurnal CSV')}${L('/pdf/ledger' + pq, '⬇ Cartea mare PDF')}${L('/pdf/balance' + pq, '⬇ Balanță PDF')}${L('/csv/balance' + pq, 'Balanță CSV')}${L('/pdf/pl' + yq, '⬇ Cont P&P PDF')}${L('/pdf/bilant' + pq, '⬇ Bilanț PDF')}
       <hr class="soft" data-u="u18"><p class="muted" data-u="u18">Dosarul anual este un ZIP persistent, sigilat după finalizarea cockpitului: documente justificative și extrase originale, state, stoc, aprobări, declarațiile și recipisele exacte. Descărcarea verifică manifestul semnat și nu regenerează rapoartele.</p>
-      <button id="sealAnnualArchive" class="btn small" data-year="${H(yr)}"${annualStatus.closed ? '' : ' disabled'}>🔏 ${(annualStatus.versions || []).length ? 'Creează versiune nouă' : 'Sigilează prima versiune'}</button>
+      <h4>Completitudinea anexelor situațiilor financiare</h4>
+      ${annualFilingMatrixHtml(annualStatus.filing, yr)}
+      <button id="sealAnnualArchive" class="btn small" data-year="${H(yr)}"${annualStatus.closed && annualStatus.filing && annualStatus.filing.ready ? '' : ' disabled'}>🔏 ${(annualStatus.versions || []).length ? 'Creează versiune nouă' : 'Sigilează prima versiune'}</button>
       <div id="annualArchiveVersions">${annualArchiveVersionsHtml(annualStatus, yr)}</div></div>`;
   $$('#arhivaView [data-go]').forEach((b) => b.addEventListener('click', () => D.goTab(b.dataset.go)));
   const vb = $('#validateDecl');
@@ -538,6 +583,41 @@ async function loadArhiva() {
     vb.disabled = false;
   });
   const seal = $('#sealAnnualArchive');
+  const evidenceForm = $('#annualEvidenceForm');
+  if (evidenceForm) {
+    const adaptEvidenceForm = () => {
+      const option = evidenceForm.kind.options[evidenceForm.kind.selectedIndex];
+      const signed = option && option.dataset.signature === '1';
+      for (const name of ['signedBy', 'signedAt', 'signatureType']) {
+        evidenceForm[name].disabled = !signed; evidenceForm[name].required = signed;
+      }
+      evidenceForm.file.accept = evidenceForm.kind.value === 'submitted_zip'
+        ? 'application/zip,.zip' : 'application/pdf,.pdf';
+    };
+    evidenceForm.kind.addEventListener('change', adaptEvidenceForm); adaptEvidenceForm();
+    evidenceForm.addEventListener('submit', async (event) => {
+      event.preventDefault(); const button = evidenceForm.querySelector('button[type="submit"]'); button.disabled = true;
+      try {
+        const fd = new FormData(evidenceForm); fd.append('year', yr);
+        await api('/api/dosar-anual/evidence', { method: 'POST', body: fd });
+        toast('Anexa a fost amprentată. Verifică fișierul și aprobă hash-ul înainte de sigilare.');
+        await loadArhiva();
+      } catch (e) { toast(e.message, true); } finally { button.disabled = false; }
+    });
+  }
+  $$('#arhivaView .approve-annual-evidence').forEach((button) => button.addEventListener('click', async () => {
+    const yes = await confirmAction('Aprobarea este legată de SHA-256 al fișierului. O revizie ulterioară va necesita o aprobare nouă.', {
+      title: 'Aprobi anexa exactă?', confirmLabel: 'Aprobă hash-ul', danger: false,
+    });
+    if (!yes) return;
+    button.disabled = true;
+    try {
+      await api('/api/dosar-anual/evidence/' + encodeURIComponent(button.dataset.id) + '/approve', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true }),
+      });
+      toast('Anexa a fost aprobată pe hash.'); await loadArhiva();
+    } catch (e) { toast(e.message, true); } finally { button.disabled = false; }
+  }));
   if (seal) seal.addEventListener('click', async () => {
     seal.disabled = true;
     try {
@@ -560,7 +640,7 @@ async function loadArhiva() {
       });
       toast('Dosar anual sigilat: versiunea ' + result.version + ' · SHA-256 ' + result.zipSha256.slice(0, 12) + '…');
       await loadArhiva();
-    } catch (e) { toast(e.message, true); } finally { seal.disabled = !annualStatus.closed; }
+    } catch (e) { toast(e.message, true); } finally { seal.disabled = !annualStatus.closed || !(annualStatus.filing && annualStatus.filing.ready); }
   });
 }
 onPeriodChange('arhiva', loadArhiva);

@@ -2167,6 +2167,9 @@ async function main() {
     const archiveStatus = await req('GET', '/api/dosar-anual/status?year=2026', { cookie: c1 });
     ok('dosar-anual: statusul separă anul deschis de versiunile sigilate', archiveStatus.status === 200
       && archiveStatus.json.closed === false && archiveStatus.json.versions.length === 0);
+    ok('dosar-anual: statusul include matricea fail-closed a anexelor legale', archiveStatus.json.filing
+      && archiveStatus.json.filing.ready === false && archiveStatus.json.filing.rows.some((row) => row.kind === 'signed_first_page')
+      && archiveStatus.json.filing.blockers.length > 0);
     ok('dosar-anual: arhiva completă cere step-up de export masiv',
       (await grantStepUp(c1, 'bulk-export')).status === 200);
     eq('dosar-anual: anul deschis nu poate fi generat la cerere', (await req('GET', '/api/dosar-anual?year=2026', { cookie: c1 })).status, 409);

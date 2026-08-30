@@ -234,7 +234,7 @@ function requiredActions(method, path, body) {
 
   if (/^\/api\/monthly-close\/(?:approve|unapprove)$/.test(path)) add('close.approve');
   if (path === '/api/monthly-close/close') add('close.manage');
-  if (!safe && /^\/api\/(?:close-year|close-profit-tax|distribute-result|annual-inventory-control|dosar-anual\/seal)(?:\/|$)/.test(path)) add('annual.manage');
+  if (!safe && /^\/api\/(?:close-year|close-profit-tax|distribute-result|annual-inventory-control|dosar-anual\/(?:seal|evidence))(?:\/|$)/.test(path)) add('annual.manage');
 
   // Exportul este un drept distinct chiar daca transportul este HTTP GET. PDF-urile salariale
   // cer cumulativ si payroll.read; cele de casa/banca cer si treasury.read.

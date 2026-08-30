@@ -569,7 +569,7 @@ app.post('/api/notifications/digest', requireAdmin, wrap(async (req, res) => {
 // Validare pre-depunere + api/saft: src/routes/declarationsXml.js
 
 // Situatii financiare + recapitulatii declaratii + registre (PDF/JSON): src/routes/reports.js
-require('./src/routes/reports')(app, { S, wrap, activeId, logAudit });
+require('./src/routes/reports')(app, { S, wrap, activeId, logAudit, upload });
 // Fisierul de plati (pain.001) — dupa `S`, ca orice ruta care lucreaza pe vederea scoped.
 require('./src/routes/plati')(app, { S, activeId, logAudit });
 // Preluarea unei firme din alt program (balanta -> solduri de preluare).

@@ -2125,6 +2125,26 @@ section('Dosar anual persistent: istoric versionat și integritate vizibilă (en
     && history.includes('Rectificare &lt;b&gt;aprobată&lt;/b&gt;') && history.includes('semnătură &lt;invalidă&gt;'));
   const emptyOpen = entries.annualArchiveVersionsHtml({ closed: false, versions: [] }, '2026');
   ok('anul deschis explică de ce nu poate fi sigilat', emptyOpen.includes('este încă deschis') && emptyOpen.includes('Nicio versiune sigilată'));
+
+  const matrix = entries.annualFilingMatrixHtml({
+    ready: false, blockers: ['Lipsește <raportul>'], context: { type: 'societate', category: 'micro', auditReason: 'praguri nedepășite' },
+    legalBasis: [{ title: 'OMF <2036>', url: 'https://example.test/?a=1&b=2' }],
+    rows: [
+      { kind: 'administrators_report', label: 'Raport <administrator>', required: true, requiredInZip: true,
+        signatureRequired: true, basis: 'OMF 2.036/2025', complete: false, reason: 'aprobarea lipsește', inSubmittedZip: false,
+        evidence: { documentId: 'doc<1>', fileName: 'raport<script>.pdf', bytes: 1024, revision: 2,
+          sha256: 'c'.repeat(64), signature: { signedBy: 'Ion <Admin>', signedAt: '2026-04-10', type: 'handwritten_scan' }, approval: null } },
+      { kind: 'submitted_zip', label: 'ZIP transmis', required: true, requiredInZip: false,
+        signatureRequired: false, basis: 'OMF', complete: false, reason: 'lipsește', evidence: null },
+    ],
+  }, '2025');
+  ok('matricea afișează blocajele, hash-ul complet și acțiunea de aprobare', matrix.includes('Sigilare blocată')
+    && matrix.includes('c'.repeat(64)) && matrix.includes('Aprobă hash-ul'));
+  ok('matricea separă declarația semnăturii de verificarea ZIP', matrix.includes('Semnături declarate')
+    && matrix.includes('hash absent') && matrix.includes('nu se aplică fișierului ZIP'));
+  ok('valorile juridice și metadatele anexei sunt escapate', matrix.includes('Lipsește &lt;raportul&gt;')
+    && matrix.includes('Raport &lt;administrator&gt;') && matrix.includes('raport&lt;script&gt;.pdf')
+    && !matrix.includes('<script>'));
 }
 
 section('Calitatea citirii automate: verdictul și raportul (docflow.js / entries.js)');

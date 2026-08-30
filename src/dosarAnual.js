@@ -20,6 +20,7 @@ const integrity = require('./annualArchiveIntegrity');
 const cash13 = require('./cashForecast13Weeks');
 const declarationRegistry = require('./declarations');
 const annualInventory = require('./annualInventory');
+const annualFilingDossier = require('./annualFilingDossier');
 
 function fail(status, message) { const e = new Error(message); e.status = status; throw e; }
 function reqYear(value) { const y = String(value || ''); if (!/^[1-9]\d{3}$/.test(y)) fail(400, 'Anul trebuie să aibă forma YYYY.'); return y; }
@@ -151,6 +152,17 @@ async function build(view, year, opts) {
   const explanatoryNotes = rep.notes(view, year);
   await add('situatii/note-explicative.pdf', () => pdfToBuffer((res) => pdf.notesPdf(res, company, explanatoryNotes)), 'situatie-financiara', 10);
   await addJson('situatii/note-explicative.json', explanatoryNotes, 'situatie-financiara', 10);
+
+  // Anexele legale nu sunt regenerate de aplicație. Intră aici exact octeții aprobați și exact
+  // ZIP-ul transmis, după ce matricea a dovedit că fiecare hash obligatoriu se găsește în acel ZIP.
+  const filing = annualFilingDossier.exactEvidenceFiles(view, year, { uploadDir: opts.uploadDir, globalDb });
+  await addJson('situatii-financiare-depuse/matrice-completitudine.json', filing.matrix, 'dovada-depunere', 10);
+  for (let i = 0; i < filing.files.length; i += 1) {
+    const file = filing.files[i];
+    const folder = file.kind === 'submitted_zip' ? 'pachet-transmis/' : 'anexe/';
+    await add('situatii-financiare-depuse/' + folder + String(i + 1).padStart(2, '0') + '-'
+      + safeName(file.kind) + '-' + safeName(file.fileName), () => file.buffer, 'dovada-depunere', 10);
+  }
 
   // Declaratiile sunt luate EXCLUSIV din binarul pastrat la generare si legat de depunere.
   // Nu exista fallback la generator: datele curente pot fi diferite de cele efectiv depuse.
@@ -295,6 +307,9 @@ async function build(view, year, opts) {
     'DOSAR CONTABIL ANUAL SIGILAT — ' + (company.nume || '') + ' — ' + year + '\n\n'
     + 'Acesta este binarul persistent al versiunii ' + Number(opts.version || 1) + ', nu o regenerare la descărcare.\n'
     + 'manifest.json enumeră exact toate fișierele, amprentele SHA-256 și semnătura tehnică HMAC.\n'
+    + 'situatii-financiare-depuse/ păstrează anexele aprobate și ZIP-ul exact transmis; matricea\n'
+    + 'dovedește apartenența fiecărei anexe prin SHA-256. Declarațiile despre semnatari sunt metadate\n'
+    + 'ale operatorului și nu echivalează cu validarea criptografică a unei semnături PDF.\n'
     + 'Semnătura HMAC nu este semnătură electronică calificată; ea dovedește integritatea tehnică\n'
     + 'față de cheia instanței. Legea contabilității nr. 82/1991: art. 25 — registrele, documentele\n'
     + 'justificative și statele de salarii, 5 ani calculați de la 1 iulie a anului următor;\n'
@@ -311,6 +326,13 @@ async function build(view, year, opts) {
     hashAlgorithm: 'SHA-256', files, contentRootHash: integrity.rootHash(files),
     fiscalRules: { registryHash: fiscal.registryHash(), references: fiscalRuleSetRefs,
       ruleSetHashes: fiscalRuleSets.map((r) => ({ id: r.id, hash: r.hash })) },
+    financialStatementFiling: {
+      matrixHash: filing.matrix.matrixHash,
+      ready: filing.matrix.ready,
+      electronicOnly: filing.matrix.electronicOnly,
+      submittedZipSha256: filing.matrix.package && filing.matrix.package.zipSha256,
+      evidence: filing.files.map((file) => ({ kind: file.kind, documentId: file.documentId, sha256: file.sha256 })),
+    },
     retention: { accountingRecordsAndSupportingDocumentsYears: 5,
       accountingRecordsCalculatedFrom: '1 iulie a anului următor încheierii exercițiului financiar',
       financialStatementsYears: 10,
