@@ -167,7 +167,8 @@ module.exports = function register(app, ctx) {
   // semnaleaza date incompatibile cu regimul declarat (neplatitor care colecteaza TVA, micro peste
   // plafon, plafon Intrastat...). ?year=YYYY (implicit anul curent).
   app.get('/api/fiscal-controls', (req, res) => {
-    res.json(fiscalControls.check(S(req), { year: req.query.year || String(new Date().getFullYear()) }));
+    res.json(fiscalControls.check(S(req), { year: req.query.year || String(new Date().getFullYear()),
+      period: req.query.period }));
   });
 
   // ── Logo firma (layout documente): apare in antetul tuturor PDF-urilor emise ──

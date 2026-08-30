@@ -18,6 +18,7 @@ const decl = require('../declarations');
 const plans = require('../plans');
 const declCheck = require('../declarationCheck');
 const fiscalProfile = require('../fiscalProfile');
+const microEligibility = require('../microEligibility');
 const fiscal = require('../fiscal');
 const permissions = require('../permissions');
 const fiscalReview = require('../fiscalReview');
@@ -280,6 +281,8 @@ module.exports = function register(app, ctx) {
     const v = S(req);
     const period = req.query.period || null;
     const hv = fiscalProfile.viewAt(v, period);
+    try { microEligibility.assertCanDeclare(hv, 'd100', period); }
+    catch (e) { return res.status(e.status || 409).send(e.message); }
     const r = rep.d100(hv, period);
     // REFUZ, nu declaratie cu zero. La sistemul anual de impozit pe profit (art. 41), plata
     // anticipata are nevoie de impozitul anului precedent SI de indicele preturilor de consum;
@@ -310,6 +313,8 @@ module.exports = function register(app, ctx) {
         + 'Pentru depunerile vechi fără aceste date, completează rectificarea în aplicația ANAF.');
     }
     const current = rep.d100(hv, period);
+    try { microEligibility.assertCanDeclare(hv, 'd100', period); }
+    catch (e) { return res.status(e.status || 409).send(e.message); }
     if (current.blocat) {
       return res.status(400).send('Nu se poate genera D710: ' + (current.avertismente || []).join(' '));
     }
@@ -333,10 +338,12 @@ module.exports = function register(app, ctx) {
   app.get('/xml/d101', (req, res) => {
     const v = S(req);
     const year = req.query.year || String(new Date().getFullYear());
+    const hv = fiscalProfile.viewAt(v, year);
+    try { microEligibility.assertCanDeclare(hv, 'd101', year); }
+    catch (e) { return res.status(e.status || 409).send(e.message); }
     if (!fiscalProfile.profileAt(v, year).profit) {
       return res.status(400).send('Firma nu e in regim de impozit pe profit — nu depune D101. Setează regimul „profit" în Setări dacă e cazul.');
     }
-    const hv = fiscalProfile.viewAt(v, year);
     const out = xml.d101Xml(hv.company, rep.d101(hv, year, ptOpts.pentruDeclaratie(hv, year)), declarantOf(req));
     sendRecordedXml(req, res, 'd101', year + '-12', out, 'd101-' + year + '.xml');
   });

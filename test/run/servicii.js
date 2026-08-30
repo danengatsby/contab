@@ -2579,6 +2579,14 @@ section('Verificarea pre-depunere: acelasi verdict pentru cockpit si pentru buto
   const dc = require('../../src/declarationCheck');
   const { scopedSeed } = require('../../src/seed');
   const v = scopedSeed();
+  v.microEligibilityRegistry = require('../../src/microEligibility').normalizeRegistry({
+    version: 1, registrationDate: '2020-01-01', ownershipCompleteThrough: '2026-12-31',
+    workforceCompleteThrough: '2026-12-31', evidenceReference: 'Dosar micro test servicii',
+    associates: [], linkedEnterprises: [], assetTransfers: [], workforce: [{
+      id: 'fte-servicii', kind: 'employment', person: 'Salariat test', validFrom: '2025-01-01',
+      validTo: '', fte: 1, indefinite: true, durationMonths: 0, suspensions: [], evidenceReference: 'CIM test',
+    }],
+  });
   const opt = { period: '2026-06', year: '2026' };
   const sp112 = require('../../src/payroll').statePlata(v.angajati, opt.period, [], { entries: v.entries });
   const entry112 = { id: 'dc112', firmaId: v.firmaId, tip: 'stat_plata', status: 'postat',

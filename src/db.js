@@ -129,6 +129,7 @@ const DEFAULT_DB = {
   declarations: [],    // dosar unic: profil, artefacte, aprobari pe hash, stari append-only, depuneri si recipise
   annualArchives: [],  // ZIP-uri anuale sigilate, versionate, pastrate exact (base64 + manifest semnat)
   fiscal_profile_history: [], // tabel temporal: { id, firmaId, validFrom, validTo, recordedAt, values, ... }
+  micro_eligibility_history: [], // registru versionat: asociati, intreprinderi legate, FTE/mandate si perioade
   balance_category_history: [], // confirmari anuale versionate: indicatori, categorie, justificare, actor si hash
   balance_sheet_mappings: [], // metadate anuale append-only: scadenta, portiune curenta, afiliere si linii F10/F20
   balance_sheet_adjustments: [], // ajustari F10 separate de jurnal, aprobate si legate prin SHA-256 de sursa
@@ -256,6 +257,7 @@ function migrate(d) {
   if (!Array.isArray(d.cursuriBnr)) d.cursuriBnr = [];
   if (!Array.isArray(d.declarations)) d.declarations = [];
   if (!Array.isArray(d.fiscal_profile_history)) d.fiscal_profile_history = [];
+  if (!Array.isArray(d.micro_eligibility_history)) d.micro_eligibility_history = [];
   if (!Array.isArray(d.balance_category_history)) d.balance_category_history = [];
   if (!Array.isArray(d.annualArchives)) d.annualArchives = [];
   if (!Array.isArray(d.bankStatements)) d.bankStatements = [];
@@ -773,6 +775,10 @@ function scoped(firmaId) {
     angajati: (d.angajati || []).filter((a) => (a.firmaId == null ? d.firmaActiva : a.firmaId) === id),
     payrollHistory: (d.payrollHistory || []).filter((h) => (h.firmaId == null ? d.firmaActiva : h.firmaId) === id),
     fiscalProfileHistory: (d.fiscal_profile_history || []).filter((h) => Number(h.firmaId) === id),
+    microEligibilityHistory: (d.micro_eligibility_history || []).filter((h) => Number(h.firmaId) === id),
+    microEligibilityRegistry: ((d.micro_eligibility_history || []).filter((h) => Number(h.firmaId) === id)
+      .sort((a, b) => String(a.recordedAt || '').localeCompare(String(b.recordedAt || ''))
+        || String(a.id || '').localeCompare(String(b.id || ''))).pop() || {}).registry || null,
     balanceCategoryHistory: (d.balance_category_history || []).filter((h) => Number(h.firmaId) === id),
     balanceSheetMappings: (d.balance_sheet_mappings || []).filter((h) => Number(h.firmaId) === id),
     balanceSheetAdjustments: (d.balance_sheet_adjustments || []).filter((h) => Number(h.firmaId) === id),
@@ -828,6 +834,7 @@ function exportFirma(fid) {
     angajati: byFid(d.angajati),
     payrollHistory: byFid(d.payrollHistory),
     fiscal_profile_history: byFid(d.fiscal_profile_history),
+    micro_eligibility_history: byFid(d.micro_eligibility_history),
     balance_category_history: byFid(d.balance_category_history),
     balance_sheet_mappings: byFid(d.balance_sheet_mappings),
     balance_sheet_adjustments: byFid(d.balance_sheet_adjustments),
@@ -846,7 +853,7 @@ function exportFirma(fid) {
 const FIRMA_IMPORT_COLLS = [
   'entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni',
   'stockMovements', 'inventories', 'inventarAnual', 'openingAnalytic', 'recurringInvoices',
-  'openItemAllocations', 'openItemReconciliations', 'bankStatements', 'bankTransactions', 'recipes', 'budgets', 'cashForecastSnapshots', 'declarations', 'annualArchives', 'fiscal_profile_history', 'balance_category_history', 'balance_sheet_mappings', 'balance_sheet_adjustments', 'closings', 'extractInterventions', 'leasingContracts',
+  'openItemAllocations', 'openItemReconciliations', 'bankStatements', 'bankTransactions', 'recipes', 'budgets', 'cashForecastSnapshots', 'declarations', 'annualArchives', 'fiscal_profile_history', 'micro_eligibility_history', 'balance_category_history', 'balance_sheet_mappings', 'balance_sheet_adjustments', 'closings', 'extractInterventions', 'leasingContracts',
 ];
 const FIRMA_IMPORT_ID_COLLS = FIRMA_IMPORT_COLLS.filter((k) => k !== 'openingAnalytic');
 const FIRMA_IMPORT_MAX_ITEMS = 500000;
@@ -981,6 +988,29 @@ function validateFirmaBundle(input) {
         + ' are un moment recordedAt invalid.');
     }
   }
+  const microEligibility = require('./microEligibility');
+  const microEligibilityService = require('./microEligibilityService');
+  for (const revision of b.micro_eligibility_history) {
+    if (!revision.recordedAt || Number.isNaN(Date.parse(String(revision.recordedAt)))) {
+      firmaImportError('Revizia eligibilitatii micro ' + String(revision.id || '?') + ' nu are un moment recordedAt valid.');
+    }
+    if (String(revision.reason || '').trim().length < 5) {
+      firmaImportError('Revizia eligibilitatii micro ' + String(revision.id || '?') + ' nu are un motiv complet.');
+    }
+    ref(revision.supersedes, 'micro_eligibility_history', 'Revizia precedenta pentru ' + revision.id, false);
+    if (revision.supersedes != null && String(revision.supersedes) === String(revision.id)) {
+      firmaImportError('Revizia eligibilitatii micro ' + revision.id + ' se refera la ea insasi.');
+    }
+    let registry;
+    try { registry = microEligibility.normalizeRegistry(revision.registry); }
+    catch (e) { firmaImportError('Revizia eligibilitatii micro ' + String(revision.id || '?') + ' este invalida: ' + e.message); }
+    for (const transfer of registry.assetTransfers) ref(transfer.entryId, 'entries',
+      'Articolul cedarii de activ din revizia micro ' + revision.id, true);
+    if (!/^[0-9a-f]{64}$/.test(String(revision.hash || ''))
+        || microEligibilityService.hash(registry) !== revision.hash) {
+      firmaImportError('Revizia eligibilitatii micro ' + String(revision.id || '?') + ' nu trece verificarea SHA-256.');
+    }
+  }
   const filingDossiers = require('./declarations');
   try { filingDossiers.assertUniqueDossiers({ declarations: b.declarations }); } catch (e) {
     firmaImportError('Dosarele de depunere sunt ambigue: ' + e.message);
@@ -1078,7 +1108,7 @@ function importFirma(bundle, opts) {
   let seqImport = Number(d.seq) || 1;
   const alloc = (prefix) => String(prefix || '') + seqImport++;
   const maps = {};
-  const prefixes = { products: 'prod', gestiuni: 'gest', assets: 'mf', angajati: 'ang', entries: 'e', stockMovements: 'sm', documents: 'doc', inventories: 'inv', inventarAnual: 'iva', payrollHistory: 'ph', recurringInvoices: 'rec', openItemAllocations: 'oia', openItemReconciliations: 'oir', bankStatements: 'bst', bankTransactions: 'btx', recipes: 'bom', budgets: 'bud', cashForecastSnapshots: 'cfs', declarations: 'dcl', annualArchives: 'aar', fiscal_profile_history: 'fpr', balance_category_history: 'bch', balance_sheet_mappings: 'bsm', balance_sheet_adjustments: 'bsa', closings: 'cls', extractInterventions: 'ext', leasingContracts: 'lsg' };
+  const prefixes = { products: 'prod', gestiuni: 'gest', assets: 'mf', angajati: 'ang', entries: 'e', stockMovements: 'sm', documents: 'doc', inventories: 'inv', inventarAnual: 'iva', payrollHistory: 'ph', recurringInvoices: 'rec', openItemAllocations: 'oia', openItemReconciliations: 'oir', bankStatements: 'bst', bankTransactions: 'btx', recipes: 'bom', budgets: 'bud', cashForecastSnapshots: 'cfs', declarations: 'dcl', annualArchives: 'aar', fiscal_profile_history: 'fpr', micro_eligibility_history: 'mer', balance_category_history: 'bch', balance_sheet_mappings: 'bsm', balance_sheet_adjustments: 'bsa', closings: 'cls', extractInterventions: 'ext', leasingContracts: 'lsg' };
   for (const k of FIRMA_IMPORT_ID_COLLS) {
     maps[k] = new Map();
     // Un pachet mic poate veni cu e1/e2 exact când secvența locală ar genera tot e1/e2.
@@ -1158,6 +1188,20 @@ function importFirma(bundle, opts) {
         : (legacyCreated ? 'legacy.createdAt' : 'firm-import')),
     });
   }));
+  const microEligibility = require('./microEligibility');
+  const microEligibilityService = require('./microEligibilityService');
+  const importedMicroEligibilityHistory = simple('micro_eligibility_history').map((row) => {
+    const sourceHash = row.hash;
+    const registry = microEligibility.normalizeRegistry(Object.assign({}, row.registry, {
+      assetTransfers: (row.registry.assetTransfers || []).map((transfer) => Object.assign({}, transfer,
+        { entryId: mid('entries', transfer.entryId) })),
+    }));
+    const localHash = microEligibilityService.hash(registry);
+    return Object.assign({}, row, {
+      supersedes: mid('micro_eligibility_history', row.supersedes), registry, hash: localHash,
+      ...(localHash !== sourceHash ? { importedSourceHash: sourceHash } : {}),
+    });
+  });
   const stockLines = (lines) => (lines || []).map((l) => Object.assign({}, l, { productId: mid('products', l.productId), gestiuneId: mid('gestiuni', l.gestiuneId) }));
 
   const built = {
@@ -1166,6 +1210,7 @@ function importFirma(bundle, opts) {
     cashForecastSnapshots: simple('cashForecastSnapshots'), declarations: importedDeclarations,
     annualArchives: simple('annualArchives'),
     fiscal_profile_history: importedFiscalProfileHistory,
+    micro_eligibility_history: importedMicroEligibilityHistory,
     balance_category_history: simple('balance_category_history'),
     balance_sheet_mappings: simple('balance_sheet_mappings'),
     balance_sheet_adjustments: simple('balance_sheet_adjustments'),

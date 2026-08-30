@@ -4217,12 +4217,29 @@ ok('extractCheck: incredere joasa -> needsReview', echk.reconcile({ baza: 1000, 
 eq('extractCheck: fallback pe cota standard cand baza lipseste', echk.reconcile({ tva: 210, cota: 0 }, { standardCota: 21 }).fields.cota, 21);
 
 section('D100 — impozit micro trimestrial + XML');
+const microEligibility = require('../src/microEligibility');
+function microRegistry(overrides) {
+  return microEligibility.normalizeRegistry(Object.assign({
+    version: 1, registrationDate: '2020-01-01', ownershipCompleteThrough: '2026-12-31',
+    workforceCompleteThrough: '2026-12-31', evidenceReference: 'Dosar fiscal micro verificat',
+    associates: [], linkedEnterprises: [], assetTransfers: [], workforce: [{
+      id: 'fte-test', kind: 'employment', person: 'Salariat test', validFrom: '2025-01-01', validTo: '',
+      fte: 1, indefinite: true, durationMonths: 0, suspensions: [], evidenceReference: 'CIM test',
+    }],
+  }, overrides || {}));
+}
+const missingMicroRegistration = microEligibility.analyze({
+  microEligibilityRegistry: microRegistry({ registrationDate: '' }), entries: [],
+}, '2026-03');
+ok('micro: data inregistrarii lipsa cere revizuire, nu presupune tacit ca firma este veche',
+  !missingMicroRegistration.complete
+  && missingMicroRegistration.blockers.some((x) => x.code === 'registration-date-missing'));
 // veniturile se cumuleaza pe lunile trimestrului (apr+iun in T2), luna din alt trimestru e exclusa
 const d100db = { entries: [
   { id: '1', tip: 'x', period: '2026-04', data: '2026-04-10', lines: [{ debit: '4111', credit: '704', suma: 10000 }] },
   { id: '2', tip: 'x', period: '2026-06', data: '2026-06-10', lines: [{ debit: '4111', credit: '704', suma: 5000 }] },
   { id: '3', tip: 'x', period: '2026-03', data: '2026-03-10', lines: [{ debit: '4111', credit: '704', suma: 77777 }] },
-] };
+], microEligibilityRegistry: microRegistry({ workforce: [] }) };
 const d100q = rep.d100micro(d100db, '2026-06');
 eq('D100: venit trimestrul II cumulat (apr+iun)', d100q.venit, 15000);
 eq('D100: trimestrul detectat', d100q.trimestru, 2);
@@ -4255,12 +4272,177 @@ ok('D710 refuza lipsa unei diferente reale', (() => {
 })());
 // eligibilitate micro (plafon implicit 100.000 EUR x curs 5 = 500.000 lei + conditia de salariat)
 ok('D100: fara salariati -> avertisment de eligibilitate', d100q.avertismente.some((w) => /salariat/i.test(w)));
-const d100over = rep.d100micro({ entries: [{ id: 'o1', period: '2026-02', data: '2026-02-01', lines: [{ debit: '4111', credit: '704', suma: 600000 }] }], angajati: [{ id: 'a' }] }, '2026-03');
-ok('D100: peste plafonul micro -> avertisment de iesire din regim', d100over.avertismente.some((w) => /DEPASESC/.test(w)));
+const d100over = rep.d100micro({ entries: [{ id: 'o1', period: '2026-02', data: '2026-02-01', lines: [{ debit: '4111', credit: '704', suma: 600000 }] }], microEligibilityRegistry: microRegistry() }, '2026-03');
+ok('D100: peste plafonul micro -> avertisment de iesire din regim', d100over.avertismente.some((w) => /DEPĂȘEȘTE/.test(w)));
 ok('D100: cu salariat -> fara avertismentul de salariat', !d100over.avertismente.some((w) => /salariat/i.test(w)));
-const d100warn = rep.d100micro({ entries: [{ id: 'w1', period: '2026-02', data: '2026-02-01', lines: [{ debit: '4111', credit: '704', suma: 450000 }] }], angajati: [{ id: 'a' }] }, '2026-03');
-ok('D100: peste 80% din plafon -> avertisment de urmarire (nu de depasire)', d100warn.avertismente.some((w) => /din plafonul micro/.test(w)) && !d100warn.avertismente.some((w) => /DEPASESC/.test(w)));
+const d100warn = rep.d100micro({ entries: [{ id: 'w1', period: '2026-02', data: '2026-02-01', lines: [{ debit: '4111', credit: '704', suma: 450000 }] }], microEligibilityRegistry: microRegistry() }, '2026-03');
+ok('D100: peste 80% din plafon -> avertisment de urmarire (nu de depasire)', d100warn.avertismente.some((w) => /din plafonul micro/.test(w)) && !d100warn.avertismente.some((w) => /DEPĂȘEȘTE/.test(w)));
 eq('D100: venitul anual cumulat pentru controlul plafonului', d100over.venitAn, 600000);
+
+section('Eligibilitate micro 2026 — cifra de afaceri, legaturi si conditia FTE/mandat');
+const microEntry = (id, data, credit, suma) => ({ id, data, period: data.slice(0, 7), tip: 'test',
+  status: 'postat', lines: [{ debit: '4111', credit, suma }] });
+const linkedRegistry = microRegistry({ linkedEnterprises: [{
+  id: 'legata-1', name: 'Afiliata SRL', cui: 'RO123', kind: 'company', relation: 'control',
+  parentId: 'self', ownershipPercent: 60, votingPercent: 60, control: true,
+  validFrom: '2026-01-01', validTo: '', revenueCoverageFrom: '2026-01-01',
+  revenueCompleteThrough: '2026-12-31', annualNorm: 0, evidenceReference: 'Act ONRC control',
+  revenues: [{ date: '2026-01-31', amount: 300000, source: 'Balanta afiliata ianuarie' }],
+}] });
+const microLinked = microEligibility.analyze({ microEligibilityRegistry: linkedRegistry,
+  entries: [microEntry('CA-1', '2026-02-02', '704', 210000)] }, '2026-03');
+ok('micro: cumuleaza cronologic cifra proprie cu intreprinderea legata si identifica operatiunea',
+  microLinked.ownRevenue === 210000 && microLinked.linkedRevenue === 300000
+  && microLinked.combinedRevenue === 510000 && microLinked.crossing.date === '2026-02-02'
+  && microLinked.crossing.entryId === 'CA-1' && microLinked.exit.period === '2026-Q1');
+ok('micro: graficul pastreaza nodurile, controlul si perioadele de legatura',
+  microLinked.graph.nodes.some((x) => x.id === 'legata-1')
+  && microLinked.graph.edges.some((x) => x.to === 'legata-1' && x.control && x.validFrom === '2026-01-01'));
+const pfaNormRegistry = microRegistry({ linkedEnterprises: [{
+  id: 'pfa-norma', name: 'PFA asociat', cui: 'RO-PFA', kind: 'pfa_norm', relation: 'family_economic',
+  parentId: 'self', ownershipPercent: 0, votingPercent: 0, control: false,
+  validFrom: '2026-01-01', validTo: '', revenueCoverageFrom: '2026-01-01',
+  revenueCompleteThrough: '2026-12-31', annualNorms: [
+    { year: '2026', amount: 120000, source: 'Decizie norma 2026' },
+  ], revenues: [],
+  evidenceReference: 'Declaratie norma anuala ajustata',
+}] });
+eq('micro: PFA la norma contribuie o singura data cu o patrime din norma anuala, inclusiv la T4',
+  microEligibility.analyze({ microEligibilityRegistry: pfaNormRegistry, entries: [] }, '2026').linkedRevenue, 30000);
+
+const transferRegistry = microRegistry({ assetTransfers: [
+  { entryId: 'MF-A1', kind: 'fixed_asset', group: '2.1', evidenceReference: 'Fisa MF A1' },
+  { entryId: 'MF-A2', kind: 'fixed_asset', group: '2.1', evidenceReference: 'Fisa MF A2' },
+  { entryId: 'MF-B1', kind: 'fixed_asset', group: '2.2', evidenceReference: 'Fisa MF B1' },
+] });
+const transfers = microEligibility.analyze({ microEligibilityRegistry: transferRegistry, entries: [
+  microEntry('MF-A1', '2026-01-10', '7583', 10), microEntry('MF-A2', '2026-02-10', '7583', 20),
+  microEntry('MF-B1', '2026-03-10', '7583', 30),
+] }, '2026-03');
+eq('micro: doua active din aceeasi subgrupa includ cumulativ toate transferurile de active din an',
+  transfers.ownRevenue, 60);
+
+const microNotClass7 = microEligibility.analyze({ microEligibilityRegistry: microRegistry(), entries: [
+  microEntry('SUBV', '2026-01-10', '7411', 900000), microEntry('CA-REAL', '2026-01-11', '704', 1000),
+] }, '2026-03');
+ok('micro: nu confunda totalul clasei 7 cu cifra de afaceri contabila',
+  microNotClass7.ownRevenue === 1000 && !microNotClass7.crossing);
+const openingOver = microEligibility.analyze({ microEligibilityRegistry: microRegistry(), entries: [
+  microEntry('CA-2025', '2025-12-20', '704', 600000),
+] }, '2026-03');
+ok('micro: plafonul pentru intrarea in 2026 se verifica separat la 31.12.2025',
+  openingOver.opening.combinedRevenue === 600000 && openingOver.opening.crossing.date === '2025-12-20'
+  && openingOver.exit.reason === 'opening-threshold' && openingOver.exit.period === '2026-Q1');
+const openingLinkedRegistry = microRegistry({ linkedEnterprises: [{
+  id: 'legata-opening', name: 'Legata 2025 SRL', cui: 'RO2025', kind: 'company', relation: 'ownership',
+  parentId: 'self', ownershipPercent: 51, votingPercent: 51, control: true,
+  validFrom: '2025-01-01', validTo: '', revenueCoverageFrom: '2025-01-01',
+  revenueCompleteThrough: '2026-12-31', revenues: [
+    { date: '2025-12-10', amount: 260000, source: 'Balanta afiliata 2025' },
+  ], evidenceReference: 'Structura grup 2025-2026',
+}] });
+const openingLinked = microEligibility.analyze({ microEligibilityRegistry: openingLinkedRegistry,
+  entries: [microEntry('CA-OWN-2025', '2025-11-20', '704', 250000)] }, '2026-03');
+ok('micro: testul de deschidere cumuleaza si cifra din 2025 a intreprinderilor legate',
+  openingLinked.opening.ownRevenue === 250000 && openingLinked.opening.linkedRevenue === 260000
+  && openingLinked.exit.reason === 'opening-threshold');
+
+const twoHalves = microRegistry({ workforce: [
+  { id: 'fte-1', kind: 'employment', person: 'A', validFrom: '2025-01-01', validTo: '', fte: 0.5,
+    indefinite: true, durationMonths: 0, suspensions: [], evidenceReference: 'CIM A' },
+  { id: 'fte-2', kind: 'employment', person: 'B', validFrom: '2025-01-01', validTo: '', fte: 0.5,
+    indefinite: true, durationMonths: 0, suspensions: [], evidenceReference: 'CIM B' },
+] });
+ok('micro: doua fractiuni de 0,5 se cumuleaza la o norma intreaga',
+  microEligibility.analyze({ microEligibilityRegistry: twoHalves, entries: [] }, '2026-03').workforce.qualifies);
+const twoHalvesOneEnds = microRegistry({ workforce: [
+  { id: 'fte-end', kind: 'employment', person: 'A', validFrom: '2025-01-01', validTo: '2026-03-31', fte: 0.5,
+    indefinite: false, durationMonths: 15, suspensions: [], evidenceReference: 'CIM A incetat' },
+  { id: 'fte-stays', kind: 'employment', person: 'B', validFrom: '2025-01-01', validTo: '', fte: 0.5,
+    indefinite: true, durationMonths: 0, suspensions: [], evidenceReference: 'CIM B activ' },
+] });
+const twoHalvesExit = microEligibility.analyze({ microEligibilityRegistry: twoHalvesOneEnds, entries: [] }, '2026-04');
+ok('micro: doua CIM fractionate nu primesc derogarea de inlocuire rezervata firmei cu un singur salariat',
+  !twoHalvesExit.workforce.qualifies && twoHalvesExit.workforce.failureDate === '2026-03-31'
+  && twoHalvesExit.workforce.exitPeriod === '2026-Q2');
+const hiredOnlyFromJanuary = microRegistry({ workforce: [{ id: 'late-opening-cim', kind: 'employment', person: 'A',
+  validFrom: '2026-01-01', validTo: '', fte: 1, indefinite: true, durationMonths: 0,
+  suspensions: [], evidenceReference: 'CIM inceput in ianuarie' }] });
+const openingWorkforceExit = microEligibility.analyze({ microEligibilityRegistry: hiredOnlyFromJanuary, entries: [] }, '2026-03');
+ok('micro: CIM inceput la 1 ianuarie nu repara lipsa conditiei la inchiderea exercitiului precedent',
+  !openingWorkforceExit.workforce.qualifies && openingWorkforceExit.workforce.failureDate === '2025-12-31'
+  && openingWorkforceExit.workforce.exitPeriod === '2026-Q1');
+const mandate = microRegistry({ workforce: [{ id: 'mandat-1', kind: 'mandate', person: 'Administrator',
+  validFrom: '2025-01-01', validTo: '', remunerationMonthly: 4050, suspensions: [],
+  evidenceReference: 'Contract mandat' }] });
+ok('micro: mandatul remunerat cel putin la salariul minim indeplineste conditia',
+  microEligibility.analyze({ microEligibilityRegistry: mandate, entries: [] }, '2026-03').workforce.qualifies);
+const mandateS2 = microEligibility.analyze({ microEligibilityRegistry: mandate, entries: [] }, '2026-08');
+ok('micro: mandatul este reverificat la schimbarea salariului minim si fixeaza trimestrul urmator',
+  mandateS2.workforce.failureDate === '2026-07-01' && mandateS2.workforce.exitPeriod === '2026-Q4');
+
+const medical31 = microRegistry({ workforce: [{ id: 'cm-1', kind: 'employment', person: 'A',
+  validFrom: '2025-01-01', validTo: '', fte: 1, indefinite: true, durationMonths: 0,
+  suspensions: [{ from: '2026-01-01', to: '2026-01-31', kind: 'medical', evidenceReference: 'Certificat CM' }],
+  evidenceReference: 'CIM A' }] });
+const medicalExit = microEligibility.analyze({ microEligibilityRegistry: medical31, entries: [] }, '2026-03');
+ok('micro: ziua 31 cumulata de concediu medical determina iesirea din trimestrul urmator',
+  medicalExit.workforce.failureDate === '2026-01-31' && medicalExit.workforce.exitPeriod === '2026-Q2');
+const suspension29 = microRegistry({ workforce: [{ id: 'sus-29', kind: 'employment', person: 'A',
+  validFrom: '2025-01-01', validTo: '', fte: 1, indefinite: true, durationMonths: 0,
+  suspensions: [{ from: '2026-01-01', to: '2026-01-29', kind: 'other', evidenceReference: 'Decizie suspendare' }],
+  evidenceReference: 'CIM A' }] });
+ok('micro: prima suspendare nemedicala mai scurta de 30 zile nu rupe conditia',
+  microEligibility.analyze({ microEligibilityRegistry: suspension29, entries: [] }, '2026-03').workforce.qualifies);
+const suspension30 = microRegistry({ workforce: [{ id: 'sus-30', kind: 'employment', person: 'A',
+  validFrom: '2025-01-01', validTo: '', fte: 1, indefinite: true, durationMonths: 0,
+  suspensions: [{ from: '2026-01-01', to: '2026-01-30', kind: 'other', evidenceReference: 'Decizie 30 zile' }],
+  evidenceReference: 'CIM A' }] });
+const suspension30Exit = microEligibility.analyze({ microEligibilityRegistry: suspension30, entries: [] }, '2026-03');
+ok('micro: suspendarea obisnuita de 30 zile rupe conditia de la inceputul perioadei documentate',
+  suspension30Exit.workforce.failureDate === '2026-01-01' && suspension30Exit.workforce.exitPeriod === '2026-Q2');
+
+const ended = microRegistry({ workforce: [{ id: 'old-cim', kind: 'employment', person: 'A',
+  validFrom: '2025-01-01', validTo: '2026-01-31', fte: 1, indefinite: true, durationMonths: 0,
+  suspensions: [], evidenceReference: 'Incetare CIM' }] });
+const endedAssessment = microEligibility.analyze({ microEligibilityRegistry: ended, entries: [] }, '2026-03');
+ok('micro: incetarea fara inlocuire in 30 zile muta regimul in trimestrul urmator incetarii',
+  !endedAssessment.workforce.qualifies && endedAssessment.workforce.failureDate === '2026-01-31'
+  && endedAssessment.workforce.exitPeriod === '2026-Q2');
+const replaced = microRegistry({ workforce: ended.workforce.concat([{
+  id: 'new-cim', kind: 'employment', person: 'B', validFrom: '2026-02-20', validTo: '2027-02-19',
+  fte: 1, indefinite: false, durationMonths: 12, suspensions: [], evidenceReference: 'CIM 12 luni',
+}]) });
+ok('micro: inlocuirea in 30 zile prin CIM de minimum 12 luni pastreaza conditia',
+  microEligibility.analyze({ microEligibilityRegistry: replaced, entries: [] }, '2026-03').workforce.qualifies);
+const yearEndReplacement = microRegistry({ workforce: [
+  { id: 'old-year-end', kind: 'employment', person: 'A', validFrom: '2025-01-01', validTo: '2025-12-31',
+    fte: 1, indefinite: true, durationMonths: 0, suspensions: [], evidenceReference: 'Incetare la 31 decembrie' },
+  { id: 'new-year-start', kind: 'employment', person: 'B', validFrom: '2026-01-15', validTo: '2027-01-14',
+    fte: 1, indefinite: false, durationMonths: 12, suspensions: [], evidenceReference: 'Inlocuire in 30 zile' },
+] });
+ok('micro: unicul CIM incetat la 31 decembrie poate fi inlocuit in termenul legal de 30 zile',
+  microEligibility.analyze({ microEligibilityRegistry: yearEndReplacement, entries: [] }, '2026-03').workforce.qualifies);
+
+const newCompany = microRegistry({ registrationDate: '2026-01-10', workforce: [] });
+const newCompanyExit = microEligibility.analyze({ microEligibilityRegistry: newCompany, entries: [] }, '2026-06');
+ok('micro: firma noua fara salariat in 90 zile trece la profit din trimestrul urmator expirarii',
+  newCompanyExit.workforce.failureDate === '2026-04-10' && newCompanyExit.workforce.exitPeriod === '2026-Q3');
+
+const missingRegistryOver = microEligibility.analyze({ entries: [
+  microEntry('CERT', '2026-02-01', '704', 600000),
+] }, '2026-03');
+ok('micro: registrul lipsa blocheaza, dar nu ascunde depasirea certa din cifra proprie',
+  !missingRegistryOver.complete && missingRegistryOver.crossing
+  && missingRegistryOver.crossing.provisional && missingRegistryOver.exit.period === '2026-Q1');
+let microGate = '';
+try {
+  microEligibility.assertCanDeclare({ company: { regimImpozit: 'micro' },
+    microEligibilityRegistry: linkedRegistry, entries: [microEntry('CA-GATE', '2026-02-02', '704', 210000)] },
+  'd100', '2026-03');
+} catch (error) { microGate = error.code + '/' + error.status + '/' + /2026-Q1/.test(error.message); }
+eq('micro: D100 este blocata inaintea generarii cand iesirea cade in trimestrul declarat',
+  microGate, 'MICRO_ELIGIBILITY_BLOCKED/409/true');
 
 // ── AUTOFACTURA (art. 320) ───────────────────────────────────────────────────────────────────
 // Cumparatorul obligat la plata TVA care nu a primit factura pana pe 15 a lunii urmatoare trebuie
@@ -7576,8 +7758,8 @@ const fctrl = require('../src/fiscalControls');
 // neplatitor TVA care colecteaza TVA (4427) -> EROARE, ok=false
 const fcNepl = fctrl.check({ company: { tvaPlatitor: false, tipEntitate: 'srl' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-03', data: '2026-03-10', tip: 'f', lines: [{ debit: '4111', credit: '4427', suma: 210 }] }] }, { year: '2026' });
 ok('control: neplatitor TVA care colecteaza 4427 -> eroare + ok=false', fcNepl.findings.some((f) => f.cod === 'tva-neplatitor-colecteaza' && f.nivel === 'eroare') && fcNepl.ok === false);
-// micro peste plafon -> atentie
-ok('control: micro peste plafonul de venituri -> atentie', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 600000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'micro-peste-plafon' && f.nivel === 'atentie'));
+// micro peste plafon -> eroare blocanta, cu trimestrul exact
+ok('control: micro peste plafonul cumulat -> eroare blocanta', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, microEligibilityRegistry: microRegistry(), entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 600000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'micro-plafon-depasit' && f.nivel === 'eroare' && f.details.period === '2026-Q2'));
 // platitor TVA fara CAEN -> atentie
 ok('control: platitor TVA fara CAEN -> atentie', fctrl.check({ company: { tvaPlatitor: true, regimImpozit: 'profit' }, angajati: [{ id: 'a' }], entries: [] }, { year: '2026' }).findings.some((f) => f.cod === 'tva-fara-caen'));
 const art310Entry = (id, data, amount, category, tip, document) => ({
@@ -7675,7 +7857,7 @@ ok('control: intracom sub pragul Intrastat -> info monitorizare', fctrl.check({ 
 ok('control: rulaj intracom PESTE prag + nemarcat -> atentie obligat', fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-04', data: '2026-04-10', tip: 'livrare_intracomunitara', lines: [{ debit: '4111', credit: '707', suma: 1200000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'intrastat-prag-depasit' && f.nivel === 'atentie'));
 ok('control: rulaj peste prag dar Intrastat deja marcat -> fara constatare de prag', !fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro', intrastatObligat: true }, angajati: [{ id: 'a' }], entries: [{ period: '2026-04', data: '2026-04-10', tip: 'livrare_intracomunitara', lines: [{ debit: '4111', credit: '707', suma: 1200000 }] }] }, { year: '2026' }).findings.some((f) => f.cod === 'intrastat-prag-depasit'));
 // firma coerenta -> nicio constatare, ok=true
-const fcOk = fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, angajati: [{ id: 'a' }], entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 1000 }] }] }, { year: '2026' });
+const fcOk = fctrl.check({ company: { tvaPlatitor: true, caen: '6201', regimImpozit: 'micro' }, microEligibilityRegistry: microRegistry(), entries: [{ period: '2026-05', data: '2026-05-01', tip: 'x', lines: [{ debit: '4111', credit: '704', suma: 1000 }] }] }, { year: '2026' });
 eq('control: firma coerenta -> 0 constatari, ok=true', fcOk.findings.length + '/' + fcOk.ok, '0/true');
 // ── Controale pe registrul public ANAF (art. 11 si art. 297 alin. (2)) ──
 {

@@ -21,6 +21,7 @@ const d301 = require('./d301');
 const d307 = require('./d307');
 const d311 = require('./d311');
 const fiscalProfile = require('./fiscalProfile');
+const microEligibility = require('./microEligibility');
 const crypto = require('crypto');
 
 /** Tipurile pentru care stim sa construim XML (si deci sa validam). */
@@ -35,6 +36,10 @@ function buildXml(v, type, opts) {
   const annual = ['d101', 'd107', 'd205'].includes(type);
   const hv = fiscalProfile.viewAt(v, annual ? year : period);
   const company = hv.company;
+  // Poarta SEMANTICA precede schema XML: un D100/D101 perfect bine-format ramane declaratia
+  // gresita daca regimul micro a fost determinat din clasa 7 sau dintr-un simplu rand de angajat.
+  if (type === 'd100' || type === 'd101') microEligibility.assertCanDeclare(hv, type,
+    type === 'd101' ? year : period);
   const pv = acc.vatPeriod(hv, period); // D300/D394: agregă trimestrul după profilul istoric
   if (type === 'd300') return xml.d300Xml(company, pv, rep.d300(hv, pv), declarant);
   if (type === 'd301') return xml.d301Xml(company, period, d301.report(hv, period), declarant);

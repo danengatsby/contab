@@ -113,6 +113,8 @@ const ARRAY_COLLS = [
   { key: 'annualArchives', firma: true, hasId: true },
   // Numele snake_case este intenționat: acesta este tabelul temporal fiscal_profile_history.
   { key: 'fiscal_profile_history', firma: true, hasId: true },
+  // Registrul versionat al eligibilitatii micro: graf de legaturi + venituri + FTE/mandate.
+  { key: 'micro_eligibility_history', firma: true, hasId: true },
   // Istoricul anual al incadrarii contabile, separat de profilul fiscal si de campul-oglinda al firmei.
   { key: 'balance_category_history', firma: true, hasId: true },
   { key: 'balance_sheet_mappings', firma: true, hasId: true },

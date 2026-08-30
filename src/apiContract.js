@@ -92,6 +92,23 @@ const schemas = Object.freeze({
       amount: { type: 'number', exclusiveMinimum: 0, maximum: 1e12 }, category: { type: 'string', minLength: 1, maxLength: 160 },
       legalBasis: { type: 'string', minLength: 1, maxLength: 160 }, reason, entryId: { type: 'string', maxLength: 120 },
     } },
+  MicroEligibilityRevision: { type: 'object', additionalProperties: false,
+    required: ['reason', 'registry'], properties: {
+      reason,
+      when: { type: 'string', pattern: '^\\d{4}(?:-(?:0[1-9]|1[0-2]))?$' },
+      registry: { type: 'object', required: ['ownershipCompleteThrough', 'workforceCompleteThrough',
+        'evidenceReference', 'associates', 'linkedEnterprises', 'workforce', 'assetTransfers'], properties: {
+        version: { type: 'integer', enum: [1] },
+        registrationDate: { type: 'string', pattern: '^(?:|\\d{4}-(?:0[1-9]|1[0-2])-[0-3]\\d)$' },
+        ownershipCompleteThrough: { type: 'string', pattern: '^\\d{4}-(?:0[1-9]|1[0-2])-[0-3]\\d$' },
+        workforceCompleteThrough: { type: 'string', pattern: '^\\d{4}-(?:0[1-9]|1[0-2])-[0-3]\\d$' },
+        evidenceReference: { type: 'string', minLength: 3, maxLength: 500 },
+        associates: { type: 'array', maxItems: 500, items: { type: 'object' } },
+        linkedEnterprises: { type: 'array', maxItems: 500, items: { type: 'object' } },
+        workforce: { type: 'array', maxItems: 2000, items: { type: 'object' } },
+        assetTransfers: { type: 'array', maxItems: 2000, items: { type: 'object' } },
+      } },
+    } },
   Reason: { type: 'object', additionalProperties: false, required: ['reason'], properties: { reason } },
 });
 
@@ -121,6 +138,11 @@ function openapi() {
       },
       '/api/fiscal/micro/adjustments/{id}/revoke': {
         post: { operationId: 'revokeMicroAdjustment', requestBody: json('Reason'), responses: { 200: { description: 'Ajustare retrasa' } } },
+      },
+      '/api/fiscal/micro/eligibility': {
+        get: { operationId: 'getMicroEligibilityRegistry', responses: { 200: { description: 'Registru versionat, graf si verdict cronologic' } } },
+        put: { operationId: 'putMicroEligibilityRegistry', requestBody: json('MicroEligibilityRevision'),
+          responses: { 200: { description: 'Revizie salvata si recalculata' }, 400: { description: 'Registru invalid' } } },
       },
       '/api/upload': { post: { operationId: 'uploadDocument', description: 'Multipart: file + aiMode per document.',
         requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['file', 'aiMode'], properties: {

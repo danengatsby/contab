@@ -233,7 +233,8 @@ const SURSE = {
     + 'reducerile comerciale primite, plus diferenta favorabila de curs in ultimul trimestru',
   impozitProfit: 'Art. 17 Cod fiscal (16%)',
   impozitDividende: 'Legea 141/2025 — 16% pentru dividende distribuite de la 1 ianuarie 2026',
-  plafonMicroEur: 'Art. 47 Cod fiscal, OUG 156/2024 — 100.000 EUR din 2026',
+  plafonMicroEur: 'Art. 47, 48, 52 si 54 Cod fiscal, OUG 8/2026 — 100.000 EUR din 2026; '
+    + 'cifra de afaceri contabila cumulata cu intreprinderile legate',
   plafonScutireTva: 'Art. 310 Cod fiscal, OG 22/2025 — plafon scutire TVA 395.000 lei de la 1 sept. 2025 (Directiva UE 2020/285)',
   deducerePersonala: 'Art. 77 Cod fiscal, Legea 34/2023',
   tichetMasa: 'Legea 165/2018, modificata prin Legea 201/2025 — valoarea maxima a unui tichet '
@@ -285,6 +286,8 @@ const LEGAL = {
   tva2025: { title: 'Legea 141/2025 — TVA si dividende', url: 'https://legislatie.just.ro/Public/DetaliiDocument/300333' },
   plafonTva2025: { title: 'OG 22/2025 — plafon scutire TVA 395.000 lei', url: 'https://legislatie.just.ro/Public/DetaliiDocumentAfis/301801' },
   fiscal2026: { title: 'OUG 89/2025 — facilitate salariu minim 2026', url: 'https://legislatie.just.ro/Public/DetaliiDocument/307679' },
+  micro2026: { title: 'OUG 8/2026 — cifra de afaceri, legaturi si conditia de salariat micro',
+    url: 'https://legislatie.just.ro/Public/FormaPrintabila/00000G1R7B0B8M6HMQ11HGGWYI9P0NCK' },
   intrastat2026: { title: 'Ordin INS 1604/2025 — praguri Intrastat 2026', url: 'https://legislatie.just.ro/public/DetaliiDocument/303985' },
 };
 
@@ -343,12 +346,12 @@ const RULE_SET_DEFINITIONS = [
       impozitDividende: 10, plafonMicroEur: 250000, plafonScutireTvaLei: 395000,
       tichetMasaMaxLei: 45, castigSalarialMediuBrut: 8620,
     }),
-  definitie('ro-2026-h1', '2026-01-01', '2026-06-30', '2025-12-31T00:00:00.000Z',
-    [LEGAL.salariu4050, LEGAL.fiscal2026, LEGAL.tva2025, LEGAL.plafonTva2025, LEGAL.intrastat2026], {
+  definitie('ro-2026-h1', '2026-01-01', '2026-06-30', '2026-02-25T00:00:00.000Z',
+    [LEGAL.salariu4050, LEGAL.fiscal2026, LEGAL.micro2026, LEGAL.tva2025, LEGAL.plafonTva2025, LEGAL.intrastat2026], {
       an: 2026, salariuMinim: 4050, neimpozabilMinim: 300, neimpozabilPlafonBrut: 4300,
     }),
   definitie('ro-2026-h2', '2026-07-01', '2026-12-31', '2026-03-12T00:00:00.000Z',
-    [LEGAL.salariu4325, LEGAL.fiscal2026, LEGAL.tva2025, LEGAL.plafonTva2025, LEGAL.intrastat2026], {
+    [LEGAL.salariu4325, LEGAL.fiscal2026, LEGAL.micro2026, LEGAL.tva2025, LEGAL.plafonTva2025, LEGAL.intrastat2026], {
       an: 2026, salariuMinim: 4325, neimpozabilMinim: 200, neimpozabilPlafonBrut: 4600,
     }),
 ];

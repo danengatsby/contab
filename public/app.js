@@ -23,10 +23,12 @@ import { setAuthuiDeps, bootAuth, showLogin, hideLogin, showForcePw, handleRegis
 import { setDocflowDeps, fillTipSelect, renderRecurring } from './docflow.js';
 import { setEntriesDeps, loadEntries, renderEntryLists, loadMissingDocs, loadArhiva, loadCalitate } from './entries.js';
 import { registerFormFlow, formFlowLoaded, formFlowSaved, flushAllFormFlows, setFormFlowCompany, setFormFlowUser } from './formflow.js';
+import { loadMicroEligibility, setMicroEligibilityDeps } from './microeligibility.js';
 setAuthuiDeps({ init, goTab, promptFirmaSubscribe });
 setDocflowDeps({ goTab, refreshCashbook: loadCashbook }); // salvarea din tabul Bani reîmprospătează registrul
 setEntriesDeps({ goTab });
 setSalarizareDeps({ goTab }); // „editează" din statul de plată duce in pagina „Angajați"
+setMicroEligibilityDeps({ api, H, fmt, toast });
 
 setPeriodsDeps({ renderEntryLists, onTab }); // functiile sunt declarate mai jos (hoisting)
 
@@ -700,6 +702,7 @@ function fillCompanyForm() {
   });
   refreshLogo();
   refreshFiscalProfile();
+  loadMicroEligibility();
   renderFiscalHistory();
   refreshBalanceCategory();
   renderBalanceCategoryHistory();

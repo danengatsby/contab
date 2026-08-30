@@ -16,6 +16,7 @@ const d311 = require('../d311');
 const { statPlataPostata } = require('../payroll');
 const fiscalReview = require('../fiscalReview');
 const fiscalProfile = require('../fiscalProfile');
+const microEligibility = require('../microEligibility');
 const permissions = require('../permissions');
 const fs = require('fs');
 const path = require('path');
@@ -26,6 +27,22 @@ const auditLog = require('../auditLog');
 module.exports = function register(app, ctx) {
   const { db, S, activeId, allowedFirme, logAudit, upload } = ctx;
   const filingExtensions = new Set(['.xml', '.zip', '.pdf']);
+
+  // Aceeasi poarta ca la generarea XML. Registrul se poate modifica dupa generare; de aceea
+  // verificarea se repeta la aprobare, transmitere si confirmarea depunerii, nu se considera
+  // acoperita de existenta unui artefact vechi.
+  function eligibilityGate(req, res, type, period) {
+    if (!['d100', 'd101'].includes(String(type))) return true;
+    try {
+      microEligibility.assertCanDeclare(S(req), type,
+        type === 'd101' ? String(period).slice(0, 4) : period);
+      return true;
+    } catch (e) {
+      res.status(e.status || 409).json({ error: e.message,
+        code: e.code || 'MICRO_ELIGIBILITY_BLOCKED', blockers: e.blockers || [] });
+      return false;
+    }
+  }
 
   function validFilingUpload(req, res) {
     const ext = path.extname(String(req.file && req.file.originalname || '')).toLowerCase();
@@ -194,6 +211,7 @@ module.exports = function register(app, ctx) {
     if (!/^[0-9a-f]{64}$/.test(String(b.artifactHash || ''))) {
       return res.status(400).json({ error: 'Aprobarea cere SHA-256 complet al documentului verificat.', code: 'FILING_APPROVAL_ARTIFACT_MISMATCH' });
     }
+    if (!eligibilityGate(req, res, tip, period)) return;
     const review = requireFiscalReview(res, 'aprobarea ' + tip.toUpperCase() + ' ' + period);
     if (!review) return;
     const d = db.get(); const fid = activeId(req);
@@ -269,6 +287,7 @@ module.exports = function register(app, ctx) {
       if (!validFilingUpload(req, res)) return;
       if (!decl.TIPURI[b.tip]) return res.status(400).json({ error: 'Tip de declaratie necunoscut.' });
       if (!/^\d{4}-\d{2}$/.test(String(b.period || ''))) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
+      if (!eligibilityGate(req, res, b.tip, b.period)) return;
       const review = requireFiscalReview(res, 'depunerea rectificativei ' + String(b.tip).toUpperCase() + ' ' + b.period);
       if (!review) return;
       const d = db.get();
@@ -327,6 +346,7 @@ module.exports = function register(app, ctx) {
     if (!decl.TIPURI[b.tip]) return res.status(400).json({ error: 'Tip de declaratie necunoscut.' });
     if (!/^\d{4}-\d{2}$/.test(String(b.period || ''))) return res.status(400).json({ error: 'Perioada invalida (YYYY-MM).' });
     if (!decl.STATUSES.includes(b.status)) return res.status(400).json({ error: 'Stare invalida.' });
+    if (['generata', 'transmisa'].includes(b.status) && !eligibilityGate(req, res, b.tip, b.period)) return;
     if (b.status === 'aprobata') return res.status(409).json({
       error: 'Starea „aprobată” se creează numai prin confirmarea SHA-256 al documentului verificat.',
       code: 'FILING_EVIDENCE_APPROVAL_REQUIRED', endpoint: '/api/declarations/approve',
@@ -407,6 +427,7 @@ module.exports = function register(app, ctx) {
       if (!decl.TIPURI[tip] || !/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) {
         return res.status(400).json({ error: 'Declarația sau perioada este invalidă.' });
       }
+      if (!eligibilityGate(req, res, tip, period)) return;
       const recipisa = String(b.recipisa || '').trim();
       if (recipisa.length < 2) return res.status(400).json({
         error: 'Confirmarea depunerii cere numărul recipisei/indexul ANAF.', code: 'FILING_EVIDENCE_RECEIPT_REQUIRED',

@@ -2742,6 +2742,46 @@ Cu stimă,
           <button class="btn primary">Salvează</button>
         </form>
       </div>
+      <div class="card" id="microEligibilityCard">
+        <div class="card-head"><div><h2>🧭 Eligibilitate micro — registru 2026</h2>
+          <p class="muted">Art. 47–54 Cod fiscal / OUG 8/2026. Cifra de afaceri se cumulează cu
+            întreprinderile legate, iar condiția de personal se verifică prin FTE sau mandat, pe perioade.</p></div>
+          <label>Control până la <input id="microEligibilityPeriod" type="month" /></label>
+        </div>
+        <div id="microEligibilityStatus" class="explain"><span class="ei">🧭</span><p class="muted">Se încarcă registrul…</p></div>
+        <div class="dyn">
+          <label>Data înregistrării firmei <input id="microRegistrationDate" type="date" /></label>
+          <label>Grafic complet până la <input id="microOwnershipThrough" type="date" /></label>
+          <label>FTE/mandate complete până la <input id="microWorkforceThrough" type="date" /></label>
+          <label class="full">Dovada registrului <input id="microRegistryEvidence" maxlength="500" placeholder="Registrul beneficiarilor reali, acte ONRC, Revisal, contracte de mandat" /></label>
+        </div>
+
+        <details open><summary><b>Asociați și participații</b></summary>
+          <p class="muted">Înregistrează proprietatea directă și drepturile de vot, cu perioada lor. Ținta „self” este firma activă.</p>
+          <div id="microAssociates"></div><button type="button" class="btn small ghost" id="microAddAssociate">＋ Asociat</button>
+        </details>
+        <details open><summary><b>Întreprinderi legate și cifra lor de afaceri</b></summary>
+          <p class="muted">Veniturile se introduc cronologic: <code>AAAA-LL-ZZ | valoarea operațiunii/perioadei | document</code>,
+            fără a repeta totalul cumulat. Pentru PFA la normă, completează separat norma fiecărui an.</p>
+          <div id="microLinked"></div><button type="button" class="btn small ghost" id="microAddLinked">＋ Întreprindere legată</button>
+        </details>
+        <details open><summary><b>Condiția de salariat: FTE și mandate</b></summary>
+          <p class="muted">O normă întreagă poate rezulta din fracțiuni cumulate. Suspendări: <code>de la | până la | medical/other | document</code>.</p>
+          <div id="microWorkforce"></div><button type="button" class="btn small ghost" id="microAddWorkforce">＋ CIM / mandat</button>
+        </details>
+        <details><summary><b>Cedări de active — subgrupa HG / teren</b></summary>
+          <p class="muted">Este necesar când există mai multe cedări în an, pentru regula specială din art. 54 alin. (1).</p>
+          <div id="microAssets"></div><button type="button" class="btn small ghost" id="microAddAsset">＋ Clasificare cedare</button>
+        </details>
+        <details><summary><b>Graficul participațiilor și legăturilor confirmate</b></summary>
+          <div id="microEligibilityGraph" class="tablewrap"></div>
+        </details>
+        <div class="row">
+          <label class="grow">Motivul reviziei <input id="microRevisionReason" maxlength="500" placeholder="ex. verificare trimestrială pe acte ONRC și Revisal" /></label>
+          <button type="button" class="btn primary" id="microEligibilitySave">Salvează revizia și recalculează</button>
+        </div>
+        <div id="microEligibilityHistory" class="tablewrap"></div>
+      </div>
       <div class="card">
         <h2>🔒 Blocare perioadă (integritate față de declarații)</h2>
         <p class="muted">Lunile închise devin <b>read-only</b>: nu se mai pot adăuga sau șterge înregistrări cu dată din ele. Numai ultima acțiune din cockpit blochează luna. Deblocarea este un override administrativ și cere motiv, păstrat în audit.</p>

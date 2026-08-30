@@ -8,11 +8,11 @@
 const acc = require('./accounting');
 const coa = require('./chartOfAccounts');
 const fiscal = require('./fiscal');
-const bnr = require('./bnr'); // cursul oficial pentru plafonul micro
 const fiscalProfile = require('./fiscalProfile');
 const dateFirma = require('./dateFirma');
 const profitExpenseTaxonomy = require('./profitExpenseTaxonomy');
 const tvaArt310 = require('./tvaArt310');
+const microEligibility = require('./microEligibility');
 const { period: periodOf, round2 } = require('./util');
 
 const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
@@ -148,6 +148,8 @@ function check(v, opts) {
   opts = opts || {};
   const company = (v || {}).company || {};
   const year = String(opts.year || new Date().getFullYear());
+  const currentPeriod = new Date().toISOString().slice(0, 7);
+  const microAsOf = opts.period || (year === currentPeriod.slice(0, 4) ? currentPeriod : year);
   const ruleSet = fiscal.rulesAt(year + '-12'); const rates = ruleSet.rates;
   const profile = fiscalProfile.profileAt(v || {}, year, { angajati: (v || {}).angajati });
   const posted = acc.postedEntries(v);
@@ -157,6 +159,10 @@ function check(v, opts) {
     details ? { details } : {}));
 
   const expenseReview = profitExpenseTaxonomy.analyze(posted, year);
+  // Controlul micro are propria baza (cifra de afaceri contabila + persoanele legate) si propriul
+  // registru de forta de munca. Il calculam o singura data si il expunem integral clientului: lista
+  // `findings` e rezumatul actionabil, iar assessment-ul pastreaza operatiunea/data/trimestrul.
+  const microAssessment = microEligibility.analyze(v || {}, microAsOf);
   if (!expenseReview.complete) add('eroare', 'cheltuieli-fiscale-neclasificate',
     expenseReview.unresolved.length + ' linie/linii din conturile 635, 6581 sau 654 nu au natura fiscala documentata. '
       + 'Calculul final al impozitului pe profit, D101 si inchiderea anuala sunt blocate pana la clasificare.');
@@ -211,24 +217,43 @@ function check(v, opts) {
     add('atentie', 'tva-fara-caen', 'Ești plătitor de TVA, dar codul CAEN nu e completat — decontul D300 îl solicită.');
   }
 
-  // 3) Micro peste plafonul de venituri -> trebuie trecut la impozit pe profit
-  if (profile.micro) {
-    const venitAn = venituriClasa7(yearEntries);
-    // Acelasi curs ca la D100 (BNR, 31 decembrie anul precedent), altfel controlul si declaratia
-    // ar folosi doua plafoane diferite pentru aceeasi firma.
-    const cursP = bnr.cursPlafonMicro((v.cursuriBnr || []), Number(year), rates.cursPlafonMicro);
-    const plafonLei = round2((rates.plafonMicroEur || 0) * (cursP.curs || 0));
-    // Doar in preajma plafonului: acolo alegerea cursului poate schimba incadrarea. Altfel ar fi
-    // un avertisment permanent pentru orice firma micro care n-a incarcat cursuri.
-    if (cursP.sursa !== 'bnr' && plafonLei > 0 && venitAn > round2(plafonLei * 0.9)) add('info', 'micro-curs-orientativ',
-      'Ești aproape de plafonul micro, iar acesta e calculat cu cursul ORIENTATIV din setări ('
-      + cursP.curs + ' lei/EUR): nu există curs BNR pentru 31 decembrie ' + (Number(year) - 1)
-      + '. Adu cursurile BNR înainte de a decide încadrarea.');
-    if (plafonLei > 0 && venitAn > plafonLei) add('atentie', 'micro-peste-plafon',
-      'Veniturile anului ' + year + ' (' + venitAn + ' lei) depășesc plafonul micro (~' + plafonLei + ' lei) — firma datorează impozit pe profit (D101), nu micro.');
-    // 4) Micro fara salariat — conditia de incadrare (art. 47 Cod fiscal)
-    if (!((v.angajati || []).length)) add('atentie', 'micro-fara-salariat',
-      'Regim micro fără salariat înregistrat — condiția de salariat (normă întreagă) nu pare îndeplinită; fără salariat se datorează impozit pe profit.');
+  // 3–4) Eligibilitate micro 2026: cifra de afaceri contabila, intreprinderi legate si FTE/mandat.
+  // Nu mai exista fallback pe clasa 7 sau `angajati.length`: lipsa registrului este o EROARE de
+  // revizuire, iar pierderea eligibilitatii este blocanta pentru declaratie.
+  if (profile.micro || microEligibility.wasMicroDuringYear(v || {}, year)) {
+    const expectedTransition = microAssessment.exit && microAssessment.exit.period.replace(/-Q([1-4])$/, (_, q) => '-'
+      + String((Number(q) - 1) * 3 + 1).padStart(2, '0') + '-01');
+    const transitionApplied = !!(expectedTransition && fiscalProfile.profileAt(v || {}, expectedTransition).profit);
+    const exitLevel = transitionApplied ? 'info' : 'eroare';
+    if (!microAssessment.complete) add('eroare', 'micro-eligibilitate-neconfirmata',
+      'Eligibilitatea micro nu poate fi stabilită: ' + microAssessment.blockers.map((x) => x.message).join(' '),
+      { blockers: microAssessment.blockers });
+    if (microAssessment.crossing) {
+      const c = microAssessment.crossing;
+      add(exitLevel, 'micro-plafon-depasit', 'Cifra de afaceri relevantă cumulată ('
+        + microAssessment.combinedRevenue + ' lei: firma ' + microAssessment.ownRevenue + ' + întreprinderi legate '
+        + microAssessment.linkedRevenue + ') a depășit plafonul de ' + microAssessment.thresholdEur
+        + ' EUR (~' + microAssessment.thresholdLei + ' lei) la ' + c.date + '. Trecerea la impozit pe profit începe în '
+        + c.period + '; D100 micro este blocată din acel trimestru.', c);
+    }
+    if (microAssessment.opening && microAssessment.opening.crossing) {
+      const c = microAssessment.opening.crossing;
+      add(exitLevel, 'micro-plafon-deschidere-depasit', 'La 31.12.' + microAssessment.opening.year
+        + ', cifra de afaceri relevantă cumulată era ' + microAssessment.opening.combinedRevenue
+        + ' lei (firma ' + microAssessment.opening.ownRevenue + ' + întreprinderi legate '
+        + microAssessment.opening.linkedRevenue + '), peste plafonul de ' + microAssessment.thresholdEur
+        + ' EUR (~' + microAssessment.thresholdLei + ' lei). Firma nu este eligibilă micro din '
+        + year + '-Q1; operațiunea care a depășit plafonul este din ' + c.date + '.', c);
+    }
+    if (microAssessment.workforce && microAssessment.workforce.qualifies === false) add(exitLevel,
+      'micro-conditie-salariat-neindeplinita', microAssessment.workforce.reason + ' Trecerea la impozit pe profit începe în '
+        + microAssessment.workforce.exitPeriod + '.', microAssessment.workforce);
+    for (const warning of microAssessment.warnings || []) add('info', 'micro-monitorizare', warning);
+    if (microAssessment.exit && !transitionApplied) {
+      add('eroare', 'micro-profil-neactualizat',
+        'Controlul stabilește trecerea la impozit pe profit din ' + expectedTransition
+        + ', dar profilul fiscal este încă micro. Înregistrează revizia înainte de D100/D101.');
+    }
   }
 
   // 5) Intrastat AUTO-DETECT: compara rulajul intracomunitar cu pragurile INS (pe flux). Peste
@@ -271,6 +296,7 @@ function check(v, opts) {
   for (const f of findings) byLevel[f.nivel] += 1;
   const art310Result = tvaArt310.analyze(posted, year, { threshold: Number(rates.plafonScutireTvaLei) || 0 });
   return { year, profil: profile, findings, byLevel,
+    microEligibility: microAssessment,
     tvaArt310: { threshold: art310Result.threshold, total: art310Result.total,
       complete: art310Result.complete, crossing: art310Result.crossing,
       unresolved: art310Result.unresolved, operationCount: art310Result.operations.length,

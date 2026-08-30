@@ -14,6 +14,7 @@ const micro = require('./impozitMicro'); // baza art. 53 + cota art. 51 (sursa u
 const assets = require('./assets');
 const ajust = require('./ajustari'); // familia unui cont de ajustare (sursa unica a hartii)
 const fiscalProfile = require('./fiscalProfile'); // regimul firmei (micro/profit) pentru livrabile
+const microEligibility = require('./microEligibility');
 // Termenele, dintr-o singura sursa. `declarations.js` importa doar accounting + fiscalProfile,
 // deci nu se inchide niciun ciclu.
 const decl = require('./declarations');
@@ -359,14 +360,11 @@ function d100micro(db, period, cota, opts) {
   const trimEntries = acc.postedEntries(db).filter((e) => luni.includes(String(e.period || periodOf(e.data))));
   const lines = acc.resultLines(trimEntries);
   const r = acc.accumulate(lines);
-  // Semnal de eligibilitate micro (art. 47 Cod fiscal): plafonul de venituri (EUR, configurabil)
-  // si conditia de salariat. Doar AVERTIZEAZA — incadrarea finala ramane la contribuabil.
+  // Eligibilitatea NU foloseste baza art. 53 si nici clasa 7. Motorul separat calculeaza cifra de
+  // afaceri contabila + persoanele legate si conditia FTE/mandat, cronologic, pana la trimestru.
+  const eligibility = microEligibility.analyze(db || {}, period);
   const rAn = acc.accumulate(acc.resultLines(acc.postedEntries(db).filter((e) => String(e.period || periodOf(e.data)).startsWith(y))));
-  let venitAn = 0;
-  for (const cod of Object.keys(rAn)) {
-    const a = coa.getAccount(cod);
-    if ((a ? a.clasa : Number(String(cod)[0])) === 7) venitAn = round2(venitAn + (rAn[cod].c - rAn[cod].d));
-  }
+  const venitAn = eligibility.combinedRevenue;
   // Baza art. 53 a trimestrului. Ultimul trimestru (T4) reintroduce diferenta favorabila de curs
   // cumulata pe an, deci primeste si rulajul anual.
   const trimestru = m ? Math.ceil(m / 3) : 0;
@@ -396,7 +394,7 @@ function d100micro(db, period, cota, opts) {
   // nu permitem ca o suprascriere veche la 3% sa produca o suma incompatibila semantic cu XML-ul.
   const cotaManuala = Number(y) < 2026 && !!cota;
   const rate = cotaManuala ? cota : ct.cota;
-  const plafonLei = round2((rates.plafonMicroEur || 0) * (cursP.curs || 0));
+  const plafonLei = eligibility.thresholdLei;
   const avertismente = [];
   // Un plafon calculat pe o valoare implicita nu are voie sa arate la fel cu unul calculat pe
   // cursul oficial: incadrarea in regimul micro se decide pe el. Semnalam insa doar cand cursul
@@ -407,16 +405,18 @@ function d100micro(db, period, cota, opts) {
       + ' lei/EUR), fiindca nu exista curs BNR pentru 31 decembrie ' + (Number(y) - 1)
       + '. Adu cursurile BNR (Setari -> Curs valutar) inainte de a decide incadrarea.');
   }
-  if (plafonLei > 0 && venitAn > plafonLei) {
-    avertismente.push('Veniturile anului (' + venitAn + ' lei) DEPASESC plafonul micro de ' + rates.plafonMicroEur
-      + ' EUR (~' + plafonLei + ' lei): firma iese din regimul micro si datoreaza impozit pe profit — verifica incadrarea inainte de a depune D100 pe micro.');
-  } else if (plafonLei > 0 && venitAn >= round2(plafonLei * 0.8)) {
-    avertismente.push('Veniturile anului (' + venitAn + ' lei) au atins ' + Math.round((venitAn / plafonLei) * 100)
-      + '% din plafonul micro (~' + plafonLei + ' lei) — urmareste pragul; la depasire treci obligatoriu la impozit pe profit.');
-  }
-  if (!((db.angajati || []).length)) {
-    avertismente.push('Firma nu are salariati inregistrati in aplicatie: conditia de salariat (norma intreaga) pentru regimul micro nu pare indeplinita — fara salariat se datoreaza impozit pe profit.');
-  }
+  for (const blocker of eligibility.blockers || []) avertismente.push(blocker.message);
+  for (const warning of eligibility.warnings || []) avertismente.push(warning);
+  if (eligibility.crossing) avertismente.push('Cifra de afaceri contabilă cumulată cu întreprinderile legate ('
+    + venitAn + ' lei) DEPĂȘEȘTE plafonul micro de ' + rates.plafonMicroEur + ' EUR (~' + plafonLei
+    + ' lei) din ' + eligibility.crossing.date + '; trecerea la impozit pe profit începe în '
+    + eligibility.crossing.period + '.');
+  if (eligibility.opening && eligibility.opening.crossing) avertismente.push('La 31.12.'
+    + eligibility.opening.year + ', cifra de afaceri contabilă cumulată cu întreprinderile legate ('
+    + eligibility.opening.combinedRevenue + ' lei) DEPĂȘEA plafonul micro; firma datorează impozit pe profit din '
+    + y + '-Q1. Operațiunea care a produs depășirea este din ' + eligibility.opening.crossing.date + '.');
+  if (eligibility.workforce && eligibility.workforce.qualifies === false) avertismente.push(
+    eligibility.workforce.reason + ' Trecerea la impozit pe profit începe în ' + eligibility.workforce.exitPeriod + '.');
   // Motivul cotei si notele bazei ajung in avertismente doar cand spun ceva ce nu se vede din
   // cifre: la anii istorici, comutarea pe 3% e o schimbare pe care contabilul trebuie s-o observe.
   // Suprascrierea manuala tace despre motiv — nu mai e al motorului.
@@ -458,6 +458,7 @@ function d100micro(db, period, cota, opts) {
       .reduce((sx, x) => sx + x.folosit, 0))),
     impozit: round2(impozitBrut - sponsDedusa),
     venitAn, plafonMicroLei: plafonLei, plafonMicroEur: rates.plafonMicroEur, avertismente,
+    blocat: !eligibility.complete || !!eligibility.exit, microEligibility: eligibility,
     ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
     // Desfasurarea bazei (art. 53) si a cotei (art. 51), pentru raport si pentru revizie.
     venitClasa7: bz.venitClasa7, scaderi: bz.scaderi, totalScaderi: bz.totalScaderi,

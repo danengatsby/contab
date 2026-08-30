@@ -1907,6 +1907,28 @@ async function main() {
     ok('achizitie produse agricole pe carnet: 371=462, fara TVA', agrE.json && agrE.json.ok && agrE.json.entry.lines.some((l) => l.debit === '371' && l.credit === '462') && !agrE.json.entry.lines.some((l) => l.debit === '4426'));
     const x394pf = await req('GET', '/xml/d394?period=2026-06', { cookie: c1 });
     ok('D394 v5: fila carnet ca op1 tip N cu CNP-ul producatorului', /<op1 tip="N"/.test(x394pf.text) && /1800101223344/.test(x394pf.text));
+    // Poarta micro este fail-closed: simpla existenta a unui rand in `angajati` nu mai sustine
+    // eligibilitatea. Salvam apoi registrul explicit si exercitam restul fluxului D100/D710.
+    eq('micro: D100 este blocata cat timp registrul de eligibilitate lipseste',
+      (await req('GET', '/xml/d100?period=2026-06', { cookie: c1 })).status, 409);
+    const microInitial = await req('GET', '/api/fiscal/micro/eligibility?period=2026-06', { cookie: c1 });
+    ok('micro: API-ul expune verdictul de revizuire si blocantul explicit', microInitial.status === 200
+      && microInitial.json.assessment.status === 'review_required'
+      && microInitial.json.assessment.blockers.some((x) => x.code === 'registry-missing'));
+    const microSaved = await req('PUT', '/api/fiscal/micro/eligibility', { cookie: c1, body: {
+      when: '2026-06', reason: 'Confirmare dosar micro pentru testul de integrare', registry: {
+        version: 1, registrationDate: '2020-01-01', ownershipCompleteThrough: '2026-12-31',
+        workforceCompleteThrough: '2026-12-31', evidenceReference: 'Acte ONRC si registrul salariatilor',
+        associates: [], linkedEnterprises: [], assetTransfers: [], workforce: [{
+          id: 'fte-http', kind: 'employment', person: 'Salariat integrare', validFrom: '2025-01-01',
+          validTo: '', fte: 1, indefinite: true, durationMonths: 0, suspensions: [],
+          evidenceReference: 'CIM integrare pe durata nedeterminata',
+        }],
+      },
+    } });
+    ok('micro: revizia este versionata cu SHA-256 si verdict eligibil', microSaved.status === 200
+      && /^[0-9a-f]{64}$/.test(microSaved.json.revision.hash)
+      && microSaved.json.assessment.status === 'eligible');
     const x100 = await req('GET', '/xml/d100?period=2026-06', { cookie: c1 });
     ok('xml/d100: bine-format cu obligatia micro 121', x100.status === 200 && /<declaratie100/.test(x100.text) && /cod_oblig="121"/.test(x100.text) && /cota="1"/.test(x100.text));
     ok('descarcarea D100 XML marcheaza declaratia "generata"', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100').status === 'generata');
@@ -1960,8 +1982,8 @@ async function main() {
     eq('csv/intrastat: perioada invalida -> 400', (await req('GET', '/csv/intrastat?period=2026-00', { cookie: c1 })).status, 400);
     ok('descarcarea centralizatorului marcheaza Intrastat „generata" in registru', (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'intrastat').status === 'generata');
     eq('validare d100 raspunde pe tipul cerut', (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.type, 'd100');
-    ok('validare d100: avertismentele de eligibilitate micro sunt incluse',
-      (await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.warnings.some((w) => /salariat|plafon/i.test(w)));
+    ok('validare d100: registrul complet nu inventeaza avertismente despre salariat sau plafon',
+      !(await req('GET', '/api/validate/d100?period=2026-06', { cookie: c1 })).json.warnings.some((w) => /salariat|plafon/i.test(w)));
     eq('validare intrastat raspunde pe tipul cerut', (await req('GET', '/api/validate/intrastat?period=2026-06', { cookie: c1 })).json.type, 'intrastat');
 
     // ── Chitanta tiparibila (serie CH) + logo firma ──
