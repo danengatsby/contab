@@ -100,10 +100,10 @@ module.exports = [
   // gresit cu valoarea ajustarii. E aceeasi capcana ca la cedarea unui mijloc fix — jumatatea
   // uitata a operatiunii.
   //
-  // Regimul FISCAL nu se decide aici: ajustarea e deductibila in limita a 30% cu conditiile de
-  // la art. 26 alin. (1) lit. c), iar pierderea din 654 e ca regula nedeductibila (art. 25 alin.
-  // (4) lit. h). Motorul de nedeductibile (`src/deductibilitate.js`) le trateaza deja pe cont —
-  // 654 integral nedeductibil; la 6814/7814 partea deductibila depinde de baza ELIGIBILA
+  // Regimul FISCAL nu se ghiceste din cont: ajustarea e deductibila in limita a 30% cu conditiile
+  // de la art. 26 alin. (1) lit. c), iar pierderea din 654 urmeaza regula generala ori una dintre
+  // exceptiile documentate de art. 25 alin. (4) lit. h). Clasificarea 654 se salveaza pe linie;
+  // la 6814/7814 partea deductibila depinde de baza ELIGIBILA
   // (art. 26 alin. (1) lit. c: peste 270 de zile, negarantata, debitor neafiliat), nu de cont —
   // deci monografia trebuie doar sa foloseasca CONTURILE CORECTE, nu sa repete regula.
   {
@@ -131,7 +131,8 @@ module.exports = [
       { name: 'ajustare', label: 'Ajustare constituita anterior pentru ea (0 daca nu exista)', type: 'number', default: 0 },
       { name: 'contCreanta', label: 'Cont creanta', type: 'select',
         options: [{ value: '4118', label: '4118 Clienți incerți' }, { value: '4111', label: '4111 Clienți' },
-          { value: '461', label: '461 Debitori diverși' }], default: '4118' }],
+          { value: '461', label: '461 Debitori diverși' }], default: '4118' },
+      F.tratamentFiscal654, F.documenteJustificativeFiscal],
     build: (d) => {
       const lines = [L('654', d.contCreanta || '4118', d.suma, 'Pierdere din creanță irecuperabilă')];
       // A DOUA JUMATATE, cea uitata: ajustarea constituita pentru aceasta creanta se reia in
@@ -139,6 +140,11 @@ module.exports = [
       if (d.ajustare > 0) lines.push(L('491', '7814', d.ajustare, 'Reluarea ajustării aferente creanței scoase din evidență'));
       return lines;
     },
+    profitExpenseTreatment: (d) => ({
+      category: String(d.tratamentFiscalCheltuiala || ''),
+      reason: 'Scoatere din evidenta clasificata dupa motivul fiscal selectat de operator.',
+      evidenceReference: String(d.documenteJustificativeFiscal || ''),
+    }),
   },
   // ───────────────── AJUSTARI PENTRU DEPRECIEREA STOCURILOR SI A IMOBILIZARILOR ─────────────────
   // Urmarea contabila a INVENTARIERII: cand valoarea de inventar e sub cea contabila, minusul se

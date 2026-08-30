@@ -3528,14 +3528,16 @@ section('Monografii adaugate: cedare mijloc fix, cut-off 408, capital social, cr
   ok('creanta reactivata nu atinge trezoreria',
     !rea.some((l) => /^5/.test(String(l.debit)) || /^5/.test(String(l.credit))));
 
-  // Regimul FISCAL nu se scrie in monografie, dar trebuie sa fie prins de motorul de nedeductibile.
+  // Regimul FISCAL nu se mai ghiceste din monografie: acelasi cont 654 poate purta atat regula
+  // generala nedeductibila, cat si exceptiile documentate de art. 25 alin. (4) lit. h).
   //
   // ATENTIE, testul acesta a fost REFACUT: cerea `FIXE['6814'].pct === 70`, adica 30% deducere pe
   // TOT contul — regula pe care o aplica aplicatia si care era ea insasi defectul. Cei 30% se dau
   // numai creantelor eligibile (art. 26 alin. (1) lit. c), nu intregii ajustari. Un test verde
   // poate fi el insusi defectul.
   const ded = require('../src/deductibilitate');
-  eq('654 e nedeductibil integral (art. 25)', ded.FIXE['654'].pct, 100);
+  ok('654 NU mai e procent fix pe cont', ded.FIXE['654'] === undefined);
+  ok('635 si 6581 NU mai sunt procente fixe pe cont', ded.FIXE['635'] === undefined && ded.FIXE['6581'] === undefined);
   ok('6814 NU mai e procent fix pe cont', ded.FIXE['6814'] === undefined);
   ok('7814 NU mai e procent fix pe cont (oglindeste ajustarea anului)', ded.NEIMPOZABILE['7814'] === undefined);
 
@@ -3591,6 +3593,73 @@ section('Monografii adaugate: cedare mijloc fix, cut-off 408, capital social, cr
     eq('fara marcaj: nedeductibil 10.000 (nu se presupune deducerea)', faraBaza.totalNedeductibil, 10000);
     ok('randul ajunge in tabelul de procente fixe al registrului',
       cuBaza.randuriFixe.some((x) => x.cont === '6814'));
+  }
+  // ── 635/6581/654: natura documentata, nu contul ────────────────────────────────────────────
+  {
+    const tax = require('../src/profitExpenseTaxonomy');
+    const classified = (id, account, category, amount, evidenceReference) => {
+      const entry = { id, data: '2026-09-01', period: '2026-09', document: id,
+        lines: [{ debit: account, credit: '401', suma: amount }] };
+      const item = tax.normalizeItem({ lineIndex: 0, account, category,
+        reason: 'Natura economica verificata in test', evidenceReference: evidenceReference || '' }, entry);
+      entry.fiscalTaxonomy = { profitExpense: { version: 1, items: [item] } };
+      return entry;
+    };
+    const rows = [
+      classified('t635d', '635', 'business_tax', 1000),
+      classified('t635m', '635', 'vehicle_mixed', 1000),
+      classified('t6581a', '6581', 'public_authority_sanction', 1000),
+      classified('t6581c', '6581', 'contractual_penalty_business', 1000),
+      classified('t654n', '654', 'general_bad_debt', 1000),
+      classified('t654d', '654', 'bankruptcy_closed', 1000, 'Hotararea definitiva nr. 1/2026'),
+    ];
+    const review = tax.analyze(rows, '2026');
+    ok('toate liniile clasificate -> calcul fiscal complet', review.complete);
+    eq('635 taxa economica e deductibila, iar utilizarea mixta limiteaza numai 50%',
+      review.classified.filter((x) => x.account === '635').reduce((s, x) => s + x.nondeductible, 0), 500);
+    eq('6581 separa sanctiunea publica de penalitatea contractuala',
+      review.classified.filter((x) => x.account === '6581').reduce((s, x) => s + x.nondeductible, 0), 1000);
+    eq('654 separa regula generala de exceptia de faliment documentata',
+      review.classified.filter((x) => x.account === '654').reduce((s, x) => s + x.nondeductible, 0), 1000);
+    // Fiecare ramura legala are caz propriu: adaugarea unei categorii noi cu procent gresit nu
+    // trebuie sa se ascunda intr-un singur total agregat.
+    const legalCases = [
+      ['635', 'business_tax', 0, ''],
+      ['635', 'vat_business_adjustment', 0, ''],
+      ['635', 'vehicle_exclusive', 0, ''],
+      ['635', 'vehicle_mixed', 500, ''],
+      ['635', 'nondeductible_tax', 1000, ''],
+      ['6581', 'public_authority_sanction', 1000, ''],
+      ['6581', 'contractual_penalty_business', 0, ''],
+      ['6581', 'business_compensation', 0, ''],
+      ['6581', 'non_business_compensation', 1000, ''],
+      ['654', 'general_bad_debt', 1000, ''],
+      ['654', 'reorganization_plan', 0, 'Hotarare plan reorganizare nr. 1/2026'],
+      ['654', 'bankruptcy_closed', 0, 'Hotarare inchidere faliment nr. 2/2026'],
+      ['654', 'deceased_no_heirs', 0, 'Certificat succesoral nr. 3/2026'],
+      ['654', 'dissolved_without_successor', 0, 'Certificat ONRC nr. 4/2026'],
+      ['654', 'major_financial_difficulty', 0, 'Dosar financiar nr. 5/2026'],
+      ['654', 'insurance_covered', 0, 'Polita si dosar dauna nr. 6/2026'],
+    ];
+    for (const [account, category, expected, evidence] of legalCases) {
+      const single = tax.analyze([classified('case-' + account + '-' + category, account, category, 1000, evidence)], '2026');
+      eq(account + '/' + category + ' are tratamentul fiscal distinct', single.totalNondeductible, expected);
+    }
+    let evidenceRejected = false;
+    try { classified('bad-evidence', '654', 'bankruptcy_closed', 1000); } catch (e) { evidenceRejected = /document justificativ|referinta/.test(e.message); }
+    ok('exceptia deductibila 654 fara dovada este refuzata', evidenceRejected);
+    const unresolved = tax.analyze(rows.concat({ id: 'unknown', data: '2026-10-01', period: '2026-10',
+      lines: [{ debit: '635', credit: '446', suma: 250 }] }), '2026');
+    ok('linia neclasificata nu devine nici deductibila, nici nedeductibila', !unresolved.complete
+      && unresolved.unresolved.length === 1 && unresolved.totalClassified === 6000);
+    const err = tax.reviewError(unresolved);
+    ok('calculul final primeste blocaj 409 explicit', err.status === 409 && err.code === 'FISCAL_TREATMENT_REVIEW_REQUIRED');
+    const original = rows[0];
+    const storno = { id: 'storno-tax', stornoOf: original.id, data: '2026-11-01', period: '2026-11',
+      lines: [{ debit: '635', credit: '401', suma: -1000 }] };
+    const net = tax.analyze([original, storno], '2026');
+    ok('stornoul mosteneste clasificarea si neutralizeaza categoria, fara rest de revizuit',
+      net.complete && net.classified.length === 0);
   }
   // Grupa de vechime care alimenteaza baza fiscala
   {
@@ -5014,9 +5083,19 @@ eq('2023: plafonReportarePct expus = 100', ptOld.plafonReportarePct, 100);
   // venituri 100.000 + amenda 20.000 (integral nedeductibila, art. 25(4)(b))
   const ent = [
     { id: 'v', period: '2026-03', data: '2026-03-01', status: 'postat', lines: [{ debit: '4111', credit: '704', suma: 100000 }] },
-    { id: 'a', period: '2026-04', data: '2026-04-01', status: 'postat', lines: [{ debit: '6581', credit: '5121', suma: 20000 }] },
+    { id: 'a', period: '2026-04', data: '2026-04-01', status: 'postat', lines: [{ debit: '6581', credit: '5121', suma: 20000 }],
+      fiscalTaxonomy: { profitExpense: { version: 1, items: [{ version: 1, lineIndex: 0, account: '6581',
+        category: 'public_authority_sanction', reason: 'Amenda datorata unei autoritati publice',
+        legalBasis: 'Art. 25 alin. (4) lit. b) Cod fiscal', pctNedeductibil: 100 }] } } },
   ];
   const v = { firmaId: 1, company: { id: 1 }, entries: ent, openingBalances: {}, assets: [] };
+
+  const faraClasificare = { firmaId: 1, company: { id: 1 }, openingBalances: {}, assets: [],
+    entries: [ent[0], Object.assign({}, ent[1], { fiscalTaxonomy: undefined })] };
+  let blocat = false;
+  try { acc.profitTax(faraClasificare, '2026', ptOpts.construieste(faraClasificare, '2026')); }
+  catch (e) { blocat = e.status === 409 && e.code === 'FISCAL_TREATMENT_REVIEW_REQUIRED'; }
+  ok('amenda neclasificata blocheaza calculul final, nu primeste procent implicit', blocat);
 
   // Cifra pe care o INREGISTREAZA inchiderea, cu setul complet de reguli.
   const notaContabila = acc.profitTax(v, '2026', ptOpts.construieste(v, '2026'));
@@ -5295,15 +5374,22 @@ section('Un singur motor de nedeductibile: registrul fiscal = nota contabila = D
   const deduct = require('../src/deductibilitate');
   const { round2 } = require('../src/util');
   const E = (id, data, lines) => ({ id, data, period: data.slice(0, 7), tip: 'nota_contabila', tipNume: 'x', lines });
+  const tx = (account, category, pctNedeductibil, legalBasis, label) => ({ fiscalTaxonomy: { profitExpense: { version: 1, items: [{
+    version: 1, lineIndex: 0, account, category, reason: 'Clasificare de test documentata',
+    pctNedeductibil, legalBasis,
+  }] } }, tip: 'nota_contabila', tipNume: 'x' });
   const vFix = { openingBalances: {}, assets: [], company: {}, entries: [
     E('n1', '2026-03-10', [{ debit: '4111', credit: '704', suma: 100000 }]),
-    E('n2', '2026-04-10', [{ debit: '6581', credit: '5121', suma: 20000 }]),  // amenda — fix 100%
+    Object.assign(E('n2', '2026-04-10', [{ debit: '6581', credit: '5121', suma: 20000 }]),
+      tx('6581', 'public_authority_sanction', 100, 'Art. 25 alin. (4) lit. b) Cod fiscal')), // amenda autoritate
     E('n3', '2026-05-10', [{ debit: '6812', credit: '151', suma: 10000 }]),   // provizion — fix 100%
-    E('n4', '2026-06-10', [{ debit: '635', credit: '446', suma: 5000 }]),     // impozite — fix 100%
+    Object.assign(E('n4', '2026-06-10', [{ debit: '635', credit: '446', suma: 5000 }]),
+      tx('635', 'nondeductible_tax', 100, 'Art. 25 alin. (4) lit. a) Cod fiscal')), // taxa expres nedeductibila
     E('n5', '2026-07-10', [{ debit: '151', credit: '7812', suma: 4000 }]),    // reluare — neimpozabil
     E('n6', '2026-08-10', [{ debit: '623', credit: '401', suma: 3000 }]),     // protocol — cu PLAFON
   ] };
-  const opts = { cota: 16, plafoane: P };
+  const tratamentCheltuieli = rep.tratamenteCheltuieliFiscale(vFix, '2026');
+  const opts = { cota: 16, plafoane: P, tratamentCheltuieli };
   const pt = acc.profitTax(vFix, '2026', opts);
   const rfx = rep.registruFiscal(vFix, '2026', 16, { plafoane: P });
 
@@ -5315,9 +5401,9 @@ section('Un singur motor de nedeductibile: registrul fiscal = nota contabila = D
   // Procentele fixe chiar ajung in profitTax (inainte: 0).
   const rulajFiscal = acc.accumulate(acc.resultLines(acc.postedEntries(vFix)));
   // 6812 a IESIT din tabelul de procente fixe: deductibilitatea lui depinde de FELUL provizionului
-  // (contul din contrapartida), nu de contul de cheltuiala. `fixe` numara acum doar 6581 + 635;
+  // (contul din contrapartida). 6581 si 635 vin din clasificarea documentata pe linii;
   // provizioanele intra prin `provizioane()`, iar TOTALUL de mai jos ramane neschimbat.
-  eq('procentele fixe se calculeaza din conturi (20.000+5.000)', deduct.fixe(rulajFiscal).total, 25000);
+  eq('tratamentele explicite se calculeaza pe linii (20.000+5.000)', deduct.fixe(rulajFiscal, tratamentCheltuieli).total, 25000);
   eq('provizioanele intra separat, tot nedeductibile fara spargere', deduct.provizioane(null, rulajFiscal).total, 10000);
   eq('nedeductibile = fixe + plafon protocol', pt.cheltNedeductibile, 36620);
   // Veniturile neimpozabile (art. 23) SCAD baza — nu se adunau deloc inainte.

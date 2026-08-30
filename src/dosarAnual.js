@@ -136,7 +136,12 @@ async function build(view, year, opts) {
   await add('registre/cartea-mare.pdf', () => pdfToBuffer((res) => pdf.ledgerPdf(res, company, acc.ledger(view, year), year)), 'registru', 5);
   await add('registre/balanta-' + dec + '.pdf', () => pdfToBuffer((res) => pdf.trialBalancePdf(res, company, acc.trialBalance(view, dec))), 'registru', 5);
   await add('registre/registru-inventar.pdf', () => pdfToBuffer((res) => pdf.registruInventarPdf(res, company, rep.registruInventar(view, dec, year))), 'registru', 5);
-  await add('registre/registru-fiscal.pdf', () => pdfToBuffer((res) => pdf.registruFiscalPdf(res, company, rep.registruFiscal(view, year))), 'registru', 5);
+  const registruFiscal = rep.registruFiscal(view, year);
+  if (!registruFiscal.calculFiscalFinal) {
+    fail(409, 'Dosarul anual nu poate fi sigilat: ' + registruFiscal.tratamentCheltuieli.unresolved.length
+      + ' linii din conturile 635/6581/654 necesita clasificare fiscala.');
+  }
+  await add('registre/registru-fiscal.pdf', () => pdfToBuffer((res) => pdf.registruFiscalPdf(res, company, registruFiscal)), 'registru', 5);
   await add('situatii/bilant.pdf', () => pdfToBuffer((res) => pdf.balanceSheetPdf(res, company,
     stmt.balanceSheetF10(view, dec), stmt.balanceSheetF10(view, previous), stmt.balanceSheet(view, dec))), 'situatie-financiara', 10);
   await add('situatii/cont-profit-pierdere.pdf', () => pdfToBuffer((res) => pdf.plPdf(res, company,

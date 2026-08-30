@@ -5,8 +5,9 @@
 //
 //  SURSA UNICA a ajustarilor fiscale. Modulul acopera DOUA feluri de ajustare, care se
 //  calculeaza altfel si se greseau altfel:
-//    (1) PROCENT FIX PE CONT — amenzi, provizioane, ajustari de creante. Partea nedeductibila
-//        e un procent din cheltuiala insasi (`FIXE`), plus simetricul lor la venituri
+//    (1) TRATAMENT PE NATURA OPERATIUNII — taxele, sanctiunile/despagubirile si pierderile din
+//        creante se clasifica pe linia articolului, nu dupa cont; provizioanele si ajustarile de
+//        creante se separa dupa contrapartida si marcajele lor fiscale, plus simetricul la venituri
 //        (`NEIMPOZABILE`: reluarea unui provizion nedeductibil nu e venit impozabil);
 //    (2) PLAFON — protocol, social, auto, sponsorizare, dobanzi. Partea nedeductibila depinde
 //        de o BAZA DE CALCUL, nu de un procent aplicat cheltuielii. Diferenta e intreaga
@@ -77,14 +78,10 @@ function rand(regula, temei, cont, baza, plafon, cheltuit, nedeductibil, nota, d
   return r;
 }
 
-// ── (1) PROCENTE FIXE PE CONT ─────────────────────────────────────────────────────────────────
-// `pct` = cat din rulajul contului e NEDEDUCTIBIL (nu cat e deductibil). Prefix, ca peste tot:
-// `6581.02` se aduna la `6581`. Mutate aici din `reporting.js`, unde le vedea doar registrul.
-const FIXE = {
-  6581: { nume: 'Despagubiri, amenzi si penalitati', pct: 100, temei: 'Art. 25(4)(b)' },
-  635: { nume: 'Alte impozite si taxe nedeductibile', pct: 100, temei: 'Art. 25(4)(a)' },
-  654: { nume: 'Pierderi din creante neincasabile (nedeductibil fara conditii, art. 26)', pct: 100, temei: 'Art. 25(4)(h)' },
-};
+// Nu mai exista reguli fixe pentru 635/6581/654. Obiectul ramane exportat, gol, pentru ca orice
+// extensie sau test vechi care il inspecteaza sa constate explicit ca niciun cont nu decide singur
+// tratamentul fiscal. Clasificarile sunt agregate de `profitExpenseTaxonomy.analyze()`.
+const FIXE = Object.freeze({});
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PROVIZIOANELE (art. 26 alin. (1) lit. b)
@@ -225,20 +222,29 @@ const NEIMPOZABIL_RELUARE_CREANTE = { cont: '7814', nume: 'Venituri din reluarea
 // trece verde; totalul cinstit la „alte" e mai bun. Vezi nota de la D101_IMPLICIT.
 const D101_FIXE = 'P33';
 
-/** Ajustarile cu procent fix pe cont (nedeductibile integral sau partial). */
-function fixe(rulaj) {
+/** Tratamentele explicite ale cheltuielilor din 635/6581/654.
+ * `treatment.classified` este reconcilierea pe LINII contabile. Lipsurile raman separat in
+ * `unresolved`: nu sunt presupuse nici deductibile, nici nedeductibile si blocheaza calculul final
+ * la nivelul apelantului. */
+function fixe(rulaj, treatment) {
   const randuri = [];
-  for (const [cod, cfg] of Object.entries(FIXE)) {
-    const cheltuit = cheltuiala(rulaj, cod);
+  for (const row of ((treatment && treatment.classified) || [])) {
+    const cheltuit = round2(Number(row.amount) || 0);
     if (cheltuit <= 0) continue;
-    const nedeductibil = round2((cheltuit * cfg.pct) / 100);
-    const r = rand(cfg.nume, cfg.temei, cod, cheltuit, round2(cheltuit - nedeductibil), cheltuit,
-      nedeductibil, cfg.pct === 100 ? 'Integral nedeductibila.' : 'Nedeductibila in proportie de ' + cfg.pct + '%.',
+    const pct = Number(row.pctNedeductibil) || 0;
+    const nedeductibil = round2((cheltuit * pct) / 100);
+    const r = rand(row.label, row.legalBasis, row.account, cheltuit, round2(cheltuit - nedeductibil), cheltuit,
+      nedeductibil, pct === 100 ? 'Integral nedeductibila conform clasificarii documentate.'
+        : pct > 0 ? 'Nedeductibila in proportie de ' + pct + '% conform clasificarii documentate.'
+          : 'Integral deductibila conform clasificarii documentate.',
       D101_FIXE);
-    r.pct = cfg.pct; // procentul ramane pe rand: registrul fiscal il afiseaza langa suma
+    r.pct = pct;
+    r.taxCategory = row.category;
+    r.entryIds = row.entryIds || [];
     randuri.push(r);
   }
-  return { randuri, total: round2(randuri.reduce((s, r) => s + r.nedeductibil, 0)) };
+  return { randuri, total: round2(randuri.reduce((s, r) => s + r.nedeductibil, 0)),
+    unresolved: (treatment && treatment.unresolved) || [], complete: !treatment || treatment.complete !== false };
 }
 
 /**
@@ -382,7 +388,7 @@ function ajustari(i, cfg) {
   // baza care porneste de la rezultatul FISCAL, deci trebuie sa stie deja ce e nedeductibil prin
   // procent fix si ce venit nu se impoziteaza. Calculate dupa, plafonul de 30% ar iesi din alta
   // baza decat cea a registrului fiscal — adica exact divergenta pe care modulul o inchide.
-  const fixeRez = fixe(rulaj);
+  const fixeRez = fixe(rulaj, i.tratamentCheltuieli);
   // Ajustarile de creante intra tot aici, printre procentele fixe (acelasi rand D101, aceeasi
   // faza), dar cu baza din marcaj, nu cu procent orb. Randul intra in `randuriFixe` ca registrul
   // fiscal sa-l afiseze in acelasi tabel; ordinea fata de neimpozabile conteaza, fiindcă
@@ -548,6 +554,7 @@ function ajustari(i, cfg) {
     randuriPlafon: randuri.slice(fixeRez.randuri.length),
     totalPlafon: round2(randuri.slice(fixeRez.randuri.length).reduce((s, r) => s + r.nedeductibil, 0)),
     randuriNeimpozabile: neimpRez.randuri, totalNeimpozabil: neimpRez.total,
+    tratamentCheltuieli: { complete: fixeRez.complete, unresolved: fixeRez.unresolved },
   };
 }
 

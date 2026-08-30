@@ -507,6 +507,9 @@ function consumaPierderi(pierderi, an, plafon) {
  */
 function profitTax(db, year, opts) {
   opts = (typeof opts === 'number') ? { cota: opts } : (opts || {});
+  if (opts.requireCompleteExpenseTaxonomy && (!opts.tratamentCheltuieli || !opts.tratamentCheltuieli.complete)) {
+    throw require('./profitExpenseTaxonomy').reviewError(opts.tratamentCheltuieli || { unresolved: [] });
+  }
   const cota = opts.cota || 16;
   const pierdereReportata = round2(Number(opts.pierdereReportata) || 0);
   // `panaLa` (YYYY-MM) taie anul la finalul unei luni: impozitul pe profit se declara TRIMESTRIAL
@@ -529,6 +532,7 @@ function profitTax(db, year, opts) {
       ajustariCreanteBaza: opts.ajustariCreanteBaza, // art. 26(1)(c): baza eligibila, din marcajele de pe articole
       ajustariDepreciere: opts.ajustariDepreciere,   // creante / stocuri / imobilizari, separat
       provizioane: opts.provizioane,                 // art. 26(1)(b): garantiile sunt deductibile
+      tratamentCheltuieli: opts.tratamentCheltuieli, // 635/6581/654: natura documentata pe linie
       cheltImpozitProfit: opts.cheltImpozitProfit,
       amortizare: opts.amortizare, // { contabila, fiscala } — art. 28, poate da si deducere
       amortizareFiscala: opts.amortizareFiscala, cursEur: opts.cursEur,

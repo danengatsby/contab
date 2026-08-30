@@ -95,9 +95,13 @@
   același tab; aplicația verifică automat că suma lor concordă cu soldul inițial sintetic.
   Export PDF.
 - **Registrul de evidență fiscală** (card în „Situații financiare”): trecerea de la rezultatul
-  contabil la cel fiscal → impozit pe profit 16% vs. micro (aceeași bază și cotă ca D100); export PDF. Aplică **deductibilitatea
-  parțială** (art. 25-28 Cod fiscal): amenzi/penalități (6581) și pierderi din creanțe (654)
-  **nedeductibile 100%**. Fiecare rând arată baza × procent.
+  contabil la cel fiscal → impozit pe profit 16% vs. micro (aceeași bază și cotă ca D100); export PDF.
+  Pentru `635`, `6581` și `654`, tratamentul nu se mai deduce din cont: fiecare linie poartă o
+  **clasificare fiscală documentată** (natura operațiunii, temei, justificare și dovezi). Astfel,
+  taxele economice nu sunt confundate cu taxele expres nedeductibile, penalitățile contractuale cu
+  sancțiunile autorităților, iar excepțiile legale pentru creanțe nu sunt pierdute. O linie
+  neclasificată apare la „necesită revizuire” și blochează D101, închiderea impozitului și sigilarea
+  dosarului anual; nu primește automat nici 0%, nici 100%.
 
   **Ajustările pentru deprecierea creanțelor (6814) NU sunt un procent fix pe cont** — și tocmai
   aici a fost defectul: regula veche acorda 30% deducere pe *tot* contul, deși art. 26 alin. (1)

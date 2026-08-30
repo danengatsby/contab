@@ -257,11 +257,16 @@ function registruFiscalPdf(res, company, rf) {
   rows.push({ k: '= REZULTATUL FISCAL', v: fmt(rf.rezultatFiscal), _bold: true, _fill: C.zebra });
   rows.push({ k: 'Impozit pe profit ' + rf.rateProfit + '%', v: fmt(rf.impozitProfit), _bold: true, _accent: true, _fill: C.zebra });
   rows.push({ k: '(comparativ) Impozit micro ' + (rf.rateMicro || 1) + '% din baza art. 53 (' + fmt(rf.bazaMicro || 0) + ')', v: fmt(rf.impozitMicro) });
-  const note = 'Trecerea de la rezultatul contabil la cel fiscal (art. 25-28 Cod fiscal). '
+  const unresolved = rf.tratamentCheltuieli && rf.tratamentCheltuieli.unresolved || [];
+  unresolved.forEach((row) => rows.push({ k: 'NECESITA REVIZUIRE: articol ' + row.entryId + ', cont '
+    + row.account + ' — ' + (row.document || row.explicatie || ''), v: fmt(row.amount), _bold: true }));
+  const note = (rf.calculFiscalFinal ? '' : 'DOCUMENT PROVIZORIU — rezultatul fiscal si impozitul nu sunt finale; '
+    + unresolved.length + ' linii 635/6581/654 nu au clasificare fiscala. ')
+    + 'Trecerea de la rezultatul contabil la cel fiscal (art. 25-28 Cod fiscal). '
     + (rf.mentiuni && rf.mentiuni.length ? rf.mentiuni.join(' ') + ' ' : '')
     + 'Deductibilitatile sunt orientative; verificati conditiile concrete cu un contabil autorizat.';
   recapPdf(res, company, {
-    title: 'Registrul de evidenta fiscala', subtitle: 'Exercitiul ' + rf.year,
+    title: 'Registrul de evidenta fiscala' + (rf.calculFiscalFinal ? '' : ' — PROVIZORIU'), subtitle: 'Exercitiul ' + rf.year,
     filename: 'registru-fiscal.pdf', rows, note,
   });
 }

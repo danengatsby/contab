@@ -58,6 +58,7 @@ function construieste(view, year, src) {
   const losses = firma.pierdereFiscala || {};
   const manualPierdere = src.pierdereReportata != null && src.pierdereReportata !== '';
   const pr = manualPierdere ? Number(src.pierdereReportata) : (Number(losses[Number(year) - 1]) || 0);
+  const tratamentCheltuieli = rep.tratamenteCheltuieliFiscale(view, year, src.panaLa);
   return {
     cota: rates.impozitProfit,
     // Suprascrierea manuala ramane posibila, dar NU e implicita: transmisa goala, motorul de
@@ -83,6 +84,10 @@ function construieste(view, year, src) {
     ajustariDepreciere: rep.ajustariDepreciere(view, year),
     // Provizioanele, sparte pe deductibile/nedeductibile (art. 26(1)(b)).
     provizioane: rep.provizioane(view, year),
+    tratamentCheltuieli,
+    // Inchiderea si declaratia sunt rezultate FINALE: o linie neclasificata pe 635/6581/654 nu
+    // poate fi transformata tacit nici in deductibila, nici in nedeductibila.
+    requireCompleteExpenseTaxonomy: true,
     // Amortizarea contabila vine din rulajul REAL al contului 6811, nu din plan.
     amortizare: assets.depreciationDifference(view.assets || [], year, rulajCont(view, year, '6811')),
     cursEur: Number(src.cursEur) || Number(firma.cursEur) || 0,
@@ -105,6 +110,8 @@ function articolImpozit(view, year) {
  * previzualizarea si nota vor coincide cand se posteaza.
  */
 function pentruDeclaratie(view, year) {
+  const review = rep.tratamenteCheltuieliFiscale(view, year);
+  if (!review.complete) throw require('./profitExpenseTaxonomy').reviewError(review);
   const art = articolImpozit(view, year);
   if (art && art.rezultatFiscal) return { rezultatFiscal: art.rezultatFiscal };
   return construieste(view, year, {});

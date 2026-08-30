@@ -1643,6 +1643,31 @@ async function main() {
       const art = articole.filter((e) => e.tip === 'scoatere_creanta' && e.partenerCui === 'RO99118').pop();
       ok('articolul crediteaza 418, nu 4111', art && art.lines.some((l) => l.debit === '654' && l.credit === '418' && l.suma === 400)
         && !art.lines.some((l) => l.credit === '4111'));
+      const rfPending = await req('GET', '/api/registru-fiscal?year=2026', { cookie: c1 });
+      ok('654 neclasificat apare ca revizuire, nu ca nedeductibil implicit', rfPending.status === 200
+        && rfPending.json.calculFiscalFinal === false
+        && rfPending.json.tratamentCheltuieli.unresolved.some((x) => x.entryId === art.id && x.account === '654'));
+      const tax654 = await req('PATCH', '/api/entries/' + encodeURIComponent(art.id) + '/fiscal-taxonomy/profit-expense', {
+        cookie: c1, body: { lineIndex: 0, account: '654', category: 'general_bad_debt',
+          reason: 'Nu exista o exceptie documentata de la regula generala.' },
+      });
+      ok('clasificarea 654 se salveaza cu categorie si istoric auditat', tax654.status === 200
+        && tax654.json.treatment.category === 'general_bad_debt');
+      eq('exceptia deductibila 654 fara dovada documentara -> 400', (await req('PATCH',
+        '/api/entries/' + encodeURIComponent(art.id) + '/fiscal-taxonomy/profit-expense', { cookie: c1,
+          body: { lineIndex: 0, account: '654', category: 'bankruptcy_closed',
+            reason: 'Faliment declarat, dar dovada lipseste din cerere.' } })).status, 400);
+      const rfClassified = await req('GET', '/api/registru-fiscal?year=2026', { cookie: c1 });
+      ok('dupa clasificare, pierderea intra explicit la nedeductibile', rfClassified.status === 200
+        && rfClassified.json.cheltNeded.some((x) => x.cod === '654' && x.suma >= 400));
+      eq('rovinieta fara declararea utilizarii vehiculului -> 400', (await req('POST', '/api/entries', {
+        cookie: c1, body: { tip: 'taxe_drum', fields: { data: '2026-08-22', document: 'RV-NECLAS', suma: 100 } },
+      })).status, 400);
+      const road = await req('POST', '/api/entries', { cookie: c1, body: { tip: 'taxe_drum', fields: {
+        data: '2026-08-22', document: 'RV-MIXT', suma: 100, tratamentFiscalCheltuiala: 'vehicle_mixed' } } });
+      ok('rovinieta cu utilizare mixta pastreaza clasificarea 50% pe linia 635', road.status === 200
+        && road.json.entry.fiscalTaxonomy.profitExpense.items[0].category === 'vehicle_mixed'
+        && road.json.entry.fiscalTaxonomy.profitExpense.items[0].pctNedeductibil === 50);
       eq('dupa scoatere, soldul ramas este noul plafon', (await req('POST', '/api/writeoff', { cookie: c1, body: {
         partener: 'Client Writeoff 418', cui: 'RO99118', suma: 600.01, data: '2026-08-21' } })).status, 409);
     }

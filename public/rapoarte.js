@@ -851,7 +851,20 @@ function loadRegFiscal() {
   } else {
   api('/api/registru-fiscal?year=' + y).then((rf) => {
     const pctTxt = (c) => c.pct < 100 ? ` <span class="muted">(${c.pct}% din ${fmt(c.baza)})</span>` : '';
-    $('#fiscalView').innerHTML = `<table>
+    const review = rf.tratamentCheltuieli || { unresolved: [], categories: {} };
+    const reviewHtml = review.complete ? '' : `<div class="notice error"><b>Calcul fiscal provizoriu — ${review.unresolved.length} linii necesită revizuire.</b>
+      <p>Conturile 635, 6581 și 654 pot conține atât cheltuieli deductibile, cât și nedeductibile. Alege natura operațiunii; până atunci D101 și închiderea impozitului pe profit sunt blocate.</p>
+      <table><thead><tr><th>Articol/document</th><th>Cont/sumă</th><th>Natura fiscală</th><th>Justificare și dovadă</th><th></th></tr></thead><tbody>${review.unresolved.map((row) => {
+        const options = (review.categories[row.account] || []).map((cat) => `<option value="${H(cat.code)}">${H(cat.label)} · ${H(cat.legalBasis)}</option>`).join('');
+        return `<tr class="tax-review" data-entry="${H(row.entryId)}" data-line="${row.lineIndex}" data-account="${H(row.account)}">
+          <td>${H(row.data)} · ${H(row.document || row.entryId)}${row.partener ? '<br>' + H(row.partener) : ''}<br><span class="muted">${H(row.explicatie)}</span></td>
+          <td class="num"><b>${H(row.account)}</b><br>${fmt(row.amount)}</td>
+          <td><select class="tax-category"><option value="">Alege…</option>${options}</select></td>
+          <td><input class="tax-reason" type="text" maxlength="500" placeholder="De ce se aplică această categorie"><br>
+            <input class="tax-evidence" type="text" maxlength="500" placeholder="Hotărâre/decizie/poliță/document justificativ"></td>
+          <td><button class="btn small primary tax-save">Clasifică</button></td></tr>`;
+      }).join('')}</tbody></table></div>`;
+    $('#fiscalView').innerHTML = `${reviewHtml}<table>
       <tr><td>Rezultat contabil (brut)</td><td class="num">${fmt(rf.rezultatContabil)}</td></tr>
       ${rf.cheltNeded.map((c) => `<tr><td>+ ${H(c.cod)} ${H(c.nume)}${pctTxt(c)}</td><td class="num">${fmt(c.suma)}</td></tr>`).join('')}
       <tr><td>+ Total cheltuieli nedeductibile</td><td class="num">${fmt(rf.totalNeded)}</td></tr>
@@ -859,10 +872,24 @@ function loadRegFiscal() {
       ${(rf.ajustariPlafon || []).length ? `<tr><td>+ Total depasiri de plafon</td><td class="num">${fmt(rf.totalPlafoane)}</td></tr>` : ''}
       ${(rf.venituriList || []).map((c) => `<tr><td>− ${H(c.cod)} ${H(c.nume)}${pctTxt(c)}</td><td class="num">${fmt(c.suma)}</td></tr>`).join('')}
       <tr><td>− Total venituri neimpozabile</td><td class="num">${fmt(rf.venituriNeimpozabile)}</td></tr>
-      <tr class="total"><td>= Rezultat fiscal</td><td class="num">${fmt(rf.rezultatFiscal)}</td></tr>
-      <tr class="total"><td>Impozit pe profit ${rf.rateProfit}%</td><td class="num">${fmt(rf.impozitProfit)}</td></tr>
+      <tr class="total"><td>= Rezultat fiscal${rf.calculFiscalFinal ? '' : ' (PROVIZORIU)'}</td><td class="num">${fmt(rf.rezultatFiscal)}</td></tr>
+      <tr class="total"><td>Impozit pe profit ${rf.rateProfit}%${rf.calculFiscalFinal ? '' : ' (PROVIZORIU)'}</td><td class="num">${fmt(rf.impozitProfit)}</td></tr>
       <tr><td class="muted">(comparativ) Impozit micro ${rf.rateMicro}% din baza art. 53 (${fmt(rf.bazaMicro)})</td><td class="num">${fmt(rf.impozitMicro)}</td></tr>
     </table>${(rf.mentiuni || []).map((m) => `<p class="muted" data-u="u184">${m}</p>`).join('')}`;
+    $$('#fiscalView .tax-save').forEach((button) => button.addEventListener('click', async () => {
+      const row = button.closest('.tax-review'); const category = row.querySelector('.tax-category').value;
+      const reason = row.querySelector('.tax-reason').value.trim(); const evidenceReference = row.querySelector('.tax-evidence').value.trim();
+      if (!category || reason.length < 5) { toast('Alege natura fiscală și scrie o justificare de minimum 5 caractere.', true); return; }
+      button.disabled = true;
+      try {
+        await api('/api/entries/' + encodeURIComponent(row.dataset.entry) + '/fiscal-taxonomy/profit-expense', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+            lineIndex: Number(row.dataset.line), account: row.dataset.account, category, reason, evidenceReference,
+          }),
+        });
+        toast('Clasificarea fiscală a fost salvată și auditată.'); loadRegFiscal();
+      } catch (error) { toast(error.message, true); button.disabled = false; }
+    }));
   }).catch(() => {});
   }
 }

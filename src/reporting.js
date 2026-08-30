@@ -9,6 +9,7 @@ const bnr = require('./bnr'); // cursul oficial pentru plafoanele exprimate in e
 const coa = require('./chartOfAccounts');
 const acc = require('./accounting');
 const deduct = require('./deductibilitate');
+const profitExpenseTaxonomy = require('./profitExpenseTaxonomy');
 const micro = require('./impozitMicro'); // baza art. 53 + cota art. 51 (sursa unica: D100 si registrul fiscal)
 const assets = require('./assets');
 const ajust = require('./ajustari'); // familia unui cont de ajustare (sursa unica a hartii)
@@ -1001,7 +1002,9 @@ function cheltuieliAuto(db, year, panaLa) {
     if (limita && p > limita) continue;
     for (const l of (e.lines || [])) {
       const cod = String(l.debit || '');
-      if (/^6/.test(cod) && !/^(691|698)/.test(cod)) s = round2(s + (Number(l.suma) || 0));
+      // 635 are propria clasificare pe natura operatiunii (inclusiv taxa auto cu utilizare mixta).
+      // Daca l-am include si aici, aceeasi rovinieta clasificata 50% s-ar limita a doua oara.
+      if (/^6/.test(cod) && !/^(635|654|6581|691|698)/.test(cod)) s = round2(s + (Number(l.suma) || 0));
     }
   }
   return round2(s);
@@ -1115,18 +1118,24 @@ function provizioane(db, year, panaLa) {
   return out;
 }
 
+/** Clasificarea fiscala documentata a liniilor 635/6581/654. Rezultatul contine atat sumele
+ * clasificate, cat si liniile care necesita revizuire; cele din urma nu primesc un tratament
+ * fiscal implicit. */
+function tratamenteCheltuieliFiscale(db, year, panaLa) {
+  return profitExpenseTaxonomy.analyze(acc.postedEntries(db), year, panaLa);
+}
+
 /** Registrul de evidenta fiscala: trecerea de la rezultatul contabil la cel fiscal. */
 function registruFiscal(db, year, cota, opts) {
   opts = opts || {};
   const ruleSet = fiscal.rulesAt(String(year) + '-12'); const rates = ruleSet.rates;
   const pl = stmt.profitLoss(db, year);
   const r = periodRulaj2(db, year);
-  // Procentele fixe pe cont vin din `deductibilitate.js`, nu dintr-o tabela locala. Se calculeaza
-  // NECONDITIONAT de `opts.plafoane`: registrul se cere si fara cotele configurate (dosarul anual
-  // il genereaza asa), iar amenzile raman nedeductibile indiferent de ce plafoane a dat apelantul.
-  // Forma randului ramane cea istorica ({cod, nume, baza, pct, suma}) — o citesc PDF-ul si tabelul
-  // din interfata; traducerea sta aici, ca motorul sa aiba un singur vocabular.
-  const fixeRez = deduct.fixe(r);
+  // Tratamentele 635/6581/654 vin din natura documentata pe linia articolului. Registrul ramane
+  // disponibil si cand exista linii neclasificate, dar isi marcheaza rezultatul PROVIZORIU; caile
+  // finale (D101, inchidere, dosar anual) sunt fail-closed.
+  const tratamentCheltuieli = tratamenteCheltuieliFiscale(db, year);
+  const fixeRez = deduct.fixe(r, tratamentCheltuieli);
   // Ajustarile de creante nu mai sunt un procent fix pe cont (art. 26 alin. (1) lit. c): partea
   // deductibila se calculeaza din baza ELIGIBILA, marcata pe articole. Randul se adauga aici, la
   // celelalte, ca sa apara in acelasi tabel al registrului. Cotele: cele transmise, altfel cele
@@ -1175,6 +1184,7 @@ function registruFiscal(db, year, cota, opts) {
     ajustariCreanteBaza: bazaCreante, // aceeasi baza ca randul de mai sus: art. 40^2 pleaca de la rezultatul fiscal
     ajustariDepreciere: splitAjust,
     provizioane: splitProv,
+    tratamentCheltuieli,
     cheltImpozitProfit: r['691'] ? round2(r['691'].d - r['691'].c) : 0,
     amortizare: amortDif,
     amortizareFiscala: amortDif.fiscala, // baza art. 40^2 foloseste amortizarea FISCALA
@@ -1204,6 +1214,8 @@ function registruFiscal(db, year, cota, opts) {
     // Aditiv: randurile cu plafon si totalul lor, separate de procentele fixe.
     ajustariPlafon: dedRez.randuriPlafon, totalPlafoane,
     ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
+    calculFiscalFinal: tratamentCheltuieli.complete,
+    tratamentCheltuieli,
   };
 }
 
@@ -1881,4 +1893,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205: d205.report, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, provizioane, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205: d205.report, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, provizioane, tratamenteCheltuieliFiscale, CONTURI_TREZORERIE };

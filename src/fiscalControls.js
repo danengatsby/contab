@@ -11,6 +11,7 @@ const fiscal = require('./fiscal');
 const bnr = require('./bnr'); // cursul oficial pentru plafonul micro
 const fiscalProfile = require('./fiscalProfile');
 const dateFirma = require('./dateFirma');
+const profitExpenseTaxonomy = require('./profitExpenseTaxonomy');
 const { period: periodOf, round2 } = require('./util');
 
 const INTRACOM_TYPES = new Set(['livrare_intracomunitara', 'achizitie_intracomunitara']);
@@ -151,6 +152,11 @@ function check(v, opts) {
   const yearEntries = posted.filter((e) => String(e.period || periodOf(e.data)).startsWith(year));
   const findings = [];
   const add = (nivel, cod, mesaj) => findings.push({ nivel, cod, mesaj });
+
+  const expenseReview = profitExpenseTaxonomy.analyze(posted, year);
+  if (!expenseReview.complete) add('eroare', 'cheltuieli-fiscale-neclasificate',
+    expenseReview.unresolved.length + ' linie/linii din conturile 635, 6581 sau 654 nu au natura fiscala documentata. '
+      + 'Calculul final al impozitului pe profit, D101 si inchiderea anuala sunt blocate pana la clasificare.');
 
   // 1) Neplatitor TVA dar COLECTEAZA TVA (4427) -> inconsistenta de regim
   if (!profile.tvaPlatitor) {

@@ -11,6 +11,7 @@ const fiscalProfile = require('./fiscalProfile');
 const temeiLegal = require('./temeiLegal');
 const fiscalReview = require('./fiscalReview');
 const annualInventory = require('./annualInventory');
+const reporting = require('./reporting');
 
 const ORDER = ['revizie_fiscala', 'inventariere', 'evaluare', 'amortizare', 'balanta', 'perioada_13', 'impozit', 'inchidere', 'situatii', 'depunere', 'repartizare'];
 
@@ -25,8 +26,8 @@ function hasType(entries, tip, year) {
   return entries.some((e) => e.tip === tip && String(e.rezultatAn || e.period || e.data || '').slice(0, 4) === year);
 }
 function definition(key) {
-  if (key === 'revizie_fiscala') return { key, nume: 'Revizie fiscală externă',
-    descriere: 'Toate cazurile fiscale sunt aprobate criptografic de un revizor autorizat, pe manifestul codului/regulilor și configurația activă.', temei: [] };
+  if (key === 'revizie_fiscala') return { key, nume: 'Revizie fiscală și clasificări',
+    descriere: 'Cazurile fiscale sunt aprobate extern, iar operațiunile 635/6581/654 sunt clasificate documentat pe natura lor economică.', temei: [] };
   if (key === 'perioada_13') return { key, nume: 'Perioada tehnică 13 — ajustări anuale',
     descriere: 'Spațiu intern controlat pentru notele anuale după blocarea lunii decembrie; articolele rămân datate contabil la 31 decembrie.', temei: [] };
   const p = temeiLegal.pas(key) || { key, nume: key, descriere: '' };
@@ -61,13 +62,18 @@ function status(globalDb, view, year) {
     || !!(company.annualCloseHistory && company.annualCloseHistory[year]);
   const repartizarePostata = entries.some((e) => e.tip === 'repartizare_rezultat' && String(e.rezultatAn || '') === year);
   const review = fiscalReview.status();
+  const expenseReview = reporting.tratamenteCheltuieliFiscale(view, year);
 
   const raw = {
     revizie_fiscala: {
-      done: review.ready,
-      blockers: ['Revizia externă este incompletă: ' + review.approved + '/' + review.total + ' cazuri aprobate'
-        + (review.invalid ? ', ' + review.invalid + ' aprobări invalidate de modificări ulterioare' : '') + '.'],
-      details: { aprobate: review.approved, total: review.total, inAsteptare: review.pending, invalidate: review.invalid, setFiscal: review.fiscalYear },
+      done: review.ready && expenseReview.complete,
+      blockers: [].concat(review.ready ? [] : ['Revizia externă este incompletă: ' + review.approved + '/' + review.total + ' cazuri aprobate'
+        + (review.invalid ? ', ' + review.invalid + ' aprobări invalidate de modificări ulterioare' : '') + '.'])
+        .concat(expenseReview.complete ? [] : [expenseReview.unresolved.length
+          + ' linii din conturile 635/6581/654 necesită clasificare fiscală documentată.']),
+      details: { aprobate: review.approved, total: review.total, inAsteptare: review.pending, invalidate: review.invalid,
+        setFiscal: review.fiscalYear, clasificariCheltuieliComplete: expenseReview.complete,
+        clasificariCheltuieliRestante: expenseReview.unresolved.length },
     },
     inventariere: {
       done: inventoryMatrix.complete,

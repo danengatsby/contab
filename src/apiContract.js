@@ -77,6 +77,15 @@ const schemas = Object.freeze({
     code: { type: 'string', enum: taxonomyKeys }, amount: { type: 'number', exclusiveMinimum: 0, maximum: 1e12 },
     reason, legalBasis: { type: 'string', maxLength: 160 }, sourceAccount: { type: 'string', maxLength: 30 },
   } },
+  ProfitExpenseTreatment: { type: 'object', additionalProperties: false,
+    required: ['lineIndex', 'account', 'category', 'reason'], properties: {
+      lineIndex: { type: 'integer', minimum: 0 },
+      account: { type: 'string', enum: ['635', '6581', '654'] },
+      category: { type: 'string', minLength: 1, maxLength: 80 },
+      reason,
+      evidenceDocumentIds: { type: 'array', maxItems: 20, items: { type: 'string', minLength: 1, maxLength: 120 } },
+      evidenceReference: { type: 'string', maxLength: 500 },
+    } },
   MicroAdjustment: { type: 'object', additionalProperties: false,
     required: ['period', 'direction', 'amount', 'category', 'legalBasis', 'reason'], properties: {
       period: { type: 'string', pattern: '^\\d{4}-(0[1-9]|1[0-2])$' }, direction: { type: 'string', enum: ['add', 'subtract'] },
@@ -101,6 +110,10 @@ function openapi() {
       '/api/entries/{id}/fiscal-taxonomy/micro': {
         patch: { operationId: 'setMicroTransactionTaxonomy', requestBody: json('MicroTaxonomy'), responses: { 200: { description: 'Taxonomie salvata' }, 400: { description: 'Payload invalid' } } },
         delete: { operationId: 'removeMicroTransactionTaxonomy', requestBody: json('Reason'), responses: { 200: { description: 'Taxonomie retrasa' } } },
+      },
+      '/api/entries/{id}/fiscal-taxonomy/profit-expense': {
+        patch: { operationId: 'setProfitExpenseTaxonomy', requestBody: json('ProfitExpenseTreatment'),
+          responses: { 200: { description: 'Tratament fiscal salvat si auditat' }, 400: { description: 'Clasificare invalida' } } },
       },
       '/api/fiscal/micro/adjustments': {
         get: { operationId: 'listMicroAdjustments', responses: { 200: { description: 'Registru ajustari' } } },

@@ -147,8 +147,14 @@ module.exports = [
     id: 'taxe_drum',
     nume: 'Rovinieta / taxe de drum (635)',
     grup: 'Diverse',
-    fields: [F.data, F.document, F.suma],
+    fields: [F.data, F.document, F.suma, F.tratamentFiscal635Auto],
     build: (d) => [L('635', '446', d.suma, 'Rovinietă / taxe de drum')],
+    profitExpenseTreatment: (d) => ({
+      category: String(d.tratamentFiscalCheltuiala || ''),
+      reason: d.tratamentFiscalCheltuiala === 'vehicle_mixed'
+        ? 'Vehicul cu utilizare economica si personala, limita fiscala de 50%.'
+        : 'Vehicul utilizat exclusiv pentru activitatea economica.',
+    }),
   },
   {
     id: 'nota_contabila',

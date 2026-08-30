@@ -28,6 +28,7 @@ const d307 = require('./src/d307');
 const d311 = require('./src/d311');
 const { D394_COD_331 } = require('./src/xml');
 const leasingService = require('./src/leasingService');
+const profitExpenseTaxonomy = require('./src/profitExpenseTaxonomy');
 
 // Pe sqlite/json load() e sincron; pe PostgreSQL intoarce o promisiune. Serverul incepe
 // sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata.
@@ -200,6 +201,7 @@ require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, uploa
 require('./src/routes/cashFlowClassification')(app, { activeId, logAudit });
 // Taxonomie fiscala per articol si registrul explicit de ajustari ale bazei micro.
 require('./src/routes/microTax')(app, { activeId, logAudit });
+require('./src/routes/profitExpenseTax')(app, { activeId, logAudit });
 
 // Nomenclatoare (parteneri, import CSV, conversie XLSX/XLS/DBF) + solduri initiale: src/routes/partners.js
 require('./src/routes/partners')(app, { upload, S, activeId, logAudit, requireAdmin, wrap });
@@ -372,6 +374,25 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     if (!coa.getAccount(l.debit)) throw new Error('Cont debitor inexistent in plan: ' + l.debit);
     if (!coa.getAccount(l.credit)) throw new Error('Cont creditor inexistent in plan: ' + l.credit);
   }
+  // Unele tipuri dedicate cunosc natura fiscala doar din alegerea explicita a operatorului.
+  // Clasificarea se leaga de indicele liniei, nu doar de articol: o nota cu doua cheltuieli poate
+  // avea doua tratamente diferite, iar registrul le reconciliaza separat.
+  let profitExpenseTreatment = null;
+  if (typeof type.profitExpenseTreatment === 'function') {
+    const declared = type.profitExpenseTreatment(f) || {};
+    const itemsTax = [];
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      for (const part of profitExpenseTaxonomy.relevantParts(lines[lineIndex])) {
+        itemsTax.push(profitExpenseTaxonomy.normalizeItem({
+          lineIndex, account: part.account, category: declared.category,
+          reason: declared.reason || f.explicatie || type.nume,
+          evidenceDocumentIds: fileId ? [fileId] : [],
+          evidenceReference: declared.evidenceReference || '',
+        }, { lines }));
+      }
+    }
+    if (itemsTax.length) profitExpenseTreatment = { version: 1, items: itemsTax.map((item) => Object.assign(item, { source: 'document-form' })) };
+  }
   // Codul de bun art. 331 (op11 din D394): validat la introducere, nu la depunere — o valoare
   // gresita ar trece pana la validatorul ANAF si ar respinge toata declaratia. Lipsa nu blocheaza
   // salvarea (articolul poate fi completat mai tarziu); o semnaleaza validarea pre-depunere.
@@ -453,6 +474,7 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     ...(leasingRef ? { leasingRef } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
+    ...(profitExpenseTreatment ? { fiscalTaxonomy: { profitExpense: profitExpenseTreatment } } : {}),
     fileId: fileId || null,
     system: false,
     lines,

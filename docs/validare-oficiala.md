@@ -8,7 +8,18 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-20 — D112 iulie 2026 și concedii medicale
+## Ultima verificare: 2026-08-30 — clasificarea fiscală 635/6581/654
+
+După înlocuirea tratamentului fiscal fix pe cont cu clasificarea documentată a fiecărei linii,
+poarta forțată `scripts/poarta-fiscala.sh --intotdeauna` a regenerat și validat **66 din 66 de
+ieșiri**. Ambele referințe D101 (`D101` și `D101-defalcare`) sunt acceptate de DUKIntegrator;
+au rămas valide toate declarațiile D100–D394, cele cinci variante SAF-T D406, situațiile
+financiare S1120/S1121/S1122 și XML-ul e-Transport. Verdict: `POARTA DESCHISA`.
+
+Această validare dovedește contractul tehnic al fișierelor. Revizia profesională a interpretării
+fiscale rămâne o poartă separată; la această dată corpusul extern este încă 0/25 aprobat.
+
+## Verificarea anterioară: 2026-08-20 — D112 iulie 2026 și concedii medicale
 
 Structura D112 publicată pentru perioada de raportare iulie 2026 a fost integrată și verificată
 cu DUKIntegrator. Sunt valide **24 de probe D112**: salariul obișnuit, schema curentă, beneficiile
