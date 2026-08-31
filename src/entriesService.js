@@ -201,6 +201,7 @@ function inregistreazaInterventia(fid, b, entry, campuriSalvate) {
     // „heuristic"; modelul e granularitatea la care se vede daca o schimbare de model a schimbat
     // calitatea. `null` la regulile locale — acolo nu exista model.
     model: ex.model || null,
+    provider: ex.provider || null,
     incredere: ex.incredere == null ? null : Number(ex.incredere),
     scor: ex.scor == null ? null : Number(ex.scor),
     decizie: ex.decizie || null,

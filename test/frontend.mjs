@@ -2166,7 +2166,9 @@ section('Calitatea citirii automate: verdictul și raportul (docflow.js / entrie
   ok('motivul e escapat', h.includes('&lt;b&gt;ACME&lt;/b&gt;') && !h.includes('<b>ACME'));
 
   const hAuto = docflow.calitateHtml({ scor: 100, controale: [] }, { entryId: 'e42' });
-  ok('ciorna automată se anunță ca atare, cu articolul creat', hAuto.includes('ciornă propusă automat') && hAuto.includes('e42'));
+  ok('ciorna automată numește politica calibrată și scorul diagnostic',
+    hAuto.includes('ciornă propusă automat') && hAuto.includes('politică de risc calibrată')
+      && hAuto.includes('doar diagnostic') && hAuto.includes('e42'));
   eq('fără verdict nu randează nimic', docflow.calitateHtml(null), '');
 }
 
@@ -2201,6 +2203,9 @@ section('Gazda formularului unic de înregistrare (docflow.js)');
       { model: 'claude-sonnet-5', documente: 8, incredereMedie: 74, postateAutomat: 1 },
       { model: null, documente: 4, incredereMedie: null, postateAutomat: 0 },
     ],
+    calibrari: [{ key: { provider: 'provider<script>', model: 'claude-sonnet-5', format: 'pdf',
+      documentType: 'factura_cumparare_marfuri', confidenceBand: '70-84' },
+      samples: 30, correctionRate: 3.33, fiscalCorrections: 0, status: 'calibrated' }],
     corectiiPeModel: [{ cheie: 'claude-sonnet-5', interventii: 3, campuri: 5, controaleTop: [{ cod: 'cota', n: 2 }] }],
   };
   const hr = entries.calitateRaportHtml(raport);
@@ -2223,7 +2228,11 @@ section('Gazda formularului unic de înregistrare (docflow.js)');
   // îl conține. Verificarea corectă e pe CELULA randată, nu pe o bucată de text din tot raportul.
   ok('încrederea medie lipsă se arată ca „—", nu ca 0%',
     hr.includes('74%') && hr.includes('<td class="num">—</td>'));
-  ok('spune că scala încrederii diferă între modele (altfel numărul induce în eroare)', /scala ei difer|scala .* difer/i.test(hr));
+  ok('spune că încrederea nu autorizează automatizarea', /nu autorizează nimic/i.test(hr));
+  ok('arată calibrarea pe documente reale și eșantionul',
+    hr.includes('Calibrare pe documente reale revizuite') && hr.includes('70-84') && hr.includes('30'));
+  ok('identitatea externă din raportul de calibrare este escapata',
+    hr.includes('provider&lt;script&gt;') && !hr.includes('provider<script>'));
   ok('are tabelul de corecții pe extractor, în aceeași formă ca pe furnizori/formate',
     hr.includes('Corecții pe extractor') && hr.includes('cota ×2'));
   ok('fără documente citite: mesaj, nu tabele goale',

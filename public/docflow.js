@@ -404,12 +404,13 @@ if ($('#scannerBtn') && $('#scannerBtn').disabled) {
 export function calitateHtml(cal, autoCiorna) {
   if (!cal) return '';
   if (autoCiorna) {
-    return '<br><span class="pill ok">ciornă propusă automat</span> <span class="muted">scor ' + H(cal.scor)
-      + '% — toate controalele tehnice au trecut; verificarea umană rămâne obligatorie. Articol: ' + H(autoCiorna.entryId) + '</span>';
+    return '<br><span class="pill ok">ciornă propusă automat</span> <span class="muted">controale deterministe trecute'
+      + ' · politică de risc calibrată; scorul ' + H(cal.scor) + '% este doar diagnostic.'
+      + ' Verificarea umană rămâne obligatorie. Articol: ' + H(autoCiorna.entryId) + '</span>';
   }
   const picate = (cal.controale || []).filter((c) => !c.ok);
   const trecute = (cal.controale || []).length - picate.length;
-  return '<br><span class="pill warn">cere revizuire</span> <span class="muted">scor ' + H(cal.scor)
+  return '<br><span class="pill warn">cere revizuire</span> <span class="muted">scor diagnostic ' + H(cal.scor)
     + '% · ' + H(trecute) + '/' + H((cal.controale || []).length) + ' controale trecute</span>'
     + (picate.length ? '<ul class="closeblock">' + picate.map((c) => '<li><b>' + H(c.nume) + ':</b> ' + H(c.motiv || '') + '</li>').join('') + '</ul>' : '');
 }

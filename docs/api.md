@@ -69,7 +69,8 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 
 1. `POST /api/login` → cookie de sesiune.
 2. `POST /api/upload` (multipart, câmp `file`) → extragere AI sau reguli locale →
-   `{ documentId, suggestedType, fields, cuis, source }`.
+   `{ documentId, suggestedType, fields, cuis, source, calitate }`; `calitate` separă verdictul
+   determinist de politica de risc calibrată. Scorul AI nu autorizează automatizarea.
 3. `POST /api/entries` cu `{ tip, fields, fileId: documentId }` → articolul contabil
    `{ ok, entry, stoc }` (liniile de stoc generează automat descărcarea la metoda firmei, CMP/FIFO).
 4. Rapoartele se construiesc singure din articole: `GET /api/journal?period=`,
@@ -192,12 +193,12 @@ motiv și produce eveniment de audit distinct.
 
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
-| `POST /api/upload` | multipart `file` (max 20 MB, extensii permise) | `{ documentId, fileName, suggestedType, fields, cuis, source: 'ai'\|'heuristic', warning?, incredere?, motiv?, calitate: { scor, decizie: 'auto'\|'revizuire', controale[], motive[] }, autoCiorna? }`; automatizarea creează cel mult o ciornă, nu postează fără verificare umană; 400 fișier lipsă/deghizat; 429 peste plafon |
+| `POST /api/upload` | multipart `file` (max 20 MB, extensii permise) | `{ documentId, fileName, suggestedType, fields, cuis, source: 'ai'\|'heuristic', warning?, incredere?, motiv?, calitate: { scor, verdictDeterminist: 'trecut'\|'respins', decizie: 'auto'\|'revizuire', controale[], motive[], politicaRisc }, autoCiorna? }`; `politicaRisc.decision` este `auto_draft` numai după calibrare reală, altfel `abstain`; automatizarea creează cel mult o ciornă prin motorul determinist; 400 fișier lipsă/deghizat; 429 peste plafon |
 | `POST /api/upload-only` | multipart `file` | `{ documentId, fileName }` — fără extragere |
 | `GET /api/document/:id/file` | — | fișierul; inline doar PDF/imagini, restul attachment; 403 firmă străină; 404 |
 | `GET /api/documents` | — | `[{ id, fileName, uploadedAt }]` |
 | `GET /api/documents/gallery` / `emitted` | — | galeria documentelor primite (cu articolul asociat) / facturile emise (cu bază/TVA/total) |
-| `GET /api/extract-quality?days=` | — | raportul calității citirii automate: `{ documenteCitite, scorMediu, eligibileAutomat, autoDraftActiv, interventii, corectii, rataCorectie, furnizori[], formate[], peControl[], peCamp[], recente[] }` — eligibilitatea poate crea numai o ciornă; grupat pe furnizor/format |
+| `GET /api/extract-quality?days=` | — | raportul calității citirii automate: `{ documenteCitite, scorMediu, eligibileAutomat, autoDraftActiv, interventii, corectii, rataCorectie, politicaRisc, calibrari[], furnizori[], formate[], peControl[], peCamp[], recente[] }` — afișează politica versionată și calibrarea pe provider AI/model/format/tip/bandă; eligibilitatea poate crea numai o ciornă |
 | `POST /api/xlsx-to-csv` | multipart `file` (XLSX/XLS/DBF) | `{ ok, rows, csv }` — conversie pentru importuri; 400 format nerecunoscut |
 
 ## Articole contabile (`src/routes/entries.js`)

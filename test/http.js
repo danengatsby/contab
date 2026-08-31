@@ -561,12 +561,16 @@ async function main() {
         && Object.prototype.hasOwnProperty.call(u1.json, 'model'));
       const cal = u1.json.calitate;
       ok('raspunsul poarta scorul si decizia', !!cal && typeof cal.scor === 'number' && ['auto', 'revizuire'].includes(cal.decizie));
+      ok('raspunsul separa verdictul determinist de politica de risc',
+        ['trecut', 'respins'].includes(cal.verdictDeterminist) && cal.politicaRisc
+          && cal.politicaRisc.decision === 'abstain' && /^[0-9a-f]{64}$/.test(cal.politicaRisc.policyHash));
       ok('raspunsul poarta toate controalele, cu nume citibil',
         Array.isArray(cal.controale) && cal.controale.length >= 8 && cal.controale.every((c) => c.cod && c.nume && typeof c.ok === 'boolean'));
-      // Suita ruleaza FARA cheie AI: extragerea e euristica, deci controlul de sursa/incredere pica
-      // si decizia trebuie sa fie „revizuire". Regula e o conjunctie — nu se posteaza pe increderea
-      // extractorului despre sine, ci pe controale verificabile.
+      // Suita ruleaza FARA cheie AI: controalele deterministe pot trece, dar politica se abtine
+      // fiindca sursa nu are o calibrare eligibila. Scorul extractorului nu este o dovada.
       eq('fara AI: decizia e revizuire', cal.decizie, 'revizuire');
+      eq('fara AI: primul blocaj este controlul determinist picat',
+        cal.politicaRisc.code, 'deterministic_checks_failed');
       ok('...cu motivele scrise, nu doar un steag', cal.motive.length > 0 && cal.motive.every((m) => typeof m === 'string' && m.length > 10));
       ok('needsReview ramane compatibil cu ce foloseste formularul', u1.json.needsReview === true);
       ok('nu s-a postat nimic automat', !u1.json.autoPostat);
@@ -607,11 +611,11 @@ async function main() {
       ok('raport: si diferenta camp cu camp (ce a citit vs ce s-a salvat)',
         !!rec && Array.isArray(rec.campuri) && rec.campuri.some((c) => c.camp === 'document' && c.salvat === 'F-777'));
       ok('raport: starea optiunii de postare automata e vizibila', rap.autoPostActiv === false);
+      ok('raport: politica de risc versionata si calibrarile sunt vizibile',
+        rap.politicaRisc && /^[0-9a-f]{64}$/.test(rap.politicaRisc.hash)
+          && rap.politicaRisc.minimumSamples >= 30 && Array.isArray(rap.calibrari));
 
-      // DEFALCAREA PE MODEL. `incredere` e o auto-raportare a modelului, deci scala ei se schimba
-      // odata cu modelul, iar pragul de postare automata a fost calibrat pe scala unuia anume.
-      // Fara defalcare, o schimbare de model apare ca „nu se mai posteaza nimic automat", fara
-      // vinovat. Aici suita ruleaza fara cheie AI, deci grupa asteptata e cea a regulilor locale.
+      // DEFALCAREA PE MODEL ramane diagnostic; autorizarea este in politica de risc calibrata.
       ok('raport: exista defalcarea pe modelul care a citit documentele', Array.isArray(rap.modele) && rap.modele.length >= 1);
       const grupaLocala = (rap.modele || []).find((m) => m.model === null);
       ok('raport: regulile locale se raporteaza cu model null, nu cu un sir inventat', !!grupaLocala);

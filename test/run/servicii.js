@@ -424,7 +424,7 @@ eq('stergerea unui articol POSTAT -> 400 (corectie prin storno)', errStatus(() =
 {
   const dITV = db.get();
   const docModel = { id: 'doc-model-proba', firmaId: fidOk, fileName: 'f.pdf', uploadedAt: new Date().toISOString(),
-    extras: { source: 'ai', model: 'model-de-proba-5', incredere: 90, suggestedType: 'test_svc',
+    extras: { source: 'ai', provider: 'provider-de-proba', model: 'model-de-proba-5', incredere: 90, suggestedType: 'test_svc',
       fields: { data: '2026-06-10', document: 'ITV-1', partener: 'ALPHA' } } };
   dITV.documents = dITV.documents || [];
   dITV.documents.push(docModel);
@@ -435,6 +435,7 @@ eq('stergerea unui articol POSTAT -> 400 (corectie prin storno)', errStatus(() =
   const itvNou = (db.get().extractInterventions || [])[nrInainte];
   ok('interventia se consemneaza pentru documentul citit cu AI', !!itvNou);
   eq('interventia poarta MODELUL care a citit documentul', itvNou && itvNou.model, 'model-de-proba-5');
+  eq('...si furnizorul necesar cheii de calibrare', itvNou && itvNou.provider, 'provider-de-proba');
   eq('...si sursa, ca pana acum', itvNou && itvNou.source, 'ai');
   // documentul citit cu reguli locale n-are model: `null`, nu un sir inventat
   const docLocal = { id: 'doc-local-proba', firmaId: fidOk, fileName: 'g.pdf', uploadedAt: new Date().toISOString(),
@@ -1072,6 +1073,10 @@ ok('dupa igiena (fereastra expirata): plafonul se reseteaza', nextDupa);
 section('Calitatea extragerii: controale, decizie, interventii (src/extractQuality.js)');
 {
   const eq2 = require('../../src/extractQuality');
+  const risk = require('../../src/extractRiskPolicy');
+  ok('contractul politicii si benzile sale sunt imuabile', Object.isFrozen(risk.POLICY_CONTRACT)
+    && Object.isFrozen(risk.POLICY_CONTRACT.scoreBands)
+    && risk.POLICY_CONTRACT.scoreBands.every(Object.isFrozen));
 
   // Vedere de firma: un partener CUNOSCUT (RO111) si un articol deja inregistrat (pentru duplicat).
   const vedere = {
@@ -1086,29 +1091,71 @@ section('Calitatea extragerii: controale, decizie, interventii (src/extractQuali
   const ev = (over, ctxOver) => eq2.evalueaza(Object.assign({}, BUN, over || {}), Object.assign({}, ctxq, ctxOver || {}));
   const codc = (r, c) => r.controale.find((x) => x.cod === c);
 
-  // Cazul curat: toate controalele trec -> postare automata permisa
+  // Cazul curat: toate controalele deterministe trec. Asta NU autorizeaza automatizarea.
   const bun = ev();
   eq('document curat: toate controalele trec', bun.controale.filter((c) => !c.ok).length, 0);
   eq('document curat: scor 100', bun.scor, 100);
-  eq('document curat: decizie auto', bun.decizie, 'auto');
+  eq('document curat: verdict determinist trecut', bun.verdictDeterminist, 'trecut');
   eq('document curat: fara motive', bun.motive.length, 0);
 
-  // Fiecare control, cazut individual -> revizuire, cu motiv in cuvinte (nu doar un bec rosu)
-  const picaCu = (over, ctxOver) => { const r = ev(over, ctxOver); return { r, dec: r.decizie, motive: r.motive.join(' | ') }; };
+  // Sursa si increderea sunt semnale, nu dovezi. Controalele deterministe raman blocante.
+  const picaCu = (over, ctxOver) => { const r = ev(over, ctxOver); return { r, dec: r.verdictDeterminist, motive: r.motive.join(' | ') }; };
 
   const sursa = picaCu({ source: 'heuristic', incredere: null });
-  ok('reguli locale -> revizuire (sursa + incredere pica)', sursa.dec === 'revizuire'
-    && !codc(sursa.r, 'sursa').ok && !codc(sursa.r, 'incredere').ok && /reguli locale/i.test(sursa.motive));
+  ok('sursa si increderea pot lipsi fara sa falsifice verdictul determinist', sursa.dec === 'trecut'
+    && !codc(sursa.r, 'sursa').blocant && !codc(sursa.r, 'incredere').blocant);
 
   const conf = picaCu({ incredere: 60 });
-  ok('incredere sub prag -> revizuire, cu pragul scris', conf.dec === 'revizuire' && /60%/.test(conf.motive) && /85%/.test(conf.motive));
-  ok('increderea fix pe prag trece', ev({ incredere: eq2.MIN_INCREDERE }).decizie === 'auto');
+  ok('increderea sub prag ramane avertisment neblocant', conf.dec === 'trecut'
+    && !codc(conf.r, 'incredere').ok && !codc(conf.r, 'incredere').blocant
+    && conf.r.avertismente.some((msg) => /60%/.test(msg)));
+  ok('pragul 85 este doar diagnostic, nu decizie de risc',
+    ev({ incredere: eq2.MIN_INCREDERE }).verdictDeterminist === 'trecut');
+
+  const contextExtractor = { source: 'ai', provider: 'provider-test', model: 'model-test', format: 'pdf',
+    suggestedType: 'factura_cumparare_marfuri', incredere: 99 };
+  eq('politica fara controale deterministe se abtine inchis',
+    risk.decide({ extraction: contextExtractor, interventions: [] }).code, 'deterministic_checks_unavailable');
+  eq('sursa euristica se abtine chiar dupa controale deterministe trecute',
+    risk.decide({ quality: bun, extraction: Object.assign({}, contextExtractor, { source: 'heuristic' }),
+      interventions: [] }).code, 'source_not_calibrated');
+  const highUncalibrated = risk.decide({ quality: bun, extraction: contextExtractor, interventions: [] });
+  ok('scor AI 99 fara documente reale calibrate este refuzat', highUncalibrated.decision === 'abstain'
+    && highUncalibrated.code === 'calibration_insufficient' && highUncalibrated.calibration.samples === 0);
+
+  const reviewed = Array.from({ length: risk.MIN_REVIEWED_SAMPLES }, (_x, index) => ({
+    at: new Date(Date.now() - index * 3600000).toISOString(), source: 'ai', provider: 'provider-test',
+    model: 'model-low-score', format: 'pdf', tipExtras: 'factura_cumparare_marfuri', incredere: 60, corectat: false,
+    diff: { campuri: [], tipSchimbat: false, nrModificari: 0 },
+  }));
+  const lowQuality = ev({ incredere: 60 });
+  const lowCalibrated = risk.decide({ quality: lowQuality,
+    extraction: { source: 'ai', provider: 'provider-test', model: 'model-low-score', format: 'pdf',
+      suggestedType: 'factura_cumparare_marfuri', incredere: 60 },
+    interventions: reviewed });
+  ok('banda cu scor mic poate pregati doar o ciorna daca performanta reala este calibrata',
+    lowCalibrated.decision === 'auto_draft' && lowCalibrated.code === 'calibrated_low_risk'
+      && lowCalibrated.confidenceRole === 'calibration-key-only');
+
+  const unreliable = reviewed.map((row, index) => index < 2 ? Object.assign({}, row, {
+    corectat: true, diff: { campuri: [{ camp: 'tva' }], tipSchimbat: false, nrModificari: 1 },
+  }) : row);
+  const rejectedCalibration = risk.decide({ quality: lowQuality,
+    extraction: { source: 'ai', provider: 'provider-test', model: 'model-low-score', format: 'pdf',
+      suggestedType: 'factura_cumparare_marfuri', incredere: 60 },
+    interventions: unreliable });
+  ok('corectiile observate, mai ales fiscale, obliga politica sa se abtina',
+    rejectedCalibration.decision === 'abstain' && rejectedCalibration.code === 'calibration_rejected'
+      && rejectedCalibration.calibration.fiscalCorrections === 2);
+  ok('raportul de calibrare este reproductibil pe aceleasi rezultate umane',
+    risk.report(reviewed).some((row) => row.key.model === 'model-low-score'
+      && row.samples === risk.MIN_REVIEWED_SAMPLES && row.status === 'calibrated'));
 
   const arit = picaCu({ fields: Object.assign({}, BUN.fields, { suma: 1500 }) });
-  ok('baza + TVA != total -> revizuire', arit.dec === 'revizuire' && !codc(arit.r, 'aritmetica').ok);
+  ok('baza + TVA != total -> control determinist respins', arit.dec === 'respins' && !codc(arit.r, 'aritmetica').ok);
 
   const cotaGresita = picaCu({ fields: Object.assign({}, BUN.fields, { cota: 9 }) });
-  ok('cota nu se potriveste cu raportul TVA/baza -> revizuire', cotaGresita.dec === 'revizuire' && !codc(cotaGresita.r, 'cota').ok);
+  ok('cota nu se potriveste cu raportul TVA/baza -> control determinist respins', cotaGresita.dec === 'respins' && !codc(cotaGresita.r, 'cota').ok);
 
   ok('data lipsa -> revizuire', !codc(ev({ fields: Object.assign({}, BUN.fields, { data: '' }) }), 'data').ok);
   ok('data in viitor -> revizuire', /viitor/i.test(picaCu({ fields: Object.assign({}, BUN.fields, { data: '2026-12-01' }) }).motive));
@@ -1119,17 +1166,18 @@ section('Calitatea extragerii: controale, decizie, interventii (src/extractQuali
 
   const partenerNou = picaCu({ fields: Object.assign({}, BUN.fields, { partener: 'BETA SRL', cuiPartener: 'RO999' }) });
   ok('partener NOU -> revizuire (primul document al unui furnizor se verifica)',
-    partenerNou.dec === 'revizuire' && /nou/i.test(partenerNou.motive));
+    partenerNou.dec === 'respins' && /nou/i.test(partenerNou.motive));
   ok('partener fara CUI -> revizuire', /nu are CUI/i.test(picaCu({ fields: Object.assign({}, BUN.fields, { cuiPartener: '' }) }).motive));
   ok('CUI cu prefix RO si spatii se potriveste tot cu partenerul cunoscut',
-    ev({ fields: Object.assign({}, BUN.fields, { cuiPartener: 'RO 111' }) }).decizie === 'auto');
+    ev({ fields: Object.assign({}, BUN.fields, { cuiPartener: 'RO 111' }) }).verdictDeterminist === 'trecut');
 
   const tipNedet = picaCu({ suggestedType: 'nota_contabila' });
-  ok('tip nedeterminat (nota contabila = rezerva) -> revizuire', tipNedet.dec === 'revizuire' && /nu a putut fi determinat/i.test(tipNedet.motive));
+  ok('tip nedeterminat (nota contabila = rezerva) -> control determinist respins',
+    tipNedet.dec === 'respins' && /nu a putut fi determinat/i.test(tipNedet.motive));
 
   const dup = picaCu({ fields: Object.assign({}, BUN.fields, { document: 'F-900' }) });
   ok('document deja inregistrat -> revizuire, cu id-ul articolului existent',
-    dup.dec === 'revizuire' && /F-900/.test(dup.motive) && /e1/.test(dup.motive));
+    dup.dec === 'respins' && /F-900/.test(dup.motive) && /e1/.test(dup.motive));
   ok('duplicatul se prinde si dupa numele partenerului, fara CUI', (() => {
     const r = eq2.gasesteDuplicat({ entries: vedere.entries }, { document: 'f 900', partener: 'alpha srl' }, 'x');
     return !!r && r.id === 'e1';
@@ -1140,7 +1188,7 @@ section('Calitatea extragerii: controale, decizie, interventii (src/extractQuali
   // Un singur control cazut e de ajuns ca sa opreasca postarea (regula e conjunctie, nu scor)
   const unSingur = ev({ fields: Object.assign({}, BUN.fields, { document: '' }) });
   ok('un singur control cazut opreste postarea, desi scorul ramane mare',
-    unSingur.decizie === 'revizuire' && unSingur.scor >= 90);
+    unSingur.verdictDeterminist === 'respins' && unSingur.scor >= 90);
 
   // Golurile derivabile se completeaza (nu se suprascrie nimic extras)
   const golTva = ev({ fields: { data: '2026-06-10', document: 'F-7', partener: 'ALPHA SRL', cuiPartener: 'RO111', baza: 1000, suma: 1210 } });

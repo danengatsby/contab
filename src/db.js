@@ -49,7 +49,7 @@ const FIRMA_EDITABLE = new Set([
   // datorat pe an) sunt INTRARI: primul se publica prin ordin al ministrului finantelor si nu se
   // poate deduce din datele firmei, al doilea acopera firmele migrate, fara istoric in aplicatie.
   'sistemProfit', 'anticipatProfitContabil', 'ipcAnticipate', 'impozitProfitAn',
-  'autoPostDocumente',                                                              // pregatirea automata a unei ciorne (implicit oprita; nume legacy)
+  'autoPostDocumente',                                                              // auto-ciorna dupa politica de risc calibrata (implicit oprita; nume legacy)
   'controlDublu',                                                                   // separare initiator–aprobator (automat si la echipe cu >=2 membri)
   'metodaEvaluareStoc',                                                             // evaluarea iesirilor din stoc: 'cmp' (implicit) sau 'fifo'
   'iban', 'bic', 'banca', 'cont', 'telefon', 'email', 'numeComplet', 'autorizatie',        // banca / contact / reprezentant
@@ -134,7 +134,7 @@ const DEFAULT_DB = {
   balance_sheet_mappings: [], // metadate anuale append-only: scadenta, portiune curenta, afiliere si linii F10/F20
   balance_sheet_adjustments: [], // ajustari F10 separate de jurnal, aprobate si legate prin SHA-256 de sursa
   closings: [],        // { id, firmaId, period, steps, validari, aprobare, fortata, closedAt } - dosarul inchiderii lunare
-  extractInterventions: [], // { id, firmaId, documentId, entryId, diff, controalePicate, partener, format } - corectiile operatorului peste extragere
+  extractInterventions: [], // rezultate umane pentru calibrare: extractor/provider/model/format/scor + diferenta fata de salvare
   leasingContracts: [], // { id, firmaId, denumire, partener, cui, principal, months, dobandaAnuala, metoda, dataPrimeiRate, cotaTva } - contractele de leasing, sursa graficului de rate
   accessRequests: [],  // { id, firmaId, userId, rolSolicitat, ts, status } - contabil care CERE acces (aproba proprietarul)
   serviceRequests: [], // { id, firmaId, ownerId, contabilId, rolAcordat, mesaj, ts, status } - patron care ANGAJEAZA un contabil

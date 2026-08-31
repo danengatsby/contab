@@ -8,7 +8,8 @@
 //     valori extrase (ar ascunde o eroare de citire);
 //   - semnalam incoerentele ca avertismente, ca utilizatorul sa le vada si sa decida;
 //   - inferam cota cand lipseste/e invalida din raportul TVA/baza;
-//   - marcam extragerile cu incredere scazuta pentru verificare.
+//   - afisam increderea scazuta ca avertisment diagnostic, fara a o transforma in dovada sau
+//     decizie de automatizare (aceasta apartine extractRiskPolicy).
 // Conservator prin design: golurile se umplu, dar orice CONFLICT intre valori extrase se
 // raporteaza, nu se rescrie.
 
@@ -60,7 +61,7 @@ function reconcile(fields, opts) {
     warnings.push('Cota ' + cota + '% nu este o cotă TVA validă (21/11/9/5/0). Verifică.');
   }
 
-  // 4) Incredere scazuta -> verificare recomandata.
+  // 4) Incredere scazuta -> avertisment diagnostic. Nu autorizeaza si nu blocheaza politica.
   const conf = opts.incredere;
   const minConf = opts.minConfidence != null ? opts.minConfidence : 70;
   if (conf != null && Number.isFinite(Number(conf)) && Number(conf) < minConf) {

@@ -185,6 +185,27 @@ npm run revizie-autonomie -- --payload aprobare.json [keyId]
 npm run revizie-autonomie -- --key-id public.pem
 ```
 
+## 5.2 Scorul AI și politica de risc
+
+Scorul de încredere raportat de extractor nu este fapt contabil, temei legal sau dovadă fiscală.
+Rolurile sunt separate tehnic:
+
+- AI-ul extrage câmpuri și propune tipul documentului;
+- o eventuală identificare AI a schimbărilor legislative poate crea numai un candidat de analiză,
+  fără să modifice sau să activeze un `FiscalRuleSet`;
+- `extractQuality` execută reconcilierea și controalele deterministe;
+- `documentTypes` și `entriesService` calculează și compun articolul, declarațiile rămân în
+  generatoarele deterministe;
+- `extractRiskPolicy` decide `auto_draft` sau `abstain` și nu poate produce o postare finală.
+
+Politica este fail-closed și versionată prin SHA-256. Un scor de 99% fără istoric real primește
+`abstain`. Calibrarea cere minimum 30 de documente revizuite în ultimele 180 de zile pentru aceeași
+combinație provider AI/model/format/tip de document/bandă de scor, rată totală de corecție de maximum 5% și zero
+corecții ale tipului, bazei, TVA-ului, cotei sau totalului. Confirmările și corecțiile sunt derivate
+pe server din diferența dintre extragerea păstrată și articolul salvat de om; nu sunt declarații
+trimise de client. Schimbarea identității extractorului ori a formatului invalidează implicit
+calibrarea, deoarece începe o grupă nouă.
+
 ## 6. Jurnalul reviziilor de specialitate
 
 | Data | Cine | Ce s-a revizuit | Concluzie |

@@ -659,29 +659,34 @@ export function calitateRaportHtml(r) {
   const kpiCard = (lbl, val, sub) => `<div class="kpi"><div class="lbl">${H(lbl)}</div><div class="val">${H(val)}</div><div class="sub">${H(sub || '')}</div></div>`;
   const kpi = `<div class="kpis">${
     kpiCard('Documente citite', r.documenteCitite, 'în ultimele ' + (r.zile || '—') + ' zile')
-    + kpiCard('Scor mediu', r.scorMediu == null ? '—' : r.scorMediu + '%', 'media controalelor trecute')
-    + kpiCard('Au trecut toate controalele', r.eligibileAutomat == null ? r.postateAutomat : r.eligibileAutomat, 'pot primi o ciornă automată')
+    + kpiCard('Scor diagnostic mediu', r.scorMediu == null ? '—' : r.scorMediu + '%', 'nu este dovadă fiscală')
+    + kpiCard('Acceptate de politica de risc', r.eligibileAutomat == null ? r.postateAutomat : r.eligibileAutomat, 'pot primi numai o ciornă')
     + kpiCard('Rată de corecție', r.rataCorectie + '%', 'din documentele revizuite')}</div>`;
   const stare = (r.autoDraftActiv == null ? r.autoPostActiv : r.autoDraftActiv)
-    ? '<p class="muted">Pregătirea automată e <b>pornită</b>: documentele care trec toate controalele primesc o ciornă; un om o verifică înainte de postare.</p>'
+    ? '<p class="muted">Pregătirea automată e <b>pornită</b>: controalele deterministe și politica calibrată pot crea numai o ciornă; un om o verifică înainte de postare.</p>'
     : '<p class="muted">Pregătirea automată e <b>oprită</b> (implicit). Se poate porni din Setări → datele firmei; nu postează niciodată fără verificare umană.</p>';
-  // CINE a citit documentele. „Încrederea" e o auto-raportare a extractorului, deci scala ei
-  // aparține modelului, nu documentului: la schimbarea modelului, aceleași documente pot primi
-  // note vizibil diferite. Fără tabelul ăsta, efectul ar apărea ca „nu mai trece nimic de
-  // controale", fără nicio urmă a cauzei.
+  // CINE a citit documentele. Increderea ramane diagnostic; politica foloseste numai performanta
+  // observata a benzii pe documente reale revizuite.
   const modele = (r.modele || []).length
-    ? `<h3>Cine a citit documentele</h3><table><thead><tr><th>Extractor</th><th class="num">Documente</th><th class="num">Încredere medie</th><th class="num">Au trecut toate controalele</th></tr></thead><tbody>${
+    ? `<h3>Cine a citit documentele</h3><table><thead><tr><th>Extractor</th><th class="num">Documente</th><th class="num">Încredere medie</th><th class="num">Acceptate de politica de risc</th></tr></thead><tbody>${
       r.modele.map((m) => `<tr><td>${H(m.model || 'reguli locale (fără AI)')}</td><td class="num">${H(m.documente)}</td>
         <td class="num">${m.incredereMedie == null ? '—' : H(m.incredereMedie + '%')}</td><td class="num">${H(m.eligibileAutomat == null ? m.postateAutomat : m.eligibileAutomat)}</td></tr>`).join('')}</tbody></table>
-      <p class="muted">Încrederea e nota pe care și-o dă singur extractorul, iar scala ei diferă de la un model la altul — compară pe linii, nu între ele. Regulile locale nu raportează încredere.</p>`
+      <p class="muted">Încrederea e nota pe care și-o dă singur extractorul. Nu autorizează nimic; indică doar banda în care se măsoară rata reală de corecție. Regulile locale nu raportează încredere.</p>`
     : '';
+  const calibrari = (r.calibrari || []).length
+    ? `<h3>Calibrare pe documente reale revizuite</h3><table><thead><tr><th>Provider AI / model</th><th>Format / tip / bandă</th><th class="num">Eșantion</th><th class="num">Corecții</th><th class="num">Impact fiscal</th><th>Verdict</th></tr></thead><tbody>${
+      r.calibrari.map((c) => `<tr><td>${H((c.key.provider || '—') + ' / ' + (c.key.model || 'reguli locale'))}</td>
+        <td>${H(c.key.format + ' / ' + (c.key.documentType || 'tip necunoscut') + ' / ' + (c.key.confidenceBand || 'fără scor'))}</td><td class="num">${H(c.samples)}</td>
+        <td class="num">${H(c.correctionRate + '%')}</td><td class="num">${H(c.fiscalCorrections)}</td><td>${H(c.status)}</td></tr>`).join('')}</tbody></table>
+      <p class="muted">Fără eșantionul minim și fără o rată acceptabilă, politica se abține chiar dacă AI raportează 99%.</p>`
+    : '<p class="muted">Calibrarea automatizării nu are încă suficiente documente reale revizuite.</p>';
   const recente = (r.recente || []).length
     ? `<h3>Ultimele corecții</h3><table><thead><tr><th>Document</th><th>Furnizor</th><th>Ce s-a corectat</th><th>Motiv</th></tr></thead><tbody>${
       r.recente.slice(0, 10).map((x) => `<tr><td>${H(x.fileName)} <span class="muted">${H(x.format)}</span></td><td>${H(x.partener)}</td>
         <td class="muted">${H((x.campuri || []).map((c) => c.camp).join(', ') || (x.tipExtras !== x.tipSalvat ? 'tipul documentului' : '—'))}</td>
         <td class="muted">${H(x.motiv || '—')}</td></tr>`).join('')}</tbody></table>`
     : '';
-  return kpi + stare + modele + tabel('Furnizori care cer corecții', r.furnizori, 'Furnizor')
+  return kpi + stare + modele + calibrari + tabel('Furnizori care cer corecții', r.furnizori, 'Furnizor')
     + tabel('Formate care cer corecții', r.formate, 'Format')
     // aceeași formă ca pe furnizori/formate: „pe cine merită să-l repari" devine, aici,
     // „extractorul ăsta cere mai multe corecții decât cel dinaintea lui?"

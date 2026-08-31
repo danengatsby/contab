@@ -1,28 +1,27 @@
 'use strict';
 
-// CONTROLUL CALITATII EXTRAGERII — bateria de verificari care decide daca un document citit
-// automat (AI sau reguli locale) poate deveni articol contabil FARA om, sau trebuie revizuit.
+// CONTROLUL CALITATII EXTRAGERII — bateria de verificari deterministe aplicata unui document citit
+// automat. Modulul nu autorizeaza automatizarea; politica separata din extractRiskPolicy decide.
 //
 // De ce o baterie explicita si nu doar „increderea" raportata de model: increderea e o parere a
 // extractorului despre sine. Ea nu stie daca partenerul exista in nomenclator, daca documentul e
 // deja inregistrat, daca data cade intr-o luna inchisa sau daca sumele se aduna. Fiecare control
 // de aici e o intrebare VERIFICABILA pe datele firmei, cu raspuns da/nu si un motiv in cuvinte.
 //
-// Regula produsului, deliberat asimetrica: se posteaza automat doar daca trec TOATE controalele
-// BLOCANTE; orice indoiala trimite documentul la revizuire. Un fals-pozitiv (articol gresit postat
-// tacut) costa o corectie contabila prin storno si strica raportarile; un fals-negativ costa
-// treizeci de secunde de om. Pragul nu se muta „ca sa treaca mai multe".
+// Regula produsului, deliberat asimetrica: orice control determinist BLOCANT picat obliga politica
+// de risc sa se abtina. Chiar daca toate trec, automatizarea nu este autorizata pana cand
+// extractorul nu este calibrat separat pe rezultate reale revizuite.
 //
-// Scorul (0-100) NU decide nimic — e pentru raportare si pentru a vedea tendinta pe furnizor/format.
-// Decizia se ia pe controale, nu pe scor: un scor mare cu un duplicat detectat trebuie sa pice.
+// Scorurile (cel tehnic si cel auto-raportat de AI) NU decid nimic. Scorul AI este semnal
+// informativ si cheie de calibrare, niciodata dovada fiscala sau control blocant.
 
 const { round2, period: periodOf } = require('./util');
 const extractCheck = require('./extractCheck');
 
 // Fiecare control: greutatea conteaza DOAR in scor. `blocant` decide postarea automata.
 const CONTROALE = [
-  { cod: 'sursa', nume: 'Sursa extragerii', greutate: 10, blocant: true },
-  { cod: 'incredere', nume: 'Încredere raportată', greutate: 15, blocant: true },
+  { cod: 'sursa', nume: 'Sursa extragerii (informativ)', greutate: 10, blocant: false },
+  { cod: 'incredere', nume: 'Încredere AI (informativ)', greutate: 15, blocant: false },
   { cod: 'aritmetica', nume: 'Bază + TVA = total', greutate: 20, blocant: true },
   { cod: 'cota', nume: 'Cotă TVA validă', greutate: 10, blocant: true },
   { cod: 'data', nume: 'Dată utilizabilă', greutate: 10, blocant: true },
@@ -33,7 +32,9 @@ const CONTROALE = [
 ];
 const COD_CONTROALE = CONTROALE.map((c) => c.cod);
 
-const MIN_INCREDERE = 85; // peste pragul de avertizare din extractCheck (70): postarea fara om cere mai mult
+// Prag exclusiv DIAGNOSTIC. Poate produce un avertisment, dar nu poate autoriza sau opri singur
+// automatizarea; extractRiskPolicy foloseste performanta observata a benzii, nu acest numar.
+const MIN_INCREDERE = 85;
 
 function num(x) { return x == null || x === '' ? null : Number(x); }
 function areValoare(x) { return x != null && x !== '' && Number.isFinite(Number(x)); }
@@ -69,7 +70,7 @@ function gasesteDuplicat(v, fields, _tip) {
  * Ruleaza bateria de controale.
  * @param {Object} extras - { fields, suggestedType, source: 'ai'|'heuristic', incredere, fileName }
  * @param {Object} ctx    - { v (vedere scoped), firma, azi, minIncredere }
- * @returns { scor, decizie: 'auto'|'revizuire', controale:[...], motive:[...] }
+ * @returns { scor, verdictDeterminist: 'trecut'|'respins', controale:[...], motive:[...] }
  */
 function evalueaza(extras, ctx) {
   const e = extras || {};
@@ -82,10 +83,8 @@ function evalueaza(extras, ctx) {
   const rez = {};
   const pune = (cod, ok, motiv) => { rez[cod] = { ok: !!ok, motiv: ok ? null : motiv }; };
 
-  // 1) SURSA. Regulile locale citesc doar text si ghicesc mai slab decat modelul; nu interzic
-  //    postarea prin ele, dar cer ca restul controalelor sa fie impecabile — de aceea nu sunt
-  //    „ok" automat: un document citit euristic ramane in revizuire pana cand cineva confirma
-  //    ca formatul acelui furnizor se citeste corect (vezi istoricul de interventii).
+  // 1) SURSA este diagnostic aici. Politica separata decide daca o sursa are voie sa pregateasca
+  //    o ciorna; in versiunea curenta, regulile locale raman intotdeauna la revizuire.
   pune('sursa', e.source === 'ai', e.source === 'heuristic'
     ? 'Citit cu reguli locale (fără AI) — precizia e mai mică pe formate necunoscute.'
     : 'Sursa extragerii e necunoscută.');
@@ -94,7 +93,8 @@ function evalueaza(extras, ctx) {
   if (e.source !== 'ai') pune('incredere', false, 'Fără scor de încredere (extragere fără AI).');
   else if (!areValoare(e.incredere)) pune('incredere', false, 'Extractorul nu a raportat un scor de încredere.');
   else pune('incredere', Number(e.incredere) >= minIncredere,
-    'Încredere ' + Math.round(Number(e.incredere)) + '% sub pragul de ' + minIncredere + '% cerut pentru postare automată.');
+    'Încredere ' + Math.round(Number(e.incredere)) + '% sub pragul diagnostic de ' + minIncredere
+      + '%. Numărul nu autorizează automatizarea.');
 
   // 3) ARITMETICA + 4) COTA — reconcilierea existenta e sursa unica a acestor doua verdicte.
   const chk = extractCheck.reconcile(f, { incredere: e.incredere, standardCota: c.standardCota, minConfidence: minIncredere });
@@ -143,7 +143,7 @@ function evalueaza(extras, ctx) {
   const picate = controale.filter((x) => !x.ok && x.blocant);
   return {
     scor: Math.round((castigat / total) * 100),
-    decizie: picate.length === 0 ? 'auto' : 'revizuire',
+    verdictDeterminist: picate.length === 0 ? 'trecut' : 'respins',
     controale,
     motive: picate.map((x) => x.motiv).filter(Boolean),
     fields: chk.fields,          // campurile dupa completarea golurilor derivabile

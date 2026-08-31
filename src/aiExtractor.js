@@ -72,7 +72,7 @@ function buildSchema() {
       suma: { type: 'number', description: 'Totalul de plata (baza + TVA) sau suma operatiunii in lei.' },
       brut: { type: 'number', description: 'Doar pentru state de plata: total salarii brute. 0 in rest.' },
       cuis: { type: 'array', items: { type: 'string' }, description: 'CUI-urile gasite in document.' },
-      incredere: { type: 'integer', description: 'Increderea in extragere, 0-100.' },
+      incredere: { type: 'integer', minimum: 0, maximum: 100, description: 'Increderea in extragere, 0-100.' },
       motiv: { type: 'string', description: 'O propozitie scurta despre cum a fost ales tipul.' },
     },
     required: ['suggestedType', 'partener', 'document', 'data', 'baza', 'tva', 'cota', 'suma', 'brut', 'cuis', 'incredere', 'motiv'],
@@ -95,6 +95,7 @@ ${types}
 Reguli:
 - Sumele sunt in lei (RON), cu punct ca separator zecimal in raspuns (ex: 1050.00).
 - baza = valoarea fara TVA, tva = valoarea TVA, suma = totalul de plata. Verifica: suma ≈ baza + tva.
+- Nu calcula obligatii fiscale, eligibilitate, declaratii sau linii contabile. Extrage numai ce scrie in document si propune tipul.
 - Daca documentul este o factura de marfuri/produse fara alt indiciu, foloseste tipul de marfuri.
 - Daca nu poti citi o valoare, pune 0 (numeric) sau sir gol (text). Nu inventa.
 - Raspunde DOAR cu obiectul JSON cerut de schema.`;
@@ -248,10 +249,11 @@ async function extractWithAI(buffer, ownCui) {
     // CE model a produs cifrele de mai jos. `incredere` e o AUTO-RAPORTARE a modelului, deci
     // scala ei ii apartine lui, nu documentului: masurat pe acelasi set de 6 documente,
     // claude-sonnet-5 raporteaza ~13 puncte mai putin decat claude-sonnet-4-6 la acuratete
-    // identica. Fara acest camp, numarul e neinterpretabil retroactiv si o recalibrare a
-    // pragului de postare automata n-are pe ce se sprijini.
+    // identica. Fara acest camp, numarul e neinterpretabil retroactiv si rezultatele reale nu
+    // pot fi impartite in grupele corecte de calibrare. Scorul nu autorizeaza automatizarea.
     model: providerInfo.model,
-    incredere: Number(data.incredere) || null,
+    incredere: Number.isFinite(Number(data.incredere)) && Number(data.incredere) >= 0 && Number(data.incredere) <= 100
+      ? Number(data.incredere) : null,
     motiv: data.motiv || '',
   };
 }

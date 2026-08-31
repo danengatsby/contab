@@ -16,6 +16,7 @@ const metrics = require('../metrics');
 const legal = require('../legalCompliance');
 const { extractFromPdf } = require('../extractor');
 const extractQuality = require('../extractQuality');
+const extractRiskPolicy = require('../extractRiskPolicy');
 const entriesService = require('../entriesService');
 const fiscal = require('../fiscal');
 const { getType } = require('../documentTypes');
@@ -105,16 +106,29 @@ module.exports = function register(app, ctx) {
     // partener cunoscut, duplicat, tip) + reconcilierea post-extragere. Intoarce si campurile cu
     // golurile derivabile completate — deci inlocuieste apelul separat catre extractCheck.
     const fid = activeId(req);
-    const calitate = extractQuality.evalueaza(
+    const format = extractQuality.formatFisier(req.file.originalname);
+    const controlDeterminist = extractQuality.evalueaza(
       { fields: extracted.fields || {}, suggestedType: extracted.suggestedType, source, incredere: extra.incredere, fileName: req.file.originalname },
       { v: S(req), firma: db.getFirma(fid) || {}, standardCota: (() => {
         try { return fiscal.rulesAt((extracted.fields || {}).data).rates.tvaStandard; } catch (_) { return 0; }
       })() }
     );
-    extracted.fields = calitate.fields;
-    if (calitate.avertismente.length) extra.checkWarnings = calitate.avertismente;
-    extra.needsReview = calitate.decizie !== 'auto';
-    extra.calitate = { scor: calitate.scor, decizie: calitate.decizie, controale: calitate.controale, motive: calitate.motive };
+    extracted.fields = controlDeterminist.fields;
+    if (controlDeterminist.avertismente.length) extra.checkWarnings = controlDeterminist.avertismente;
+    const politicaRisc = extractRiskPolicy.decide({
+      quality: controlDeterminist,
+      extraction: { source, provider: extra.provider, model: extra.model, format,
+        suggestedType: extracted.suggestedType, incredere: extra.incredere },
+      interventions: (d.extractInterventions || []).filter((row) => row.firmaId === fid),
+    });
+    const decizie = politicaRisc.decision === 'auto_draft' ? 'auto' : 'revizuire';
+    extra.needsReview = politicaRisc.decision !== 'auto_draft';
+    extra.calitate = {
+      scor: controlDeterminist.scor, decizie,
+      verdictDeterminist: controlDeterminist.verdictDeterminist,
+      controale: controlDeterminist.controale, motive: politicaRisc.reasons,
+      politicaRisc,
+    };
 
     const docId = db.nextId('doc');
     d.documents.push({
@@ -144,37 +158,57 @@ module.exports = function register(app, ctx) {
         },
         suggestedType: extracted.suggestedType,
         fields: extracted.fields,
-        scor: calitate.scor,
-        decizie: calitate.decizie,
-        controalePicate: calitate.controale.filter((c) => !c.ok).map((c) => c.cod),
-        format: extractQuality.formatFisier(req.file.originalname),
+        scor: controlDeterminist.scor,
+        decizie,
+        verdictDeterminist: controlDeterminist.verdictDeterminist,
+        politicaRisc,
+        controalePicate: controlDeterminist.controale.filter((c) => !c.ok).map((c) => c.cod),
+        format,
       },
     });
     logAudit('document.upload', uploadDetail(req.file) + ', extragere: ' + source
-      + ', optiune AI document: ' + aiMode + ', calitate: ' + calitate.scor + '% ' + calitate.decizie, { req });
+      + ', optiune AI document: ' + aiMode + ', control determinist: ' + controlDeterminist.verdictDeterminist
+      + ', politica risc: ' + politicaRisc.code, { req });
     logAudit(source === 'ai' ? 'document.ai.transmitted' : 'document.ai.not_transmitted',
       docId + ' · ' + (source === 'ai' ? (extra.provider + '/' + extra.model) : ('mod ' + aiMode))
         + ' · scop extragere campuri · ' + Math.max(1, Math.round(req.file.size / 1024)) + ' KB', { req });
     db.save();
 
-    // POSTARE AUTOMATA — doar daca firma a cerut-o EXPLICIT si toate controalele blocante trec.
+    // AUTO-CIORNA — doar daca firma a cerut-o EXPLICIT, controalele deterministe trec si politica
+    // de risc a calibrat exact providerul/modelul/formatul/tipul/banda pe documente revizuite.
     // Optiunea e implicit oprita: a scrie in contabilitate fara om nu e o valoare implicita
     // rezonabila. Daca crearea esueaza dintr-un motiv de business (perioada inchisa, guard fiscal),
     // NU e o eroare a cererii: documentul ramane la revizuire, cu motivul aratat.
     const firmaCfg = db.getFirma(fid) || {};
-    if (firmaCfg.autoPostDocumente && calitate.decizie === 'auto') {
+    if (firmaCfg.autoPostDocumente && politicaRisc.decision === 'auto_draft') {
       try {
-        // Automatizarea propune o CIORNA trasabila. Calitatea tehnica a extragerii nu inlocuieste
-        // verificarea documentului justificativ si nici aprobarea umana.
+        // LLM-ul nu furnizeaza linii contabile si nu calculeaza obligatii. createEntry cheama
+        // buildEntry/documentTypes: singurul motor autorizat sa compuna determinist articolul.
         const r = entriesService.createEntry(fid, { tip: extracted.suggestedType, fields: extracted.fields, fileId: docId, ciorna: true, automat: true }, { buildEntry, upsertPartner, actor: req.user });
         const doc = d.documents.find((x) => x.id === docId && x.firmaId === fid);
-        if (doc && doc.extras) doc.extras.autoCiorna = { entryId: r.entry.id, at: new Date().toISOString() };
-        logAudit('document.autodraft', r.entry.id + ' (' + extracted.suggestedType + ', scor ' + calitate.scor + '%)', { req });
-        extra.autoCiorna = { entryId: r.entry.id, tip: extracted.suggestedType, status: 'ciorna' };
+        const autoCiorna = { entryId: r.entry.id, tip: extracted.suggestedType, status: 'ciorna',
+          at: new Date().toISOString(), engine: politicaRisc.deterministicEngine,
+          riskPolicyHash: politicaRisc.policyHash };
+        if (doc && doc.extras) doc.extras.autoCiorna = autoCiorna;
+        logAudit('document.autodraft', r.entry.id + ' (' + extracted.suggestedType + ', politica '
+          + politicaRisc.policyHash.slice(0, 12) + ', motor determinist)', { req });
+        extra.autoCiorna = autoCiorna;
+        db.save();
       } catch (e) {
         extra.needsReview = true;
         extra.calitate.decizie = 'revizuire';
+        const refusal = Object.assign({}, politicaRisc, {
+          decision: 'abstain', code: 'deterministic_engine_refusal',
+          reasons: ['Motorul determinist a refuzat ciorna: ' + (e.message || e)],
+        });
+        extra.calitate.politicaRisc = refusal;
         extra.calitate.motive = (extra.calitate.motive || []).concat(['Postarea automată a fost oprită: ' + (e.message || e)]);
+        const doc = d.documents.find((x) => x.id === docId && x.firmaId === fid);
+        if (doc && doc.extras) {
+          doc.extras.decizie = 'revizuire';
+          doc.extras.politicaRisc = refusal;
+        }
+        db.save();
       }
     }
 
@@ -192,17 +226,8 @@ module.exports = function register(app, ctx) {
     }, extra));
   }));
 
-  /**
-   * Defalcarea documentelor citite pe MODELUL care le-a citit.
-   *
-   * `incredere` e o auto-raportare a modelului, deci scala ei ii apartine LUI, nu documentului:
-   * pe acelasi set de 6 documente, claude-sonnet-5 raporteaza in medie 74 acolo unde
-   * claude-sonnet-4-6 raporta 87 — la acuratete identica pe campuri. Cum pragul de postare
-   * automata (MIN_INCREDERE din extractQuality) a fost calibrat pe scala unui model anume,
-   * o schimbare de model muta tacit intelesul numarului. Fara defalcarea asta, simptomul ar fi
-   * „nu se mai pregateste nicio ciorna automat", fara vinovat si fara din ce reconstitui cauza.
-   * Documentele citite cu reguli locale au `model: null` si se raporteaza ca atare.
-   */
+  /** Defalcarea documentelor citite pe MODEL. Scorul ramane diagnostic; eligibilitatea vine din
+   * politica versionata si calibrarea empirica, nu din compararea lui cu un prag global. */
   function defalcarePeModel(docs) {
     const g = new Map();
     for (const x of docs) {
@@ -250,6 +275,13 @@ module.exports = function register(app, ctx) {
       eligibileAutomat: auto.filter((x) => x.extras.decizie === 'auto').length,
       scorMediu: auto.length ? Math.round(auto.reduce((s, x) => s + (Number(x.extras.scor) || 0), 0) / auto.length) : null,
       modele: defalcarePeModel(auto),
+      calibrari: extractRiskPolicy.report((db.get().extractInterventions || []).filter((row) => row.firmaId === fid)),
+      politicaRisc: {
+        id: extractRiskPolicy.POLICY_ID, hash: extractRiskPolicy.POLICY_HASH,
+        minimumSamples: extractRiskPolicy.MIN_REVIEWED_SAMPLES,
+        maximumCorrectionRate: extractRiskPolicy.MAX_CORRECTION_RATE,
+        windowDays: extractRiskPolicy.CALIBRATION_WINDOW_DAYS,
+      },
       autoPostActiv: !!(db.getFirma(fid) || {}).autoPostDocumente,
       autoDraftActiv: !!(db.getFirma(fid) || {}).autoPostDocumente,
       controale: extractQuality.CONTROALE.map((c) => ({ cod: c.cod, nume: c.nume })),

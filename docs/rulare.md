@@ -233,6 +233,16 @@ Avantajul față de regulile locale: citește facturi în orice format, inclusiv
 **PDF-uri scanate** (prin viziune). Poți activa/dezactiva din Setări. Modelul se
 poate schimba cu `CONTAB_AI_MODEL=...`.
 
+AI-ul extrage câmpuri și propune clasificarea; nu produce linii contabile și nu calculează
+obligația fiscală finală. `src/extractQuality.js` execută verificările deterministe, motorul
+`documentTypes` compune articolul, iar `src/extractRiskPolicy.js` decide între o **ciornă** și
+abstentionare. Încrederea 0–100 raportată de model este numai semnal diagnostic și cheie de bandă,
+nu dovadă fiscală. O bandă devine eligibilă numai după minimum 30 de documente reale revizuite
+pentru aceeași combinație provider AI/model/format/tip de document, maximum 5% corecții și zero corecții ale
+tipului sau câmpurilor cu impact fiscal, într-o fereastră de 180 de zile. Schimbarea modelului,
+formatului ori benzii pornește o calibrare distinctă. Chiar și atunci se creează doar o ciornă;
+postarea rămâne în fluxul de validare/aprobare.
+
 Traducerea surselor cărții folosește aceeași cheie Anthropic prin
 `npm run traduce-carte-en`. Modelul poate fi ales separat cu
 `CONTAB_BOOK_TRANSLATION_MODEL=...`; dacă lipsește, se folosește `CONTAB_AI_MODEL`.
