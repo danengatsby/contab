@@ -379,6 +379,7 @@ function postStatPlata(fid, period, deps) {
     id: db.nextId('ph'), firmaId: fid, period, ts: new Date().toISOString(), formatVersion: 4,
     entryId: entry.id,
     ruleSetId: sp.ruleSetId, fiscalRulesHash: sp.fiscalRulesHash,
+    fiscalTreatmentsHash: sp.fiscalTreatmentsHash,
     // `beneficii` NU e decor in instantaneu: plafoanele anuale de la art. 76 alin. (4^1) lit. d)-g)
     // (turism, pensii, sanatate, sport) se consuma pe an, iar `beneficii.consumAnual()` citeste
     // exact de aici cat s-a acordat deja neimpozabil. Fara el, fiecare luna ar reporni de la

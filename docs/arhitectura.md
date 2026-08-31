@@ -35,7 +35,20 @@
   (vânzări, cumpărări, trezorerie, salarii…); `index.js` le asamblează în ordinea din UI,
   `helpers.js` ține câmpurile comune și constructorul de linii contabile.
 - `src/extractor.js` — extragere text din PDF (pdf-parse + pdf2json) și euristici RO.
-- `src/fiscal.js` — parametri fiscali 2026 + calculul salariului din brut (CAS/CASS/impozit/CAM).
+- `src/fiscal.js` + `src/fiscalRules.js` + `src/fiscalTreatments.js` — registrul fiscal temporal.
+  Un `FiscalRuleSet` schema 2 nu mai sigilează numai cote și praguri: include snapshot-uri
+  imuabile ale tratamentelor executabile, fiecare cu condiții de aplicare, fapte obligatorii,
+  formulă într-un AST închis (fără `eval`), excepții, temei legal exact, valabilitate, exemple
+  aprobate, risc și contractul semnăturii Ed25519. Motorul întoarce o decizie deterministă cu
+  `decisionId`, hash-urile regulii și RuleSet-ului, faptele folosite, rezultat, explicație și
+  dovezile reviziei; salarizarea, PFA, dividendele, D100, impozitul pe profit și limitările auto
+  consumă aceste decizii, în loc să recopieze formula finală. Lipsa unui fapt produce
+  `undetermined`, iar o excepție produce `review_required`, niciodată zero inventat.
+  Eligibilitatea autonomă este fail-closed: cere simultan corpus fiscal semnat și verificat,
+  proveniență hash-uită pentru fiecare fapt, politica explicită a firmei și risc sub `critical`.
+  Semnăturile reale rămân atestări separate (altfel hash-ul regulii ar fi autoreferențial), dar
+  sunt atașate deciziei. Hash-urile vechi schema 1 sunt acceptate numai la verificarea articolelor
+  istorice fără snapshot de tratamente; calculele noi emit exclusiv hash-ul schema 2.
 - `src/fiscalProfile.js` — profilul fiscal normalizat și istoricul temporal din tabelul
   `fiscal_profile_history`. Reviziile sunt fotografii complete cu `validFrom`/`validTo` și
   `recordedAt` (momentul consemnării, separat de intervalul efectiv);

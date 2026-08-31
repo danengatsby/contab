@@ -2,7 +2,7 @@
 
 // CONSTRUCTII + HORECA + INTRACOMUNITAR/VALUTA + TRANSPORT — vezi index.js pentru contractul tipurilor.
 
-const { L, F, TROZ, rate } = require('./helpers');
+const { L, F, TROZ, rate, treatment } = require('./helpers');
 const { round2 } = require('../util');
 
 module.exports = [
@@ -135,8 +135,11 @@ module.exports = [
     fields: [F.data, F.partener, F.cuiFurnizor, F.document, F.baza, F.cota, F.proRataMixt],
     build: (d) => {
       const tvaTotal = round2((d.baza * (Number(d.cota) || rate(d, 'tvaStandard'))) / 100);
-      const tvaDed = round2(tvaTotal * rate(d, 'deductibilitateTvaAutoLimitat') / 100);
-      const tvaNed = round2(tvaTotal - tvaDed);
+      const decision = treatment(d, 'ro.vat.vehicle_limited_deduction',
+        { inputVat: tvaTotal, exclusiveBusinessUse: false });
+      const tvaDed = decision ? decision.result.deductibleVat
+        : round2(tvaTotal * rate(d, 'deductibilitateTvaAutoLimitat') / 100);
+      const tvaNed = decision ? decision.result.nondeductibleVat : round2(tvaTotal - tvaDed);
       const lines = [L('6022', '401', d.baza, 'Cheltuieli combustibili')];
       if (tvaDed > 0) lines.push(L('4426', '401', tvaDed, 'TVA deductibilă 50%'));
       if (tvaNed > 0) lines.push(L('6022', '401', tvaNed, 'TVA nedeductibilă 50% (în cheltuială)'));

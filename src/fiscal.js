@@ -10,6 +10,13 @@ const DEFAULTS = Object.freeze(Object.assign({}, cfg.RATES));
 const FISCAL = Object.freeze(Object.assign({}, registry.all()[registry.all().length - 1].rates));
 
 function rulesAt(value) { return registry.at(value); }
+function treatmentAt(value, id) { return registry.treatmentAt(value, id); }
+function evaluateTreatment(value, id, facts, options) {
+  return registry.evaluateTreatment(value, id, facts, options);
+}
+function evaluateTreatmentForAutonomy(value, id, facts, options) {
+  return registry.evaluateTreatmentForAutonomy(value, id, facts, options);
+}
 function rateContext(value, explicit) {
   if (explicit && explicit.rates && explicit.id && explicit.hash) return explicit;
   return rulesAt(value);
@@ -89,22 +96,27 @@ function payroll(brut, deducere, opts) {
   const cmCuCass = Math.max(0, Math.min(round2(o.cmCuCass) || 0, round2(cmA + cmF)));
   const nm = Math.max(0, Math.min(round2(o.neimpozabilMinim) || 0, b));
   const bazaCasReala = round2(b + avantaje + beneficiiImpozabile + cmA + cmF - nm);
-  const cas = round2((bazaCasReala * r.cas) / 100);
   const bazaCassReala = round2(b + tichete + avantaje + beneficiiImpozabile + cmCuCass - nm);
-  const cass = round2((bazaCassReala * r.cass) / 100); const bmin = round2(o.bazaMinima) || 0;
+  const casDecision = evaluateTreatment(rule, 'ro.payroll.cas', { base: bazaCasReala }, o.treatmentOptions);
+  const cassDecision = evaluateTreatment(rule, 'ro.payroll.cass', { base: bazaCassReala }, o.treatmentOptions);
+  const cas = casDecision.result.amount; const cass = cassDecision.result.amount;
+  const bmin = round2(o.bazaMinima) || 0;
   const casAngajator = bmin > bazaCasReala ? round2(((bmin - bazaCasReala) * r.cas) / 100) : 0;
   const cassAngajator = bmin > bazaCassReala ? round2(((bmin - bazaCassReala) * r.cass) / 100) : 0;
   const baza = Math.max(0, round2(b + tichete + avantaje + beneficiiImpozabile
     + cmA + cmF - nm - cas - cass - ded));
-  const impozit = round2((baza * r.impozitVenit) / 100);
-  const cam = round2(((b + avantaje + beneficiiImpozabile + cmA - nm) * r.cam) / 100);
+  const bazaCam = round2(b + avantaje + beneficiiImpozabile + cmA - nm);
+  const incomeTaxDecision = evaluateTreatment(rule, 'ro.payroll.income_tax', { base: baza }, o.treatmentOptions);
+  const camDecision = evaluateTreatment(rule, 'ro.payroll.cam', { base: bazaCam }, o.treatmentOptions);
+  const impozit = incomeTaxDecision.result.amount; const cam = camDecision.result.amount;
   return { brut: b, tichete, avantaje, beneficiiImpozabile, cmAngajator: cmA, cmFnuass: cmF,
     cmCuCass, neimpozabilMinim: nm, bazaCas: bazaCasReala, bazaCass: bazaCassReala,
     cas, cass, casAngajator, cassAngajator, baza, impozit, cam,
     net: round2(b + cmA + cmF - cas - cass - impozit),
     costTotal: round2(b + cmA + cam + tichete + casAngajator + cassAngajator),
     sector: o.sector || 'normal', scutImpozit: false, scutCass: false, overPlafon: false,
-    ruleSetId: rule.id, fiscalRulesHash: rule.hash };
+    ruleSetId: rule.id, fiscalRulesHash: rule.hash, fiscalTreatmentsHash: rule.treatmentsHash,
+    treatmentDecisions: [casDecision, cassDecision, incomeTaxDecision, camDecision] };
 }
 function retinereLaSursa(fel, brut, cota, opts) {
   const o = opts || {}; const rule = rateContext(o.period, o.rules); const r = rule.rates;
@@ -114,28 +126,39 @@ function retinereLaSursa(fel, brut, cota, opts) {
   let baza = b;
   if (fel === 'chirii') baza = round2((b * (100 - Number(r.chiriiForfetarPct || 0))) / 100);
   else if (fel === 'premii') baza = round2(Math.max(0, b - Number(r.premiiNeimpozabil || 0)));
-  const impozit = round2((baza * c) / 100);
+  const treatmentDecision = fel === 'dividende' && !(Number.isFinite(Number(cota)) && Number(cota) > 0)
+    ? evaluateTreatment(rule, 'ro.withholding.dividends', { base: baza }, o.treatmentOptions) : null;
+  const impozit = treatmentDecision ? treatmentDecision.result.amount : round2((baza * c) / 100);
   return { brut: b, baza, cota: c, impozit, net: round2(b - impozit),
-    ruleSetId: rule.id, fiscalRulesHash: rule.hash };
+    ruleSetId: rule.id, fiscalRulesHash: rule.hash, fiscalTreatmentsHash: rule.treatmentsHash,
+    treatmentDecisions: treatmentDecision ? [treatmentDecision] : [] };
 }
 function taxePfa(venitNet, opts) {
   const o = opts || {}; const rule = rateContext(o.period, o.rules); const r = rule.rates;
   const sm = round2(Number(o.salariuMinim) || r.salariuMinim); const vn = Math.max(0, round2(venitNet) || 0);
   const p6 = round2(sm * cfg.PFA.plafonCassInf); const p12 = round2(sm * cfg.PFA.cas12);
   const p24 = round2(sm * cfg.PFA.cas24); const p60 = round2(sm * cfg.PFA.plafonCassSup);
-  const bazaCas = vn >= p24 ? p24 : vn >= p12 ? p12 : 0; const cas = round2((bazaCas * r.cas) / 100);
+  const bazaCas = vn >= p24 ? p24 : vn >= p12 ? p12 : 0;
   let bazaCass = vn > 0 ? (vn < p6 ? (o.areAlteVenituri ? vn : p6) : Math.min(vn, p60)) : 0;
-  bazaCass = round2(bazaCass); const cass = round2((bazaCass * r.cass) / 100);
-  const impozit = round2((Math.max(0, vn - cas - cass) * r.impozitVenit) / 100);
+  bazaCass = round2(bazaCass);
+  const casDecision = evaluateTreatment(rule, 'ro.pfa.cas', { base: bazaCas }, o.treatmentOptions);
+  const cassDecision = evaluateTreatment(rule, 'ro.pfa.cass', { base: bazaCass }, o.treatmentOptions);
+  const cas = casDecision.result.amount; const cass = cassDecision.result.amount;
+  const bazaImpozit = Math.max(0, round2(vn - cas - cass));
+  const incomeTaxDecision = evaluateTreatment(rule, 'ro.pfa.income_tax', { base: bazaImpozit }, o.treatmentOptions);
+  const impozit = incomeTaxDecision.result.amount;
   return { venitNet: vn, salariuMinim: sm, plafon6: p6, plafon12: p12, plafon24: p24, plafon60: p60,
     bazaCas, cas, bazaCass, cass, impozit, total: round2(cas + cass + impozit),
-    ruleSetId: rule.id, fiscalRulesHash: rule.hash };
+    ruleSetId: rule.id, fiscalRulesHash: rule.hash, fiscalTreatmentsHash: rule.treatmentsHash,
+    treatmentDecisions: [casDecision, cassDecision, incomeTaxDecision] };
 }
 
 module.exports = { FISCAL, DEFAULTS, applyConfig, rulesAt, ruleSetAt: rulesAt,
   ruleReferenceAt: registry.ref, allRuleSets: registry.all, configureRuleSets,
   createRuleSet: registry.create, appendRuleSet: registry.append, ruleSetById: registry.byId,
   registrySnapshot: registry.snapshot, registryHash: registry.registryHash,
-  verifyRuleReference: registry.verifyReference, retinereLaSursa, categoriiBeneficii,
+  verifyRuleReference: registry.verifyReference, treatmentAt, evaluateTreatment,
+  evaluateTreatmentForAutonomy,
+  retinereLaSursa, categoriiBeneficii,
   fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa,
   neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };

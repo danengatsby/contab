@@ -8,7 +8,23 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-30 — clasificarea fiscală 635/6581/654
+## Ultima verificare: 2026-08-31 — FiscalRuleSet schema 2 și tratamente executabile
+
+Introducerea registrului de tratamente executabile și mutarea formulelor CAS/CASS/impozit/CAM,
+PFA, dividende, micro, profit și limitări auto în decizii fiscale hash-uite nu au schimbat
+contractul XML. Poarta `scripts/poarta-fiscala.sh` a regenerat și validat **66 din 66 de ieșiri**:
+toate probele D100, D101, D107, D112, D177, D205, D300, D301, D307, D311, D390, D394 și D710,
+cele cinci variante D406, S1120/S1121/S1122 și e-Transport. Verdict: `POARTA DESCHISA`, fără
+ieșiri `INVALID` sau `NEVERIFICAT`. Schemele și versiunile validatoarelor sunt cele consemnate în
+tabelul de mai jos; mecanismul le-a reîmprospătat din manifestul ANAF conform ferestrelor lui de
+cache.
+
+Validarea oficială dovedește că refactorizarea nu a alterat fișierele acceptate de ANAF. Ea nu
+transformă singură o interpretare fiscală în aprobare profesională: eligibilitatea autonomă
+rămâne separată și fail-closed, în funcție de semnăturile Ed25519 ale corpusului și de dovezile
+faptelor tranzacției.
+
+## Verificarea anterioară: 2026-08-30 — clasificarea fiscală 635/6581/654
 
 După înlocuirea tratamentului fiscal fix pe cont cu clasificarea documentată a fiecărei linii,
 poarta forțată `scripts/poarta-fiscala.sh --intotdeauna` a regenerat și validat **66 din 66 de

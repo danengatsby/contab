@@ -4244,6 +4244,10 @@ const d100q = rep.d100micro(d100db, '2026-06');
 eq('D100: venit trimestrul II cumulat (apr+iun)', d100q.venit, 15000);
 eq('D100: trimestrul detectat', d100q.trimestru, 2);
 eq('D100: impozit micro 1% = 150', d100q.impozit, 150);
+ok('D100 pastreaza decizia executabila, nu doar cota micro', d100q.treatmentDecisions.length === 1
+  && d100q.treatmentDecisions[0].ruleId === 'ro.tax.micro'
+  && d100q.treatmentDecisions[0].result.amount === d100q.impozitBrut
+  && d100q.fiscalTreatmentsHash === fiscal.rulesAt('2026-06').treatmentsHash);
 ok('D100 XML bine-format', wellFormed(xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q)));
 ok('D100 XML v2: obligatia micro 121 cu cod bugetar, cota, scadenta si nr_evid pe 23 cifre', (() => {
   const x = xml.d100Xml({ cui: 'RO1', nume: 'X' }, '2026-06', d100q);
@@ -5030,6 +5034,10 @@ const ptEnt = [
 const pt = acc.profitTax({ entries: ptEnt }, '2026', 16);
 eq('profit impozabil = 10000 - 6000', pt.profitImpozabil, 4000);
 eq('impozit = 4000 × 16% = 640', pt.impozit, 640);
+ok('impozitul pe profit pastreaza regula, formula si temeiul aplicate', pt.treatmentDecisions.length === 1
+  && pt.treatmentDecisions[0].ruleId === 'ro.tax.profit'
+  && pt.treatmentDecisions[0].result.amount === pt.impozitBrut
+  && pt.treatmentDecisions[0].legalBasis[0].article.includes('art. 17'));
 eq('articol 691=4411', pt.lines[0].debit + '=' + pt.lines[0].credit, '691=4411');
 eq('691 exclus din baza (re-rulare cu impozit deja inregistrat -> tot 640)', acc.profitTax({ entries: ptEnt.concat([{ id: '3', period: '2026-12', data: '2026-12-31', lines: [{ debit: '691', credit: '4411', suma: 640 }] }]) }, '2026', 16).impozit, 640);
 const ptLoss = acc.profitTax({ entries: [{ id: '1', period: '2026-03', data: '2026-03-01', lines: [{ debit: '4111', credit: '707', suma: 5000 }] }, { id: '2', period: '2026-04', data: '2026-04-01', lines: [{ debit: '607', credit: '371', suma: 8000 }] }] }, '2026', 16);
@@ -5800,6 +5808,76 @@ eq('2025-01 foloseste 4050', fcfg.salariuMinimLa('2025-01'), 4050);
 eq('2026-08 foloseste 4325', fcfg.salariuMinimLa('2026-08'), 4325);
 eq('dividendele sunt 8% in 2024, 10% in 2025 si 16% in 2026',
   [2024, 2025, 2026].map((y) => fcfg.rulesAt(y + '-01').rates.impozitDividende).join(','), '8,10,16');
+const rules2026 = fcfg.rulesAt('2026-08');
+ok('FiscalRuleSet schema 2 include tratamentele, nu doar cotele', rules2026.schemaVersion === 2
+  && rules2026.treatments.length >= 13 && /^[0-9a-f]{64}$/.test(rules2026.treatmentsHash));
+ok('tratamentele si formulele publicate sunt imuabile', Object.isFrozen(rules2026.treatments)
+  && Object.isFrozen(rules2026.treatments[0]) && Object.isFrozen(rules2026.treatments[0].calculation));
+const malformedTreatment = JSON.parse(JSON.stringify(rules2026.treatments[0]));
+malformedTreatment.calculation.outputs.amount = ['div', 100]; delete malformedTreatment.hash;
+ok('AST-ul fiscal refuza formulele structural incomplete la publicare', (() => {
+  try { require('../src/fiscalTreatments').normalizeSnapshots([malformedTreatment]); return false; }
+  catch (e) { return /numar invalid de operanzi/.test(e.message); }
+})());
+const casRule = fcfg.treatmentAt(rules2026, 'ro.payroll.cas');
+ok('regula CAS poarta toate dimensiunile de autonomie', casRule
+  && casRule.appliesWhen && casRule.requiredFacts.length && casRule.calculation.outputs.amount
+  && casRule.exceptions.length && casRule.legalBasis[0].article && casRule.validFrom
+  && casRule.approvedExamples.includes('SAL-01') && casRule.risk === 'high'
+  && casRule.review.signatureAlgorithm === 'Ed25519');
+const casDecision = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: 5000 });
+ok('tratamentul CAS este executabil si explica rezultatul', casDecision.status === 'computed'
+  && casDecision.result.amount === 1250 && /25%.*5000.*1250/.test(casDecision.explanation)
+  && /^[0-9a-f]{64}$/.test(casDecision.decisionId) && casDecision.ruleHash === casRule.hash);
+const casMissing = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', {});
+ok('fapt obligatoriu lipsa -> nedeterminabil, niciodata zero inventat', casMissing.status === 'undetermined'
+  && casMissing.result === null && casMissing.missingFacts.includes('base') && !casMissing.autonomousEligible);
+const casNegative = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: -1 });
+ok('exceptia tratamentului cere revizuire', casNegative.status === 'review_required'
+  && /regularizare/.test(casNegative.reason) && !casNegative.autonomousEligible);
+const vehicleLimited = fcfg.evaluateTreatment(rules2026, 'ro.vat.vehicle_limited_deduction',
+  { inputVat: 1000, exclusiveBusinessUse: false });
+ok('tratamentul TVA auto produce ambele rezultate', vehicleLimited.status === 'computed'
+  && vehicleLimited.result.deductibleVat === 500 && vehicleLimited.result.nondeductibleVat === 500);
+const fuelType = require('../src/documentTypes/sectoare').find((type) => type.id === 'combustibil_50');
+const fuelFacts = { baza: 1000, cota: 21 };
+Object.defineProperty(fuelFacts, '_fiscalRuleSet', { value: rules2026, enumerable: false });
+const fuelLines = fuelType.build(fuelFacts);
+ok('documentul combustibil 50% executa si retine tratamentul TVA', fuelLines.find((line) => line.debit === '4426').suma === 105
+  && fuelFacts._fiscalTreatmentDecisions[0].ruleId === 'ro.vat.vehicle_limited_deduction'
+  && fuelFacts._fiscalTreatmentDecisions[0].facts.inputVat === 210);
+eq('utilizarea exclusiv economica scoate regula limitarii din aplicare',
+  fcfg.evaluateTreatment(rules2026, 'ro.vat.vehicle_limited_deduction',
+    { inputVat: 1000, exclusiveBusinessUse: true }).status, 'not_applicable');
+ok('fara semnaturile cazurilor, regula calculata nu devine autonoma', casDecision.review.status === 'pending'
+  && casDecision.review.missingCaseIds.includes('SAL-01') && !casDecision.autonomousEligible);
+const casAutonomous = fcfg.evaluateTreatmentForAutonomy(rules2026, 'ro.payroll.cas', { base: 5000 },
+  { autonomyPolicyApproved: true, factEvidence: { base: {
+    sourceId: 'payroll:2026-08:employee:test', sourceHash: 'a'.repeat(64), capturedAt: '2026-08-31T10:00:00.000Z',
+  } } });
+ok('poarta criptografica + provenienta + politica explicita deschid autonomia regulii', casAutonomous.review.status === 'approved'
+  && casAutonomous.review.approvals.length === casRule.review.requiredCaseIds.length
+  && casAutonomous.factEvidence.supplied.base.sourceId === 'payroll:2026-08:employee:test'
+  && casAutonomous.autonomousEligible);
+const casWithoutEvidence = fcfg.evaluateTreatmentForAutonomy(rules2026, 'ro.payroll.cas', { base: 5000 },
+  { autonomyPolicyApproved: true });
+ok('semnatura corpusului nu inlocuieste dovada faptelor tranzactiei', !casWithoutEvidence.autonomousEligible
+  && casWithoutEvidence.factEvidence.missingFacts.includes('base') && /provenienta/.test(casWithoutEvidence.autonomyReason));
+const fakeApprovals = Object.fromEntries(casRule.review.requiredCaseIds.map((id) => [id, { status: 'approved',
+  approval: { signature: 'fals', keyId: 'b'.repeat(64) } }]));
+ok('un JSON cu aprobari imitate nu poate deschide autonomia', !fcfg.evaluateTreatment(rules2026,
+  'ro.payroll.cas', { base: 5000 }, { reviewCases: fakeApprovals, reviewGateReady: true,
+    autonomyPolicyApproved: true, factEvidence: { base: { sourceId: 'x', sourceHash: 'a'.repeat(64) } } }).autonomousEligible);
+const criticalDecision = fcfg.evaluateTreatmentForAutonomy(rules2026, 'ro.tax.profit', { base: 10000 },
+  { autonomyPolicyApproved: true, factEvidence: { base: { sourceId: 'profit:2026', sourceHash: 'c'.repeat(64) } } });
+ok('riscul critic ramane cu poarta suplimentara', criticalDecision.result.amount === 1600
+  && criticalDecision.review.status === 'approved' && !criticalDecision.autonomousEligible
+  && /risc critic/.test(criticalDecision.autonomyReason));
+const payrollTrace = fcfg.payroll(5000, 0);
+ok('statul salarial consuma efectiv tratamentele si pastreaza urma', payrollTrace.cas === 1250
+  && payrollTrace.treatmentDecisions.length === 4
+  && payrollTrace.treatmentDecisions.find((x) => x.ruleId === 'ro.payroll.cas').result.amount === payrollTrace.cas
+  && payrollTrace.fiscalTreatmentsHash === rules2026.treatmentsHash);
 ok('anul neacoperit esueaza explicit', (() => { try { fcfg.rulesAt('2027-01'); return false; }
   catch (e) { return e.code === 'FISCAL_RULES_NOT_FOUND' && e.status === 422; } })());
 ok('suprascrierea globala veche este refuzata', (() => { try { fcfg.applyConfig({ cas: 21 }); return false; }
@@ -5810,7 +5888,21 @@ const draftRule = fcfg.createRuleSet({ baseRuleSetId: 'ro-2026-h2', validFrom: '
   rates: { cas: 21, an: 2027 } }, { publishedAt: '2026-12-20T10:00:00.000Z' });
 ok('versiunea noua are hash SHA-256 si este inghetata', /^[0-9a-f]{64}$/.test(draftRule.hash)
   && Object.isFrozen(draftRule) && Object.isFrozen(draftRule.rates));
+ok('hash-ul schema 2 acopera tratamentele, dar referinta istorica ramane verificabila',
+  draftRule.hash !== draftRule.legacyHashes[0] && draftRule.treatmentsHash === rules2026.treatmentsHash);
 fcfg.appendRuleSet(draftRule);
+eq('snapshot-ul tratamentelor supravietuieste republicarii fara rescriere',
+  fcfg.ruleSetById(draftRule.id).treatments[0].hash, draftRule.treatments[0].hash);
+const inheritedRule = fcfg.createRuleSet({ baseRuleSetId: draftRule.id, validFrom: '2028-01-01',
+  validTo: '2028-12-31', approvalId: 'REV-TEST-2028',
+  legalSources: [{ title: 'Act oficial de test 2028', url: 'https://legislatie.just.ro/test-2028' }],
+  rates: { cas: 22, an: 2028 } }, { publishedAt: '2027-12-20T10:00:00.000Z' });
+ok('o versiune derivata mosteneste snapshot-ul complet al tratamentelor de baza',
+  inheritedRule.treatmentsHash === draftRule.treatmentsHash
+  && inheritedRule.treatments.every((rule, index) => rule.hash === draftRule.treatments[index].hash));
+ok('verificatorul accepta hash-ul istoric fara sa-l emita pentru calcule noi',
+  fcfg.verifyRuleReference(draftRule.id, draftRule.legacyHashes[0])
+  && fcfg.verifyRuleReference(draftRule.id, draftRule.hash));
 eq('calculul 2027 foloseste exclusiv versiunea publicata', fcfg.payroll(5000, 0, { period: '2027-01' }).cas, 1050);
 fcfg.configureRuleSets([]); // simuleaza o reincarcare curata a registrului pentru restul suitei
 // Vechimea cotelor: semnal cand anul calendaristic depaseste anul de referinta al cotelor.

@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const cfg = require('./fiscalConfig');
+const treatmentRegistry = require('./fiscalTreatments');
 
 function fail(message, status) { const e = new Error(message); e.status = status || 400; throw e; }
 function canonical(value) {
@@ -54,13 +55,36 @@ function normalize(row, opts) {
   if (validTo && validTo < validFrom) fail('validTo nu poate fi anterior lui validFrom.');
   const approvalId = row.approvalId == null ? null : String(row.approvalId).trim();
   if (!o.builtin && !approvalId) fail('Publicarea necesita approvalId-ul reviziei fiscale.');
-  const normalized = { validFrom, validTo, publishedAt: isoInstant(row.publishedAt, 'publishedAt'),
+  const legacy = { validFrom, validTo, publishedAt: isoInstant(row.publishedAt, 'publishedAt'),
     legalSources: legalSources(row.legalSources), rates: normalizeRates(row.rates), approvalId };
+  // Schema 1 sigila numai cotele. Pastram hash-ul ei ca alias verificabil pentru articolele deja
+  // postate, dar toate calculele noi primesc schema 2: RuleSet-ul include tratamentele executabile.
+  const legacyHash = sha256(legacy);
+  const hasTreatmentSnapshot = Object.prototype.hasOwnProperty.call(row, 'treatments');
+  const treatments = hasTreatmentSnapshot
+    ? treatmentRegistry.normalizeSnapshots(row.treatments)
+    : treatmentRegistry.activeForInterval(validFrom, validTo);
+  if (!treatments.length) fail('FiscalRuleSet nu are niciun tratament fiscal publicat pentru intervalul cerut.');
+  const expectedTreatmentIds = treatmentRegistry.activeForInterval(validFrom, validTo).map((rule) => rule.id);
+  const presentTreatmentIds = new Set(treatments.map((rule) => rule.id));
+  const missingTreatments = expectedTreatmentIds.filter((id) => !presentTreatmentIds.has(id));
+  if (missingTreatments.length) fail('FiscalRuleSet nu contine tratamentele obligatorii: '
+    + missingTreatments.join(', ') + '.');
+  const uncovered = treatments.filter((rule) => rule.validFrom > validFrom
+    || (validTo ? (rule.validTo && rule.validTo < validTo) : !!rule.validTo));
+  if (uncovered.length) fail('Tratamentele nu acopera integral intervalul FiscalRuleSet: '
+    + uncovered.map((rule) => rule.id).join(', ') + '.');
+  const normalized = Object.assign({ schemaVersion: 2 }, legacy, { treatments,
+    treatmentsHash: treatmentRegistry.registryHash(treatments) });
   const hash = sha256(normalized);
-  if (row.hash && row.hash !== hash) fail('Hash FiscalRuleSet invalid pentru ' + (row.id || validFrom) + '.');
+  // Un hash schema 1 poate fi migrat numai daca randul chiar nu continea tratamente. Altfel un
+  // snapshot arbitrar s-ar putea ascunde sub o semnatura veche care acoperea exclusiv cotele.
+  if (row.hash && row.hash !== hash && !(row.hash === legacyHash && !hasTreatmentSnapshot)) {
+    fail('Hash FiscalRuleSet invalid pentru ' + (row.id || validFrom) + '.');
+  }
   const id = String(row.id || ('frs-' + validFrom + '-' + hash.slice(0, 12))).trim();
   if (!/^[a-zA-Z0-9._:-]{3,100}$/.test(id)) fail('Identificator FiscalRuleSet invalid.');
-  return deepFreeze(Object.assign({ id }, normalized, { hash }));
+  return deepFreeze(Object.assign({ id }, normalized, { hash, legacyHashes: [legacyHash] }));
 }
 
 const builtins = (cfg.RULE_SET_DEFINITIONS || []).map((x) => normalize(x, { builtin: true }));
@@ -80,7 +104,8 @@ function at(value) {
   return candidates[0];
 }
 function ref(value, opts) {
-  try { const r = at(value); return { ruleSetId: r.id, fiscalRulesHash: r.hash }; }
+  try { const r = at(value); return { ruleSetId: r.id, fiscalRulesHash: r.hash,
+    fiscalTreatmentsHash: r.treatmentsHash }; }
   catch (e) {
     if (!(opts || {}).allowUncovered || e.code !== 'FISCAL_RULES_NOT_FOUND') throw e;
     const date = dateKey(value); return { ruleSetId: 'uncovered:' + date.slice(0, 4),
@@ -102,9 +127,12 @@ function create(input, meta) {
   const unknown = Object.keys(partial).filter((k) => !Object.prototype.hasOwnProperty.call(cfg.RATES, k));
   if (unknown.length) fail('Parametri fiscali necunoscuti: ' + unknown.join(', ') + '.');
   const merged = Object.assign({}, base ? base.rates : {}, partial);
+  const inheritedTreatments = Object.prototype.hasOwnProperty.call(src, 'treatments')
+    ? src.treatments : base ? base.treatments : undefined;
   const row = normalize({ validFrom: src.validFrom, validTo: src.validTo,
     publishedAt: (meta && meta.publishedAt) || new Date().toISOString(),
-    legalSources: src.legalSources, approvalId: src.approvalId, rates: merged });
+    legalSources: src.legalSources, approvalId: src.approvalId, rates: merged,
+    ...(inheritedTreatments ? { treatments: inheritedTreatments } : {}) });
   if (byId(row.id)) fail('FiscalRuleSet deja publicat: ' + row.id + '.', 409);
   return row;
 }
@@ -114,9 +142,41 @@ function append(row) {
   published = published.concat(normalized); return normalized;
 }
 function snapshot() { return all().map((r) => ({ id: r.id, validFrom: r.validFrom, validTo: r.validTo,
-  publishedAt: r.publishedAt, hash: r.hash, approvalId: r.approvalId })); }
+  publishedAt: r.publishedAt, hash: r.hash, approvalId: r.approvalId,
+  treatmentsHash: r.treatmentsHash, treatments: r.treatments.length })); }
 function registryHash() { return sha256(snapshot()); }
-function verifyReference(ruleSetId, hash) { const r = byId(ruleSetId); return !!r && r.hash === hash; }
+function verifyReference(ruleSetId, hash) {
+  const r = byId(ruleSetId);
+  return !!r && (r.hash === hash || (r.legacyHashes || []).includes(hash));
+}
+function treatmentAt(value, id) {
+  const ruleSet = value && value.rates && value.treatments ? value : at(value);
+  return ruleSet.treatments.find((rule) => rule.id === String(id)) || null;
+}
+function evaluateTreatment(value, id, facts, options) {
+  const ruleSet = value && value.rates && value.treatments ? value : at(value);
+  const treatment = treatmentAt(ruleSet, id);
+  if (!treatment) {
+    const e = new Error('Tratamentul fiscal „' + id + '” nu este publicat in FiscalRuleSet ' + ruleSet.id + '.');
+    e.code = 'FISCAL_TREATMENT_NOT_FOUND'; e.status = 422; throw e;
+  }
+  return treatmentRegistry.evaluate(treatment, ruleSet, facts, options);
+}
+function evaluateTreatmentForAutonomy(value, id, facts, options) {
+  const supplied = value && value.rates && value.treatments ? value : null;
+  const ruleSet = supplied ? byId(supplied.id) : at(value);
+  if (!ruleSet || (supplied && supplied.hash !== ruleSet.hash)) {
+    const e = new Error('Autonomia cere un FiscalRuleSet publicat si identic cu fotografia registrului.');
+    e.code = 'FISCAL_RULES_UNVERIFIED'; e.status = 409; throw e;
+  }
+  const treatment = treatmentAt(ruleSet, id);
+  if (!treatment) {
+    const e = new Error('Tratamentul fiscal „' + id + '” nu este publicat in FiscalRuleSet ' + ruleSet.id + '.');
+    e.code = 'FISCAL_TREATMENT_NOT_FOUND'; e.status = 422; throw e;
+  }
+  return treatmentRegistry.evaluateForAutonomy(treatment, ruleSet, facts, options);
+}
 
 module.exports = { all, at, ref, byId, configure, create, append, snapshot, registryHash,
-  verifyReference, canonical, sha256, dateKey };
+  verifyReference, treatmentAt, evaluateTreatment, evaluateTreatmentForAutonomy,
+  canonical, sha256, dateKey };

@@ -56,6 +56,21 @@ function rate(d, key) {
   return value;
 }
 
+/** Executa un tratament din fotografia documentului si retine urma pentru articolul contabil. */
+function treatment(d, id, facts) {
+  if (!d || !d._fiscalRuleSet) return null; // document istoric neacoperit, cu valori explicite
+  const decision = require('../fiscal').evaluateTreatment(d._fiscalRuleSet, id, facts);
+  if (decision.status !== 'computed') {
+    const e = new Error('Tratamentul fiscal „' + id + '” nu poate fi aplicat: ' + (decision.reason || decision.status) + '.');
+    e.status = 422; throw e;
+  }
+  if (!Object.prototype.hasOwnProperty.call(d, '_fiscalTreatmentDecisions')) {
+    Object.defineProperty(d, '_fiscalTreatmentDecisions', { value: [], enumerable: false });
+  }
+  d._fiscalTreatmentDecisions.push(decision);
+  return decision;
+}
+
 const F = {
   data: { name: 'data', label: 'Data document', type: 'date', required: true },
   partener: { name: 'partener', label: 'Partener (client/furnizor)', type: 'text' },
@@ -125,4 +140,4 @@ const TVAL = [
   { value: '5314', label: '5314 Casa in valuta' },
 ];
 
-module.exports = { L, F, TROZ, TVAL, rate };
+module.exports = { L, F, TROZ, TVAL, rate, treatment };

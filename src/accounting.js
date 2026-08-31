@@ -511,6 +511,13 @@ function profitTax(db, year, opts) {
     throw require('./profitExpenseTaxonomy').reviewError(opts.tratamentCheltuieli || { unresolved: [] });
   }
   const cota = opts.cota || 16;
+  let calculationRuleSet = null;
+  try {
+    calculationRuleSet = opts.ruleSetId ? fiscal.ruleSetById(opts.ruleSetId) : fiscal.rulesAt(String(year) + '-12');
+    if (calculationRuleSet && opts.fiscalRulesHash && calculationRuleSet.hash !== opts.fiscalRulesHash) {
+      calculationRuleSet = null;
+    }
+  } catch (_) { /* an istoric neacoperit: ramane contractul de calcul explicit */ }
   const pierdereReportata = round2(Number(opts.pierdereReportata) || 0);
   // `panaLa` (YYYY-MM) taie anul la finalul unei luni: impozitul pe profit se declara TRIMESTRIAL
   // (art. 41), calculat CUMULAT de la inceputul anului, deci acelasi motor trebuie sa poata da si
@@ -536,6 +543,7 @@ function profitTax(db, year, opts) {
       cheltImpozitProfit: opts.cheltImpozitProfit,
       amortizare: opts.amortizare, // { contabila, fiscala } — art. 28, poate da si deducere
       amortizareFiscala: opts.amortizareFiscala, cursEur: opts.cursEur,
+      ruleSet: calculationRuleSet, treatmentOptions: opts.treatmentOptions,
     }, opts.plafoane)
     : null;
   // `cheltNedeductibile` / `deduceri` raman suprascrieri explicite — contract istoric, si singura
@@ -576,7 +584,20 @@ function profitTax(db, year, opts) {
     ? pv.folosit
     : (bazaInainteReportare > 0 ? round2(Math.min(pierdereReportata, pierdereRecuperabilaMax)) : 0);
   const profitImpozabil = round2(bazaInainteReportare - pierdereFolosita);
-  const impozitBrut = profitImpozabil > 0 ? round2(profitImpozabil * cota / 100) : 0;
+  // Cota finala nu mai este doar un numar citit din RuleSet: tratamentul executabil produce
+  // impozitul brut si urma completa (fapte, formula, temei, cazuri aprobate). Suprascrierile
+  // manuale de cota raman pe calea istorica si sunt vizibile tocmai prin absenta deciziei
+  // autonome — o regula publicata nu are voie sa pretinda ca a calculat alta cota.
+  let profitTaxDecision = null;
+  try {
+    if (calculationRuleSet && Number(calculationRuleSet.rates.impozitProfit) === Number(cota)) {
+      profitTaxDecision = fiscal.evaluateTreatment(calculationRuleSet, 'ro.tax.profit',
+        { base: Math.max(0, profitImpozabil) }, opts.treatmentOptions);
+    }
+  } catch (_) { /* an istoric fara tratament publicat: contractul vechi ramane explicit */ }
+  const impozitBrut = profitTaxDecision
+    ? profitTaxDecision.result.amount
+    : (profitImpozabil > 0 ? round2(profitImpozabil * cota / 100) : 0);
   // FAZA 2 — creditul fiscal al sponsorizarii, care se scade DIN IMPOZIT (nu din baza). Depinde de
   // impozitul de mai sus, deci nu poate fi calculat odata cu nedeductibilele.
   const cifraAfaceri = round2(Object.keys(acc).filter((c) => /^70/.test(String(c)))
@@ -614,6 +635,8 @@ function profitTax(db, year, opts) {
     // cheltuiala, deci fara ea in rezultat cifra din `deduceri` ar parea scoasa din nimic.
     rezervaLegala,
     sponsorizare: cr,
+    treatmentDecisions: (ded ? ded.randuri.map((row) => row.treatmentDecision).filter(Boolean) : [])
+      .concat(profitTaxDecision ? [profitTaxDecision] : []),
   };
 }
 
@@ -801,10 +824,10 @@ function autolichidareaLui(e) {
  * Destinatia se decide INAINTE de a atinge ceva: daca nu stim unde sa punem partea nedeductibila,
  * TVA-ul ramane neatins. Un articol corect si nemodificat e mai bun decat unul dezechilibrat.
  */
-function tvaPartialInCost(lines, pctDeductibil, etichetaTva, etichetaCost) {
+function tvaPartialInCostAmount(lines, sumaDeductibila, etichetaTva, etichetaCost) {
   const vatL = lines.find((l) => l.debit === '4426');
   if (!vatL || vatL.suma <= 0) return;
-  const ded = round2((vatL.suma * pctDeductibil) / 100);
+  const ded = Math.max(0, Math.min(round2(vatL.suma), round2(Number(sumaDeductibila) || 0)));
   const neded = round2(vatL.suma - ded);
   if (neded <= 0) return;
   const costL = lines.find((l) => l !== vatL && l.credit === vatL.credit);
@@ -823,6 +846,12 @@ function tvaPartialInCost(lines, pctDeductibil, etichetaTva, etichetaCost) {
   vatL.suma = ded;
   vatL.explicatie = (vatL.explicatie || 'TVA') + ' ' + etichetaTva;
   aplica();
+}
+
+function tvaPartialInCost(lines, pctDeductibil, etichetaTva, etichetaCost) {
+  const vatL = lines.find((l) => l.debit === '4426');
+  if (!vatL || vatL.suma <= 0) return;
+  tvaPartialInCostAmount(lines, round2((vatL.suma * pctDeductibil) / 100), etichetaTva, etichetaCost);
 }
 
 /** Jurnalele de TVA (vanzari/cumparari) si sumarul pentru decontul D300. */
@@ -1197,6 +1226,6 @@ function cashControl(db, cont, period, opts) {
     ok: !negative.length && !plafon.length && !plafonTotalZi.length && !zilePesteLimita.length };
 }
 
-module.exports = { tvaPartialInCost, LIVRARI_SCUTITE, vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
+module.exports = { tvaPartialInCost, tvaPartialInCostAmount, LIVRARI_SCUTITE, vatPeriod, isPosted, postedEntries, buildBalanceRows, inPeriod,
   allLines, resultLines, isResultClosingLine, rezervaLegalaDin, profitContabilDin, consumaPierderi, aniReportPierdere, rulajRezultat, sortEntries, entryChrono, lastEntries, accumulate, periodStart, periodEnd, journal, journalNr, ledger, trialBalance, vatClosing, vatCarryForward, annualClosing, profitTax, resultDistribution, legalReserve, vatJournals, cashBankJournal, fisaCont, registruIncasariPlati, cashRegisterValuta, cashControl, tvaNeexigibila,
 };

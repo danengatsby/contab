@@ -398,6 +398,7 @@ function statePlata(angajati, period, history, options) {
       cas: p.cas, cass: p.cass,
       bazaImpozit: p.baza, impozit: p.impozit, cam: p.cam, net: p.net,
       avans, retineri, restPlata, costTotal: p.costTotal,
+      treatmentDecisions: p.treatmentDecisions,
     });
     t.deducere = round2(t.deducere + dp); t.tichete = round2((t.tichete || 0) + tichete); t.avantaje = round2(t.avantaje + avantaje);
     t.beneficiiAcordate = round2(t.beneficiiAcordate + bnf.totalAcordat);
@@ -413,7 +414,8 @@ function statePlata(angajati, period, history, options) {
     t.avans = round2(t.avans + avans); t.retineri = round2(t.retineri + retineri); t.restPlata = round2(t.restPlata + restPlata);
   }
   t.totalBuget = round2(t.cas + t.cass + t.impozit + t.cam + t.casAngajator + t.cassAngajator);
-  return { rows, totals: t, ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash };
+  return { rows, totals: t, ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
+    fiscalTreatmentsHash: ruleSet.treatmentsHash };
 }
 
 /** Sursa unica pentru o perioada de salarizare. Dupa postare, fotografia completa este imuabila:
@@ -427,6 +429,7 @@ function statPlataPerioada(view, period, preferaPostat = true) {
     return { rows: h.rows, totals: h.totals, postat: true, postedAt: h.ts,
       entryId: h.entryId || null, snapshotId: h.id || null,
       ruleSetId: h.ruleSetId || null, fiscalRulesHash: h.fiscalRulesHash || null,
+      fiscalTreatmentsHash: h.fiscalTreatmentsHash || null,
       platit: !!platit, paymentEntryId: platit ? platit.id : null };
   }
   return Object.assign(statePlata(view.angajati, period, view.payrollHistory,

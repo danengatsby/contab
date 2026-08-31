@@ -384,7 +384,22 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     .reduce((s, l) => s + l.suma, 0)) : 0;
   // Deductibilitate partiala auto 50% (art. 298 Cod fiscal): jumatate din TVA devine NEDEDUCTIBILA
   // si se include in cost (vehicule fara utilizare exclusiv pentru afacere).
-  if (f.auto50) acc.tvaPartialInCost(lines, 50, 'deductibila 50% (auto)', '50% TVA nedeductibil auto');
+  if (f.auto50) {
+    const decision = fiscalRuleSet ? fiscal.evaluateTreatment(fiscalRuleSet,
+      'ro.vat.vehicle_limited_deduction', { inputVat: tvaFactura, exclusiveBusinessUse: false }) : null;
+    if (decision && decision.status !== 'computed') {
+      const e = new Error('Limitarea TVA auto nu poate fi determinata: ' + (decision.reason || decision.status) + '.');
+      e.status = 422; throw e;
+    }
+    if (decision) {
+      acc.tvaPartialInCostAmount(lines, decision.result.deductibleVat,
+        'deductibila limitat (auto)', 'TVA nedeductibil auto');
+      if (!Object.prototype.hasOwnProperty.call(f, '_fiscalTreatmentDecisions')) {
+        Object.defineProperty(f, '_fiscalTreatmentDecisions', { value: [], enumerable: false });
+      }
+      f._fiscalTreatmentDecisions.push(decision);
+    } else acc.tvaPartialInCost(lines, 50, 'deductibila 50% (auto)', '50% TVA nedeductibil auto');
+  }
   const firma = db.getFirma(firmaId) || {};
   // Pro-rata (art. 300 Cod fiscal): la achizitiile cu destinatie mixta ale platitorilor cu regim
   // mixt, TVA e deductibila doar in procentul pro-rata provizoriu al firmei; restul intra in cost.
@@ -395,10 +410,14 @@ function composeEntry(tipId, fields, fileId, firmaId) {
   }
   // Amandoua regulile muteaza `vatL0.suma` pe loc, deci aici e TVA-ul ramas deductibil. Marcajul
   // se pune doar cand chiar s-a nededus ceva (facturile normale raman fara camp suplimentar).
-  const tvaPartial = (vatL0 && tvaFactura > 0 && vatL0.suma !== tvaFactura) ? {
-    baza: bazaFactura,
-    cota: bazaFactura > 0 ? Math.round((tvaFactura / bazaFactura) * 100) : (Number(f.cota) || 0),
-    tvaFactura,
+  const embeddedVehicleDecision = (f._fiscalTreatmentDecisions || [])
+    .find((decision) => decision.ruleId === 'ro.vat.vehicle_limited_deduction');
+  const originalVat = embeddedVehicleDecision ? embeddedVehicleDecision.facts.inputVat : tvaFactura;
+  const originalBase = embeddedVehicleDecision ? round2(Number(f.baza) || 0) : bazaFactura;
+  const tvaPartial = (vatL0 && originalVat > 0 && vatL0.suma !== originalVat) ? {
+    baza: originalBase,
+    cota: originalBase > 0 ? Math.round((originalVat / originalBase) * 100) : (Number(f.cota) || 0),
+    tvaFactura: originalVat,
     tvaDedusa: round2(vatL0.suma),
   } : null;
   // Regim „TVA la incasare": pe facturi, TVA devine NEEXIGIBILA (4428) pana la incasare/plata.
@@ -464,6 +483,7 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     period: periodOf(data),
     ruleSetId: fiscalRef.ruleSetId,
     fiscalRulesHash: fiscalRef.fiscalRulesHash,
+    ...(fiscalRef.fiscalTreatmentsHash ? { fiscalTreatmentsHash: fiscalRef.fiscalTreatmentsHash } : {}),
     ...(fiscalRef.fiscalRulesCovered === false ? { fiscalRulesCovered: false } : {}),
     tip: tipId,
     tipNume: type.nume,
@@ -515,6 +535,8 @@ function composeEntry(tipId, fields, fileId, firmaId) {
     ...(tipId === d311.TIP_DOCUMENT ? { d311: d311.dinCampuri(f) } : {}),
     ...(leasingRef ? { leasingRef } : {}),
     ...(tvaPartial ? { tvaPartial } : {}), // factura reala, cand TVA-ul e doar partial deductibil
+    ...((f._fiscalTreatmentDecisions || []).length
+      ? { treatmentDecisions: f._fiscalTreatmentDecisions.slice() } : {}),
     ...(codCategorie331 ? { codCategorie331 } : {}), // categoria de bun art. 331, pentru op11 din D394
     ...((profitExpenseTreatment || tvaArt310Treatment) ? { fiscalTaxonomy: {
       ...(profitExpenseTreatment ? { profitExpense: profitExpenseTreatment } : {}),

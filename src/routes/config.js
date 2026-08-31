@@ -267,8 +267,10 @@ module.exports = function register(app, ctx) {
   });
   app.get('/api/fiscal-rules-at', (req, res) => run(res, () => {
     const r = fiscal.rulesAt(req.query.date);
-    return { ruleSetId: r.id, fiscalRulesHash: r.hash, validFrom: r.validFrom,
-      validTo: r.validTo, rates: r.rates };
+    return { ruleSetId: r.id, fiscalRulesHash: r.hash, fiscalTreatmentsHash: r.treatmentsHash,
+      validFrom: r.validFrom, validTo: r.validTo, rates: r.rates,
+      treatments: r.treatments.map((rule) => ({ id: rule.id, hash: rule.hash, title: rule.title,
+        domain: rule.domain, risk: rule.risk, legalBasis: rule.legalBasis })) };
   }));
   app.post('/api/fiscal-config', requireAdmin, (req, res) => run(res, () => {
     const r = svc.setFiscalConfig(req.body);

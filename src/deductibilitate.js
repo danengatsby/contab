@@ -34,6 +34,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { round2 } = require('./util');
+const fiscalRules = require('./fiscalRules');
 
 // Conturile citite de reguli. Prefix, nu potrivire exacta: orice cont poate avea analitice
 // (`623.01`), iar o cautare exacta ar rata exact firmele care isi tin analitic cheltuielile.
@@ -441,10 +442,17 @@ function ajustari(i, cfg) {
   const auto = round2(Number(i.cheltAuto || 0));
   if (auto > 0) {
     const pctDed = Number(cfg.autoCheltuialaDeductibilPct || 0);
-    const dedA = round2((auto * pctDed) / 100);
-    randuri.push(rand('Cheltuieli auto', 'Art. 25(3)(l)', '', auto, dedA, auto,
+    const treatmentDecision = i.ruleSet
+      ? fiscalRules.evaluateTreatment(i.ruleSet, 'ro.profit.vehicle_limited_deduction',
+        { expense: auto, exclusiveBusinessUse: false }, i.treatmentOptions)
+      : null;
+    const dedA = treatmentDecision && treatmentDecision.status === 'computed'
+      ? treatmentDecision.result.deductibleExpense : round2((auto * pctDed) / 100);
+    const autoRow = rand('Cheltuieli auto', 'Art. 25(3)(l)', '', auto, dedA, auto,
       round2(auto - dedA), 'Deductibile ' + pctDed + '% (vehicule fara utilizare exclusiv business).',
-      'P33')); // idem: depasire de la art. 25(3)(l), fara rand propriu pe formular
+      'P33'); // idem: depasire de la art. 25(3)(l), fara rand propriu pe formular
+    if (treatmentDecision) autoRow.treatmentDecision = treatmentDecision;
+    randuri.push(autoRow);
   }
 
   // ── Lipsuri neimputabile din gestiune (art. 25(4)(c)) ─────────────────────

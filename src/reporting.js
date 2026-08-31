@@ -430,7 +430,10 @@ function d100micro(db, period, cota, opts) {
   // Partea nefolosita NU se pierde: se reporteaza (art. 56^1 alin. (3)), dar reportul cere o
   // evidenta pe trimestre pe care aplicatia inca n-o tine — deci aici se scade doar sponsorizarea
   // TRIMESTRULUI, iar restul apare in `sponsorizareNefolosita`, ca sa fie vizibil, nu pierdut tacit.
-  const impozitBrut = round2((venit * rate) / 100);
+  const microTaxDecision = !cotaManuala && Number(rate) === Number(rates.impozitMicro)
+    ? fiscal.evaluateTreatment(ruleSet, 'ro.tax.micro', { base: Math.max(0, venit) }, opts && opts.treatmentOptions)
+    : null;
+  const impozitBrut = microTaxDecision ? microTaxDecision.result.amount : round2((venit * rate) / 100);
   // Reportul art. 56^1 alin. (3) se DERIVA, nu se stocheaza: un pas inainte peste trimestrele
   // anterioare da exact ce a ramas nefolosit si inca valabil. Fara stocare nu e nevoie nici de
   // migrare, nici de hook la postare — si dispare capcana in care o simpla PREVIZUALIZARE ar
@@ -459,7 +462,8 @@ function d100micro(db, period, cota, opts) {
     impozit: round2(impozitBrut - sponsDedusa),
     venitAn, plafonMicroLei: plafonLei, plafonMicroEur: rates.plafonMicroEur, avertismente,
     blocat: !eligibility.complete || !!eligibility.exit, microEligibility: eligibility,
-    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
+    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash, fiscalTreatmentsHash: ruleSet.treatmentsHash,
+    treatmentDecisions: microTaxDecision ? [microTaxDecision] : [],
     // Desfasurarea bazei (art. 53) si a cotei (art. 51), pentru raport si pentru revizie.
     venitClasa7: bz.venitClasa7, scaderi: bz.scaderi, totalScaderi: bz.totalScaderi,
     adaugari: bz.adaugari, totalAdaugari: bz.totalAdaugari,
@@ -1189,12 +1193,16 @@ function registruFiscal(db, year, cota, opts) {
     cheltImpozitProfit: r['691'] ? round2(r['691'].d - r['691'].c) : 0,
     amortizare: amortDif,
     amortizareFiscala: amortDif.fiscala, // baza art. 40^2 foloseste amortizarea FISCALA
-    cursEur: opts.cursEur,
+    cursEur: opts.cursEur, ruleSet, treatmentOptions: opts.treatmentOptions,
   }, plafoane) : { randuriPlafon: [], totalPlafon: 0, sponsorizareCheltuita: 0 };
   const totalPlafoane = dedRez.totalPlafon;
   const rezultatFiscal = round2(rezultatContabil + totalNeded + totalPlafoane - venituriNeimpozabile);
   const rateProfit = cota || 16;
-  const impozitProfit = round2((Math.max(rezultatFiscal, 0) * rateProfit) / 100);
+  const profitDecision = Number(rateProfit) === Number(rates.impozitProfit)
+    ? fiscal.evaluateTreatment(ruleSet, 'ro.tax.profit', { base: Math.max(rezultatFiscal, 0) }, opts.treatmentOptions)
+    : null;
+  const impozitProfit = profitDecision ? profitDecision.result.amount
+    : round2((Math.max(rezultatFiscal, 0) * rateProfit) / 100);
   // Linia comparativa „cat ar fi iesit pe micro". Trecea `pl.venitTotal` (toata clasa 7) printr-o
   // cota scrisa `* 1` in cod — deci nici baza art. 53, nici cota art. 51, si nici macar cota din
   // configuratie. Aceeasi sursa ca D100, altfel registrul si declaratia dau doua cifre.
@@ -1206,7 +1214,11 @@ function registruFiscal(db, year, cota, opts) {
   const ctMicro = micro.cotaAplicabila({ an: Number(year), venitCumulatLei: bzMicro.baza,
     curs: bnr.cursPlafonMicro(db.cursuriBnr, Number(year), rates.cursPlafonMicro).curs,
     caen: (db.company || {}).caen }, rates);
-  const impozitMicro = round2((bzMicro.baza * ctMicro.cota) / 100);
+  const microDecision = Number(ctMicro.cota) === Number(rates.impozitMicro)
+    ? fiscal.evaluateTreatment(ruleSet, 'ro.tax.micro', { base: Math.max(0, bzMicro.baza) }, opts.treatmentOptions)
+    : null;
+  const impozitMicro = microDecision ? microDecision.result.amount
+    : round2((bzMicro.baza * ctMicro.cota) / 100);
   return {
     year, rezultatContabil, cheltNeded, totalNeded, venituriList, venituriNeimpozabile, mentiuni,
     rezultatFiscal, rateProfit, impozitProfit, impozitMicro, venitTotal: pl.venitTotal,
@@ -1214,7 +1226,9 @@ function registruFiscal(db, year, cota, opts) {
     taxonomiiMicro: bzMicro.taxonomies, registruAjustariMicro: bzMicro.registerAdjustments,
     // Aditiv: randurile cu plafon si totalul lor, separate de procentele fixe.
     ajustariPlafon: dedRez.randuriPlafon, totalPlafoane,
-    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash,
+    ruleSetId: ruleSet.id, fiscalRulesHash: ruleSet.hash, fiscalTreatmentsHash: ruleSet.treatmentsHash,
+    treatmentDecisions: (dedRez.randuri || []).map((row) => row.treatmentDecision).filter(Boolean)
+      .concat(profitDecision ? [profitDecision] : [], microDecision ? [microDecision] : []),
     calculFiscalFinal: tratamentCheltuieli.complete,
     tratamentCheltuieli,
   };
