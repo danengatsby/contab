@@ -53,7 +53,9 @@ const SUBMISSION_SCHEMA_VERSION = 1;
 const RECEIPT_BINDING_SCHEMA_VERSION = 1;
 // v2 introduce aprobarea documentului exact. Evenimentele v1 rămân verificabile după matricea
 // sub care au fost scrise; evenimentele noi nu mai pot sări generată → aprobată → transmisă.
-const STATE_LEDGER_SCHEMA_VERSION = 2;
+// v3 leagă transmiterea de rezultatul validatorului oficial rulat pe octeții exacți.
+const STATE_LEDGER_SCHEMA_VERSION = 3;
+const APPROVAL_STATE_LEDGER_SCHEMA_VERSION = 2;
 const LEGACY_STATE_LEDGER_SCHEMA_VERSION = 1;
 const ALLOWED_TRANSITIONS = Object.freeze({
   nedepusa: new Set(['generata', 'scutita']),
@@ -316,10 +318,12 @@ function stateEventIssues(event) {
     return issues;
   }
   const approvalEvent = type === 'approval.recorded';
+  const validationEvent = type === 'official-validation.recorded';
   const prepare = type === 'artifact.generated' || type === 'status.generata'
     || (type === 'status.evidence-updated' && to === 'generata');
   const expectedAction = approvalEvent ? 'declaration.approve'
-    : (prepare ? 'declaration.prepare' : 'declaration.submit');
+    : validationEvent ? 'declaration.validate'
+      : (prepare ? 'declaration.prepare' : 'declaration.submit');
   if (auth.authorized !== true || auth.action !== expectedAction
       || (auth.actorId == null && !String(auth.username || '').trim())) {
     issues.push('autorizație obligatorie lipsă pentru ' + expectedAction);
@@ -343,6 +347,12 @@ function stateEventIssues(event) {
       issues.push('aprobarea aparține altui dosar');
     }
   }
+  if (validationEvent) {
+    const proof = evidence.officialValidation || {};
+    const validationIssues = require('./officialArtifactValidation').integrityIssues(proof,
+      evidence.artifact || {}, String(evidence.fiscalRulesHash || ''));
+    if (validationIssues.length) issues.push(...validationIssues.map((issue) => 'validare oficială: ' + issue));
+  }
   if (to === 'transmisa' && from !== to && schemaVersion === LEGACY_STATE_LEDGER_SCHEMA_VERSION) {
     const approval = evidence.approval || {};
     if (approval.ready !== true || !/^[0-9a-f]{64}$/.test(String(approval.hash || ''))) issues.push('dovada aprobării fiscale lipsește');
@@ -359,6 +369,11 @@ function stateEventIssues(event) {
         || String(approval.dossierKey || '') !== String(event.dossierKey || '')) {
       issues.push('tranziția folosește aprobarea altui dosar');
     }
+  }
+  if (to === 'transmisa' && from !== to && schemaVersion >= STATE_LEDGER_SCHEMA_VERSION) {
+    const validationIssues = require('./officialArtifactValidation').issues(
+      evidence.officialValidation || {}, evidence.artifact || {}, String(evidence.fiscalRulesHash || ''));
+    if (validationIssues.length) issues.push(...validationIssues.map((issue) => 'validare oficială: ' + issue));
   }
   if (to === 'depusa' && from !== to) {
     const receipt = evidence.receipt || {};
@@ -389,6 +404,11 @@ function stateEventIssues(event) {
           || String((evidence.approval || {}).dossierKey || '') !== String(event.dossierKey || '')) {
         issues.push('depunerea folosește aprobarea altui dosar');
       }
+    }
+    if (schemaVersion >= STATE_LEDGER_SCHEMA_VERSION) {
+      const validationIssues = require('./officialArtifactValidation').issues(
+        evidence.officialValidation || {}, evidence.artifact || {}, String(evidence.fiscalRulesHash || ''));
+      if (validationIssues.length) issues.push(...validationIssues.map((issue) => 'validare oficială: ' + issue));
     }
     if (evidence.submission) {
       issues.push(...submissionEvidenceIssues(evidence.submission, event.dossierId, event.dossierKey));
@@ -450,7 +470,8 @@ function verifyStateLedger(rec, firmaId, tip, period) {
   const issues = []; let previousHash = null; let state = null;
   for (let i = 0; i < events.length; i += 1) {
     const event = events[i] || {};
-    if (![LEGACY_STATE_LEDGER_SCHEMA_VERSION, STATE_LEDGER_SCHEMA_VERSION].includes(Number(event.schemaVersion))) {
+    if (![LEGACY_STATE_LEDGER_SCHEMA_VERSION, APPROVAL_STATE_LEDGER_SCHEMA_VERSION,
+      STATE_LEDGER_SCHEMA_VERSION].includes(Number(event.schemaVersion))) {
       issues.push('versiune necunoscută la evenimentul #' + (i + 1));
     }
     if (event.dossierId !== identity.id || event.dossierKey !== identity.key) issues.push('evenimentul #' + (i + 1) + ' aparține altei identități');
@@ -829,6 +850,47 @@ function approveDocument(d, firmaId, tip, period, info) {
   return { rec, approval, created: true };
 }
 
+function validationForArtifact(rec, artifactHash) {
+  const artifact = exactArtifact(rec, artifactHash);
+  if (!artifact) return null;
+  const rulesHash = String(artifact.fiscalRulesHash || rec && rec.fiscalRulesHash || '');
+  const rows = rec && Array.isArray(rec.officialValidations) ? rec.officialValidations : [];
+  return rows.slice().reverse().find((proof) => require('./officialArtifactValidation')
+    .issues(proof, artifact, rulesHash).length === 0) || null;
+}
+
+/** Consemnează rezultatul adaptorului DUK/schema pe artefactul exact păstrat în dosar. */
+function recordOfficialValidation(d, firmaId, tip, period, info) {
+  const rec = find(d, firmaId, tip, period);
+  if (!rec) throw dossierError('Validarea cere un dosar și un XML generat.', 'FILING_DOSSIER_REQUIRED');
+  ensureDossier(rec, firmaId, tip, period); ensureStateLedger(rec, firmaId, tip, period);
+  const authorization = requireTransitionAuthorization(info || {}, 'declaration.validate');
+  const artifactHash = String(info && info.artifactHash || '');
+  if (artifactHash !== String(rec.artifactHash || '')) {
+    throw dossierError('Validarea nu aparține versiunii curente a documentului.', 'OFFICIAL_VALIDATION_ARTIFACT_MISMATCH');
+  }
+  const artifact = exactArtifact(rec, artifactHash);
+  if (!artifact) throw dossierError('Validarea cere octeții exacți ai documentului.', 'FILING_EVIDENCE_ARTIFACT_REQUIRED');
+  const proof = require('./officialArtifactValidation').create(artifact, Object.assign({}, info, {
+    declarationType: tip, fiscalRulesHash: artifact.fiscalRulesHash || rec.fiscalRulesHash,
+    ruleSetId: artifact.ruleSetId || rec.ruleSetId,
+  }), authorization);
+  rec.officialValidations = Array.isArray(rec.officialValidations) ? rec.officialValidations : [];
+  const existing = rec.officialValidations.find((row) => row.proofHash === proof.proofHash);
+  if (existing) return { rec, validation: existing, created: false };
+  appendStateEvent(rec, firmaId, tip, period, {
+    type: 'official-validation.recorded', from: rec.status, to: rec.status,
+    at: proof.validatedAt, authorization,
+    evidence: {
+      artifact: { sha256: artifact.sha256, bytes: artifact.bytes, filename: artifact.filename, mime: artifact.mime },
+      fiscalRulesHash: proof.fiscalRulesHash, officialValidation: JSON.parse(JSON.stringify(proof)),
+    },
+  });
+  rec.officialValidations.push(proof); rec.officialValidation = proof;
+  rec.updatedAt = proof.validatedAt;
+  return { rec, validation: proof, created: true };
+}
+
 function assertTransition(rec, from, to, patch, prospectiveArtifact) {
   if (from === to) return null;
   if (from === 'generata' && to === 'transmisa') {
@@ -857,6 +919,9 @@ function assertTransition(rec, from, to, patch, prospectiveArtifact) {
       throw dossierError('Transmiterea cere aprobarea documentului exact selectat, pe același SHA-256.', 'FILING_EVIDENCE_APPROVAL_REQUIRED');
     }
     if (!exactArtifact(rec, approvedHash)) throw dossierError('Transmiterea cere binarul exact al artefactului aprobat.', 'FILING_EVIDENCE_ARTIFACT_REQUIRED');
+    if (!validationForArtifact(rec, approvedHash)) {
+      throw dossierError('Transmiterea cere rezultatul valid al validatorului oficial pentru XML-ul exact aprobat.', 'OFFICIAL_VALIDATION_REQUIRED');
+    }
   }
   if (to === 'depusa') {
     requireTransitionAuthorization(p, 'declaration.submit');
@@ -955,6 +1020,7 @@ function record(d, firmaId, tip, period, patch, nextIdFn) {
     rec.transmittedArtifactHash = String(approval && approval.artifactHash || '');
     rec.transmittedApprovalHash = String(approval && approval.approvalHash || '');
     rec.transmittedArtifactHashSource = 'document-approval';
+    rec.transmittedValidationHash = String((validationForArtifact(rec, rec.transmittedArtifactHash) || {}).proofHash || '');
     rec.transmittedAt = p.transmittedAt || now;
   }
   if (targetStatus === 'depusa' && targetStatus !== oldStatus) rec.submittedAt = p.submittedAt || now;
@@ -986,6 +1052,7 @@ function record(d, firmaId, tip, period, patch, nextIdFn) {
     if (!(oldStatus === 'transmisa' && targetStatus === oldStatus)) {
       rec.artifactHash = preparedArtifact.sha256; rec.artifactBytes = preparedArtifact.bytes;
       rec.artifactFilename = preparedArtifact.filename;
+      rec.officialValidation = validationForArtifact(rec, preparedArtifact.sha256);
     }
   }
   rec.statusHistory = Array.isArray(rec.statusHistory) ? rec.statusHistory : [];
@@ -1024,6 +1091,8 @@ function record(d, firmaId, tip, period, patch, nextIdFn) {
         ? rec.documentApproval : null))
         ? JSON.parse(JSON.stringify(p.documentApproval || rec.documentApproval)) : null,
       fiscalReview: p.fiscalReviewEvidence ? JSON.parse(JSON.stringify(p.fiscalReviewEvidence)) : null,
+      officialValidation: stateChangedToFiling
+        ? JSON.parse(JSON.stringify(validationForArtifact(rec, filingHash) || null)) : null,
       submission: filingSubmission,
       receipt: filingReceipt ? receiptEvidencePublic(filingReceipt, p.recipisa) : null,
     };
@@ -1114,6 +1183,16 @@ function verifyDossier(rec, firmaId, tip, period, opts) {
     artifactsByHash.set(hash, artifact);
     if (verifyContent && artifact && artifact.contentBase64 && !exactContent(artifact)) issues.push('artefact corupt ' + hash);
   }
+  for (const proof of (Array.isArray(rec.officialValidations) ? rec.officialValidations : [])) {
+    const artifact = artifactsByHash.get(String(proof && proof.artifactHash || ''));
+    if (!artifact) {
+      missing.push('artefactul validării oficiale ' + String(proof && proof.proofHash || '').slice(0, 12));
+      continue;
+    }
+    const validationIssues = require('./officialArtifactValidation').integrityIssues(proof, artifact,
+      String(artifact.fiscalRulesHash || rec.fiscalRulesHash || ''));
+    if (validationIssues.length) issues.push(...validationIssues.map((issue) => 'validare oficială: ' + issue));
+  }
   let previousApprovalHash = null;
   for (const approval of (Array.isArray(rec.documentApprovals) ? rec.documentApprovals : [])) {
     const approvalIssues = documentApprovalIssues(approval);
@@ -1144,6 +1223,11 @@ function verifyDossier(rec, firmaId, tip, period, opts) {
     if (!transmittedApproval || (rec.transmittedApprovalHash
         && transmittedApproval.approvalHash !== rec.transmittedApprovalHash)) {
       issues.push('selecția transmisă nu coincide cu artefactul aprobat');
+    }
+    const transmittedValidation = validationForArtifact(rec, transmittedHash);
+    if (rec.transmittedValidationHash && (!transmittedValidation
+        || transmittedValidation.proofHash !== rec.transmittedValidationHash)) {
+      issues.push('selecția transmisă nu coincide cu validarea oficială exactă');
     }
   }
   const ordinals = new Set();
@@ -1225,6 +1309,7 @@ function dossierSummary(rec, firmaId, tip, period, opts) {
     submissionCount: rec && Array.isArray(rec.depuneri) ? rec.depuneri.length : 0,
     transitionCount: rec && Array.isArray(rec.statusHistory) ? rec.statusHistory.length : 0,
     eventCount: rec && Array.isArray(rec.stateEvents) ? rec.stateEvents.length : 0,
+    officialValidationCount: rec && Array.isArray(rec.officialValidations) ? rec.officialValidations.length : 0,
     stateChainHash: rec && rec.stateChainHash || '',
   });
 }
@@ -1335,8 +1420,9 @@ function publicDossier(rec, firmaId, tip, period, source) {
   if (!rec) return Object.assign(dossier, {
     status: 'nedepusa', profileSnapshot: null, profileHash: '', profileProvenanceHash: '',
     ruleSetId: '', fiscalRulesHash: '',
-    transmittedArtifactHash: '', transmittedApprovalHash: '',
-    documentApproval: null, documentApprovals: [], artifacts: [], statusHistory: [], stateEvents: [], submissions: [],
+    transmittedArtifactHash: '', transmittedApprovalHash: '', transmittedValidationHash: '',
+    documentApproval: null, documentApprovals: [], officialValidation: null,
+    officialValidations: [], artifacts: [], statusHistory: [], stateEvents: [], submissions: [],
     timeline: dossierTimeline(null, source, firmaId, tip, period),
   });
   return Object.assign(dossier, {
@@ -1344,12 +1430,15 @@ function publicDossier(rec, firmaId, tip, period, source) {
     transmittedAt: rec.transmittedAt || null, submittedAt: rec.submittedAt || null,
     transmittedArtifactHash: transmittedArtifactHashOf(rec),
     transmittedApprovalHash: rec.transmittedApprovalHash || '',
+    transmittedValidationHash: rec.transmittedValidationHash || '',
     recipisa: rec.recipisa || '', note: rec.note || '',
     profileSnapshot: rec.profileSnapshot || null, profileHash: rec.profileHash || '',
     profileProvenanceHash: rec.profileProvenanceHash || '',
     ruleSetId: rec.ruleSetId || '', fiscalRulesHash: rec.fiscalRulesHash || '',
     documentApproval: rec.documentApproval ? JSON.parse(JSON.stringify(rec.documentApproval)) : null,
     documentApprovals: (rec.documentApprovals || []).map((x) => JSON.parse(JSON.stringify(x))),
+    officialValidation: rec.officialValidation ? JSON.parse(JSON.stringify(rec.officialValidation)) : null,
+    officialValidations: (rec.officialValidations || []).map((x) => JSON.parse(JSON.stringify(x))),
     artifacts: publicArtifacts(rec.artifacts), statusHistory: (rec.statusHistory || []).map((x) => Object.assign({}, x)),
     stateEvents: (rec.stateEvents || []).map((x) => JSON.parse(JSON.stringify(x))),
     submissions: publicSubmissions(rec.depuneri), timeline: dossierTimeline(rec, source, firmaId, tip, period),
@@ -1400,12 +1489,17 @@ function addSubmission(d, firmaId, tip, period, info, _nextIdFn) {
   const approvedHash = String(documentApproval && documentApproval.artifactHash || '');
   const submittedHash = String((info && (info.submittedArtifactHash || info.artifactHash))
     || approvedHash || transmittedArtifactHashOf(rec));
-  if (!exactArtifact(rec, submittedHash)) throw dossierError('Depunerea cere artefactul transmis, păstrat byte-identic.', 'FILING_EVIDENCE_ARTIFACT_REQUIRED');
+  const submittedArtifact = exactArtifact(rec, submittedHash);
+  if (!submittedArtifact) throw dossierError('Depunerea cere artefactul transmis, păstrat byte-identic.', 'FILING_EVIDENCE_ARTIFACT_REQUIRED');
   const storedApproval = approvalForArtifact(rec, approvedHash);
   if (!documentApproval || !storedApproval
       || storedApproval.approvalHash !== documentApproval.approvalHash
       || documentApproval.artifactHash !== submittedHash || documentApprovalIssues(documentApproval).length) {
     throw dossierError('Depunerea cere artefactul ales de aprobare, nu ultima versiune disponibilă.', 'FILING_EVIDENCE_APPROVAL_REQUIRED');
+  }
+  const officialValidation = validationForArtifact(rec, submittedHash);
+  if (!officialValidation) {
+    throw dossierError('Depunerea sau rectificativa cere validarea oficială a XML-ului exact.', 'OFFICIAL_VALIDATION_REQUIRED');
   }
   const dep = {
     ordinal,
@@ -1430,6 +1524,7 @@ function addSubmission(d, firmaId, tip, period, info, _nextIdFn) {
     approvedArtifactHash: documentApproval.artifactHash,
     documentApprovalHash: documentApproval.approvalHash,
     documentApproval: JSON.parse(JSON.stringify(documentApproval)),
+    officialValidationHash: officialValidation.proofHash,
     profileSnapshot: (info && info.profileSnapshot && info.profileSnapshot.hash)
       ? JSON.parse(JSON.stringify(info.profileSnapshot))
       : (rec.profileSnapshot ? JSON.parse(JSON.stringify(rec.profileSnapshot)) : null),
@@ -1445,10 +1540,14 @@ function addSubmission(d, firmaId, tip, period, info, _nextIdFn) {
     from: 'depusa', to: 'depusa', at: dep.ts, authorization: info.authorization,
     evidence: {
       ordinal, rectificativa: ordinal > 1, artifactHash: submittedHash,
+      artifact: { sha256: submittedArtifact.sha256, bytes: submittedArtifact.bytes,
+        filename: submittedArtifact.filename, mime: submittedArtifact.mime },
+      fiscalRulesHash: officialValidation.fiscalRulesHash,
       profileHash: dep.profileHash, reason: dep.motiv,
       profileProvenanceHash: dep.profileProvenanceHash,
       submission: submissionProof,
       approval: JSON.parse(JSON.stringify(documentApproval)),
+      officialValidation: JSON.parse(JSON.stringify(officialValidation)),
       fiscalReview: info.fiscalReviewEvidence ? JSON.parse(JSON.stringify(info.fiscalReviewEvidence)) : null,
       receipt: dep.receipts.map((receipt) => receiptEvidencePublic(receipt, dep.recipisa)),
     },
@@ -1755,8 +1854,9 @@ module.exports = { TIPURI, STATUSES, DESCARCARI, descarcari, dueDate, urgentaTer
   addSubmission, attachReceipt, resealSubmission, submissionEvidence, bindReceiptToSubmission,
   lastSubmission, submissionDiff, d100Snapshot, RECT_IN_XML, publicArtifacts, publicSubmissions, exactContent, exactArtifact,
   approveDocument, documentApprovalHash, documentApprovalIssues, approvalForArtifact, currentApprovalMatches,
+  recordOfficialValidation, validationForArtifact,
   approvedArtifactHashOf, transmittedArtifactHashOf,
   DOSSIER_SCHEMA_VERSION, SUBMISSION_SCHEMA_VERSION, RECEIPT_BINDING_SCHEMA_VERSION,
   dossierKey, dossierIdentity, ensureDossier, assertUniqueDossiers, verifyDossier, dossierSummary, dossierTimeline, publicDossier,
-  STATE_LEDGER_SCHEMA_VERSION, LEGACY_STATE_LEDGER_SCHEMA_VERSION, ALLOWED_TRANSITIONS,
+  STATE_LEDGER_SCHEMA_VERSION, APPROVAL_STATE_LEDGER_SCHEMA_VERSION, LEGACY_STATE_LEDGER_SCHEMA_VERSION, ALLOWED_TRANSITIONS,
   stateEventHash, appendStateEvent, verifyStateLedger, ensureStateLedger };

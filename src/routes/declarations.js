@@ -239,6 +239,42 @@ module.exports = function register(app, ctx) {
     }
   });
 
+  // Adaptorul DUK/schema rulează în afara procesului web și trimite aici rezultatul complet.
+  // Serverul nu acceptă un hash izolat: recalculează artefactul persistent și leagă toate
+  // versiunile într-o dovadă care va fi cerută din nou la transmitere.
+  app.post('/api/declarations/official-validation', (req, res) => {
+    const b = req.body || {}; const tip = String(b.tip || ''); const period = String(b.period || '');
+    if (!decl.TIPURI[tip] || !/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) {
+      return res.status(400).json({ error: 'Declarația sau perioada este invalidă.' });
+    }
+    if (!/^[0-9a-f]{64}$/.test(String(b.artifactHash || ''))) {
+      return res.status(400).json({ error: 'Validarea cere SHA-256 complet al XML-ului verificat.' });
+    }
+    if (!eligibilityGate(req, res, tip, period)) return;
+    const d = db.get(); const fid = activeId(req);
+    try { permissions.assert(req.user, fid, 'declaration.validate', db.getFirma(fid)); } catch (e) {
+      return res.status(e.status || 403).json({ error: e.message, permission: e.permission });
+    }
+    if (!validDossierReference(b, fid, tip, period, res)) return;
+    const checkpoint = dossierCheckpoint(d, fid, tip, period);
+    try {
+      const result = decl.recordOfficialValidation(d, fid, tip, period, {
+        artifactHash: String(b.artifactHash), validator: b.validator, schema: b.schema,
+        result: b.result, validatedAt: new Date().toISOString(),
+        authorization: transitionAuthorization(req, 'declaration.validate', fid),
+      });
+      logAudit('declaratie.validare-oficiala', tip.toUpperCase() + ' ' + period
+        + ' · document SHA-256 ' + result.validation.artifactHash
+        + ' · dovadă ' + result.validation.proofHash + dossierAuditRef(fid, tip, period), { req });
+      db.save(); checkpoint.commit();
+      return res.json({ ok: true, created: result.created, validation: result.validation,
+        dossier: decl.publicDossier(result.rec, fid, tip, period, S(req)) });
+    } catch (e) {
+      checkpoint.rollback();
+      return res.status(e.status || 400).json({ error: e.message || String(e), code: e.code });
+    }
+  });
+
   // ── Declaratii rectificative ────────────────────────────────────────────
   // Cifrele-cheie ale unei depuneri, ca sa se poata arata DIFERENTA la rectificativa. Fara ele,
   // istoricul ar spune „s-a mai depus o data", fara sa spuna CE s-a schimbat.
@@ -388,6 +424,10 @@ module.exports = function register(app, ctx) {
       if (!decl.exactArtifact(existent, approvedHash)) return res.status(409).json({
         error: 'Transmiterea cere octeții exacți ai artefactului aprobat, nu ultima versiune disponibilă.',
         code: 'FILING_EVIDENCE_ARTIFACT_REQUIRED',
+      });
+      if (!decl.validationForArtifact(existent, approvedHash)) return res.status(409).json({
+        error: 'Transmiterea cere validarea oficială a XML-ului exact aprobat.',
+        code: 'OFFICIAL_VALIDATION_REQUIRED', endpoint: '/api/declarations/official-validation',
       });
     }
     if ((b.status === 'eroare' || b.status === 'scutita') && note.length < 3) {

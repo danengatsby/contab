@@ -58,6 +58,16 @@
   `profileAt` selectează fotografia valabilă la data/luna/anul operațiunii, iar declarațiile,
   controalele, dosarul anual și gardurile de scriere consumă aceeași perspectivă istorică.
   Fiecare XML înregistrat și fiecare depunere păstrează snapshotul profilului și hash-ul lui.
+- `src/fiscalFacts.js` + `src/fiscalAutonomyPolicy.js` — registrul tipizat/temporal al faptelor și
+  autorizarea separată per firmă. Faptele poartă sursă și hash, iar absența, contradicția sau
+  nivelul neconfirmat închid autonomia. Politica limitează operația, valoarea, partenerii, tipurile
+  și documentele, expiră și se invalidează când se schimbă hash-urile declarate. Decizia fiscală
+  expune faptele/regulile/condițiile folosite, efectele fiscale și contabile, motivul abținerii și
+  hash-ul întregului artefact; analiza contrafactuală arată diferența produsă de schimbarea unui fapt.
+- `src/legislativeWorkflow.js` — dosarul append-only al schimbărilor legislative: detectare,
+  interpretare umană, impact reguli/clienți, pachet, aprobare independentă, teste/validator,
+  shadow mode, publicare datată și recalculare/rectificative. AI-ul are capabilitate numai de
+  detectare; etapele de fond cer identitate umană.
 - `src/declarations.js` — dosarul unic pe firmă/declarație/perioadă, aprobările documentelor și
   jurnalul append-only. Fiecare depunere are `submissionId` determinist și `submissionHash` peste
   identitatea fiscală, ordinal, artefact, aprobare și referința ANAF; fiecare recipisă are
@@ -67,6 +77,9 @@
   audit folosește momentul consemnării, fără a confunda `recordedAt` cu `validFrom`/`validTo`.
   Interfața primește proiecția structurată și nu reconstruiește sau sortează istoria în browser;
   rectificativele și schimbările de profil rămân astfel evenimente explicite în același traseu.
+  Înainte de transmitere, `src/officialArtifactValidation.js` cere și verifică dovada validatorului
+  oficial pe XML-ul exact: hash/dimensiune artefact, validator și distribuție, schemă, rezultat
+  complet, moment, reguli și actor. Schimbarea oricărei componente invalidează dovada.
 - `src/balanceCategory.js` — încadrarea contabilă anuală, complet independentă de regimul fiscal:
   calculează cele două frontiere de mărime din active/cifră de afaceri/salariați, aplică regula
   celor două exerciții și validează confirmarea versionată din `balance_category_history`.
@@ -116,7 +129,8 @@
   HMAC este o sigilare tehnică, nu o semnătură electronică calificată; cheia se păstrează în afara bazei.
 - `src/globalChain.js` — verificatorul comun pentru toate dovezile persistente: profil fiscal
   temporal (`validFrom`/`validTo`/`recordedAt`), dosare de depunere, aprobări, artefacte, depuneri și
-  recipise, dosare anuale, fotografii cash-flow și jurnalul durabil. Produce o rădăcină SHA-256
+  recipise, fapte fiscale, politici de autonomie, dosare legislative, dosare anuale, fotografii
+  cash-flow și jurnalul durabil. Produce o rădăcină SHA-256
   deterministă, probleme localizate și un verdict separat de completitudine. Aceeași verificare
   fail-closed este folosită la descărcarea dovezilor, backup, restaurare și exportul de audit;
   datele legacy care nu pretind un binar sunt marcate incomplete, nu reinterpretate ca dovezi.

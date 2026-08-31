@@ -17,6 +17,9 @@ function evaluateTreatment(value, id, facts, options) {
 function evaluateTreatmentForAutonomy(value, id, facts, options) {
   return registry.evaluateTreatmentForAutonomy(value, id, facts, options);
 }
+function counterfactualTreatment(value, id, facts, change, options) {
+  return registry.counterfactualTreatment(value, id, facts, change, options);
+}
 function rateContext(value, explicit) {
   if (explicit && explicit.rates && explicit.id && explicit.hash) return explicit;
   return rulesAt(value);
@@ -158,7 +161,7 @@ module.exports = { FISCAL, DEFAULTS, applyConfig, rulesAt, ruleSetAt: rulesAt,
   createRuleSet: registry.create, appendRuleSet: registry.append, ruleSetById: registry.byId,
   registrySnapshot: registry.snapshot, registryHash: registry.registryHash,
   verifyRuleReference: registry.verifyReference, treatmentAt, evaluateTreatment,
-  evaluateTreatmentForAutonomy,
+  evaluateTreatmentForAutonomy, counterfactualTreatment,
   retinereLaSursa, categoriiBeneficii,
   fiscalStaleness, payroll, taxePfa, deducerePersonala, salariuMinimLa, neimpozabilLa,
   neimpozabilMinim, beneficii, CATEGORII_BENEFICII: cfg.BENEFICII };

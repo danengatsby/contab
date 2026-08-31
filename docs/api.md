@@ -6,7 +6,7 @@ Organizat pe modulele din `src/routes/`; endpoint-urile mărunte sau pur interne
 listate exhaustiv — pentru ele, sursa e ruta însăși, care după refactorizarea pe servicii
 e doar un adaptor subțire ușor de citit.
 
-Actualizat: 2026-08-26.
+Actualizat: 2026-08-31.
 
 ---
 
@@ -76,6 +76,25 @@ Descrise o singură dată aici; secțiunile per modul nu le repetă.
 4. Rapoartele se construiesc singure din articole: `GET /api/journal?period=`,
    `GET /api/balance?period=`, `GET /api/dashboard`, declarațiile din `GET /api/livrabile`
    și `/xml/d300?period=` etc.
+
+## Motor fiscal și validarea artefactului exact
+
+- `GET/POST /api/fiscal-engine/facts` — citește/consemnează fapte tipizate, temporale, cu sursă și
+  SHA-256; scrierea cere `fiscal.manage`.
+- `GET/POST /api/fiscal-engine/autonomy-policy` — versiuni per firmă ale politicii de autonomie;
+  scrierea cere `fiscal.manage`.
+- `POST /api/fiscal-engine/evaluate` — evaluare read-only din registrul de fapte; întoarce decizia
+  verificabilă și motivul de abținere, fără postare. Suma pentru plafon, momentul evaluării și
+  hash-ul profilului fiscal sunt derivate pe server; payloadul nu le poate suprascrie.
+- `POST /api/fiscal-engine/counterfactual` — compară decizia deterministă curentă cu ipoteza
+  `change { fact, value }` și întoarce rezultatele, diferențele și hash-ul analizei.
+- `POST /api/declarations/official-validation` — leagă rezultatul complet DUK/schema de XML-ul
+  persistent exact. Transmiterea este refuzată fără dovadă validă pe hash-ul aprobat.
+- `GET /api/legislative-workflow`, `POST .../detect`, `POST .../advance` — dosarul industrializat
+  al schimbării legislative; rutele sunt administrative.
+
+Payloadurile motorului fiscal sunt publicate și validate din aceleași scheme în
+`GET /api/openapi.json`; câmpurile necunoscute sunt refuzate.
 
 ---
 

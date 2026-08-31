@@ -71,6 +71,9 @@ const ARRAY_COLLS = [
   // FiscalRuleSet-uri publicate append-only. Definitile incorporate raman in cod; aici se
   // persista numai versiunile ulterioare, cu hash si approvalId verificabile la hidratare.
   { key: 'fiscalRuleSets', firma: false, hasId: true },
+  { key: 'fiscalFacts', firma: true, hasId: true },
+  { key: 'fiscalAutonomyPolicies', firma: true, hasId: true },
+  { key: 'legislativeChanges', firma: false, hasId: true },
   { key: 'firme', firma: false, hasId: true },
   { key: 'documents', firma: true, hasId: true },
   { key: 'entries', firma: true, hasId: true },

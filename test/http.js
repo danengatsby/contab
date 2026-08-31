@@ -177,6 +177,17 @@ async function grantStepUp(cookie, scope, password = 'parola1') {
   return req('POST', '/api/step-up', { cookie, body: { scope, password, code: adminTotpCode() } });
 }
 
+async function recordOfficialValidation(cookie, tip, period, artifactHash, dossierId) {
+  return req('POST', '/api/declarations/official-validation', { cookie, body: {
+    tip, period, artifactHash, ...(dossierId ? { dossierId } : {}),
+    validator: { name: 'DUKIntegrator HTTP fixture', version: '2026.08-test',
+      distributionHash: '6'.repeat(64) },
+    schema: { name: tip.toUpperCase() + ' HTTP schema', version: '2026.08-test', hash: '7'.repeat(64) },
+    result: { status: 'valid', errors: [], warnings: [],
+      fullOutput: 'TEST FIXTURE valid pentru ' + tip + ' ' + period + ' ' + artifactHash },
+  } });
+}
+
 async function enrollTwoFactor(cookie) {
   const setup = await req('POST', '/api/2fa/setup', { cookie });
   if (setup.status !== 200 || !setup.json.secret) return setup;
@@ -377,6 +388,62 @@ async function main() {
     const me = await req('GET', '/api/me', { cookie: c1 });
     ok('/api/me: identitate si tip', me.json && me.json.username === 'user1' && me.json.tip === 'tester');
 
+    const fiscalFactHttp = await req('POST', '/api/fiscal-engine/facts', { cookie: c1, body: {
+      subject: 'payroll:employee-http:2026-08', key: 'base', type: 'money', value: 5000,
+      source: { kind: 'payroll-register', id: 'state-http-2026-08', authority: 'angajator' },
+      sourceHash: '1'.repeat(64), validFrom: '2026-08-01', validTo: '2026-08-31', confidence: 'confirmed',
+    } });
+    ok('motor fiscal HTTP: proprietarul consemnează un fapt tipizat cu actor și hash',
+      fiscalFactHttp.status === 201 && fiscalFactHttp.json.fact.recordedBy.actorId === 2
+        && /^[0-9a-f]{64}$/.test(fiscalFactHttp.json.fact.hash || ''));
+    const fiscalResolutionHttp = await req('GET',
+      '/api/fiscal-engine/facts?subject=payroll%3Aemployee-http%3A2026-08&key=base&asOf=2026-08-31',
+      { cookie: c1 });
+    ok('motor fiscal HTTP: rezoluția temporală întoarce numai valoarea valabilă',
+      fiscalResolutionHttp.status === 200 && fiscalResolutionHttp.json.resolution.status === 'resolved'
+        && fiscalResolutionHttp.json.resolution.value === 5000);
+    eq('motor fiscal HTTP: operatorul fără fiscal.manage nu poate fabrica fapte',
+      (await req('POST', '/api/fiscal-engine/facts', { cookie: cOperatorSod, body: {
+        subject: 'company', key: 'base', type: 'money', value: 1,
+        source: { kind: 'manual', id: 'forbidden' }, sourceHash: '2'.repeat(64),
+        validFrom: '2026-08-31', confidence: 'confirmed',
+      } })).status, 403);
+    const autonomyPolicyHttp = await req('POST', '/api/fiscal-engine/autonomy-policy', { cookie: c1, body: {
+      version: 1, operations: ['ro.payroll.cas'], valueLimits: { 'ro.payroll.cas': 2000 },
+      allowedPartners: ['employee-http'], allowedDocumentTypes: ['payroll'], requiredDocuments: [],
+      expiresAt: '2030-12-31T23:59:59.000Z', invalidation: {},
+    } });
+    ok('motor fiscal HTTP: politica firmei păstrează limita, expirarea și autorizatorul',
+      autonomyPolicyHttp.status === 201 && autonomyPolicyHttp.json.policy.authorizedBy.actorId === 2
+        && autonomyPolicyHttp.json.policy.valueLimits['ro.payroll.cas'] === 2000);
+    const spoofedFiscalDecision = await req('POST', '/api/fiscal-engine/evaluate', { cookie: c1, body: {
+      ruleId: 'ro.payroll.cas', asOf: '2026-08-31', subject: 'payroll:employee-http:2026-08',
+      operation: 'ro.payroll.cas', partnerId: 'employee-http', documentType: 'payroll', documents: [],
+      amount: 999999, evaluatedAt: '2029-01-01T00:00:00.000Z', dependencies: { fiscalProfileHash: '0'.repeat(64) },
+    } });
+    ok('motor fiscal HTTP: clientul nu poate dicta suma, momentul sau hash-urile politicii',
+      spoofedFiscalDecision.status === 400 && spoofedFiscalDecision.json.code === 'API_PAYLOAD_INVALID');
+    const fiscalDecisionHttp = await req('POST', '/api/fiscal-engine/evaluate', { cookie: c1, body: {
+      ruleId: 'ro.payroll.cas', asOf: '2026-08-31', subject: 'payroll:employee-http:2026-08',
+      operation: 'ro.payroll.cas', partnerId: 'employee-http', documentType: 'payroll', documents: [],
+    } });
+    ok('motor fiscal HTTP: decizia este verificabilă și nu confundă calculul cu autonomia',
+      fiscalDecisionHttp.status === 200 && fiscalDecisionHttp.json.decision.result.amount === 1250
+        && fiscalDecisionHttp.json.decision.resultStatus === 'COMPUTED'
+        && Array.isArray(fiscalDecisionHttp.json.decision.factsUsed)
+        && /^[0-9a-f]{64}$/.test(fiscalDecisionHttp.json.decision.artifactHash || '')
+        && fiscalDecisionHttp.json.decision.autonomousEligible === false
+        && fiscalDecisionHttp.json.decision.autonomyPolicyDecision.amount === 1250
+        && fiscalDecisionHttp.json.decision.autonomyPolicyDecision.dependencies.fiscalProfileHash !== '0'.repeat(64));
+    const fiscalWhatIfHttp = await req('POST', '/api/fiscal-engine/counterfactual', { cookie: c1, body: {
+      ruleId: 'ro.payroll.cas', subject: 'payroll:employee-http:2026-08', asOf: '2026-08-31',
+      change: { fact: 'base', value: 6000 },
+    } });
+    ok('motor fiscal HTTP: analiza contrafactuală explică efectul schimbării unui fapt',
+      fiscalWhatIfHttp.status === 200 && fiscalWhatIfHttp.json.counterfactual.beforeResult.amount === 1250
+        && fiscalWhatIfHttp.json.counterfactual.afterResult.amount === 1500
+        && fiscalWhatIfHttp.json.counterfactual.deltas.amount === 250);
+
     // Contractul formal este si contract de executie: aceleasi scheme publicate in OpenAPI
     // resping payloadurile necunoscute inainte sa ajunga in configuratie sau in registrul fiscal.
     const apiSpec = await req('GET', '/api/openapi.json', { cookie: c1 });
@@ -384,6 +451,8 @@ async function main() {
       && apiSpec.json.openapi === '3.1.0'
       && apiSpec.json.paths['/api/cash-flow/classification']
       && apiSpec.json.paths['/api/fiscal/micro/adjustments']
+      && apiSpec.json.paths['/api/fiscal-engine/evaluate']
+      && apiSpec.json.paths['/api/fiscal-engine/counterfactual']
       && apiSpec.json.paths['/api/upload']);
     const cashFlowBad = await req('PUT', '/api/cash-flow/classification', { cookie: c1, body: {
       rules: [], materialityAmount: 1000, materialityPercent: 5, campInventat: true,
@@ -793,6 +862,17 @@ async function main() {
       tip: 'd300', period: '2026-06', dossierId: reservedDossierId, status: 'aprobata' } });
     ok('registru: starea aprobată nu poate fi bifată fără endpointul de hash', directApprovedState.status === 409
       && directApprovedState.json.endpoint === '/api/declarations/approve');
+    const transmitUnvalidated = await req('POST', '/api/declarations/set', { cookie: c1, body: {
+      tip: 'd300', period: '2026-06', dossierId: reservedDossierId, status: 'transmisa' } });
+    ok('registru: aprobarea nu înlocuiește validarea oficială a XML-ului exact',
+      transmitUnvalidated.status === 409 && transmitUnvalidated.json.code === 'OFFICIAL_VALIDATION_REQUIRED');
+    const validatedD300 = await recordOfficialValidation(c1, 'd300', '2026-06',
+      generatD300.artifactHash, reservedDossierId);
+    ok('registru: dovada oficială păstrează validatorul, schema, outputul și hash-ul XML-ului',
+      validatedD300.status === 200 && validatedD300.json.created === true
+        && validatedD300.json.validation.artifactHash === generatD300.artifactHash
+        && validatedD300.json.validation.result.status === 'valid'
+        && /^[0-9a-f]{64}$/.test(validatedD300.json.validation.proofHash || ''));
     const trimis = await req('POST', '/api/declarations/set', { cookie: c1, body: {
       tip: 'd300', period: '2026-06', dossierId: reservedDossierId, status: 'transmisa' } });
     const transmittedD300 = trimis.json && trimis.json.rows.find((r) => r.tip === 'd300');
@@ -1960,6 +2040,8 @@ async function main() {
     const d100Generated = (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100');
     eq('D100 este aprobat pe hash-ul exact înainte de transmitere', (await req('POST', '/api/declarations/approve', { cookie: c1,
       body: { tip: 'd100', period: '2026-06', artifactHash: d100Generated.artifactHash } })).status, 200);
+    eq('D100 este validat oficial pe același hash înainte de transmitere',
+      (await recordOfficialValidation(c1, 'd100', '2026-06', d100Generated.artifactHash)).status, 200);
     eq('D100 trece mai întâi prin starea transmisă', (await req('POST', '/api/declarations/set', { cookie: c1,
       body: { tip: 'd100', period: '2026-06', status: 'transmisa' } })).status, 200);
     const d100Filed = new FormData(); d100Filed.append('tip', 'd100'); d100Filed.append('period', '2026-06');
@@ -1987,6 +2069,8 @@ async function main() {
     const d710Generated = (await req('GET', '/api/declarations?period=2026-06', { cookie: c1 })).json.rows.find((r) => r.tip === 'd100');
     eq('rectificativa D710 primește propria aprobare pe noul hash', (await req('POST', '/api/declarations/approve', { cookie: c1,
       body: { tip: 'd100', period: '2026-06', artifactHash: d710Generated.artifactHash } })).status, 200);
+    eq('rectificativa D710 este validată oficial pe artefactul nou',
+      (await recordOfficialValidation(c1, 'd100', '2026-06', d710Generated.artifactHash)).status, 200);
     const d710Filed = new FormData(); d710Filed.append('tip', 'd100'); d710Filed.append('period', '2026-06');
     d710Filed.append('motiv', 'venit omis inclus prin D710'); d710Filed.append('recipisa', 'R-D710-2');
     d710Filed.append('file', new Blob(['<recipisa id="R-D710-2"/>'], { type: 'application/xml' }), 'recipisa-d710-2.xml');
@@ -3191,6 +3275,7 @@ async function main() {
     const janD300Generated = (await req('GET', '/api/declarations?period=2026-01', { cookie: c1 })).json.rows.find((r) => r.tip === 'd300');
     await req('POST', '/api/declarations/approve', { cookie: c1,
       body: { tip: 'd300', period: '2026-01', artifactHash: janD300Generated.artifactHash } });
+    await recordOfficialValidation(c1, 'd300', '2026-01', janD300Generated.artifactHash);
     await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd300', period: '2026-01', status: 'transmisa' } });
     const janD300 = new FormData(); janD300.append('tip', 'd300'); janD300.append('period', '2026-01'); janD300.append('recipisa', 'R1');
     janD300.append('file', new Blob(['<recipisa id="R1-2026-01"/>'], { type: 'application/xml' }), 'recipisa-d300-2026-01.xml');
@@ -3201,6 +3286,7 @@ async function main() {
     const janD394Generated = (await req('GET', '/api/declarations?period=2026-01', { cookie: c1 })).json.rows.find((r) => r.tip === 'd394');
     await req('POST', '/api/declarations/approve', { cookie: c1,
       body: { tip: 'd394', period: '2026-01', artifactHash: janD394Generated.artifactHash } });
+    await recordOfficialValidation(c1, 'd394', '2026-01', janD394Generated.artifactHash);
     await req('POST', '/api/declarations/set', { cookie: c1, body: { tip: 'd394', period: '2026-01', status: 'transmisa' } });
     const janD394 = new FormData(); janD394.append('tip', 'd394'); janD394.append('period', '2026-01'); janD394.append('recipisa', 'R-D394-1');
     janD394.append('file', new Blob(['<recipisa id="R-D394-1"/>'], { type: 'application/xml' }), 'recipisa-d394-2026-01.xml');

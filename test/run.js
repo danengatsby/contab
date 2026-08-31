@@ -106,6 +106,18 @@ const payrollHistory = require('../src/payrollHistory');
 // directia care linisteste.
 const { stare, eq, ok, section, wellFormed } = require('./run/comun');
 
+function recordTestOfficialValidation(declarations, graph, firmaId, tip, period, artifactHash, actorId) {
+  return declarations.recordOfficialValidation(graph, firmaId, tip, period, {
+    artifactHash,
+    validator: { name: 'DUKIntegrator-test-fixture', version: '2026.08-test', distributionHash: '6'.repeat(64) },
+    schema: { name: tip.toUpperCase() + '-test-schema', version: '2026.08-test', hash: '7'.repeat(64) },
+    result: { status: 'valid', errors: [], warnings: [], fullOutput: 'TEST FIXTURE: document valid ' + artifactHash },
+    validatedAt: '2026-07-10T10:01:00.000Z',
+    authorization: { authorized: true, action: 'declaration.validate', actorId: actorId || 8,
+      username: 'validator-test', role: 'aprobator' },
+  }).validation;
+}
+
 section('Bootstrap: constructia aplicatiei');
 try {
   const bootstrap = require('../src/bootstrap');
@@ -5949,6 +5961,139 @@ eq('an ulterior -> stale (cote potential expirate)', fcfg.fiscalStaleness(anRef 
 eq('vechime expune an + anCurent', fcfg.fiscalStaleness(anRef + 2).anCurent, anRef + 2);
 eq('an lipsa (0) -> nu declara stale', fcfg.fiscalStaleness(0).stale, false);
 
+section('Arhitectura motorului fiscal autonom — fapte, decizii, politică și flux legislativ');
+{
+  const factRegistry = require('../src/fiscalFacts');
+  const autonomyPolicy = require('../src/fiscalAutonomyPolicy');
+  const treatments = require('../src/fiscalTreatments');
+  const legislative = require('../src/legislativeWorkflow');
+  const graph = { fiscalFacts: [], fiscalAutonomyPolicies: [], legislativeChanges: [] };
+  let architectureId = 0; const nextArchitectureId = (prefix) => prefix + (++architectureId);
+  const recorder = { actorId: 71, username: 'specialist', role: 'aprobator' };
+  const baseFact = factRegistry.append(graph, {
+    firmaId: 44, subject: 'payroll:employee-1:2026-08', key: 'base', type: 'money', value: 5000,
+    source: { kind: 'payroll-register', id: 'state-2026-08', authority: 'angajator' },
+    sourceHash: '1'.repeat(64), validFrom: '2026-08-01', validTo: '2026-08-31',
+    confidence: 'confirmed', recordedAt: '2026-08-31T09:00:00.000Z', recordedBy: recorder,
+  }, { nextId: nextArchitectureId });
+  ok('faptul fiscal păstrează tipul, intervalul, sursa, încrederea și hash-ul sursei',
+    baseFact.type === 'money' && baseFact.validFrom === '2026-08-01'
+      && baseFact.confidence === 'confirmed' && baseFact.source.kind === 'payroll-register'
+      && /^[0-9a-f]{64}$/.test(baseFact.sourceHash) && factRegistry.verify(baseFact).valid);
+  const resolvedBase = factRegistry.resolve(graph.fiscalFacts, { firmaId: 44,
+    subject: 'payroll:employee-1:2026-08', key: 'base', asOf: '2026-08-31' });
+  ok('registrul rezolvă valoarea numai în intervalul ei temporal',
+    resolvedBase.status === 'resolved' && resolvedBase.value === 5000
+      && factRegistry.resolve(graph.fiscalFacts, { firmaId: 44,
+        subject: 'payroll:employee-1:2026-08', key: 'base', asOf: '2026-09-01' }).status === 'missing');
+
+  const registryDecision = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: 999999 }, {
+    factRegistry: graph.fiscalFacts, firmaId: 44, factSubject: 'payroll:employee-1:2026-08', asOf: '2026-08-31',
+    accountingEntries: [{ debit: '421', credit: '4315', amount: 1250 }],
+  });
+  ok('decizia ignoră un câmp liber când registrul este cerut și expune dosarul verificabil complet',
+    registryDecision.result.amount === 1250 && registryDecision.facts.base === 5000
+      && registryDecision.factsUsed[0].source[0].factRecordId === baseFact.id
+      && registryDecision.rulesUsed.some((row) => row.id === rules2026.id)
+      && registryDecision.conditionsEvaluated.some((row) => row.kind === 'applicability' && row.outcome === true)
+      && registryDecision.accountingEntries[0].credit === '4315'
+      && registryDecision.taxEffects[0].amount === 1250
+      && /^[0-9a-f]{64}$/.test(registryDecision.artifactHash));
+  const missingRegistered = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: 5000 }, {
+    factRegistry: graph.fiscalFacts, firmaId: 44, factSubject: 'payroll:unknown', asOf: '2026-08-31',
+  });
+  ok('câmpul liber nu umple faptul obligatoriu absent: verdict explicit NEDETERMINABIL',
+    missingRegistered.status === 'undetermined' && missingRegistered.resultStatus === 'NEDETERMINABIL'
+      && missingRegistered.result === null && missingRegistered.missingFacts.includes('base'));
+  factRegistry.append(graph, {
+    firmaId: 44, subject: 'payroll:employee-1:2026-08', key: 'base', type: 'money', value: 6000,
+    source: { kind: 'bank-proof', id: 'payment-2026-08' }, sourceHash: '2'.repeat(64),
+    validFrom: '2026-08-31', validTo: '2026-08-31', confidence: 'confirmed',
+    recordedAt: '2026-08-31T09:05:00.000Z', recordedBy: recorder,
+  }, { nextId: nextArchitectureId });
+  const conflictDecision = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', {}, {
+    factRegistry: graph.fiscalFacts, firmaId: 44, factSubject: 'payroll:employee-1:2026-08', asOf: '2026-08-31',
+  });
+  ok('două surse active contradictorii opresc calculul și spun exact faptul contestat',
+    conflictDecision.status === 'undetermined'
+      && conflictDecision.factRegistrySnapshot.conflictingFacts.includes('base')
+      && /contradictorii/.test(conflictDecision.reason));
+  const whatIf = treatments.counterfactual(casRule, rules2026, { base: 5000 },
+    { fact: 'base', value: 6000 });
+  ok('explicația contrafactuală arată ce se schimbă dacă faptul este greșit',
+    whatIf.beforeResult.amount === 1250 && whatIf.afterResult.amount === 1500
+      && whatIf.deltas.amount === 250 && /^[0-9a-f]{64}$/.test(whatIf.artifactHash));
+
+  const policy = autonomyPolicy.append(graph, {
+    firmaId: 44, version: 1, operations: ['ro.payroll.cas'], valueLimits: { 'ro.payroll.cas': 2000 },
+    allowedPartners: ['employee-1'], allowedDocumentTypes: ['payroll'], requiredDocuments: ['approved-payroll'],
+    authorizedBy: recorder, authorizedAt: '2026-08-30T10:00:00.000Z', expiresAt: '2026-09-30T23:59:59.000Z',
+    invalidation: { fiscalRulesHash: rules2026.hash, treatmentRegistryHash: treatments.registryHash() },
+  }, { nextId: nextArchitectureId });
+  const allowedPolicy = autonomyPolicy.decide(policy, { firmaId: 44, at: '2026-08-31T10:00:00.000Z',
+    operation: 'ro.payroll.cas', amount: 1250, partnerId: 'employee-1', documentType: 'payroll',
+    documents: [{ kind: 'approved-payroll', hash: '3'.repeat(64) }],
+    dependencies: { fiscalRulesHash: rules2026.hash, treatmentRegistryHash: treatments.registryHash() } });
+  ok('politica separată autorizează doar contextul, limita și documentele exacte',
+    allowedPolicy.decision === 'allow' && allowedPolicy.policyHash === policy.hash);
+  const abstainedPolicy = autonomyPolicy.decide(policy, { firmaId: 44, at: '2026-10-01T00:00:00.000Z',
+    operation: 'ro.payroll.cas', amount: 2500, partnerId: 'other', documentType: 'invoice', documents: [],
+    dependencies: { fiscalRulesHash: '4'.repeat(64), treatmentRegistryHash: treatments.registryHash() } });
+  ok('expirarea, plafonul, partenerul, documentul și schimbarea regulilor produc abținere cumulativă',
+    abstainedPolicy.decision === 'abstain'
+      && ['POLICY_EXPIRED', 'VALUE_LIMIT_EXCEEDED', 'PARTNER_NOT_AUTHORIZED',
+        'DOCUMENT_TYPE_NOT_AUTHORIZED', 'REQUIRED_DOCUMENT_MISSING:approved-payroll',
+        'DEPENDENCY_CHANGED:fiscalRulesHash'].every((reason) => abstainedPolicy.reasons.includes(reason)));
+
+  const detected = legislative.create(graph, {
+    title: 'Modificare fiscală detectată automat', officialSource: 'https://legislatie.just.ro/test-autonomie',
+    sourceHash: '5'.repeat(64), detectedAt: '2026-08-20T08:00:00.000Z',
+    actor: { actorId: 'monitor-1', username: 'monitor-oficial', role: 'detector', kind: 'ai' },
+    detection: { summary: 'candidat; nu este interpretare' },
+  }, { nextId: nextArchitectureId });
+  let aiInterpretationError = null;
+  try { legislative.advance(detected, 'interpreted', { interpretation: 'AI', effectiveFrom: '2026-09-01' },
+    { actorId: 'monitor-1', username: 'monitor-oficial', kind: 'ai' }); } catch (e) { aiInterpretationError = e; }
+  ok('AI poate detecta, dar nu poate publica singur o interpretare fiscală',
+    aiInterpretationError && aiInterpretationError.code === 'LEGISLATIVE_HUMAN_REQUIRED'
+      && detected.stage === 'detected');
+  legislative.advance(detected, 'interpreted', { interpretation: 'Interpretare semnată de specialist', effectiveFrom: '2026-09-01' },
+    { actorId: 81, username: 'consultant-fiscal', role: 'specialist', kind: 'human' });
+  legislative.advance(detected, 'impact_assessed', { affectedRuleIds: ['ro.payroll.cas'], affectedClientIds: [44] },
+    { actorId: 81, username: 'consultant-fiscal', role: 'specialist', kind: 'human' });
+  legislative.advance(detected, 'package_drafted', { rulePackageHash: '6'.repeat(64) },
+    { actorId: 81, username: 'consultant-fiscal', role: 'specialist', kind: 'human' });
+  legislative.advance(detected, 'independently_approved', { approval: {
+    signatureHash: '7'.repeat(64), rulePackageHash: '6'.repeat(64),
+  } },
+    { actorId: 82, username: 'revizor-independent', role: 'reviewer', kind: 'human' });
+  let incompleteCorpusError = null;
+  try {
+    legislative.advance(detected, 'tested', { testEvidence: { cases: 750, passed: 749, failed: 1 },
+      validatorEvidence: { proofHash: '8'.repeat(64) } },
+    { actorId: 83, username: 'qa-fiscal', role: 'tester', kind: 'human' });
+  } catch (e) { incompleteCorpusError = e; }
+  ok('fluxul refuză o probă de test incompletă fără să avanseze dosarul',
+    incompleteCorpusError && incompleteCorpusError.code === 'LEGISLATIVE_EVIDENCE_INVALID'
+      && detected.stage === 'independently_approved');
+  legislative.advance(detected, 'tested', { testEvidence: { cases: 750, passed: 750 },
+    validatorEvidence: { proofHash: '8'.repeat(64) } },
+  { actorId: 83, username: 'qa-fiscal', role: 'tester', kind: 'human' });
+  legislative.advance(detected, 'shadow', { shadowEvidence: { from: '2026-08-21', to: '2026-08-30',
+    comparisons: 500, differences: 0, unresolvedDifferences: 0 } },
+    { actorId: 83, username: 'qa-fiscal', role: 'tester', kind: 'human' });
+  legislative.advance(detected, 'published', { publication: { validFrom: '2026-09-01', ruleSetId: 'ro-test',
+    ruleSetHash: '6'.repeat(64) } }, { actorId: 82, username: 'revizor-independent', role: 'reviewer', kind: 'human' });
+  legislative.advance(detected, 'recalculation_planned', { recalculation: { periods: ['2026-09'],
+    affectedClients: [44], rectificativeProposals: [] } },
+  { actorId: 84, username: 'operator-fiscal', role: 'operator', kind: 'human' });
+  legislative.advance(detected, 'completed', { completion: { recalculated: true, proposals: 0 } },
+    { actorId: 84, username: 'operator-fiscal', role: 'operator', kind: 'human' });
+  ok('fluxul complet păstrează ordinea, aprobarea independentă, shadow mode și recalcularea',
+    detected.stage === 'completed' && detected.events.length === legislative.STAGES.length
+      && legislative.verify(detected).valid && /^[0-9a-f]{64}$/.test(detected.chainHash));
+}
+
 section('Avize si facturi simplificate');
 const avL = gt2('aviz_livrare').build({ baza: 1000, tva: 210, cota: 21 });
 eq('aviz livrare: 418=707', avL[0].debit + '=' + avL[0].credit, '418=707');
@@ -6982,6 +7127,32 @@ section('Declaratii rectificative (istoric depuneri + steag XML)');
     approved.rec.status === 'aprobata' && approved.approval.artifactHash === artifactHash
       && approved.approval.approvedBy.username === 'maria'
       && /^[0-9a-f]{64}$/.test(approved.approval.approvalHash));
+  let validationRequired = null;
+  try { decl.record(d, 'f1', 'd300', '2026-06', {
+    status: 'transmisa', authorization: submitAuth, documentApproval: approved.approval,
+    fiscalReviewEvidence,
+  }, nid); } catch (e) { validationRequired = e; }
+  ok('aprobarea umană nu înlocuiește validarea oficială a XML-ului exact',
+    validationRequired && validationRequired.code === 'OFFICIAL_VALIDATION_REQUIRED');
+  const failedOfficialValidation = decl.recordOfficialValidation(d, 'f1', 'd300', '2026-06', {
+    artifactHash,
+    validator: { name: 'DUKIntegrator-test-fixture', version: '2026.08-test', distributionHash: '6'.repeat(64) },
+    schema: { name: 'D300-test-schema', version: '2026.08-test', hash: '7'.repeat(64) },
+    result: { status: 'invalid', errors: ['R1: eroare de corelație'], warnings: [], fullOutput: 'R1 invalid' },
+    validatedAt: '2026-07-10T10:00:30.000Z',
+    authorization: { authorized: true, action: 'declaration.validate', actorId: 8,
+      username: 'validator-test', role: 'aprobator' },
+  }).validation;
+  ok('un rezultat oficial invalid rămâne în dosar, dar nu autorizează transmiterea',
+    failedOfficialValidation.result.status === 'invalid'
+      && decl.validationForArtifact(d.declarations[0], artifactHash) === null
+      && decl.verifyDossier(d.declarations[0], 'f1', 'd300', '2026-06').valid);
+  const officialValidation = recordTestOfficialValidation(decl, d, 'f1', 'd300', '2026-06', artifactHash);
+  ok('dovada validatorului leagă artefactul, schema, versiunea, regulile și rezultatul complet',
+    officialValidation.artifactHash === artifactHash
+      && officialValidation.result.status === 'valid'
+      && /^[0-9a-f]{64}$/.test(officialValidation.result.fullOutputHash)
+      && /^[0-9a-f]{64}$/.test(officialValidation.proofHash));
   decl.record(d, 'f1', 'd300', '2026-06', {
     status: 'transmisa', authorization: submitAuth, documentApproval: approved.approval,
     fiscalReviewEvidence,
@@ -7173,6 +7344,7 @@ section('Declaratii rectificative (istoric depuneri + steag XML)');
   const evidenceApproval = decl.approveDocument(evidenceLedger, 'f3', 'd300', '2026-06', {
     artifactHash, authorization: approveAuth, fiscalReviewEvidence,
   }).approval;
+  recordTestOfficialValidation(decl, evidenceLedger, 'f3', 'd300', '2026-06', artifactHash);
   decl.record(evidenceLedger, 'f3', 'd300', '2026-06', {
     status: 'transmisa', authorization: submitAuth, documentApproval: evidenceApproval, fiscalReviewEvidence,
   }, nid);
@@ -7339,6 +7511,7 @@ const dDeclApproval = declMod.approveDocument(dDecl, vDecl.firmaId, 'd300', '202
   artifactHash: dDeclHash, authorization: dDeclApprove,
   fiscalReviewEvidence: { ready: true, hash: 'd'.repeat(64) },
 }).approval;
+recordTestOfficialValidation(declMod, dDecl, vDecl.firmaId, 'd300', '2026-06', dDeclHash);
 declMod.record(dDecl, vDecl.firmaId, 'd300', '2026-06', {
   status: 'transmisa', authorization: dDeclSubmit,
   documentApproval: dDeclApproval, fiscalReviewEvidence: { ready: true, hash: 'd'.repeat(64) },
@@ -7552,6 +7725,7 @@ ok('expectedForFirma: firma pe profit vede D101 in decembrie', declMod.expectedF
     artifactHash: artifactAfter, authorization: profileApprove,
     fiscalReviewEvidence: { ready: true, hash: 'e'.repeat(64) },
   }).approval;
+  recordTestOfficialValidation(declMod, ledger, 91, 'd300', '2026-06', artifactAfter);
   declMod.record(ledger, 91, 'd300', '2026-06', {
     status: 'transmisa', authorization: profileSubmit,
     documentApproval: profileDocumentApproval, fiscalReviewEvidence: { ready: true, hash: 'e'.repeat(64) },

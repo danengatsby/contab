@@ -8,6 +8,15 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
+> Probele de mai jos validează bateria de release. Ele nu sunt reutilizate drept dovadă pentru
+> o declarație concretă. Pentru fiecare transmitere, validatorul se rulează pe XML-ul exact care
+> urmează să plece, iar rezultatul complet se consemnează prin
+> `POST /api/declarations/official-validation`. `src/officialArtifactValidation.js` leagă
+> SHA-256-ul și dimensiunea XML-ului de versiunea/hash-ul distribuției validatorului, schemă,
+> momentul consemnării stabilit de server, hash-ul regulilor și actor;
+> `src/declarations.js` blochează transmiterea dacă legătura
+> lipsește sau s-a schimbat orice reper.
+
 ## Ultima verificare: 2026-08-31 — tratamente executabile și poartă separată de autonomie
 
 Introducerea registrului de tratamente executabile și mutarea formulelor CAS/CASS/impozit/CAM,

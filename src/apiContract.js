@@ -59,6 +59,9 @@ const categoryKeys = ['ex_clienti', 'ex_furnizoriAngajati', 'ex_impozite', 'ex_d
 const taxonomyKeys = ['taxable_confirmed', 'insurance_compensation_own_assets', 'foreign_income_taxed',
   'other_legal_subtraction', 'other_legal_addition'];
 const reason = { type: 'string', minLength: 5, maxLength: 500 };
+const hash256 = { type: 'string', pattern: '^[0-9a-f]{64}$' };
+const isoDate = { type: 'string', pattern: '^\\d{4}-(?:0[1-9]|1[0-2])-[0-3]\\d$' };
+const stringList = { type: 'array', maxItems: 1000, items: { type: 'string', minLength: 1, maxLength: 300 } };
 const schemas = Object.freeze({
   DocumentAiMode: { type: 'string', enum: ['firm-default', 'allow', 'deny'] },
   CashFlowClassification: { type: 'object', additionalProperties: false,
@@ -109,6 +112,52 @@ const schemas = Object.freeze({
         assetTransfers: { type: 'array', maxItems: 2000, items: { type: 'object' } },
       } },
     } },
+  FiscalFactInput: { type: 'object', additionalProperties: false,
+    required: ['subject', 'key', 'type', 'value', 'source', 'sourceHash', 'validFrom', 'confidence'],
+    properties: {
+      subject: { type: 'string', minLength: 1, maxLength: 300 },
+      key: { type: 'string', pattern: '^[a-z][a-zA-Z0-9._-]*$', maxLength: 120 },
+      type: { type: 'string', enum: ['money', 'number', 'boolean', 'string', 'date'] }, value: {},
+      source: { type: 'object', additionalProperties: false, required: ['kind', 'id'], properties: {
+        kind: { type: 'string', minLength: 1, maxLength: 120 }, id: { type: 'string', minLength: 1, maxLength: 500 },
+        authority: { type: 'string', maxLength: 300 },
+      } },
+      sourceHash: hash256, validFrom: isoDate, validTo: isoDate,
+      confidence: { type: 'string', enum: ['confirmed', 'declared', 'derived', 'disputed'] },
+      supersedes: { type: 'string', maxLength: 160 }, note: { type: 'string', maxLength: 1000 },
+    } },
+  FiscalAutonomyPolicyInput: { type: 'object', additionalProperties: false,
+    required: ['version', 'operations', 'valueLimits', 'allowedPartners', 'allowedDocumentTypes',
+      'requiredDocuments', 'expiresAt', 'invalidation'],
+    properties: {
+      version: { type: 'integer', minimum: 1 }, status: { type: 'string', enum: ['active', 'revoked'] },
+      operations: stringList, valueLimits: { type: 'object' }, allowedPartners: stringList,
+      allowedDocumentTypes: stringList, requiredDocuments: stringList,
+      expiresAt: { type: 'string', minLength: 20, maxLength: 40 },
+      invalidation: { type: 'object', additionalProperties: false, properties: {
+        fiscalRulesHash: hash256, treatmentRegistryHash: hash256,
+        fiscalProfileHash: hash256, factRegistryHash: hash256,
+      } },
+      supersedes: { type: 'string', maxLength: 160 }, note: { type: 'string', maxLength: 1000 },
+    } },
+  FiscalEvaluationInput: { type: 'object', additionalProperties: false,
+    required: ['ruleId', 'asOf'], properties: {
+      ruleId: { type: 'string', minLength: 1, maxLength: 160 }, asOf: isoDate,
+      subject: { type: 'string', maxLength: 300 }, operation: { type: 'string', maxLength: 160 },
+      partnerId: { type: 'string', maxLength: 300 }, documentType: { type: 'string', maxLength: 160 },
+      documents: { type: 'array', maxItems: 100, items: { type: 'object', additionalProperties: false,
+        required: ['kind', 'hash'], properties: {
+          kind: { type: 'string', minLength: 1, maxLength: 160 }, hash: hash256,
+        } } },
+    } },
+  FiscalCounterfactualInput: { type: 'object', additionalProperties: false,
+    required: ['ruleId', 'asOf', 'change'], properties: {
+      ruleId: { type: 'string', minLength: 1, maxLength: 160 }, asOf: isoDate,
+      subject: { type: 'string', maxLength: 300 },
+      change: { type: 'object', additionalProperties: false, required: ['fact', 'value'], properties: {
+        fact: { type: 'string', minLength: 1, maxLength: 120 }, value: {},
+      } },
+    } },
   Reason: { type: 'object', additionalProperties: false, required: ['reason'], properties: { reason } },
 });
 
@@ -144,6 +193,22 @@ function openapi() {
         put: { operationId: 'putMicroEligibilityRegistry', requestBody: json('MicroEligibilityRevision'),
           responses: { 200: { description: 'Revizie salvata si recalculata' }, 400: { description: 'Registru invalid' } } },
       },
+      '/api/fiscal-engine/facts': {
+        get: { operationId: 'listFiscalFacts', responses: { 200: { description: 'Fapte si rezolutie temporala' } } },
+        post: { operationId: 'recordFiscalFact', requestBody: json('FiscalFactInput'),
+          responses: { 201: { description: 'Fapt fiscal consemnat' }, 400: { description: 'Payload invalid' } } },
+      },
+      '/api/fiscal-engine/autonomy-policy': {
+        get: { operationId: 'listFiscalAutonomyPolicies', responses: { 200: { description: 'Politici si versiunea activa' } } },
+        post: { operationId: 'authorizeFiscalAutonomyPolicy', requestBody: json('FiscalAutonomyPolicyInput'),
+          responses: { 201: { description: 'Politica autorizata' }, 400: { description: 'Payload invalid' } } },
+      },
+      '/api/fiscal-engine/evaluate': { post: { operationId: 'evaluateFiscalTreatment',
+        requestBody: json('FiscalEvaluationInput'), responses: { 200: { description: 'Decizie fiscala verificabila' },
+          400: { description: 'Payload invalid' } } } },
+      '/api/fiscal-engine/counterfactual': { post: { operationId: 'evaluateFiscalCounterfactual',
+        requestBody: json('FiscalCounterfactualInput'), responses: { 200: { description: 'Comparatie contrafactuala' },
+          422: { description: 'Decizie de baza nedeterminabila' } } } },
       '/api/upload': { post: { operationId: 'uploadDocument', description: 'Multipart: file + aiMode per document.',
         requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['file', 'aiMode'], properties: {
           file: { type: 'string', format: 'binary' }, aiMode: { $ref: '#/components/schemas/DocumentAiMode' },

@@ -176,7 +176,17 @@ function evaluateTreatmentForAutonomy(value, id, facts, options) {
   }
   return treatmentRegistry.evaluateForAutonomy(treatment, ruleSet, facts, options);
 }
+function counterfactualTreatment(value, id, facts, change, options) {
+  const ruleSet = value && value.rates && value.treatments ? value : at(value);
+  const treatment = treatmentAt(ruleSet, id);
+  if (!treatment) {
+    const e = new Error('Tratamentul fiscal „' + id + '” nu este publicat in FiscalRuleSet ' + ruleSet.id + '.');
+    e.code = 'FISCAL_TREATMENT_NOT_FOUND'; e.status = 422; throw e;
+  }
+  return treatmentRegistry.counterfactual(treatment, ruleSet, facts, change, options);
+}
 
 module.exports = { all, at, ref, byId, configure, create, append, snapshot, registryHash,
   verifyReference, treatmentAt, evaluateTreatment, evaluateTreatmentForAutonomy,
+  counterfactualTreatment,
   canonical, sha256, dateKey };

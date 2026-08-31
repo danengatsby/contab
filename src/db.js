@@ -123,6 +123,9 @@ const DEFAULT_DB = {
   recurringInvoices: [], // { id, firmaId, tip, partener, cuiPartener, fields, frecventa, ziua, activ, startDate, lastGenerated } - facturi recurente
   cursuriBnr: [],      // { id: 'YYYY-MM-DD', cursuri: { EUR: 5.231, ... } } - curs oficial BNR, GLOBAL (nu per firma)
   fiscalRuleSets: [],  // FiscalRuleSet-uri publicate ulterior, append-only; hash-ul se verifica la load
+  fiscalFacts: [],     // fapte fiscale tipizate/temporale, append-only, cu sursă și SHA-256
+  fiscalAutonomyPolicies: [], // autorizări per firmă, versionate separat de regulile fiscale
+  legislativeChanges: [], // dosare globale ale schimbărilor legislative, cu flux și lanț hash
   recipes: [],         // { id, firmaId, nume, productId, gestiuneId, cantitateBaza, costUnitar, materiale:[{productId, gestiuneId, cantitate}] } - retete/BOM productie
   budgets: [],         // { id, firmaId, an, cont, suma } - buget anual per cont (clasa 6/7)
   cashForecastSnapshots: [], // previziuni 13 săptămâni imuabile, baza backtestingului
@@ -259,6 +262,9 @@ function migrate(d) {
   if (!Array.isArray(d.recurringInvoices)) d.recurringInvoices = [];
   if (!Array.isArray(d.cursuriBnr)) d.cursuriBnr = [];
   if (!Array.isArray(d.declarations)) d.declarations = [];
+  if (!Array.isArray(d.fiscalFacts)) d.fiscalFacts = [];
+  if (!Array.isArray(d.fiscalAutonomyPolicies)) d.fiscalAutonomyPolicies = [];
+  if (!Array.isArray(d.legislativeChanges)) d.legislativeChanges = [];
   if (!Array.isArray(d.fiscal_profile_history)) d.fiscal_profile_history = [];
   if (!Array.isArray(d.micro_eligibility_history)) d.micro_eligibility_history = [];
   if (!Array.isArray(d.balance_category_history)) d.balance_category_history = [];
@@ -282,6 +288,20 @@ function migrate(d) {
   if (!Array.isArray(d.inventories)) d.inventories = [];
   if (!Array.isArray(d.inventarAnual)) d.inventarAnual = [];
   if (!Array.isArray(d.users)) d.users = [];
+  for (const fact of d.fiscalFacts) {
+    const check = require('./fiscalFacts').verify(fact);
+    if (!check.valid) throw new Error('Registrul faptelor fiscale este corupt la ' + String(fact.id || '?')
+      + ': ' + check.issues.join('; '));
+  }
+  for (const policy of d.fiscalAutonomyPolicies) {
+    const rebuilt = require('./fiscalAutonomyPolicy').normalize(policy, { now: policy.authorizedAt });
+    if (rebuilt.hash !== policy.hash) throw new Error('Politica de autonomie ' + String(policy.id || '?') + ' are hash invalid.');
+  }
+  for (const change of d.legislativeChanges) {
+    const check = require('./legislativeWorkflow').verify(change);
+    if (!check.valid) throw new Error('Dosarul legislativ ' + String(change.id || '?') + ' este corupt: '
+      + check.issues.join('; '));
+  }
   // Formalizează registrul existent ca dosare unice. Identitatea este derivată din
   // (firmă, declarație, perioadă), iar două rânduri pentru aceeași cheie opresc încărcarea în loc
   // să lase `find()` să aleagă arbitrar unul dintre istorice.
@@ -876,6 +896,8 @@ function exportFirma(fid) {
     inventarAnual: byFid(d.inventarAnual),
     angajati: byFid(d.angajati),
     payrollHistory: byFid(d.payrollHistory),
+    fiscalFacts: byFid(d.fiscalFacts),
+    fiscalAutonomyPolicies: byFid(d.fiscalAutonomyPolicies),
     fiscal_profile_history: byFid(d.fiscal_profile_history),
     micro_eligibility_history: byFid(d.micro_eligibility_history),
     balance_category_history: byFid(d.balance_category_history),
@@ -897,6 +919,7 @@ const FIRMA_IMPORT_COLLS = [
   'entries', 'documents', 'assets', 'angajati', 'payrollHistory', 'products', 'gestiuni',
   'stockMovements', 'inventories', 'inventarAnual', 'openingAnalytic', 'recurringInvoices',
   'openItemAllocations', 'openItemReconciliations', 'bankStatements', 'bankTransactions', 'recipes', 'budgets', 'cashForecastSnapshots', 'declarations', 'annualArchives', 'fiscal_profile_history', 'micro_eligibility_history', 'balance_category_history', 'balance_sheet_mappings', 'balance_sheet_adjustments', 'closings', 'extractInterventions', 'leasingContracts',
+  'fiscalFacts', 'fiscalAutonomyPolicies',
 ];
 const FIRMA_IMPORT_ID_COLLS = FIRMA_IMPORT_COLLS.filter((k) => k !== 'openingAnalytic');
 const FIRMA_IMPORT_MAX_ITEMS = 500000;
@@ -1031,6 +1054,24 @@ function validateFirmaBundle(input) {
         + ' are un moment recordedAt invalid.');
     }
   }
+  const fiscalFactsRegistry = require('./fiscalFacts');
+  for (const fact of b.fiscalFacts) {
+    const check = fiscalFactsRegistry.verify(fact);
+    if (!check.valid || Number(fact.firmaId) !== Number(b.firma.id)) {
+      firmaImportError('Faptul fiscal ' + String(fact.id || '?') + ' este corupt sau aparține altei firme.');
+    }
+    ref(fact.supersedes, 'fiscalFacts', 'Faptul precedent pentru ' + fact.id, false);
+  }
+  const fiscalAutonomy = require('./fiscalAutonomyPolicy');
+  for (const policy of b.fiscalAutonomyPolicies) {
+    let rebuilt;
+    try { rebuilt = fiscalAutonomy.normalize(policy, { now: policy.authorizedAt }); }
+    catch (e) { firmaImportError('Politica de autonomie ' + String(policy.id || '?') + ' este invalidă: ' + e.message); }
+    if (rebuilt.hash !== policy.hash || Number(policy.firmaId) !== Number(b.firma.id)) {
+      firmaImportError('Politica de autonomie ' + String(policy.id || '?') + ' este coruptă sau aparține altei firme.');
+    }
+    ref(policy.supersedes, 'fiscalAutonomyPolicies', 'Politica precedentă pentru ' + policy.id, false);
+  }
   const microEligibility = require('./microEligibility');
   const microEligibilityService = require('./microEligibilityService');
   for (const revision of b.micro_eligibility_history) {
@@ -1151,7 +1192,7 @@ function importFirma(bundle, opts) {
   let seqImport = Number(d.seq) || 1;
   const alloc = (prefix) => String(prefix || '') + seqImport++;
   const maps = {};
-  const prefixes = { products: 'prod', gestiuni: 'gest', assets: 'mf', angajati: 'ang', entries: 'e', stockMovements: 'sm', documents: 'doc', inventories: 'inv', inventarAnual: 'iva', payrollHistory: 'ph', recurringInvoices: 'rec', openItemAllocations: 'oia', openItemReconciliations: 'oir', bankStatements: 'bst', bankTransactions: 'btx', recipes: 'bom', budgets: 'bud', cashForecastSnapshots: 'cfs', declarations: 'dcl', annualArchives: 'aar', fiscal_profile_history: 'fpr', micro_eligibility_history: 'mer', balance_category_history: 'bch', balance_sheet_mappings: 'bsm', balance_sheet_adjustments: 'bsa', closings: 'cls', extractInterventions: 'ext', leasingContracts: 'lsg' };
+  const prefixes = { products: 'prod', gestiuni: 'gest', assets: 'mf', angajati: 'ang', entries: 'e', stockMovements: 'sm', documents: 'doc', inventories: 'inv', inventarAnual: 'iva', payrollHistory: 'ph', recurringInvoices: 'rec', openItemAllocations: 'oia', openItemReconciliations: 'oir', bankStatements: 'bst', bankTransactions: 'btx', recipes: 'bom', budgets: 'bud', cashForecastSnapshots: 'cfs', declarations: 'dcl', annualArchives: 'aar', fiscal_profile_history: 'fpr', micro_eligibility_history: 'mer', balance_category_history: 'bch', balance_sheet_mappings: 'bsm', balance_sheet_adjustments: 'bsa', closings: 'cls', extractInterventions: 'ext', leasingContracts: 'lsg', fiscalFacts: 'ff', fiscalAutonomyPolicies: 'fap' };
   for (const k of FIRMA_IMPORT_ID_COLLS) {
     maps[k] = new Map();
     // Un pachet mic poate veni cu e1/e2 exact când secvența locală ar genera tot e1/e2.
@@ -1246,6 +1287,24 @@ function importFirma(bundle, opts) {
     });
   });
   const stockLines = (lines) => (lines || []).map((l) => Object.assign({}, l, { productId: mid('products', l.productId), gestiuneId: mid('gestiuni', l.gestiuneId) }));
+  const importedFiscalFacts = b.fiscalFacts.map((row) => {
+    const local = require('./fiscalFacts').normalize(Object.assign({}, row, {
+      id: mid('fiscalFacts', row.id), firmaId: newFid,
+      supersedes: mid('fiscalFacts', row.supersedes), hash: undefined,
+    }), { now: row.recordedAt });
+    return Object.assign({}, local, { importedSourceHash: row.hash });
+  });
+  const importedAutonomyPolicies = b.fiscalAutonomyPolicies.map((row) => {
+    const clonedToDifferentIdentity = String(newFid) !== String(b.firma.id);
+    const local = require('./fiscalAutonomyPolicy').normalize(Object.assign({}, row, {
+      id: mid('fiscalAutonomyPolicies', row.id), firmaId: newFid,
+      supersedes: mid('fiscalAutonomyPolicies', row.supersedes), hash: undefined,
+      status: clonedToDifferentIdentity ? 'revoked' : row.status,
+      note: (clonedToDifferentIdentity
+        ? 'Importată din altă identitate de firmă; necesită reautorizare. ' : '') + String(row.note || ''),
+    }), { now: row.authorizedAt });
+    return Object.assign({}, local, { importedSourceHash: row.hash });
+  });
 
   const built = {
     products: simple('products'), gestiuni: simple('gestiuni'), assets: simple('assets'), angajati: simple('angajati'),
@@ -1253,6 +1312,8 @@ function importFirma(bundle, opts) {
     cashForecastSnapshots: simple('cashForecastSnapshots'), declarations: importedDeclarations,
     annualArchives: simple('annualArchives'),
     fiscal_profile_history: importedFiscalProfileHistory,
+    fiscalFacts: importedFiscalFacts,
+    fiscalAutonomyPolicies: importedAutonomyPolicies,
     micro_eligibility_history: importedMicroEligibilityHistory,
     balance_category_history: simple('balance_category_history'),
     balance_sheet_mappings: simple('balance_sheet_mappings'),

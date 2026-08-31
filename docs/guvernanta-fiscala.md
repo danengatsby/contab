@@ -21,22 +21,29 @@ Regula de aur: **nicio cotă hardcodată în afara acestui fișier.** (Convenți
 
 ## 2. Fluxul unei schimbări legislative
 
-1. Se modifică valoarea în `fiscalConfig.js` + `AN`/`DATA_ACTUALIZARE` + nota din `SURSE`
-   (cu actul normativ și data intrării în vigoare).
-2. Se actualizează/adaugă **testele datate** din `test/run.js` — fiecare schimbare
-   legislativă are aserțiuni cu valorile noi (ex. TVA 21/11, dividende 16% din 2026,
-   salariul minim pe semestre). Suita de module pică dacă o cotă veche a rămas undeva
-   (numărul curent de verificări îl spune `npm test` — nu îl fixăm aici, ar drifta la
-   fiecare test nou).
-3. **Poarta fiscală, obligatoriu înainte de merge:** `sh scripts/poarta-fiscala.sh` —
-   generează toate ieșirile din seed și le trece prin validatoarele **oficiale**
-   (DUKIntegrator pentru declarații + SAF-T, XSD pentru e-Transport). Se aplică automat
-   doar dacă s-a atins ceva fiscal. Blochează atât la „invalid", cât și la „n-am putut
-   verifica". Detalii: **docs/validare-oficiala.md**.
-4. Commit tematic cu actul normativ în mesaj → review → merge → deploy.
+`src/legislativeWorkflow.js` materializează fiecare schimbare într-un dosar append-only. Etapele
+nu pot fi sărite ori rescrise:
 
-Istoricul git al `fiscalConfig.js` este astfel **jurnalul versiunilor de reguli**:
-cine, când, ce act normativ, ce teste însoțesc schimbarea.
+1. monitorizarea surselor oficiale și detectarea modificării (`detected`), cu URL HTTPS și hash;
+2. interpretarea semnată de specialist (`interpreted`);
+3. identificarea regulilor și clienților afectați (`impact_assessed`);
+4. redactarea pachetului de reguli (`package_drafted`);
+5. aprobarea de o persoană diferită de interpret/autor, semnată peste hash-ul pachetului
+   redactat (`independently_approved`);
+6. testele integral trecute și dovada validatorului oficial (`tested`);
+7. rularea fără efecte în producție, cu numărul comparațiilor și zero diferențe nerezolvate
+   (`shadow`);
+8. publicarea datată a noului `FiscalRuleSet` (`published`), cu același hash ca pachetul testat
+   și aprobat;
+9. recalcularea perioadelor/clienților afectați și propunerile de rectificative
+   (`recalculation_planned` → `completed`).
+
+AI-ul poate crea exclusiv evenimentul de detectare. Toate etapele ulterioare cer actor uman, iar
+publicarea cere data de intrare în vigoare și hash-ul RuleSet-ului, iar API-ul verifică faptul că
+RuleSet-ul există deja în registrul runtime cu același hash și interval. API-ul administrativ este
+`GET /api/legislative-workflow`, `POST .../detect` și `POST .../advance`. Lanțul evenimentelor
+intră în rădăcina de integritate globală; istoricul Git rămâne dovada codului, nu înlocuiește
+dosarul operațional.
 
 ## 2. Profilul fiscal pe firmă (`src/fiscalProfile.js`)
 
@@ -86,8 +93,12 @@ Trei trepte, în ordinea încrederii:
 
 Toate ieșirile fiscale din bateria de referință, inclusiv D107, D301, D307 și D311 în variantele lor distincte,
 trec treapta „validat oficial" pe datele de exemplu.
-Numărul și jurnalul probei sunt în `docs/validare-oficiala.md`. Validarea oficială se repetă
-oricum obligatoriu la depunerea în SPV.
+Numărul și jurnalul probei sunt în `docs/validare-oficiala.md`. Probele release-ului nu autorizează
+un XML concret. Înainte de transmitere, adaptorul rulează validatorul pe octeții exacți, apoi
+`POST /api/declarations/official-validation` consemnează hash-ul XML, versiunea și hash-ul
+distribuției validatorului, versiunea/hash-ul schemei, rezultatul complet și momentul. Dosarul
+refuză tranziția `aprobata → transmisa` dacă dovada nu indică exact artefactul aprobat și hash-ul
+regulilor sub care a fost generat.
 
 ## 4. Ce NU garantează aplicația (și cine răspunde)
 
@@ -205,6 +216,24 @@ corecții ale tipului, bazei, TVA-ului, cotei sau totalului. Confirmările și c
 pe server din diferența dintre extragerea păstrată și articolul salvat de om; nu sunt declarații
 trimise de client. Schimbarea identității extractorului ori a formatului invalidează implicit
 calibrarea, deoarece începe o grupă nouă.
+
+## 5.3 Registrul faptelor, decizia și politica firmei
+
+`src/fiscalFacts.js` este registrul temporal append-only al faptelor. Fiecare rând are firmă,
+subiect, cheie și tip, valoare, `validFrom`/`validTo`, sursă, SHA-256 al sursei, nivel de încredere,
+moment și autor. Motorul nu combină un registru incomplet cu valori libere: dacă un fapt obligatoriu
+lipsește, este contestat sau are surse active contradictorii, verdictul este `NEDETERMINABIL`.
+
+Decizia din `src/fiscalTreatments.js` păstrează `decisionId`, `factsUsed`, `rulesUsed`,
+`conditionsEvaluated`, `result`, `accountingEntries`, `taxEffects`, `warnings`,
+`abstentionReason` și `artifactHash`. `counterfactual()` reevaluează aceeași regulă cu un fapt
+schimbat și arată diferența rezultatelor; astfel explicația nu se reduce la textul unei formule.
+
+`src/fiscalAutonomyPolicy.js` autorizează separat, per firmă și cu expirare, operațiunile, limitele,
+partenerii, tipurile și documentele permise. Politica păstrează autorizatorul și hash-urile a căror
+schimbare o invalidează. Regula fiscală poate deci produce un calcul corect, în timp ce politica
+produce `abstain`. API-ul pentru registru/politică/evaluare este sub `/api/fiscal-engine`; evaluarea
+este read-only și nu postează articole contabile.
 
 ## 6. Jurnalul reviziilor de specialitate
 

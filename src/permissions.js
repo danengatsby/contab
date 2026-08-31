@@ -17,6 +17,7 @@ const ACTIONS = [
   { key: 'entry.approve', label: 'Aprobare articole' },
   { key: 'entry.post', label: 'Postare articole' },
   { key: 'declaration.prepare', label: 'Pregatire declaratii' },
+  { key: 'declaration.validate', label: 'Consemnare rezultat validator oficial' },
   { key: 'declaration.approve', label: 'Aprobare document declaratie' },
   { key: 'declaration.submit', label: 'Confirmare/transmitere declaratii' },
   { key: 'fiscal.manage', label: 'Administrare profil si configurare fiscala' },
@@ -39,12 +40,14 @@ const matrix = {
   ]),
   verificator: new Set([
     'read', 'write', 'payroll.read', 'payroll.write', 'treasury.read', 'treasury.write',
-    'treasury.approve', 'entry.validate', 'entry.approve', 'declaration.prepare', 'data.export',
+    'treasury.approve', 'entry.validate', 'entry.approve', 'declaration.prepare',
+    'declaration.validate', 'data.export',
   ]),
   aprobator: new Set([
     'read', 'write', 'payroll.read', 'payroll.write', 'treasury.read', 'treasury.write',
     'treasury.approve', 'entry.validate', 'entry.approve', 'entry.post',
-    'declaration.prepare', 'declaration.approve', 'declaration.submit', 'fiscal.manage', 'balance.category.confirm',
+    'declaration.prepare', 'declaration.validate', 'declaration.approve', 'declaration.submit',
+    'fiscal.manage', 'balance.category.confirm',
     'close.approve', 'close.manage', 'annual.manage', 'data.export',
   ]),
   // Exceptiile de control si deblocarea administrativa raman la administratorul instalatiei;
@@ -218,6 +221,7 @@ function requiredActions(method, path, body) {
   if (/^\/xml\//.test(path) && path !== '/xml/pain001') add('declaration.prepare');
   if (/^\/api\/declarations\/(?:recipisa-file|artifact-file)$/.test(path)) add(safe ? 'data.export' : 'declaration.submit');
   if (path === '/api/declarations/approve') add('declaration.approve');
+  if (path === '/api/declarations/official-validation') add('declaration.validate');
   if (path === '/api/declarations/confirm-filed') add('declaration.submit');
   if (path === '/api/declarations/rectificativa') add('declaration.submit');
   if (path === '/api/declarations/set') add(body.status === 'generata' ? 'declaration.prepare' : 'declaration.submit');
@@ -229,6 +233,7 @@ function requiredActions(method, path, body) {
   if (!safe && /^\/api\/(?:fiscal-profile|balance-category)(?:\/|$)/.test(path)) add('fiscal.manage');
   if (!safe && (/^\/api\/fiscal\/micro(?:\/|$)/.test(path)
     || /^\/api\/entries\/[^/]+\/fiscal-taxonomy\/micro$/.test(path))) add('fiscal.manage');
+  if (!safe && /^\/api\/fiscal-engine\/(?:facts|autonomy-policy)$/.test(path)) add('fiscal.manage');
   if (!safe && /^\/api\/balance-sheet-mappings(?:\/|$)/.test(path)) add('fiscal.manage');
   if (!safe && /^\/api\/balance-sheet-adjustments(?:\/|$)/.test(path)) add('declaration.approve');
 

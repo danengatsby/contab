@@ -10,6 +10,9 @@ const declarations = require('./declarations');
 const annualIntegrity = require('./annualArchiveIntegrity');
 const cash13 = require('./cashForecast13Weeks');
 const fiscalProfile = require('./fiscalProfile');
+const fiscalFacts = require('./fiscalFacts');
+const fiscalAutonomyPolicy = require('./fiscalAutonomyPolicy');
+const legislativeWorkflow = require('./legislativeWorkflow');
 const { validIsoDate } = require('./util');
 
 const SCHEMA_VERSION = 1;
@@ -148,6 +151,40 @@ function verifyGraph(graph, opts) {
     anchors.push(anchor('fiscal-profile', key, row));
   }
 
+  const factRows = graph && Array.isArray(graph.fiscalFacts) ? graph.fiscalFacts : [];
+  const factIds = new Set();
+  for (const row of factRows) {
+    const key = row && row.id != null ? row.id : '?'; const check = fiscalFacts.verify(row);
+    if (factIds.has(String(key))) issues.push(issue('fiscal-fact', key, 'FISCAL_FACT_DUPLICATE_ID', 'identitatea faptului este duplicată'));
+    factIds.add(String(key));
+    if (!check.valid) issues.push(issue('fiscal-fact', key, 'FISCAL_FACT_INVALID', check.issues.join('; ')));
+    anchors.push(anchor('fiscal-fact', key, row));
+  }
+
+  const policyRows = graph && Array.isArray(graph.fiscalAutonomyPolicies) ? graph.fiscalAutonomyPolicies : [];
+  const policyIds = new Set();
+  for (const row of policyRows) {
+    const key = row && row.id != null ? row.id : '?';
+    if (policyIds.has(String(key))) issues.push(issue('autonomy-policy', key, 'AUTONOMY_POLICY_DUPLICATE_ID', 'identitatea politicii este duplicată'));
+    policyIds.add(String(key));
+    try {
+      const rebuilt = fiscalAutonomyPolicy.normalize(row, { now: row && row.authorizedAt });
+      if (rebuilt.hash !== row.hash) issues.push(issue('autonomy-policy', key, 'AUTONOMY_POLICY_HASH_INVALID', 'hash-ul politicii nu coincide'));
+    } catch (e) { issues.push(issue('autonomy-policy', key, 'AUTONOMY_POLICY_INVALID', e.message)); }
+    anchors.push(anchor('autonomy-policy', key, row));
+  }
+
+  const legislativeRows = graph && Array.isArray(graph.legislativeChanges) ? graph.legislativeChanges : [];
+  const legislativeIds = new Set();
+  for (const row of legislativeRows) {
+    const key = row && row.id != null ? row.id : '?';
+    if (legislativeIds.has(String(key))) issues.push(issue('legislative-change', key, 'LEGISLATIVE_CHANGE_DUPLICATE_ID', 'identitatea dosarului este duplicată'));
+    legislativeIds.add(String(key));
+    const check = legislativeWorkflow.verify(row);
+    if (!check.valid) issues.push(issue('legislative-change', key, 'LEGISLATIVE_CHANGE_INVALID', check.issues.join('; ')));
+    anchors.push(anchor('legislative-change', key, row));
+  }
+
   const audit = opts.auditResult || null;
   if (audit) {
     if (!audit.ok) issues.push(issue('audit', 'durable', 'AUDIT_CHAIN_INVALID', audit.motiv || 'lanțul durabil este invalid'));
@@ -173,6 +210,8 @@ function verifyGraph(graph, opts) {
       anchors: anchors.length, firms: graph && Array.isArray(graph.firme) ? graph.firme.length : 0,
       filingDossiers: dossiers.length, annualArchives: annualArchives.length,
       cashFlowSnapshots: cashSnapshots.length, fiscalRevisions: fiscalRevisions.length,
+      fiscalFacts: factRows.length, autonomyPolicies: policyRows.length,
+      legislativeChanges: legislativeRows.length,
       auditEvents: audit ? Number(audit.chained || 0) + Number(audit.legacy || 0) : 0,
     },
     audit: audit ? { checked: true, ok: !!audit.ok, head: audit.head || null,

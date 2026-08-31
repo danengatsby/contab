@@ -348,7 +348,12 @@ function sourceEvidence(rule, supplied, facts) {
         if (!sourceId || !/^[0-9a-f]{64}$/.test(sourceHash)
             || !validFact(candidate && candidate.value, fact.type)) return null;
         return { sourceId: sourceId.slice(0, 500), sourceHash, value: candidate.value,
-          capturedAt: candidate.capturedAt ? String(candidate.capturedAt) : '' };
+          capturedAt: candidate.capturedAt ? String(candidate.capturedAt) : '',
+          factRecordId: candidate.factRecordId ? String(candidate.factRecordId) : '',
+          factRecordHash: candidate.factRecordHash ? String(candidate.factRecordHash) : '',
+          confidence: candidate.confidence ? String(candidate.confidence) : '',
+          validFrom: candidate.validFrom ? String(candidate.validFrom) : '',
+          validTo: candidate.validTo ? String(candidate.validTo) : null };
       }).filter(Boolean);
       if (!candidates.length) { missing.push(fact.name); continue; }
       accepted[fact.name] = candidates;
@@ -365,7 +370,11 @@ function sourceEvidence(rule, supplied, facts) {
     const sourceHash = String(row && row.sourceHash || '').toLowerCase();
     if (!sourceId || !/^[0-9a-f]{64}$/.test(sourceHash)) { missing.push(fact.name); continue; }
     accepted[fact.name] = { sourceId: sourceId.slice(0, 500), sourceHash,
-      capturedAt: row.capturedAt ? String(row.capturedAt) : '' };
+      capturedAt: row.capturedAt ? String(row.capturedAt) : '',
+      factRecordId: row.factRecordId ? String(row.factRecordId) : '',
+      factRecordHash: row.factRecordHash ? String(row.factRecordHash) : '',
+      confidence: row.confidence ? String(row.confidence) : '',
+      validFrom: row.validFrom ? String(row.validFrom) : '', validTo: row.validTo ? String(row.validTo) : null };
   }
   return { supplied: accepted, missingFacts: missing, conflictingFacts: conflicting,
     mismatchedFacts: mismatched };
@@ -401,6 +410,21 @@ function decisionInfluences(rule, ruleSet, facts, factEvidence) {
   return Object.assign({ hash: sha256(payload) }, payload);
 }
 
+function evaluatedConditions(rule, facts, rates) {
+  const rows = [];
+  function one(kind, id, expression) {
+    try { rows.push({ kind, id, expression, outcome: Boolean(compute(expression, facts, rates)), error: null }); }
+    catch (error) { rows.push({ kind, id, expression, outcome: null, error: error.message }); }
+  }
+  one('applicability', rule.id + ':appliesWhen', rule.appliesWhen);
+  rule.exceptions.forEach((exception, index) => one('exception', rule.id + ':exception:' + index, exception.when));
+  return rows;
+}
+
+function taxEffects(result, unit) {
+  return Object.entries(result || {}).map(([code, amount]) => ({ code, amount, unit: unit || '' }));
+}
+
 function decision(rule, ruleSet, status, facts, extra) {
   const used = {};
   for (const fact of rule.requiredFacts) used[fact.name] = getFact(facts, fact.name);
@@ -408,7 +432,20 @@ function decision(rule, ruleSet, status, facts, extra) {
     fiscalRulesHash: ruleSet.hash, status, facts: used, formula: rule.calculation,
     legalBasis: rule.legalBasis, risk: rule.risk, approvedExamples: rule.approvedExamples }, extra || {});
   base.influences = decisionInfluences(rule, ruleSet, facts, base.factEvidence);
-  return deepFreeze(Object.assign({ decisionId: sha256({ influences: base.influences.hash,
+  base.factsUsed = base.influences.facts;
+  base.rulesUsed = [...base.influences.rules, ...base.influences.ruleSets,
+    ...base.influences.parameters.map((parameter) => Object.assign({ kind: 'parameter' }, parameter))];
+  base.conditionsEvaluated = base.conditionsEvaluated || evaluatedConditions(rule, facts, ruleSet.rates || {});
+  base.accountingEntries = Array.isArray(base.accountingEntries) ? base.accountingEntries : [];
+  base.taxEffects = Array.isArray(base.taxEffects) ? base.taxEffects : taxEffects(base.result, rule.result.unit);
+  base.warnings = Array.isArray(base.warnings) ? base.warnings : [];
+  base.abstentionReason = String(base.abstentionReason || base.autonomyReason
+    || (status === 'undetermined' || status === 'review_required' ? base.reason || '' : ''));
+  base.resultStatus = status === 'undetermined' ? 'NEDETERMINABIL' : String(status).toUpperCase();
+  const artifactBody = Object.assign({}, base); delete artifactBody.artifactHash; delete artifactBody.decisionId;
+  base.artifactHash = sha256(artifactBody);
+  return deepFreeze(Object.assign({ decisionId: sha256({ kind: 'fiscal-decision-v2', artifactHash: base.artifactHash,
+    influences: base.influences.hash,
     status, facts: used, factEvidence: base.factEvidence || null, review: base.review || null,
     autonomy: base.autonomy || null,
     autonomousEligible: base.autonomousEligible === true,
@@ -416,7 +453,17 @@ function decision(rule, ruleSet, status, facts, extra) {
 }
 
 function evaluate(rule, ruleSet, facts, options) {
-  const opts = options || {}; const values = facts || {}; const rates = ruleSet.rates || {};
+  const opts = Object.assign({}, options || {}); let values = facts || {}; const rates = ruleSet.rates || {};
+  let factRegistrySnapshot = null;
+  if (Array.isArray(opts.factRegistry)) {
+    factRegistrySnapshot = require('./fiscalFacts').snapshotForRule(opts.factRegistry, rule, {
+      firmaId: opts.firmaId, subject: opts.factSubject || 'company', asOf: opts.asOf,
+    });
+    // Când registrul este cerut, el este unica sursă: un câmp liber nu poate umple pe ascuns un
+    // fapt absent sau contradictoriu.
+    values = factRegistrySnapshot.facts;
+    opts.factEvidence = factRegistrySnapshot.factEvidence;
+  }
   const missingFacts = rule.requiredFacts.filter((fact) => !validFact(getFact(values, fact.name), fact.type))
     .map((fact) => fact.name);
   const missingRates = expressionDependencies(rule).filter((key) => !Number.isFinite(Number(rates[key])));
@@ -424,7 +471,7 @@ function evaluate(rule, ruleSet, facts, options) {
   const autonomy = autonomyEvidence(rule, opts.autonomyGate, opts[VERIFIED_AUTONOMY_CORPUS] === true);
   const evidence = sourceEvidence(rule, opts.factEvidence, values);
   if (evidence.conflictingFacts.length || evidence.mismatchedFacts.length) return decision(rule, ruleSet, 'undetermined', values, {
-    missingFacts: [], missingRates, review, autonomy, factEvidence: evidence, result: null,
+    missingFacts: [], missingRates, review, autonomy, factEvidence: evidence, factRegistrySnapshot, result: null,
     reason: evidence.conflictingFacts.length
       ? 'Tratamentul a fost refuzat deoarece sursele se contrazic pentru faptele: '
         + evidence.conflictingFacts.join(', ') + '.'
@@ -433,18 +480,24 @@ function evaluate(rule, ruleSet, facts, options) {
     autonomousEligible: false,
   });
   if (missingFacts.length || missingRates.length) return decision(rule, ruleSet, 'undetermined', values, {
-    missingFacts, missingRates, review, autonomy, factEvidence: evidence, result: null,
-    reason: 'Tratamentul nu poate fi calculat fara toate faptele si cotele obligatorii.',
+    missingFacts, missingRates, review, autonomy, factEvidence: evidence, factRegistrySnapshot, result: null,
+    reason: factRegistrySnapshot && factRegistrySnapshot.conflictingFacts.length
+      ? 'Tratamentul este NEDETERMINABIL deoarece registrul conține surse contradictorii pentru: '
+        + factRegistrySnapshot.conflictingFacts.join(', ') + '.'
+      : 'Tratamentul este NEDETERMINABIL fără toate faptele și cotele obligatorii.',
+    warnings: factRegistrySnapshot ? factRegistrySnapshot.resolutions.filter((row) => row.status !== 'resolved')
+      .map((row) => row.key + ': ' + row.reason) : [],
     autonomousEligible: false,
   });
   try {
     const exception = rule.exceptions.find((row) => compute(row.when, values, rates));
     if (exception) return decision(rule, ruleSet, 'review_required', values, {
-      missingFacts: [], missingRates: [], review, autonomy, factEvidence: evidence, result: null, reason: exception.reason,
+      missingFacts: [], missingRates: [], review, autonomy, factEvidence: evidence, factRegistrySnapshot,
+      result: null, reason: exception.reason,
       autonomousEligible: false,
     });
     if (!compute(rule.appliesWhen, values, rates)) return decision(rule, ruleSet, 'not_applicable', values, {
-      missingFacts: [], missingRates: [], review, autonomy, factEvidence: evidence, result: null,
+      missingFacts: [], missingRates: [], review, autonomy, factEvidence: evidence, factRegistrySnapshot, result: null,
       reason: 'Conditiile de aplicare ale tratamentului nu sunt indeplinite.', autonomousEligible: false,
     });
     const result = {};
@@ -456,26 +509,74 @@ function evaluate(rule, ruleSet, facts, options) {
       result[key] = value;
     }
     const explanation = render(rule.explanation, values, rates, result);
+    const autonomyContext = Object.assign({}, opts.autonomyContext || {}, {
+      firmaId: opts.firmaId,
+      dependencies: Object.assign({}, opts.autonomyContext && opts.autonomyContext.dependencies || {}, {
+        fiscalRulesHash: ruleSet.hash, treatmentRegistryHash: registryHash(),
+        factRegistryHash: factRegistrySnapshot && factRegistrySnapshot.hash || '',
+      }),
+    });
+    if (!Number.isFinite(Number(autonomyContext.amount))) {
+      const amounts = Object.values(result).map(Number).filter(Number.isFinite).map(Math.abs);
+      autonomyContext.amount = amounts.length ? Math.max(...amounts) : NaN;
+    }
+    let autonomyPolicyDecision = null;
+    if (opts.autonomyPolicy) {
+      try { autonomyPolicyDecision = require('./fiscalAutonomyPolicy').decide(opts.autonomyPolicy, autonomyContext); }
+      catch (error) { autonomyPolicyDecision = { decision: 'abstain', reasons: ['POLICY_EVALUATION_FAILED'], error: error.message }; }
+    }
     // Cele 25 de cazuri pot deschide doar poarta de lansare. Capabilitatea autonoma apare separat,
     // numai dupa corpusul mare, acoperirea structurala si incertitudinile verificate de fiscalAutonomy.
     const autonomousEligible = review.status === 'approved' && opts[VERIFIED_RELEASE_REVIEW] === true
       && autonomy.status === 'approved' && opts[VERIFIED_AUTONOMY_CORPUS] === true
-      && !evidence.missingFacts.length && opts.autonomyPolicyApproved === true && rule.risk !== 'critical';
+      && !evidence.missingFacts.length && factRegistrySnapshot && factRegistrySnapshot.status === 'DETERMINABIL'
+      && !factRegistrySnapshot.unconfirmedFacts.length
+      && autonomyPolicyDecision && autonomyPolicyDecision.decision === 'allow' && rule.risk !== 'critical';
     return decision(rule, ruleSet, 'computed', values, { missingFacts: [], missingRates: [],
-      result, explanation, review, autonomy, factEvidence: evidence, autonomousEligible,
+      result, explanation, review, autonomy, factEvidence: evidence, factRegistrySnapshot,
+      autonomyPolicyDecision, autonomousEligible,
+      accountingEntries: Array.isArray(opts.accountingEntries) ? opts.accountingEntries : [],
       autonomyReason: autonomousEligible ? '' : autonomy.status !== 'approved' || opts[VERIFIED_AUTONOMY_CORPUS] !== true
         ? (autonomy.blockers[0] || 'Corpusul separat de autonomie este incomplet sau neverificat.')
         : review.status !== 'approved' || opts[VERIFIED_RELEASE_REVIEW] !== true
           ? 'Poarta de lansare 25/25 nu este aprobata.'
         : evidence.missingFacts.length ? 'Lipseste provenienta verificabila pentru faptele: ' + evidence.missingFacts.join(', ') + '.'
-          : opts.autonomyPolicyApproved !== true ? 'Politica de autonomie a firmei nu a autorizat tratamentul.'
+          : !factRegistrySnapshot ? 'Autonomia cere registrul tipizat și temporal al faptelor fiscale.'
+          : factRegistrySnapshot.unconfirmedFacts.length ? 'Faptele nu sunt confirmate pentru autonomie: ' + factRegistrySnapshot.unconfirmedFacts.join(', ') + '.'
+          : !autonomyPolicyDecision || autonomyPolicyDecision.decision !== 'allow'
+            ? 'Politica de autonomie a firmei a impus abținerea: '
+              + ((autonomyPolicyDecision && autonomyPolicyDecision.reasons || []).join(', ') || 'politică absentă') + '.'
           : 'Regulile cu risc critic necesita o poarta suplimentara chiar dupa revizia corpusului.',
     });
   } catch (error) {
     return decision(rule, ruleSet, 'undetermined', values, { missingFacts: [], missingRates, review, autonomy,
-      factEvidence: evidence,
+      factEvidence: evidence, factRegistrySnapshot,
       result: null, reason: 'Formula nu poate fi evaluata: ' + error.message, autonomousEligible: false });
   }
+}
+
+function counterfactual(rule, ruleSet, facts, change, options) {
+  const before = evaluate(rule, ruleSet, facts, options);
+  const key = String(change && change.fact || '');
+  if (!rule.requiredFacts.some((fact) => fact.name === key)) fail('Faptul contrafactual „' + key + '” nu aparține regulii.');
+  const changedFacts = Object.assign({}, facts || {}, { [key]: change.value });
+  const changedEvidence = Object.assign({}, options && options.factEvidence || {});
+  const evidence = changedEvidence[key];
+  if (Array.isArray(evidence)) changedEvidence[key] = evidence.map((row) => Object.assign({}, row, { value: change.value }));
+  const after = evaluate(rule, ruleSet, changedFacts, Object.assign({}, options || {}, {
+    factRegistry: undefined, factEvidence: changedEvidence,
+  }));
+  const keys = new Set([...Object.keys(before.result || {}), ...Object.keys(after.result || {})]);
+  const deltas = {};
+  for (const resultKey of keys) {
+    const a = Number(before.result && before.result[resultKey]); const b = Number(after.result && after.result[resultKey]);
+    deltas[resultKey] = Number.isFinite(a) && Number.isFinite(b) ? b - a : null;
+  }
+  const body = { schemaVersion: 1, ruleId: rule.id, ruleHash: rule.hash, fact: key,
+    beforeValue: getFact(facts, key), afterValue: change.value,
+    beforeDecisionId: before.decisionId, afterDecisionId: after.decisionId,
+    beforeResult: before.result, afterResult: after.result, deltas };
+  return deepFreeze(Object.assign({}, body, { artifactHash: sha256(body) }));
 }
 
 function evaluateForAutonomy(rule, ruleSet, facts, options) {
@@ -500,4 +601,4 @@ function registryHash(rules) { return sha256(snapshot(rules)); }
 
 module.exports = { all: () => DEFINITIONS.slice(), byId, activeForInterval, normalizeSnapshots,
   evaluate, evaluateForAutonomy, snapshot, registryHash, expressionDependencies,
-  decisionInfluences, canonical, sha256 };
+  decisionInfluences, counterfactual, canonical, sha256 };

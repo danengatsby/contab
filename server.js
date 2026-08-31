@@ -232,6 +232,9 @@ require('./src/routes/commercialFunnel')(app, { requireAdmin });
 
 // Configurare (companie, logo, chitanta, setari, cote fiscale): src/routes/config.js
 require('./src/routes/config')(app, { S, activeId, logAudit, requireAdmin, upload });
+// Registrul faptelor, politicile per firmă și evaluarea read-only a motorului fiscal.
+require('./src/routes/fiscalEngine')(app, { activeId, logAudit });
+require('./src/routes/legislativeWorkflow')(app, { requireAdmin, logAudit });
 // Registrul versionat pentru eligibilitatea micro (OUG 8/2026): participatii, legaturi si FTE.
 require('./src/routes/microEligibility')(app, { activeId, logAudit });
 // Taxonomia configurabila a fluxurilor de trezorerie si pragul raportului „altele".
