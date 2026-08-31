@@ -27,6 +27,7 @@ const SOURCE_RULE_FILES = ['docs/dosar-revizie-fiscala.md', 'docs/guvernanta-fis
 const MANIFEST_EXCLUSIONS = new Set([
   'src/fiscalReviewApprovals.json',
   'src/fiscalReviewTrust.json',
+  'src/fiscalAutonomyApprovals.json',
 ]);
 
 function sha(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
@@ -49,7 +50,8 @@ function relativePath(root, absolute) {
 
 function registryExclusions(root) {
   const excluded = new Set(MANIFEST_EXCLUSIONS);
-  const configured = [process.env.CONTAB_FISCAL_REVIEW_FILE, process.env.CONTAB_FISCAL_REVIEW_TRUST_FILE]
+  const configured = [process.env.CONTAB_FISCAL_REVIEW_FILE, process.env.CONTAB_FISCAL_REVIEW_TRUST_FILE,
+    process.env.CONTAB_FISCAL_AUTONOMY_APPROVALS_FILE]
     .filter(Boolean).map((file) => path.resolve(file));
   for (const absolute of configured) {
     const rel = relativePath(root, absolute);
@@ -276,13 +278,18 @@ function status(explicitBundle, options) {
   const pending = cases.filter((c) => c.status === 'pending').length;
   const known = new Set(CASES.map((c) => c.id));
   const unexpectedApprovals = Object.keys(bundle.approvals || {}).filter((id) => !known.has(id)).sort();
-  const completeCorpus = cases.length >= MINIMUM_CASES;
+  const completeReleaseSet = cases.length >= MINIMUM_CASES;
   const configErrors = [bundle._error, trust._error].filter(Boolean);
   if ((context.manifest.errors || []).length) configErrors.push('Manifestul surselor are erori: ' + context.manifest.errors.join(' | '));
-  if (!completeCorpus) configErrors.push('Corpul fiscal are numai ' + cases.length + ' cazuri; minimul este ' + MINIMUM_CASES + '.');
+  if (!completeReleaseSet) configErrors.push('Setul de lansare are numai ' + cases.length + ' cazuri; minimul este ' + MINIMUM_CASES + '.');
   if (unexpectedApprovals.length) configErrors.push('Registrul conține cazuri necunoscute: ' + unexpectedApprovals.join(', ') + '.');
   return {
-    ready: completeCorpus && approved === cases.length && !configErrors.length,
+    // Compatibilitate: `ready` continua sa pazeasca depunerea si inchiderea anuala. Nu este si nu
+    // trebuie reutilizat drept verdict de autonomie; aceea este o poarta separata.
+    ready: completeReleaseSet && approved === cases.length && !configErrors.length,
+    releaseReady: completeReleaseSet && approved === cases.length && !configErrors.length,
+    gateKind: 'release',
+    autonomyEvidence: false,
     fiscalYear: cfg.AN,
     fiscalUpdatedAt: cfg.DATA_ACTUALIZARE,
     approved,
@@ -297,7 +304,7 @@ function status(explicitBundle, options) {
     runtimeRulesHash: context.rules.hash,
     signatureScheme: 'Ed25519, cheie publică autorizată separat',
     cases,
-    positioning: 'Asistent contabil cu validare umană; nu reprezintă o garanție de corectitudine fiscală.',
+    positioning: 'Poartă de lansare/depunere cu validare umană. Cele 25 de cazuri nu reprezintă corpus de autonomie.',
   };
 }
 

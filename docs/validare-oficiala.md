@@ -8,7 +8,7 @@ Acest document e **jurnalul de conformitate**: ce versiune de schemă/validator,
 cu ce rezultat. Se actualizează la fiecare schimbare de schemă ANAF (vezi
 `docs/guvernanta-fiscala.md` pentru flux).
 
-## Ultima verificare: 2026-08-31 — FiscalRuleSet schema 2 și tratamente executabile
+## Ultima verificare: 2026-08-31 — tratamente executabile și poartă separată de autonomie
 
 Introducerea registrului de tratamente executabile și mutarea formulelor CAS/CASS/impozit/CAM,
 PFA, dividende, micro, profit și limitări auto în decizii fiscale hash-uite nu au schimbat
@@ -19,10 +19,15 @@ ieșiri `INVALID` sau `NEVERIFICAT`. Schemele și versiunile validatoarelor sunt
 tabelul de mai jos; mecanismul le-a reîmprospătat din manifestul ANAF conform ferestrelor lui de
 cache.
 
+Separarea ulterioară a setului de lansare 25/25 de corpusul de autonomie, adăugarea contractelor
+de acoperire și înregistrarea incertitudinilor materiale au fost trecute din nou prin aceeași
+poartă completă. Toate referințele au rămas valide; verdictul este `POARTA DESCHISA`.
+
 Validarea oficială dovedește că refactorizarea nu a alterat fișierele acceptate de ANAF. Ea nu
-transformă singură o interpretare fiscală în aprobare profesională: eligibilitatea autonomă
-rămâne separată și fail-closed, în funcție de semnăturile Ed25519 ale corpusului și de dovezile
-faptelor tranzacției.
+transformă singură o interpretare fiscală în aprobare profesională. Nici setul de lansare 25/25
+nu este corpus de autonomie. Eligibilitatea autonomă folosește registrul separat, cu minimum 500
+de scenarii unice, acoperire structurală, doi revizori independenți, zero incertitudini materiale
+pe regula evaluată și dovezile faptelor tranzacției.
 
 ## Verificarea anterioară: 2026-08-30 — clasificarea fiscală 635/6581/654
 

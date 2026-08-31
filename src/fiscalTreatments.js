@@ -17,9 +17,10 @@ const ARITY = Object.freeze({ fact: [1, 1], rate: [1, 1], add: [1, Infinity], su
   abs: [1, 1], neg: [1, 1], clamp: [3, 3], eq: [2, 2], neq: [2, 2], gt: [2, 2],
   gte: [2, 2], lt: [2, 2], lte: [2, 2], and: [1, Infinity], or: [1, Infinity],
   not: [1, 1], if: [3, 3] });
-// Capabilitate privata: niciun apelant nu poate transforma aprobari JSON neverificate intr-un
-// verdict autonom. Este atasata numai de evaluateForAutonomy(), dupa fiscalReview.status().
-const VERIFIED_REVIEW = Symbol('verified-fiscal-review');
+// Capabilitati private: niciun apelant nu poate transforma aprobari JSON neverificate intr-un
+// verdict autonom. Poarta de lansare (25 cazuri) si corpusul de autonomie sunt deliberat distincte.
+const VERIFIED_RELEASE_REVIEW = Symbol('verified-release-review');
+const VERIFIED_AUTONOMY_CORPUS = Symbol('verified-autonomy-corpus');
 
 function canonical(value) {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
@@ -311,6 +312,25 @@ function reviewEvidence(rule, cases, cryptographicallyVerified) {
     missingCaseIds: missing, approvals };
 }
 
+function autonomyEvidence(rule, gate, cryptographicallyVerified) {
+  const row = gate && gate.rule;
+  const ready = !!row && row.ready === true && cryptographicallyVerified === true;
+  return {
+    status: ready ? 'approved' : 'blocked',
+    cryptographicallyVerified: cryptographicallyVerified === true,
+    gateKind: 'autonomy',
+    ruleHash: String(row && row.ruleHash || ''),
+    corpusHash: String(gate && gate.corpusHash || ''),
+    corpusCases: Number(gate && gate.total || 0),
+    minimumCases: Number(gate && gate.minimumCases || 0),
+    approvedReviewers: Number(gate && gate.approvedReviewers || 0),
+    minimumReviewers: Number(gate && gate.minimumReviewers || 0),
+    ruleCoverage: row && row.coverage ? row.coverage : null,
+    openUncertainties: row && Array.isArray(row.openUncertainties) ? row.openUncertainties : [],
+    blockers: row && Array.isArray(row.blockers) ? row.blockers : ['Corpusul separat de autonomie nu a fost verificat.'],
+  };
+}
+
 function sourceEvidence(rule, supplied) {
   const accepted = {}; const missing = [];
   for (const fact of rule.requiredFacts) {
@@ -333,6 +353,7 @@ function decision(rule, ruleSet, status, facts, extra) {
     legalBasis: rule.legalBasis, risk: rule.risk, approvedExamples: rule.approvedExamples }, extra || {});
   return deepFreeze(Object.assign({ decisionId: sha256({ rule: rule.hash, ruleSet: ruleSet.hash,
     status, facts: used, factEvidence: base.factEvidence || null, review: base.review || null,
+    autonomy: base.autonomy || null,
     autonomousEligible: base.autonomousEligible === true,
     result: base.result || null, reason: base.reason || null }) }, base));
 }
@@ -350,21 +371,22 @@ function evaluate(rule, ruleSet, facts, options) {
   collect(rule.appliesWhen); Object.values(rule.calculation.outputs).forEach(collect);
   rule.exceptions.forEach((exception) => collect(exception.when));
   const missingRates = [...rateNames].filter((key) => !Number.isFinite(Number(rates[key])));
-  const review = reviewEvidence(rule, opts.reviewCases, opts[VERIFIED_REVIEW] === true);
+  const review = reviewEvidence(rule, opts.reviewCases, opts[VERIFIED_RELEASE_REVIEW] === true);
+  const autonomy = autonomyEvidence(rule, opts.autonomyGate, opts[VERIFIED_AUTONOMY_CORPUS] === true);
   const evidence = sourceEvidence(rule, opts.factEvidence);
   if (missingFacts.length || missingRates.length) return decision(rule, ruleSet, 'undetermined', values, {
-    missingFacts, missingRates, review, factEvidence: evidence, result: null,
+    missingFacts, missingRates, review, autonomy, factEvidence: evidence, result: null,
     reason: 'Tratamentul nu poate fi calculat fara toate faptele si cotele obligatorii.',
     autonomousEligible: false,
   });
   try {
     const exception = rule.exceptions.find((row) => compute(row.when, values, rates));
     if (exception) return decision(rule, ruleSet, 'review_required', values, {
-      missingFacts: [], missingRates: [], review, factEvidence: evidence, result: null, reason: exception.reason,
+      missingFacts: [], missingRates: [], review, autonomy, factEvidence: evidence, result: null, reason: exception.reason,
       autonomousEligible: false,
     });
     if (!compute(rule.appliesWhen, values, rates)) return decision(rule, ruleSet, 'not_applicable', values, {
-      missingFacts: [], missingRates: [], review, factEvidence: evidence, result: null,
+      missingFacts: [], missingRates: [], review, autonomy, factEvidence: evidence, result: null,
       reason: 'Conditiile de aplicare ale tratamentului nu sunt indeplinite.', autonomousEligible: false,
     });
     const result = {};
@@ -376,32 +398,40 @@ function evaluate(rule, ruleSet, facts, options) {
       result[key] = value;
     }
     const explanation = render(rule.explanation, values, rates, result);
-    // Simbolul privat este pus numai dupa verificarea Ed25519 a intregului corpus; dovezile faptelor
-    // leaga apoi fiecare numar folosit de documentul/snapshot-ul concret care l-a furnizat.
-    const autonomousEligible = review.status === 'approved' && opts[VERIFIED_REVIEW] === true
+    // Cele 25 de cazuri pot deschide doar poarta de lansare. Capabilitatea autonoma apare separat,
+    // numai dupa corpusul mare, acoperirea structurala si incertitudinile verificate de fiscalAutonomy.
+    const autonomousEligible = review.status === 'approved' && opts[VERIFIED_RELEASE_REVIEW] === true
+      && autonomy.status === 'approved' && opts[VERIFIED_AUTONOMY_CORPUS] === true
       && !evidence.missingFacts.length && opts.autonomyPolicyApproved === true && rule.risk !== 'critical';
     return decision(rule, ruleSet, 'computed', values, { missingFacts: [], missingRates: [],
-      result, explanation, review, factEvidence: evidence, autonomousEligible,
-      autonomyReason: autonomousEligible ? '' : review.status !== 'approved' || opts[VERIFIED_REVIEW] !== true
-        ? 'Lipsesc semnaturile revizorului pentru unul sau mai multe cazuri obligatorii.'
+      result, explanation, review, autonomy, factEvidence: evidence, autonomousEligible,
+      autonomyReason: autonomousEligible ? '' : autonomy.status !== 'approved' || opts[VERIFIED_AUTONOMY_CORPUS] !== true
+        ? (autonomy.blockers[0] || 'Corpusul separat de autonomie este incomplet sau neverificat.')
+        : review.status !== 'approved' || opts[VERIFIED_RELEASE_REVIEW] !== true
+          ? 'Poarta de lansare 25/25 nu este aprobata.'
         : evidence.missingFacts.length ? 'Lipseste provenienta verificabila pentru faptele: ' + evidence.missingFacts.join(', ') + '.'
           : opts.autonomyPolicyApproved !== true ? 'Politica de autonomie a firmei nu a autorizat tratamentul.'
           : 'Regulile cu risc critic necesita o poarta suplimentara chiar dupa revizia corpusului.',
     });
   } catch (error) {
-    return decision(rule, ruleSet, 'undetermined', values, { missingFacts: [], missingRates, review,
+    return decision(rule, ruleSet, 'undetermined', values, { missingFacts: [], missingRates, review, autonomy,
       factEvidence: evidence,
       result: null, reason: 'Formula nu poate fi evaluata: ' + error.message, autonomousEligible: false });
   }
 }
 
 function evaluateForAutonomy(rule, ruleSet, facts, options) {
-  // Require lenes: fiscalReview include fotografia acestui registru in hash. La momentul apelului,
-  // modulele sunt initializate, iar status() verifica semnaturile fata de exact fotografia curenta.
-  const review = require('./fiscalReview').status();
-  const cases = Object.fromEntries((review.cases || []).map((row) => [row.id, row]));
+  // Require lenes pentru a evita ciclul de initializare: ambele porti semneaza fotografia exacta
+  // a codului si regulilor, dar numai fiscalAutonomy poate emite capabilitatea de autonomie.
+  const release = require('./fiscalReview').status();
+  const releaseCases = Object.fromEntries((release.cases || []).map((row) => [row.id, row]));
+  const corpus = require('./fiscalAutonomy').status();
+  const ruleAutonomy = (corpus.rules || []).find((row) => row.ruleId === rule.id && row.ruleHash === rule.hash) || null;
   return evaluate(rule, ruleSet, facts, Object.assign({}, options || {}, {
-    reviewCases: cases, [VERIFIED_REVIEW]: review.ready === true,
+    reviewCases: releaseCases,
+    autonomyGate: Object.assign({}, corpus, { rule: ruleAutonomy }),
+    [VERIFIED_RELEASE_REVIEW]: release.ready === true,
+    [VERIFIED_AUTONOMY_CORPUS]: !!ruleAutonomy && ruleAutonomy.ready === true && ruleAutonomy.ruleHash === rule.hash,
   }));
 }
 

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "description": "Corpus separat pentru autonomie fiscală. Cazurile de lansare din fiscalReviewCases nu sunt importate și nu contează la pragul de autonomie.",
+  "cases": [],
+  "materialUncertainties": [
+    {
+      "id": "RO-CF-ART40-2-FORMULA",
+      "status": "open",
+      "ruleIds": ["ro.tax.profit"],
+      "question": "Art. 40^2 impune plafonul cumulativ (plafon EUR plus 30% pentru excedent) sau maximul dintre plafonul EUR și 30% din bază?",
+      "impact": "În cazul PLF-05 cele două interpretări diferă cu 5.000.000 lei într-un singur exercițiu.",
+      "legalBasis": {
+        "act": "Legea nr. 227/2015 privind Codul fiscal",
+        "article": "art. 40^2",
+        "url": "https://legislatie.just.ro/Public/DetaliiDocument/184770"
+      }
+    },
+    {
+      "id": "RO-CF-ART40-2-BAZA-SI-FX",
+      "status": "open",
+      "ruleIds": ["ro.tax.profit"],
+      "question": "Baza art. 40^2 și costul excedentar includ corect amortizarea fiscală și diferențele de curs aferente împrumuturilor?",
+      "impact": "O bază incompletă sau omiterea diferențelor de curs modifică direct suma nedeductibilă și impozitul pe profit.",
+      "legalBasis": {
+        "act": "Legea nr. 227/2015 privind Codul fiscal",
+        "article": "art. 40^1 și art. 40^2",
+        "url": "https://legislatie.just.ro/Public/DetaliiDocument/184770"
+      }
+    },
+    {
+      "id": "RO-CF-ART25-PROTOCOL-BASE",
+      "status": "open",
+      "ruleIds": ["ro.tax.profit"],
+      "question": "Care este baza exactă a plafonului de protocol în toate configurațiile contabile acceptate?",
+      "impact": "Interpretările documentate schimbă plafonul deductibil și rezultatul fiscal.",
+      "legalBasis": {
+        "act": "Legea nr. 227/2015 privind Codul fiscal",
+        "article": "art. 25 alin. (3) lit. a)",
+        "url": "https://legislatie.just.ro/Public/DetaliiDocument/184770"
+      }
+    },
+    {
+      "id": "RO-CF-ART25-SPONSORSHIP-CARRY",
+      "status": "open",
+      "ruleIds": ["ro.tax.profit"],
+      "question": "Regimul de report și redirecționare a sponsorizării este cel aplicabil exact exercițiului evaluat?",
+      "impact": "Modificările succesive ale regimului pot schimba creditul fiscal utilizabil și reportul.",
+      "legalBasis": {
+        "act": "Legea nr. 227/2015 privind Codul fiscal",
+        "article": "art. 25 alin. (4) lit. i)",
+        "url": "https://legislatie.just.ro/Public/DetaliiDocument/184770"
+      }
+    },
+    {
+      "id": "RO-CF-ART25-SOCIAL-PAYROLL-BASE",
+      "status": "open",
+      "ruleIds": ["ro.tax.profit"],
+      "question": "Fondul de salarii pentru plafonul cheltuielilor sociale include, după caz, conturile 642, 643 și 644 pe lângă 641?",
+      "impact": "Clasificarea bazei poate modifica plafonul deductibil al cheltuielilor sociale.",
+      "legalBasis": {
+        "act": "Legea nr. 227/2015 privind Codul fiscal",
+        "article": "art. 25 alin. (3) lit. b)",
+        "url": "https://legislatie.just.ro/Public/DetaliiDocument/184770"
+      }
+    }
+  ]
+}

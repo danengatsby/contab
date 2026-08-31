@@ -1,13 +1,14 @@
 'use strict';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  CORPUSUL DE CAZURI-TEST SUPUSE REVIZIEI DE SPECIALITATE (CECCAR / fiscalist)
+//  SETUL DE LANSARE SUPUS REVIZIEI DE SPECIALITATE (CECCAR / fiscalist)
 //
 //  De ce exista separat de test/run.js: restul suitei dovedeste ca aplicatia
 //  calculeaza CONSECVENT (fara regresii). Fisierul acesta dovedeste altceva —
 //  ca un OM calificat a confirmat ca numerele sunt si CORECTE fata de lege.
-//  Un test verde in run.js inseamna „codul face ce facea ieri"; un caz aprobat
-//  aici inseamna „un expert contabil a semnat cifra asta, la data asta".
+//  Un test verde in run.js inseamna „codul face ce facea ieri"; un caz aprobat aici inseamna
+//  „un expert contabil a semnat cifra asta, la data asta" pentru lansare/depunere. Cele 25 de
+//  cazuri NU sunt corpus de autonomie; acela este gestionat separat de src/fiscalAutonomy.js.
 //
 //  Mecanismul aprobarii:
 //    - fiecare caz are `intrare`, `asteptat` (cifrele) si `temei` (baza legala);
@@ -47,7 +48,7 @@
 //    brut 5.000 -> deducere 430 -> impozit -43   (CO-01, CM-01, CM-02)
 //    brut 4.000 -> deducere 810 -> impozit -81   (SAL-03b; la salariul minim deducerea e maxima)
 //    brut 2.000 -> deducere 810 -> impozit -81   (SAL-04; sub salariul minim, tot maxima)
-//  Niciun caz nu era semnat la data schimbarii (corpusul e integral neaprobat), deci nu s-a rupt
+//  Niciun caz nu era semnat la data schimbarii (setul e integral neaprobat), deci nu s-a rupt
 //  nicio aprobare — dar cifrele sunt acum ALTELE fata de ce a vazut oricine pana acum.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -538,7 +539,7 @@ function verifica(c) {
 
 function ruleaza() {
   const azi = new Date().toISOString().slice(0, 10);
-  console.log('\nCazuri-test supuse reviziei de specialitate — set fiscal ' + cfg.AN
+  console.log('\nPoarta de lansare supusă reviziei de specialitate — set fiscal ' + cfg.AN
     + ' (actualizat ' + cfg.DATA_ACTUALIZARE + ')\n');
 
   const ids = new Set();
@@ -549,7 +550,7 @@ function ruleaza() {
   const contractById = new Map(fiscalReview.CASES.map((c) => [c.id, c]));
   let arieCurenta = '';
   for (const c of CAZURI) {
-    if (ids.has(c.id)) eroare('id duplicat in corpus: ' + c.id);
+    if (ids.has(c.id)) eroare('id duplicat in setul de lansare: ' + c.id);
     ids.add(c.id);
     if (c.arie !== arieCurenta) { arieCurenta = c.arie; console.log('── ' + arieCurenta); }
 
@@ -577,8 +578,8 @@ function ruleaza() {
     console.log('   ' + (okCalc ? '✓' : '✗') + ' ' + c.id + '  ' + c.titlu + '\n       [' + stare + ']');
   }
 
-  // ─── Raportul de acoperire a reviziei ───────────────────────────────────
-  console.log('\n── Acoperirea reviziei');
+  // ─── Raportul portii de lansare ──────────────────────────────────────────
+  console.log('\n── Poarta de lansare (nu corpus de autonomie)');
   console.log('   ' + aprobate + ' / ' + CAZURI.length + ' cazuri aprobate de un specialist');
   if (neaprobate.length) {
     console.log('   ⚠ NEREVIZUITE: ' + neaprobate.join(', '));

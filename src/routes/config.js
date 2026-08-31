@@ -16,6 +16,7 @@ const balanceCategory = require('../balanceCategory');
 const bilant = require('../bilant');
 const fiscalControls = require('../fiscalControls');
 const fiscalReview = require('../fiscalReview');
+const fiscalAutonomy = require('../fiscalAutonomy');
 const permissions = require('../permissions');
 const svc = require('../configService');
 const log = require('../log');
@@ -56,7 +57,11 @@ module.exports = function register(app, ctx) {
 
   // Status READ-ONLY al reviziei de produs. Aprobarea nu se poate fabrica din interfață: registrul
   // semnat și registrul separat al cheilor se gestionează controlat pe server; aici se vede verdictul.
-  app.get('/api/fiscal-review', (req, res) => res.json(fiscalReview.status()));
+  app.get('/api/fiscal-review', (req, res) => res.json(Object.assign({}, fiscalReview.status(), {
+    // Compatibilitate: câmpurile de nivel superior descriu poarta de lansare/depunere. Autonomia
+    // are verdict separat; 25/25 nu poate face `autonomy.ready` adevărat.
+    autonomy: fiscalAutonomy.status(),
+  })));
 
   app.post('/api/fiscal-profile/history', (req, res) => run(res, () => {
     const fid = activeId(req); const firma = db.getFirma(fid);

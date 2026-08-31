@@ -714,7 +714,12 @@ npm run revizie-fiscala -- --payload PLF-05 aprobare-PLF-05.json
 
 Comanda de status iese cu cod `2` cât timp dosarul este incomplet. Utilitarul nu scrie aprobări;
 înregistrarea cu revizor, calitate, dată, temei, amprenta dosarului, semnătură criptografică și hash
-se copiază numai după primirea dosarului extern semnat. Poarta cere 25/25 semnături valide.
+se copiază numai după primirea dosarului extern semnat. Poarta de lansare cere 25/25 semnături
+valide; aceste semnături nu deschid autonomia. Corpusul separat de autonomie se configurează prin
+`CONTAB_FISCAL_AUTONOMY_CORPUS_FILE` și `CONTAB_FISCAL_AUTONOMY_APPROVALS_FILE` și rămâne blocat
+până la minimum 500 de scenarii unice, acoperire completă, doi revizori independenți și zero
+incertitudini materiale pentru regula vizată. Statusul și payload-ul canonic de semnat se emit cu
+`npm run revizie-autonomie`; utilitarul nu scrie aprobări și nu primește cheia privată.
 Schimbarea oricărui fișier din manifestul fiscal, a unui caz, a versiunii fiscale sau a cotelor
 active din Setări schimbă automat hash-ul și blochează din nou poarta. Detalii și fluxul de
 înrolare/semnare: `docs/dosar-revizie-fiscala.md` §5.

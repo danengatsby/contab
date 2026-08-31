@@ -5820,11 +5820,14 @@ ok('AST-ul fiscal refuza formulele structural incomplete la publicare', (() => {
   catch (e) { return /numar invalid de operanzi/.test(e.message); }
 })());
 const casRule = fcfg.treatmentAt(rules2026, 'ro.payroll.cas');
+const casCoverage = require('../src/fiscalAutonomyCoverage').forRule(casRule);
 ok('regula CAS poarta toate dimensiunile de autonomie', casRule
   && casRule.appliesWhen && casRule.requiredFacts.length && casRule.calculation.outputs.amount
   && casRule.exceptions.length && casRule.legalBasis[0].article && casRule.validFrom
   && casRule.approvedExamples.includes('SAL-01') && casRule.risk === 'high'
-  && casRule.review.signatureAlgorithm === 'Ed25519');
+  && casRule.review.signatureAlgorithm === 'Ed25519' && casCoverage.ruleHash === casRule.hash
+  && casCoverage.minimumUniqueCases >= 30 && casCoverage.temporalTransitions.length
+  && casCoverage.mandatoryRefusals.length);
 const casDecision = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: 5000 });
 ok('tratamentul CAS este executabil si explica rezultatul', casDecision.status === 'computed'
   && casDecision.result.amount === 1250 && /25%.*5000.*1250/.test(casDecision.explanation)
@@ -5851,18 +5854,19 @@ eq('utilizarea exclusiv economica scoate regula limitarii din aplicare',
     { inputVat: 1000, exclusiveBusinessUse: true }).status, 'not_applicable');
 ok('fara semnaturile cazurilor, regula calculata nu devine autonoma', casDecision.review.status === 'pending'
   && casDecision.review.missingCaseIds.includes('SAL-01') && !casDecision.autonomousEligible);
-const casAutonomous = fcfg.evaluateTreatmentForAutonomy(rules2026, 'ro.payroll.cas', { base: 5000 },
+const casReleaseOnly = fcfg.evaluateTreatmentForAutonomy(rules2026, 'ro.payroll.cas', { base: 5000 },
   { autonomyPolicyApproved: true, factEvidence: { base: {
     sourceId: 'payroll:2026-08:employee:test', sourceHash: 'a'.repeat(64), capturedAt: '2026-08-31T10:00:00.000Z',
   } } });
-ok('poarta criptografica + provenienta + politica explicita deschid autonomia regulii', casAutonomous.review.status === 'approved'
-  && casAutonomous.review.approvals.length === casRule.review.requiredCaseIds.length
-  && casAutonomous.factEvidence.supplied.base.sourceId === 'payroll:2026-08:employee:test'
-  && casAutonomous.autonomousEligible);
+ok('25/25 deschide lansarea, dar nu poate deschide autonomia regulii', casReleaseOnly.review.status === 'approved'
+  && casReleaseOnly.review.approvals.length === casRule.review.requiredCaseIds.length
+  && casReleaseOnly.factEvidence.supplied.base.sourceId === 'payroll:2026-08:employee:test'
+  && casReleaseOnly.autonomy.status === 'blocked' && casReleaseOnly.autonomy.minimumCases === 500
+  && !casReleaseOnly.autonomousEligible && /Corpul are 0\/500/.test(casReleaseOnly.autonomyReason));
 const casWithoutEvidence = fcfg.evaluateTreatmentForAutonomy(rules2026, 'ro.payroll.cas', { base: 5000 },
   { autonomyPolicyApproved: true });
-ok('semnatura corpusului nu inlocuieste dovada faptelor tranzactiei', !casWithoutEvidence.autonomousEligible
-  && casWithoutEvidence.factEvidence.missingFacts.includes('base') && /provenienta/.test(casWithoutEvidence.autonomyReason));
+ok('lipsa provenientei ramane vizibila chiar daca poarta de autonomie este deja blocata', !casWithoutEvidence.autonomousEligible
+  && casWithoutEvidence.factEvidence.missingFacts.includes('base') && casWithoutEvidence.autonomy.status === 'blocked');
 const fakeApprovals = Object.fromEntries(casRule.review.requiredCaseIds.map((id) => [id, { status: 'approved',
   approval: { signature: 'fals', keyId: 'b'.repeat(64) } }]));
 ok('un JSON cu aprobari imitate nu poate deschide autonomia', !fcfg.evaluateTreatment(rules2026,
@@ -5872,7 +5876,8 @@ const criticalDecision = fcfg.evaluateTreatmentForAutonomy(rules2026, 'ro.tax.pr
   { autonomyPolicyApproved: true, factEvidence: { base: { sourceId: 'profit:2026', sourceHash: 'c'.repeat(64) } } });
 ok('riscul critic ramane cu poarta suplimentara', criticalDecision.result.amount === 1600
   && criticalDecision.review.status === 'approved' && !criticalDecision.autonomousEligible
-  && /risc critic/.test(criticalDecision.autonomyReason));
+  && criticalDecision.autonomy.openUncertainties.some((row) => row.id === 'RO-CF-ART40-2-FORMULA')
+  && /incertitudini juridice/.test(criticalDecision.autonomy.blockers.join(' ')));
 const payrollTrace = fcfg.payroll(5000, 0);
 ok('statul salarial consuma efectiv tratamentele si pastreaza urma', payrollTrace.cas === 1250
   && payrollTrace.treatmentDecisions.length === 4
@@ -7667,7 +7672,8 @@ section('Revizia fiscală externă — poartă fail-closed (src/fiscalReview.js)
   const empty = fr.status({ schemaVersion: 2, approvals: {} });
   ok('fără dosar extern: 0/25 și stare blocată', !empty.ready && empty.approved === 0 && empty.pending === fr.CASES.length);
   const valid = fr.status(fiscalReviewFixture.approvedBundle());
-  ok('numai 25/25 aprobări criptografice deschid poarta', valid.ready && valid.approved === 25 && valid.total === 25);
+  ok('25/25 aprobări criptografice deschid numai poarta de lansare', valid.ready && valid.releaseReady
+    && valid.gateKind === 'release' && valid.autonomyEvidence === false && valid.approved === 25 && valid.total === 25);
   const noTrustedReviewer = fr.status(fiscalReviewFixture.approvedBundle(),
     { trustBundle: { schemaVersion: 1, reviewers: {} } });
   ok('aprobările nu se autolegitimează fără registrul separat al cheilor',
@@ -7711,6 +7717,63 @@ section('Revizia fiscală externă — poartă fail-closed (src/fiscalReview.js)
     { trustBundle: fiscalReviewFixture.trustBundle(), context: changedRulesContext });
   ok('poarta se închide automat după schimbarea configurației fiscale active',
     !invalidatedByRules.ready && invalidatedByRules.invalid === 25);
+}
+
+section('Corpul separat de autonomie fiscală — volum, acoperire și incertitudini');
+{
+  const fa = require('../src/fiscalAutonomy');
+  const treatments = require('../src/fiscalTreatments');
+  const autonomyCoverage = require('../src/fiscalAutonomyCoverage');
+  const empty = fa.status();
+  ok('poarta de autonomie pornește închisă și nu moștenește cele 25 de cazuri', !empty.ready
+    && empty.gateKind === 'autonomy' && empty.releaseGateIndependent
+    && empty.total === 0 && empty.minimumCases === 500 && empty.approvedReviewers === 0);
+  ok('fiecare tratament are contract structural legat de hash și minimum 30 de scenarii unice',
+    empty.rules.length === treatments.all().length
+    && treatments.all().every((rule) => autonomyCoverage.forRule(rule).minimumUniqueCases >= 30
+      && autonomyCoverage.forRule(rule).ruleHash === rule.hash)
+    && empty.rules.every((rule) => rule.coverage.requiredDimensions > 0));
+  const requiredCas = fa.requiredCoverage(treatments.byId('ro.payroll.cas'));
+  ok('pragurile și tranzițiile cer sub/la/peste, respectiv înainte/la/după',
+    ['threshold_boundary:base-zero:below', 'threshold_boundary:base-zero:at', 'threshold_boundary:base-zero:above',
+      'temporal_transition:rule-validity-start:before', 'temporal_transition:rule-validity-start:at',
+      'temporal_transition:rule-validity-start:after', 'temporal_transition:fiscal-year-boundary:before',
+      'temporal_transition:fiscal-year-boundary:at', 'temporal_transition:fiscal-year-boundary:after',
+      'temporal_transition:legal-regime-transition:before', 'temporal_transition:legal-regime-transition:at',
+      'temporal_transition:legal-regime-transition:after'].every((key) => requiredCas.includes(key)));
+  const profitGate = empty.rules.find((row) => row.ruleId === 'ro.tax.profit');
+  ok('incertitudinea materială art. 40² blochează explicit domeniul profit', !profitGate.ready
+    && profitGate.openUncertainties.some((row) => row.id === 'RO-CF-ART40-2-FORMULA'
+      && /5\.000\.000/.test(row.impact)));
+  const known = new Map(treatments.all().map((rule) => [rule.id, rule]));
+  const baseCase = {
+    id: 'AUTO-CAS-001', ruleId: 'ro.payroll.cas', kind: 'branch',
+    coverageId: 'computed-nonnegative-base', validAt: '2026-08-31',
+    title: 'CAS pe bază pozitivă', facts: { base: 5000 },
+    expected: { status: 'computed', result: { amount: 1250 } },
+    legalBasis: { act: 'Legea nr. 227/2015', article: 'art. 138 și 139',
+      url: 'https://legislatie.just.ro/Public/DetaliiDocument/184770' },
+  };
+  const executable = fa.executeCase(fa.inspectDefinition(baseCase, known));
+  ok('un caz de autonomie este executat prin RuleSet și tratamentul real', executable.status === 'passed');
+  const paddedCases = Array.from({ length: 500 }, (_value, index) => Object.assign({}, baseCase, {
+    id: 'AUTO-CAS-' + String(index + 1).padStart(4, '0'),
+  }));
+  const padded = fa.status({ schemaVersion: 1, cases: paddedCases,
+    materialUncertainties: fa.readCorpus().materialUncertainties }, {
+    approvalsBundle: { schemaVersion: 1, approvals: {} }, trustBundle: { schemaVersion: 1, reviewers: {} },
+  });
+  ok('500 de etichete duplicate nu simulează 500 de scenarii', padded.total === 500
+    && padded.uniqueCases === 1 && !padded.volumeReady && !padded.ready);
+  const deletedUncertainties = fa.status({ schemaVersion: 1, cases: [], materialUncertainties: [] }, {
+    approvalsBundle: { schemaVersion: 1, approvals: {} }, trustBundle: { schemaVersion: 1, reviewers: {} },
+  });
+  ok('o incertitudine cunoscută nu poate fi eliminată pentru a deschide poarta',
+    /Incertitudini cunoscute eliminate/.test(deletedUncertainties.configError || '') && !deletedUncertainties.ready);
+  const invalidRefusal = Object.assign({}, baseCase, { id: 'AUTO-REFUZ-001', kind: 'mandatory_refusal',
+    coverageId: 'missing-base' });
+  ok('un caz etichetat refuz obligatoriu nu poate aștepta un calcul',
+    fa.inspectDefinition(invalidRefusal, known).errors.some((error) => /nu pot aștepta computed/.test(error)));
 }
 
 section('Control anti-duplicat central (src/duplicateGuard.js)');

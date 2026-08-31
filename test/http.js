@@ -440,7 +440,10 @@ async function main() {
     // poată exercita restul fluxurilor, dar îl scoate temporar și verifică ambele blocaje reale.
     {
       const ready = await req('GET', '/api/fiscal-review', { cookie: c1 });
-      ok('revizie fiscală: dosarul TEST complet este vizibil', ready.status === 200 && ready.json.ready && ready.json.approved === ready.json.total);
+      ok('revizie fiscală: dosarul TEST complet deschide lansarea, nu autonomia', ready.status === 200
+        && ready.json.ready && ready.json.releaseReady && ready.json.approved === ready.json.total
+        && ready.json.autonomy && ready.json.autonomy.ready === false
+        && ready.json.autonomy.minimumCases === 500 && ready.json.autonomy.total === 0);
       fs.writeFileSync(REVIEWF, JSON.stringify({ schemaVersion: 2, approvals: {} }));
       const blockedStatus = await req('GET', '/api/fiscal-review', { cookie: c1 });
       ok('revizie fiscală: 0/25 este raportat explicit', blockedStatus.status === 200 && !blockedStatus.json.ready && blockedStatus.json.approved === 0 && blockedStatus.json.total === 25);

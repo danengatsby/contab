@@ -31,6 +31,8 @@ inventariere, evaluare, amortizare, balanță, impozit, închidere, situații fi
 repartizare. Fără 25/25 cazuri externe semnate criptografic pe manifestul codului/regulilor și pe
 configurația fiscală activă, XML-urile de depunere
 și operațiunile anuale sunt blocate; rapoartele și validarea rămân disponibile pentru corectare.
+Acesta este pragul de lansare cu validare umană, nu o autorizare a autonomiei fiscale; poarta de
+autonomie are corpus, acoperire și semnături distincte.
 
 **Arhivarea anuală:** după ultima dovadă din cockpit, acțiunea „Sigilează o versiune” creează și
 păstrează ZIP-ul exact; descărcările ulterioare nu mai recalculează nimic. Pachetul conține registre,

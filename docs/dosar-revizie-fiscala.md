@@ -6,11 +6,11 @@ acolo e cum se întreține setul de reguli, aici e cum se dovedește că e corec
 
 > **Starea la 2026‑08‑24: nicio revizie externă efectuată încă.** Cazurile-test există și rulează,
 > dar **niciunul** nu are semnătura unui specialist. Numărul curent și starea fiecăruia se citesc
-> din corpus (`node test/cazuri-aprobate.js`), nu de aici — o cifră scrisă în document ar drifta la
+> din setul de lansare (`node test/cazuri-aprobate.js`), nu de aici — o cifră scrisă în document ar drifta la
 > fiecare caz nou. Vezi §6.
 >
 > **Adăugat 2026‑07‑28:** aria *Plafoane de deductibilitate* (`PLF-01..05`), cu regulile art. 25 și
-> 40² — cea mai urgentă de revizuit din tot corpusul, fiindcă acolo interpretarea schimbă direct
+> 40² — cea mai urgentă de revizuit din tot setul, fiindcă acolo interpretarea schimbă direct
 > impozitul datorat, iar la art. 40² citirea alternativă dă **altă cifră** (vezi §6).
 
 ---
@@ -29,6 +29,25 @@ Un test verde spune „codul face ce făcea ieri". Nu spune că ce făcea ieri e
 validează *forma* declarației, nu *fondul*: un D112 cu o indemnizație de concediu medical calculată
 greșit trece validarea fără o vorbă.
 
+### 1.1 Cele 25 de cazuri sunt poartă de lansare, nu corpus de autonomie
+
+O aprobare 25/25 permite artefactele de depunere și operațiunile anuale numai în fluxul cu
+validare umană. Ea nu autorizează nicio regulă să ia singură o decizie fiscală. Pentru autonomie
+există un registru separat (`src/fiscalAutonomyCorpus.json`) și o poartă separată
+(`src/fiscalAutonomy.js`), care cer cumulativ:
+
+- minimum **500 de scenarii unice trecute**; aceeași intrare copiată sub alte ID-uri contează o dată;
+- acoperire pentru fiecare ramură a fiecărei reguli;
+- valori imediat sub, exact la și imediat peste fiecare prag;
+- înainte, exact la și după fiecare tranziție temporală de regulă/regim;
+- combinații de excepții și rectificări;
+- date incomplete, date contradictorii și cazuri care trebuie obligatoriu refuzate;
+- minimum doi revizori profesionali independenți care semnează întregul manifest;
+- nicio incertitudine juridică materială deschisă pentru regula automatizată.
+
+Pragul numeric este doar podeaua. O colecție de 500 de cazuri care nu acoperă dimensiunile
+declarate rămâne blocată. Invers, acoperirea dimensiunilor cu prea puține scenarii rămâne blocată.
+
 ## 2. Obiectul reviziei (perimetru)
 
 Se revizuiesc **trei straturi**, în ordinea asta:
@@ -41,8 +60,9 @@ Se revizuiesc **trei straturi**, în ordinea asta:
    - [`src/payroll.js`](../src/payroll.js) — statul de plată, concedii medicale și de odihnă,
      normă parțială;
    - [`src/reporting.js`](../src/reporting.js) — jurnale TVA, pro‑rata, estimarea Declarației Unice.
-3. **Cazurile-test** — [`test/cazuri-aprobate.js`](../test/cazuri-aprobate.js): perechile
-   intrare → cifră așteptată, cu temeiul legal pe fiecare. Acesta e **artefactul semnat**.
+3. **Cazurile de lansare** — [`test/cazuri-aprobate.js`](../test/cazuri-aprobate.js): perechile
+   intrare → cifră așteptată, cu temeiul legal pe fiecare. Acesta este artefactul semnat pentru
+   lansare/depunere, nu pentru autonomie.
 
 **În afara perimetrului:** structura declarațiilor XML (acoperită de validatorul ANAF), corectitudinea
 partidei duble (acoperită de balanță/bilanț), infrastructura.
@@ -73,7 +93,7 @@ depunere și operațiunile de închidere anuală.
 
 ## 5. Cum se consemnează o aprobare verificabilă
 
-Poarta se deschide numai la **25/25** cazuri aprobate. Fiecare aprobare poartă separat numele,
+Poarta de lansare/depunere se deschide numai la **25/25** cazuri aprobate. Fiecare aprobare poartă separat numele,
 calitatea profesională, data, temeiul confirmat, amprenta dosarului extern și **hash-ul** exact al
 rezultatului, codului și configurației active verificate. Valoarea `signature` nu este un text
 declarativ: este o semnătură Ed25519 verificată față de o cheie publică autorizată separat.
@@ -141,6 +161,13 @@ openssl pkeyutl -sign -rawin -inkey cheie-privata-revizor.pem \
 
 Rezultatul base64 se copiază în `signature`. Aplicația nu primește cheia privată și nu poate
 fabrica aprobări.
+
+### 5.3 Ce nu autorizează semnătura 25/25
+
+Chiar dacă toate cele 25 de semnături sunt valide, `fiscalReview.status().ready` înseamnă numai
+`releaseReady`. Câmpul `autonomyEvidence` rămâne `false`. `evaluateForAutonomy()` consultă separat
+`fiscalAutonomy.status()` și refuză autonomia până când volumul, acoperirea, cele două semnături
+independente și registrul incertitudinilor sunt toate conforme.
 
 Hash-ul SHA‑256 acoperă definiția cazului, versiunea setului fiscal, **manifestul automat al
 întregului domeniu de cod și reguli** și configurația fiscală efectivă (`FISCAL`) după
@@ -240,7 +267,7 @@ Tabelul de mai jos e doar un rezumat; sursa de adevăr rămâne `node test/cazur
 
 ### Plafoane de deductibilitate (impozit pe profit) — **prioritatea reviziei**
 
-Adăugate 2026‑07‑28. Spre deosebire de restul corpusului, unde o eroare afectează un salariat sau o
+Adăugate 2026‑07‑28. Spre deosebire de restul setului de lansare, unde o eroare afectează un salariat sau o
 estimare, aici interpretarea schimbă **impozitul pe profit datorat de firmă**.
 
 | Caz | Ce se verifică | Temei |
@@ -372,6 +399,10 @@ deductibil = plafonEUR + min(cost − plafonEUR ; 30% × bază)
 Citirea alternativă ar fi `deductibil = max(plafonEUR ; 30% × bază)`. Pe cazul `PLF-05` (cost
 20.000.000 lei, bază 20.100.000, curs 5): implementarea dă **8.970.000** nedeductibil, alternativa dă
 **13.970.000**. Diferența e de 5 milioane de lei pe un singur exercițiu.
+
+Incertitudinea este înregistrată ca `RO-CF-ART40-2-FORMULA` în poarta de autonomie și blochează
+explicit regula `ro.tax.profit`. Nu poate fi închisă prin alegerea unei opțiuni în aplicație sau
+prin aprobarea setului 25/25; cere decizie profesională datată și SHA-256 al dovezii.
 
 În plus, la această regulă: baza de calcul folosește amortizarea **fiscală**, care astăzi coincide cu
 cea contabilă (item separat în backlog), iar **diferențele de curs valutar aferente împrumuturilor NU

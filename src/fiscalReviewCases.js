@@ -1,6 +1,7 @@
 'use strict';
 
-// Contractul RUNTIME al celor 25 de cazuri trimise revizorului extern. `definitionHash` este
+// Contractul RUNTIME al celor 25 de cazuri din POARTA DE LANSARE, trimise revizorului extern.
+// Ele nu sunt corpusul de autonomie si nu pot autoriza executia fiscala fara om. `definitionHash` este
 // amprenta temei + intrare + rezultat asteptat din test/cazuri-aprobate.js. Testul confrunta
 // automat cele doua surse: schimbarea unui caz obliga actualizarea acestei amprente, iar aceasta
 // invalideaza aprobarea existenta. `dependencies` documenteaza sursele directe pentru revizor;

@@ -14,6 +14,7 @@
     "test:marketing": "node test/marketing.js",
     "test-pg": "sh scripts/test-pg.sh",
     "revizie-fiscala": "node scripts/revizie-fiscala.js",
+    "revizie-autonomie": "node scripts/revizie-autonomie.js",
     "stare-ci": "node scripts/stare-ci.js",
     "nginx-drift": "sh scripts/verifica-nginx.sh",
     "rto-drill": "sh scripts/rto-drill.sh",

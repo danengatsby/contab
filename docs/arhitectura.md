@@ -44,8 +44,11 @@
   dovezile reviziei; salarizarea, PFA, dividendele, D100, impozitul pe profit și limitările auto
   consumă aceste decizii, în loc să recopieze formula finală. Lipsa unui fapt produce
   `undetermined`, iar o excepție produce `review_required`, niciodată zero inventat.
-  Eligibilitatea autonomă este fail-closed: cere simultan corpus fiscal semnat și verificat,
-  proveniență hash-uită pentru fiecare fapt, politica explicită a firmei și risc sub `critical`.
+  Eligibilitatea autonomă este fail-closed și NU folosește setul de lansare 25/25 drept corpus.
+  Cere simultan corpusul separat din `src/fiscalAutonomyCorpus.json` (minimum 500 de scenarii
+  unice trecute), acoperirea structurală declarată de fiecare tratament, minimum doi revizori
+  independenți, nicio incertitudine materială deschisă pentru regulă, proveniență hash-uită pentru
+  fiecare fapt, politica explicită a firmei și risc sub `critical`.
   Semnăturile reale rămân atestări separate (altfel hash-ul regulii ar fi autoreferențial), dar
   sunt atașate deciziei. Hash-urile vechi schema 1 sunt acceptate numai la verificarea articolelor
   istorice fără snapshot de tratamente; calculele noi emit exclusiv hash-ul schema 2.
@@ -82,11 +85,21 @@
   extraselor și tranzacțiilor, cu SHA-256, cheie bancară unică, stări auditate și verdictul
   `sold inițial + mișcări = sold final`. Articolul contabil referă explicit extrasul și linia lui;
   cockpitul lunar cere diferență zero, continuitate pe IBAN/monedă și niciun 5121/5124 orfan.
-- `src/fiscalReview.js` + `src/fiscalReviewCases.js` — poarta reviziei externe: 25 de contracte
-  fiscale au hash peste definiția cazului, versiunea fiscală și sursele de calcul aferente.
+- `src/fiscalReview.js` + `src/fiscalReviewCases.js` — poarta de **lansare/depunere**: 25 de
+  contracte fiscale au hash peste definiția cazului, versiunea fiscală și sursele de calcul
+  aferente. Chiar aprobate 25/25, ele nu emit capabilitatea de autonomie.
   Aprobările cu revizor, calitate, dată, temei și semnătură stau separat în
   `src/fiscalReviewApprovals.json`; lipsa ori schimbarea hash-ului blochează doar ieșirile de
   depunere și operațiunile anuale, nu munca de corectare/validare.
+- `src/fiscalAutonomy.js` + `src/fiscalAutonomyCoverage.js` + `src/fiscalAutonomyCorpus.json` —
+  poarta separată de autonomie. Contractul de acoperire este legat de `ruleHash`, dar stă în afara
+  snapshot-ului tratamentului pentru a nu invalida RuleSet-urile istorice.
+  Corpusul organizează cazurile pe ramuri, frontiere sub/la/peste prag, tranziții înainte/la/după,
+  combinații de excepții, rectificări, date incomplete, date contradictorii și refuzuri
+  obligatorii. Dublurile de intrare/rezultat nu cresc volumul. Semnăturile Ed25519 sunt peste
+  întregul corpus și fotografia codului/regulilor; două chei ale aceleiași persoane contează ca
+  un singur revizor. Incertitudinile cunoscute nu pot fi șterse din JSON, iar închiderea lor cere
+  dovadă profesională SHA-256.
 - `src/annualClose.js` — cockpitul anual: derivă zece stări succesive, începând cu revizia externă, din inventare, amortizări,
   balanță, note fiscale/de închidere, registrul situațiilor și repartizarea rezultatului; expune
   progresul, blocajele, dovezile și temeiul legal fără a persista bife de finalizare.
