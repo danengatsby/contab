@@ -139,7 +139,8 @@ odihnă · tichete și avantaje în natură · fluturași, adeverințe · D112
 
 **Bancă și casă** — import extras CSV/MT940/CAMT.053 · IBAN, monedă, solduri și hash păstrate ·
 protecție la reimport · punctaj document-cu-document · diferență zero înainte de închiderea lunii ·
-plafon de casierie · fișier de plăți SEPA (pain.001) · curs BNR automat
+plafon de casierie · fișier de plăți pain.001 **experimental** (fără validare XSD oficială și
+fără acceptare bancară documentată) · curs BNR automat
 
 **Imobilizări** — registru de mijloace fixe · amortizare liniară, degresivă, accelerată ·
 amortizare fiscală separată de cea contabilă · leasing financiar cu grafic de rate
@@ -232,6 +233,11 @@ stocul cantitativ-valoric. Continui din luna curentă.
 Cont propriu cu parolă și, opțional, autentificare în doi pași. Jurnal de audit al acțiunilor.
 Backup zilnic automat, cu o copie păstrată în afara serverului, și exercițiu de restaurare rulat
 periodic — ca să știm că backupul chiar se poate restaura, nu doar că există.
+
+**Oferă disponibilitate ridicată sau SLA?**
+Nu în etapa actuală. Serviciul este pentru pilot, firme mici și birouri de contabilitate și rulează
+într-un singur proces, pe o singură mașină, fără failover automat. RPO 24 h și RTO 30 min sunt
+obiective operaționale asumate și testate, nu un SLA contractual de disponibilitate ridicată.
 
 **Sunt la zi cotele?**
 Da, parametrii 2026. Și sunt configurabili, dacă legea se schimbă între versiuni.

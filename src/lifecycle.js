@@ -30,6 +30,9 @@ function bannerUrls(host, port, ifaces) {
 function pidAlive(pid) { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } }
 function sleepMs(ms) { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch (_) { /* fara SAB */ } }
 function acquireDbLock() {
+  // HA foloseste un lease PostgreSQL + fencing pe fiecare COMMIT. Lockfile-ul local ar refuza
+  // exact a doua replica pe care vrem s-o tinem standby si, pe doua gazde, nici n-ar proteja-o.
+  if (process.env.CONTAB_HA_ENABLED === '1') return;
   if (process.env.CONTAB_SKIP_LOCK === '1') return;
   for (let attempt = 0; attempt < 20; attempt++) {
     try {
@@ -100,7 +103,7 @@ function prepare(loadDb) {
   });
 }
 
-function start({ app, dbReady }) {
+function start({ app, dbReady, ha }) {
   const PORT = process.env.PORT || 8080;
   // Nginx este endpointul public; bind-ul local previne expunerea accidentala a portului Node.
   const HOST = process.env.HOST || '127.0.0.1';
@@ -124,16 +127,26 @@ function start({ app, dbReady }) {
   function shutdown() {
     if (shuttingDown) return;
     shuttingDown = true;
+    // Nu mai accepta cereri noi cat timp liderul isi goleste coada si elibereaza lease-ul.
+    // Conexiunile deja intrate isi pastreaza bariera de durabilitate/fencing.
+    if (server) { try { server.close(); } catch (_) { /* ignora */ } }
+    const mayPersist = !ha || !ha.isEnabled() || ha.isLeaderReady();
     // `db.save()` FARA indiciu = diff complet: inchide fereastra deschisa de salvarile partiale
     // (src/persistPlan.js). Fara el, o schimbare nedeclarata de un indiciu gresit ar fi supravietuit
     // doar in oglinda JSON, nu si in baza din care se rehidrateaza la pornire.
-    try { db.save(); } catch (_) { /* o oprire nu are voie sa cada pe asta */ }
-    try { db.flushMirror(); } catch (_) { /* ignora */ }
-    Promise.resolve(db.flushStore()).catch(() => { /* ignora */ }).then(() => {
+    if (mayPersist) {
+      try { db.save(); } catch (_) { /* o oprire nu are voie sa cada pe asta */ }
+      try { db.flushMirror(); } catch (_) { /* ignora */ }
+    }
+    Promise.resolve(mayPersist ? db.flushStore() : null).catch(() => { /* ignora */ })
+      .then(() => (ha && ha.isEnabled() ? ha.stop() : null)).catch(() => { /* lease-ul va expira */ })
+      .then(() => {
       if (db.DRIVER === 'sqlite') { try { require('./store').close(); } catch (_) { /* ignora */ } }
-      if (db.DRIVER === 'pg') { try { require('./storePg').close(); } catch (_) { /* ignora */ } }
+      const closePg = db.DRIVER === 'pg' ? require('./storePg').close() : null;
+      return Promise.resolve(closePg).catch(() => {});
+    }).then(() => {
       releaseDbLock();
-      if (server) server.close(() => process.exit(0)); else process.exit(0);
+      process.exit(0);
     });
     setTimeout(() => process.exit(0), 3000).unref();
   }

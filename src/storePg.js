@@ -50,6 +50,11 @@ let lastWritten = [];
 let epoch = 0;
 let planStare = plan.stareNoua();
 let conflictedFlag = false;
+// In modul HA, dbEpoch ramane o plasa contra scriitorilor necoordonati, iar acest provider adauga
+// fencing-ul distribuit: fiecare tranzactie trebuie sa dovedeasca holder-ul si GENERATIA lease-ului
+// curent. Providerul nu este importat din haCoordinator (ar crea un ciclu); db.js il injecteaza.
+let haFenceProvider = null;
+let haFenceRejected = null;
 // Coada `queue` ramane deliberat rezolvata chiar dupa un esec: save() este apelat sincron in
 // multe locuri (inclusiv joburi fara raspuns HTTP), iar o promisiune respinsa si ignorata ar
 // produce unhandledRejection. Eroarea durabilitatii se pastreaza separat si este expusa NUMAI
@@ -184,6 +189,29 @@ async function applyWork(work) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (haFenceProvider) {
+      const fence = haFenceProvider();
+      if (!fence) {
+        const e = new Error('Scriere HA refuzata: procesul nu detine un lease de lider pregatit.');
+        e.code = 'CONTAB_HA_FENCE_REJECTED';
+        throw e;
+      }
+      // FOR UPDATE tine randul pana la COMMIT/ROLLBACK. O promovare concurenta nu poate schimba
+      // generatia la jumatatea tranzactiei; fie scrierea vechiului lider comite prima, fie noul
+      // lider obtine lease-ul si tokenul vechi este respins.
+      const fr = await client.query(
+        `SELECT 1 FROM contab_ha_leases
+          WHERE name = $1 AND holder_id = $2 AND generation = $3
+            AND lease_until > clock_timestamp()
+          FOR UPDATE`,
+        [fence.name, fence.holderId, fence.generation]
+      );
+      if (!fr.rows.length) {
+        const e = new Error('Scriere HA refuzata: lease expirat, schimbat sau detinut de alta instanta.');
+        e.code = 'CONTAB_HA_FENCE_REJECTED';
+        throw e;
+      }
+    }
     // FENCING: verifica si avanseaza dbEpoch in aceeasi tranzactie cu datele. Coada e seriala,
     // deci `epoch` la momentul executiei reflecta toate commit-urile anterioare ale procesului.
     const er = await client.query("SELECT value FROM meta WHERE key = 'dbEpoch'");
@@ -344,6 +372,15 @@ function persist(db, opts) {
 
   if (!work.length) { lastWritten = []; plan.noteazaDiff(planStare, only); return queue; } // nimic schimbat -> nicio tranzactie
 
+  // Fail-fast pe standby: nu pastra in coada o fotografie a unui graf pe care promovarea il va
+  // inlocui oricum prin rehidratare. Middleware-ul opreste rutele, iar aceasta este plasa pentru
+  // joburi/cod intern care ar incerca accidental sa scrie fara rolul de lider.
+  if (haFenceProvider && !haFenceProvider()) {
+    const e = new Error('Scriere HA refuzata: instanta nu este lider.');
+    e.code = 'CONTAB_HA_NOT_LEADER';
+    throw e;
+  }
+
   // Inghetat dupa un conflict de scriitor: RAM-ul nostru e invechit — reincercarea ar suprascrie
   // datele celuilalt proces. Refuza zgomotos (o data pe apel), pana la restart + rehidratare.
   if (conflictedFlag) {
@@ -390,13 +427,16 @@ async function drain() {
         }
         lastWritten = work.map((w) => w.name);
       } catch (e) {
-        if (e && e.code === 'CONTAB_WRITER_CONFLICT') {
+        if (e && (e.code === 'CONTAB_WRITER_CONFLICT' || e.code === 'CONTAB_HA_FENCE_REJECTED')) {
           conflictedFlag = true; // ingheata scrierile viitoare (nu retry — ar suprascrie alt proces)
           flushError = e;
           failStreak += 1;
           lastPersistError = { msg: String(e.message || e).slice(0, 300), at: new Date().toISOString() };
-          console.error('[contab] CONFLICT DE SCRIITOR (pg): ' + e.message + ' Persistenta e inghetata pana la restart.');
+          console.error('[contab] CONFLICT/FENCE DE SCRIITOR (pg): ' + e.message + ' Persistenta e inghetata pana la rehidratare.');
           pendingWork = null; // nu mai incerca nimic din coada
+          if (e.code === 'CONTAB_HA_FENCE_REJECTED' && haFenceRejected) {
+            try { Promise.resolve(haFenceRejected(e)).catch(() => {}); } catch (_) { /* nu rupe drain */ }
+          }
           return;
         }
         // `snap` a ramas neatins, deci urmatorul save recalculeaza diff-ul si reincearca
@@ -604,6 +644,32 @@ async function hydrate(defaults) {
   return db;
 }
 
+/** Configureaza fencing-ul HA. Providerul intoarce {name, holderId, generation} numai cat
+ * instanta este lider pregatit. Callback-ul demite imediat procesul daca PostgreSQL respinge
+ * tokenul in tranzactie. `null` dezactiveaza fencing-ul (mod standalone/teste vechi). */
+function setHaFenceProvider(provider, onRejected) {
+  haFenceProvider = typeof provider === 'function' ? provider : null;
+  haFenceRejected = typeof onRejected === 'function' ? onRejected : null;
+}
+
+/** Reinitializare permisa EXCLUSIV la promovare, dupa ce coada veche s-a incheiat si inainte sa
+ * se deschida readiness. Spre deosebire de resetDirty(), vindeca un conflict vechi deoarece
+ * apelantul va rehidrata baza sub o generatie noua, nu va reincerca graful invechit. */
+function resetForLeadership() {
+  snap = {};
+  lastHash = {};
+  pendingWork = null;
+  pendingSince = 0;
+  pendingBytes = 0;
+  draining = false;
+  conflictedFlag = false;
+  flushError = null;
+  failStreak = 0;
+  lastPersistError = null;
+  lastWritten = [];
+  planStare = plan.stareNoua();
+}
+
 async function close() {
   if (!pool) return;
   try { await flush(); } catch (_) { /* ignora */ }
@@ -611,4 +677,6 @@ async function close() {
   try { await p.end(); } catch (_) { /* ignora */ }
 }
 
-module.exports = { localPgConfig, open, schema, isEmpty, persist, hydrate, close, resetDirty, written, flush, queueStats, linesTurnover, linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };
+module.exports = { localPgConfig, open, schema, isEmpty, persist, hydrate, close, resetDirty,
+  resetForLeadership, setHaFenceProvider, written, flush, queueStats, linesTurnover,
+  linesForAccount, linesForPeriod, documentsStats, documentsSearch, auditCount, auditRecent, conflicted };

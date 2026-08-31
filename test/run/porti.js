@@ -151,7 +151,9 @@ section('Poarta: allowlist-ul public (PUBLIC_PATHS) — fara orfani, fara creste
   // versiunile curente INAINTE sa existe cont; raspunsul contine doar versiuni/stare, nu secrete.
   // `/api/bootstrap/initialize` este public doar la nivelul middleware-ului: handlerul cere
   // cumulativ socket loopback, Host local, lipsa proxy-ului și tokenul unic cu TTL.
-  const ASTEPTAT = ['/api/health', '/api/login', '/api/logout', '/api/me', '/api/bootstrap/initialize', '/api/forgot-password',
+  // `/api/ready` este public si minimal pentru load-balancer: doar ok/role/instance, fara holder,
+  // generatie, baza sau cardinalitati. Diagnosticul complet ramane admin la `/api/ha/status`.
+  const ASTEPTAT = ['/api/health', '/api/ready', '/api/login', '/api/logout', '/api/me', '/api/bootstrap/initialize', '/api/forgot-password',
     '/api/register', '/api/legal-status', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest',
     '/api/client-error', '/api/registru-anaf'];
   const inPlus = publice.filter((p) => !ASTEPTAT.includes(p));

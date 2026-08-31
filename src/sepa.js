@@ -27,6 +27,19 @@
 const { round2 } = require('./util');
 const { esc } = require('./xml');
 
+// Statut de produs, nu verdict tehnic derivat din faptul ca XML-ul este bine-format. Ramane
+// experimental pana cand exista AMBELE probe externe: validare fata de XSD-ul oficial si o
+// acceptare documentata intr-un internet-banking real. Rutele si documentatia consuma aceeasi
+// constanta, ca eticheta sa nu poata disparea numai dintr-un singur loc.
+const FEATURE_STATUS = Object.freeze({
+  code: 'experimental',
+  label: 'Experimental',
+  experimental: true,
+  xsdValidated: false,
+  bankAcceptanceDocumented: false,
+  warning: 'Format nedovedit: fișierul nu este validat față de XSD-ul oficial și nu are acceptare bancară documentată.',
+});
+
 /** Normalizeaza un IBAN: fara spatii, majuscule. */
 function normIban(s) {
   return String(s || '').replace(/[\s-]/g, '').toUpperCase();
@@ -153,8 +166,9 @@ function buildPain001(p) {
       </CdtTrfTxInf>`).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- pain.001.001.03 generat de Contabo. Fisierul NU inregistreaza plata in contabilitate:
-     plata se contabilizeaza la aparitia in extrasul bancar (reconciliere). -->
+<!-- EXPERIMENTAL: pain.001.001.03 generat de Contabo. Formatul NU este validat fata de XSD-ul
+     oficial si NU are acceptare documentata de la o banca reala. Fisierul NU inregistreaza plata
+     in contabilitate; plata se contabilizeaza la aparitia in extrasul bancar (reconciliere). -->
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <CstmrCdtTrfInitn>
     <GrpHdr>
@@ -180,4 +194,4 @@ ${tx}
 `;
 }
 
-module.exports = { buildPain001, checkPayload, validIban, normIban, txt, needsTranslit };
+module.exports = { FEATURE_STATUS, buildPain001, checkPayload, validIban, normIban, txt, needsTranslit };

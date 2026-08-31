@@ -1,0 +1,31 @@
+# HAProxy local intre nginx (TLS/rate-limit) si replicile Contab.
+# Copiaza in /etc/haproxy/haproxy.cfg sau include blocurile in configuratia existenta.
+# Pentru doua GAZDE, inlocuieste 127.0.0.1 cu adresele private ale nodurilor si pastreaza
+# portul Node neexpus internetului. Numai instanta al carei GET /api/ready = 200 primeste trafic.
+
+global
+    log /dev/log local0
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log global
+    mode http
+    option httplog
+    timeout connect 3s
+    timeout client 300s
+    timeout server 300s
+
+frontend contab_from_nginx
+    bind 127.0.0.1:8079
+    default_backend contab_nodes
+
+backend contab_nodes
+    option httpchk GET /api/ready
+    http-check expect status 200
+    default-server check inter 1s fastinter 500ms downinter 1s fall 2 rise 1
+    # Nu activam retry pentru cereri deja trimise unui backend: un POST intrerupt poate sa fi
+    # comis inainte sa cada conexiunea. Clientul primeste eroare si verifica starea inainte de retry.
+    server contab-a 127.0.0.1:8080
+    server contab-b 127.0.0.1:8081

@@ -16,6 +16,11 @@ const { round2 } = require('../util');
 module.exports = function register(app, ctx) {
   const { S, activeId, logAudit } = ctx;
 
+  function markExperimental(res) {
+    res.setHeader('X-Contab-Feature-Status', sepa.FEATURE_STATUS.code);
+    res.setHeader('X-Contab-Feature-Warning', 'Not XSD validated; no documented bank acceptance');
+  }
+
   /** Lotul propus pentru furnizori: soldurile deschise din scadentar + IBAN-ul din nomenclator. */
   function propuneriFurnizori(v, fid, asOf) {
     const reg = openItems.registry(v, asOf);
@@ -66,6 +71,7 @@ module.exports = function register(app, ctx) {
 
   // Propunerile (citire): ce s-ar putea plati si ce lipseste ca sa se poata.
   app.get('/api/plati/propuneri', (req, res) => {
+    markExperimental(res);
     const v = S(req);
     const fid = activeId(req);
     const tip = req.query.tip === 'salarii' ? 'salarii' : 'furnizori';
@@ -75,6 +81,7 @@ module.exports = function register(app, ctx) {
     const firma = db.getFirma(fid) || {};
     res.json({
       tip,
+      featureStatus: sepa.FEATURE_STATUS,
       // Platitorul: fara IBAN pe firma nu se poate genera nimic, deci se semnaleaza separat.
       platitor: { nume: firma.nume || '', iban: firma.iban || '', bic: firma.bic || '' },
       platitorGata: !!firma.iban && sepa.validIban(firma.iban),
@@ -91,6 +98,7 @@ module.exports = function register(app, ctx) {
   // Generarea fisierului. POST (corpul poarta selectia si sumele ajustate), dar sub /xml/ ca
   // orice alt fisier descarcabil — prefixele de download sunt o lista inchisa, deliberat.
   app.post('/xml/pain001', (req, res) => {
+    markExperimental(res);
     const b = req.body || {};
     const fid = activeId(req);
     const firma = db.getFirma(fid) || {};
@@ -113,7 +121,8 @@ module.exports = function register(app, ctx) {
     const total = round2(plati.reduce((s, x) => s + (Number(x.suma) || 0), 0));
     logAudit('plati.pain001', plati.length + ' plati, total ' + total + ' ' + (b.moneda || 'RON'), { req });
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="plati-' + new Date().toISOString().slice(0, 10) + '.xml"');
+    res.setHeader('Content-Disposition', 'attachment; filename="experimental-pain001-'
+      + new Date().toISOString().slice(0, 10) + '.xml"');
     res.send(xmlStr);
   });
 };

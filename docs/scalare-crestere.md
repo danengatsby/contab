@@ -283,6 +283,28 @@ Contabo e un **monolit modular** cu întreaga bază în RAM-ul unui singur proce
 Aceste proprietăți (simplitate, consistență sincronă, viteză in-memory, un singur proces operabil,
 dependențe minime — doar PostgreSQL) sunt cele mai mari puncte forte ale aplicației.
 
+## ADR 2026-08-31: replicare pentru disponibilitate — activ–pasiv, ACCEPTAT
+
+Pentru continuitate nu este nevoie ca două procese să scrie simultan același graf. Este suficient
+ca două sau mai multe replici să fie pornite, una singură să accepte trafic, iar alta să preia
+automat după pierderea liderului. Implementarea păstrează invarianta grafului unic:
+
+- `src/haCoordinator.js` arbitrează în PostgreSQL un lease cu `holder_id`, generație monotonă și
+  expirare calculată de ceasul bazei, nu de ceasurile nodurilor;
+- noul lider rehidratează toate tabelele după obținerea lease-ului și deschide `/api/ready` numai
+  după ce normalizările au fost comise;
+- `src/storePg.js` verifică lease-ul la **fiecare tranzacție** și blochează randul `FOR UPDATE` până
+  la COMMIT. `dbEpoch` rămâne plasa separată pentru un scriitor vechi/necoordonat;
+- o pierdere de lease închide imediat readiness, API-ul și joburile periodice; un răspuns HTTP
+  bufferizat verifică rolul din nou chiar la final;
+- uploadurile, auditul și backupurile rămân în `CONTAB_DATA_DIR`, deci multi-host cere un volum
+  partajat. PostgreSQL și load-balancerul au nevoie de propriile topologii redundante.
+
+Decizia este deliberat **activ–pasiv**. Active–active peste fotografii RAM ar cere citiri
+per-cerere/invalidare distribuită și nu aduce disponibilitate suplimentară pentru același registru;
+în schimb introduce exact conflictul pe care fencing-ul îl elimină. Partiționarea pe `firmaId` de
+mai jos rămâne calea de scalare a volumului, complementară replicării pentru disponibilitate.
+
 ## Microservicii pe domenii (accounting/payroll/stocks) + mesagerie async — RESPINS
 
 Propunerea de a sparge modulele în servicii independente care comunică prin Redis pub/sub sau

@@ -288,7 +288,9 @@ async function main() {
     stdio: 'ignore',
   });
   const killAll = () => { try { child.kill(); } catch (_) { /* */ } try { fs.unlinkSync(DBF); } catch (_) { /* */ } try { fs.unlinkSync(REVIEWF); } catch (_) { /* */ } try { fs.unlinkSync(REVIEW_TRUSTF); } catch (_) { /* */ } try { fs.rmSync(DATA_TMP, { recursive: true, force: true }); } catch (_) { /* */ } };
-  const guard = setTimeout(() => { console.error('  ✗ timeout global teste HTTP'); killAll(); process.exit(1); }, 45000);
+  // Defaultul ramane strict; pe masini CI lente poate fi marit explicit fara editarea suitei.
+  const httpTestTimeoutMs = Number(process.env.CONTAB_HTTP_TEST_TIMEOUT_MS) || 90000;
+  const guard = setTimeout(() => { console.error('  ✗ timeout global teste HTTP'); killAll(); process.exit(1); }, httpTestTimeoutMs);
 
   try {
     ok('serverul de test porneste', await waitUp());
@@ -316,6 +318,10 @@ async function main() {
     // public + autentificare
     const h = await req('GET', '/api/health');
     ok('health public: ok', h.status === 200 && h.json && h.json.ok === true && typeof h.json.uptimeSec === 'number');
+    const ready = await req('GET', '/api/ready');
+    ok('readiness public: standalone este pregătit fără detalii sensibile', ready.status === 200
+      && ready.json && ready.json.ok === true && ready.json.role === 'standalone'
+      && !Object.prototype.hasOwnProperty.call(ready.json, 'holderId'));
     // health e PUBLIC: nu are voie sa scurga detalii de proces/infrastructura (fingerprinting)
     ok('health public NU expune diagnostice (nodeVersion/pid/memorie/driver/users)',
       !('nodeVersion' in h.json) && !('pid' in h.json) && !('memoryRssMb' in h.json) && !('driver' in h.json)
@@ -953,6 +959,10 @@ async function main() {
       // Propunerile arata si randurile care NU pot intra in lot, cu motivul — nu le ascund.
       const prop = await req('GET', '/api/plati/propuneri?tip=furnizori', { cookie: laP.cookie });
       eq('propunerile de plata se pot citi', prop.status, 200);
+      ok('API-ul eticheteaza exportul pain.001 drept experimental si numeste probele lipsa',
+        prop.json.featureStatus && prop.json.featureStatus.experimental === true
+          && prop.json.featureStatus.xsdValidated === false
+          && prop.json.featureStatus.bankAcceptanceDocumented === false);
       ok('fiecare rand spune daca e gata si de ce nu', (prop.json.randuri || []).every((r) => 'gata' in r && 'motiv' in r));
       ok('firma fara IBAN e semnalata separat', typeof prop.json.platitorGata === 'boolean');
 
@@ -960,6 +970,8 @@ async function main() {
       const fara = await req('POST', '/xml/pain001', { cookie: laP.cookie, body: { plati: [{ beneficiar: 'ALFA', iban: 'DE89370400440532013000', suma: 10 }] } });
       eq('generare fara IBAN-ul firmei -> 400', fara.status, 400);
       ok('raspunsul enumera problemele', Array.isArray(fara.json.probleme) && fara.json.probleme.length > 0);
+      ok('si raspunsul de eroare pastreaza eticheta experimentala',
+        fara.headers.get('x-contab-feature-status') === 'experimental');
 
       // Completam IBAN-ul firmei si generam
       await req('POST', '/api/company', { cookie: laP.cookie, body: { iban: 'RO49AAAA1B31007593840000' } });
@@ -978,7 +990,10 @@ async function main() {
       eq('POST /xml/pain001 fara token CSRF -> 403', faraCsrf.status, 403);
       eq('generare valida -> 200', okGen.status, 200);
       ok('raspunsul e XML pain.001', /pain\.001\.001\.03/.test(okGen.text || ''));
-      ok('se descarca drept fisier', /attachment/.test(okGen.headers.get('content-disposition') || ''));
+      ok('descarcarea poarta eticheta experimentala in antet si in numele fisierului',
+        okGen.headers.get('x-contab-feature-status') === 'experimental'
+          && /attachment.*experimental-pain001/i.test(okGen.headers.get('content-disposition') || '')
+          && /EXPERIMENTAL/.test(okGen.text || ''));
       // INVARIANTUL: fisierul e o intentie de plata, nu o plata. Nimic nu s-a inregistrat.
       const entriesDupa = (await req('GET', '/api/entries', { cookie: laP.cookie })).json;
       const nrDupa = Array.isArray(entriesDupa) ? entriesDupa.length : entriesDupa.items.length;
@@ -4195,6 +4210,10 @@ async function main() {
 
     // ── BACKUP / RESTORE COMPLET (admin, src/routes/backup.js): rutele care suprascriu TOATA baza ──
     const cAdm = la.cookie;
+    eq('diagnostic HA complet: non-admin -> 403', (await req('GET', '/api/ha/status', { cookie: c1 })).status, 403);
+    const haStatus = await req('GET', '/api/ha/status', { cookie: cAdm });
+    ok('diagnostic HA complet: admin vede standalone fără token de fencing', haStatus.status === 200
+      && haStatus.json.role === 'standalone' && haStatus.json.ready === true && haStatus.json.generation === null);
     eq('backup: non-admin -> 403', (await req('POST', '/api/backup', { cookie: c1 })).status, 403);
     eq('restore: non-admin -> 403', (await req('POST', '/api/restore', { cookie: c1 })).status, 403);
     eq('lista backup: non-admin -> 403', (await req('GET', '/api/backups', { cookie: c1 })).status, 403);
@@ -4212,6 +4231,19 @@ async function main() {
       && /^db-.*\.json$/.test(bk.json.file) && /^[a-f0-9]{64}$/.test(bk.json.integrityRoot || ''));
     const bkList = await req('GET', '/api/backups', { cookie: cAdm });
     ok('backup: apare in lista + lastAt setat', bkList.json && bkList.json.lastAt && bkList.json.list.some((b) => b.name === bk.json.file));
+    ok('backup: API-ul nu confundă probele cu HA și declară RTO/RPO necontractuale',
+      bkList.json.continuity && bkList.json.continuity.status === 'limited'
+        && bkList.json.continuity.topology.processes === 1 && bkList.json.continuity.topology.hosts === 1
+        && bkList.json.continuity.contractualHighAvailability.supported === false
+        && bkList.json.continuity.objectives.rpo.assumedMinutes === 1440
+        && bkList.json.continuity.objectives.rto.assumedMinutes === 30);
+    eq('continuitate: endpointul dedicat este rezervat administratorului',
+      (await req('GET', '/api/continuity-status', { cookie: c1 })).status, 403);
+    const continuityStatus = await req('GET', '/api/continuity-status', { cookie: cAdm });
+    ok('continuitate: endpointul dedicat rămâne fail-closed fără o probă completă curentă',
+      continuityStatus.status === 200 && continuityStatus.json.status === 'limited'
+        && continuityStatus.json.contractualHighAvailability.supported === false
+        && Array.isArray(continuityStatus.json.contractualHighAvailability.blockers));
     const auto0 = await req('POST', '/api/backups/auto', { cookie: cAdm, body: { auto: false } });
     ok('backup auto: comutat pe oprit', auto0.json.ok && (await req('GET', '/api/backups', { cookie: cAdm })).json.auto === false);
     await req('POST', '/api/backups/auto', { cookie: cAdm, body: { auto: true } }); // curatenie: la loc

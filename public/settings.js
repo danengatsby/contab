@@ -110,12 +110,38 @@ twofaRecoveryDone && twofaRecoveryDone.addEventListener('click', () => {
 });
 
 // ───────────────────────── BACKUP (admin) ─────────────────────────
+export function continuityStatusHtml(c) {
+  const x = c || {};
+  const tests = x.tests || {}; const archive = tests.archive || {}; const pg = tests.nativeDatabase || {};
+  const topology = x.topology || {};
+  const objectives = x.objectives || {}; const rpo = objectives.rpo || {}; const rto = objectives.rto || {};
+  const blockers = (((x.contractualHighAvailability || {}).blockers) || []).map((v) => `<li>${H(v)}</li>`).join('');
+  const archiveLabel = archive.ready ? 'OK' : (archive.lastTestAt ? 'expirat/eșuat' : 'fără probă');
+  const pgLabel = pg.applicable === false ? 'nu se aplică' : (pg.ready ? 'OK' : (pg.lastTestAt ? 'expirat/eșuat' : 'fără probă'));
+  const rpoLabel = Number(rpo.assumedMinutes) === 1440 ? '24 h' : H(rpo.assumedMinutes || 1440) + ' minute';
+  const appHa = x.applicationFailoverReady === true;
+  const contractual = !!((x.contractualHighAvailability || {}).supported);
+  const topologyLabel = appHa
+    ? `${H(topology.processes)} instanțe · ${H(topology.hosts)} ${Number(topology.hosts) === 1 ? 'mașină' : 'mașini'} · failover activ–pasiv automat`
+    : 'Un singur proces · o singură mașină · fără failover automat';
+  return `<div class="notice ${appHa ? 'success' : 'warning'}" role="status"><span class="notice-icon">${appHa ? '✓' : '⚠️'}</span><div>
+    <b>${H(x.label || 'Continuitate limitată — pilot și firme mici')}</b>
+    <p>${topologyLabel}. <b>${contractual ? 'Cerințele HA contractuale declarate sunt confirmate.' : 'Nu există disponibilitate contractuală ridicată / SLA.'}</b></p>
+    <p>Obiective operaționale asumate, necontractuale: <b>RPO ${rpoLabel}</b>
+      la pierderea mașinii · <b>RTO ${H(rto.assumedMinutes || 30)} minute</b> end-to-end.</p>
+    <p>Probe: restaurare arhivă ${H(archiveLabel)} · restaurare nativă PostgreSQL ${H(pgLabel)} ·
+      copie offsite ${x.offsite && x.offsite.ready ? 'OK' : 'neconfirmată'}.</p>
+    ${blockers ? `<details><summary>De ce nu este HA contractuală</summary><ul>${blockers}</ul></details>` : ''}
+  </div></div>`;
+}
+
 export async function renderBackup() {
   if (!USER || USER.role !== 'admin') return;
   $('#backupCard').classList.remove('hidden');
   let b;
   try { b = await api('/api/backups'); } catch (e) { return; }
   $('#backupAuto').checked = b.auto;
+  if ($('#continuityStatus')) $('#continuityStatus').innerHTML = continuityStatusHtml(b.continuity);
   const v = b.lastVerified;
   if (v) {
     const off = v.offsite || {};

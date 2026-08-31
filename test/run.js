@@ -6679,6 +6679,13 @@ section('Migrare completa: parteneri + mijloace fixe + stoc, atomic');
 section('Fisier de plati ISO 20022 (pain.001) — src/sepa.js');
 {
   const sepa = require('../src/sepa');
+  ok('statutul public ramane EXPERIMENTAL pana la probe externe', sepa.FEATURE_STATUS.experimental === true
+    && sepa.FEATURE_STATUS.code === 'experimental' && sepa.FEATURE_STATUS.xsdValidated === false
+    && sepa.FEATURE_STATUS.bankAcceptanceDocumented === false);
+  const docsPain = ['docs/api.md', 'docs/backlog-sprint.md', 'PREZENTARE.md']
+    .map((rel) => fsIzolare.readFileSync(path.join(__dirname, '..', rel), 'utf8'));
+  ok('documentatia API, backlogul si prezentarea eticheteaza pain.001 drept experimental',
+    docsPain.every((src) => /(?:pain\.001[\s\S]{0,300}experimental|experimental[\s\S]{0,300}pain\.001)/i.test(src)));
   // ── IBAN: mod 97, nu o euristica de forma ────────────────────────────────
   ok('IBAN romanesc valid', sepa.validIban('RO49AAAA1B31007593840000'));
   ok('IBAN german valid', sepa.validIban('DE89370400440532013000'));
@@ -6711,6 +6718,9 @@ section('Fisier de plati ISO 20022 (pain.001) — src/sepa.js');
     plati: [{ beneficiar: 'ALFA', iban: 'DE89370400440532013000', suma: 100.5, ref: 'F1' },
       { beneficiar: 'BETA', iban: 'RO49AAAA1B31007593840000', suma: 200.25, ref: 'F2' }] });
   ok('namespace-ul pain.001.001.03', /urn:iso:std:iso:20022:tech:xsd:pain\.001\.001\.03/.test(x));
+  ok('fisierul se auto-eticheteaza EXPERIMENTAL si numeste probele lipsa',
+    /EXPERIMENTAL/.test(x) && /NU este validat fata de XSD-ul/.test(x)
+      && /NU are acceptare documentata de la o banca reala/.test(x));
   ok('XML bine-format', wellFormed(x));
   eq('numarul de tranzactii (in antet si in lot)', (x.match(/<NbOfTxs>2<\/NbOfTxs>/g) || []).length, 2);
   // Suma de control trebuie sa fie suma randurilor — o nepotrivire e primul lucru pe care il
@@ -6763,7 +6773,7 @@ section('Fisier de plati ISO 20022 (pain.001) — src/sepa.js');
   // dubla plata — iar banca poate oricand refuza lotul.
   ok('iesirea e doar XML, fara nicio linie contabila', typeof x === 'string' && !/debit|credit|"lines"/.test(x));
   ok('modulul nu exporta nimic care sa scrie in baza',
-    Object.keys(sepa).every((k) => ['buildPain001', 'checkPayload', 'validIban', 'normIban', 'txt', 'needsTranslit'].includes(k)));
+    Object.keys(sepa).every((k) => ['FEATURE_STATUS', 'buildPain001', 'checkPayload', 'validIban', 'normIban', 'txt', 'needsTranslit'].includes(k)));
 }
 
 section('Curs BNR (parsare, multiplicator, zile nelucratoare)');
@@ -7926,6 +7936,46 @@ ok('expectedForFirma: aceleasi bunuri D301 fara art. 317 nu inventeaza D390', !d
 
 section('Exercitiul de restaurare automatizat (src/restoreDrill.js)');
 const drillMod = require('../src/restoreDrill');
+const continuity = require('../src/operationalContinuity');
+const continuityNow = '2026-08-30T12:00:00.000Z';
+const continuityGood = continuity.evaluate({
+  ts: '2026-08-30T03:30:00.000Z', ok: true, drill: { ok: true },
+  offsite: { encrypted: true, encryptionVerified: true, objectStorage: { status: 'ok' } },
+  pgDrill: { ok: true, ts: '2026-08-28T03:30:00.000Z' },
+}, { now: continuityNow, databaseDriver: 'pg', pgDrillDays: 7 });
+ok('continuitate: probele periodice si offsite pot fi verzi',
+  continuityGood.tests.periodicRestoreTestsReady && continuityGood.recoveryEvidenceReady);
+ok('continuitate: nici probele verzi nu inventeaza failover sau HA contractuala',
+  continuityGood.status === 'limited' && continuityGood.topology.processes === 1
+    && continuityGood.topology.hosts === 1 && continuityGood.topology.automaticFailover === false
+    && continuityGood.contractualHighAvailability.supported === false);
+ok('continuitate: RPO/RTO sunt asumate explicit si necontractuale',
+  continuityGood.objectives.rpo.assumedMinutes === 1440 && continuityGood.objectives.rto.assumedMinutes === 30
+    && continuityGood.objectives.contractual === false);
+const haRuntime = {
+  enabled: true, ready: true,
+  topology: { configuredReplicas: 2, configuredHosts: 2, sharedStorage: true, databaseFailover: true, contractual: false },
+};
+const continuityHa = continuity.evaluate({
+  ts: '2026-08-30T03:30:00.000Z', ok: true, drill: { ok: true },
+  offsite: { encrypted: true, encryptionVerified: true, objectStorage: { status: 'ok' } },
+  pgDrill: { ok: true, ts: '2026-08-28T03:30:00.000Z' },
+}, { now: continuityNow, databaseDriver: 'pg', ha: haRuntime });
+ok('continuitate HA: separa failoverul aplicatiei/infrastructurii de SLA',
+  continuityHa.applicationFailoverReady && continuityHa.infrastructureFailoverReady
+    && continuityHa.status === 'ha_ready' && !continuityHa.contractualHighAvailability.supported);
+const continuityContract = continuity.evaluate({
+  ts: '2026-08-30T03:30:00.000Z', ok: true, drill: { ok: true },
+  offsite: { encrypted: true, encryptionVerified: true, objectStorage: { status: 'ok' } },
+  pgDrill: { ok: true, ts: '2026-08-28T03:30:00.000Z' },
+}, { now: continuityNow, databaseDriver: 'pg', ha: Object.assign({}, haRuntime, {
+  topology: Object.assign({}, haRuntime.topology, { contractual: true }),
+}) });
+ok('continuitate HA: contractual devine true numai dupa asumarea explicita + toate probele',
+  continuityContract.contractualHighAvailability.supported && continuityContract.objectives.contractual);
+const continuityStale = continuity.evaluate(null, { now: continuityNow, databaseDriver: 'pg' });
+ok('continuitate: lipsa probelor ramane fail-closed si numeste blocajele',
+  !continuityStale.recoveryEvidenceReady && continuityStale.contractualHighAvailability.blockers.length >= 6);
 // graf coerent (2 firme, partida dubla echilibrata) -> drill ok, numaratoare corecta
 const drillDb = { firmaActiva: 1, firme: [{ id: 1, nume: 'Alfa SRL' }, { id: 2, nume: 'Beta SRL' }],
   entries: [

@@ -3066,6 +3066,11 @@ Cu stimă,
           <h2>Backup baza de date</h2>
           <button id="backupNow" class="btn small primary">Fă backup acum</button>
         </div>
+        <div id="continuityStatus">
+          <div class="notice warning" role="status"><span class="notice-icon">⚠️</span><span>
+            <b>Continuitate limitată — pilot și firme mici.</b> Instanța rulează într-un singur proces,
+            pe o singură mașină, fără failover și fără SLA de disponibilitate ridicată.</span></div>
+        </div>
         <label data-u="u121"><input id="backupAuto" type="checkbox" data-u="u15"> Backup automat zilnic</label>
         <div id="backupStatus" class="status"></div>
         <div id="backupList" class="tablewrap"></div>

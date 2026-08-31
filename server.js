@@ -15,9 +15,24 @@ process.umask(0o077);
 
 const db = require('./src/db');
 const lifecycle = require('./src/lifecycle');
+const ha = require('./src/haCoordinator');
 // Lock-ul se obtine sincron AICI, inainte de Express, rute si orice deschidere a driverului.
 // `db.load` ramane functie lenesa si ruleaza numai dupa verificarea starii de deploy.
-const dbLoadReady = lifecycle.prepare(() => db.load());
+let runtimeInitialized = false;
+const dbLoadReady = lifecycle.prepare(async () => {
+  if (!ha.isEnabled()) return db.load();
+  ha.assertConfig(ha.config); // fail-fast inainte sa deschidem vreun driver sau sa atingem datele
+  // Standby-ul hidrateaza doar pentru liveness. Nicio normalizare nu este scrisa pana cand
+  // PostgreSQL nu acorda lease-ul; la promovare graful se rehidrateaza din nou sub fencing.
+  await db.load({ haReadOnly: true });
+  return ha.start({
+    promote: async (fence) => {
+      await db.promoteHa(fence);
+      if (runtimeInitialized) initializeRuntime();
+    },
+    demote: async () => db.demoteHa(),
+  });
+});
 
 const bootstrap = require('./src/bootstrap');
 const coa = require('./src/chartOfAccounts');
@@ -40,7 +55,7 @@ const tvaArt310 = require('./src/tvaArt310');
 // sa asculte (app.listen, la finalul fisierului) abia dupa ce baza e hidratata. Functia de load
 // ramane LENESA pana cand lifecycle a obtinut lock-ul single-instance; altfel a doua instanta
 // poate astepta in driverul SQLite inainte sa ajunga la garda care trebuie s-o refuze.
-const dbReady = dbLoadReady.then(() => {
+function initializeRuntime() {
   coa.addAccounts(db.get().customAccounts); // inregistreaza conturile personalizate importate
   fiscal.configureRuleSets(db.get().fiscalRuleSets); // verifica hash-urile si incarca versiunile append-only
   if (db.get().settings.fiscal && Object.keys(db.get().settings.fiscal).length) {
@@ -49,11 +64,19 @@ const dbReady = dbLoadReady.then(() => {
   // Vizitatorii site-ului traiesc intr-un Map in memorie (calea cererii nu scrie in baza); la
   // pornire se reincarca din colectia persistata, altfel fiecare restart ar reseta contoarele.
   require('./src/visitors').hydrate(db.get().visitors);
+}
+const dbReady = dbLoadReady.then(() => {
+  initializeRuntime();
+  runtimeInitialized = true;
 });
 
 // Instanta Express cu tot middleware-ul de infrastructura (trust proxy, helmet/CSP, reqId,
 // metrici, parsare body, static, sanitizare, multer + garda de upload): src/bootstrap.js.
 const { app, upload } = bootstrap.createApp();
+
+// Readiness este ruta Express explicita (contract API si inventar de rute), chiar daca garda HA
+// care protejeaza restul API-ului este middleware de infrastructura.
+app.get('/api/ready', ha.readiness);
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   log.error('eroare necuprinsa in ruta', log.ctx(req, { status: 500, err: e }));
@@ -117,6 +140,10 @@ function requireAdmin(req, res, next) {
   if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Necesita drepturi de administrator.' });
   next();
 }
+
+// Diagnostic HA complet (autentificat). Load-balancerul foloseste endpointul public minimal
+// `/api/ready`; aici operatorul vede generatia, liderul curent si declaratiile de topologie.
+app.get('/api/ha/status', requireAdmin, (req, res) => res.json(ha.status()));
 
 // Setari de cont si securitate (2FA, sesiuni, parola, profil): src/routes/account.js
 require('./src/routes/account')(app, { logAudit });
@@ -584,11 +611,31 @@ require('./src/routes/stockdocs')(app, { S, activeId, canAccess });
 const { resetDemo, ensureDemoContabil } = require('./src/routes/demo')(app, { requireAdmin, logAudit });
 // Provisioning idempotent al perechii demo (patron + demo-contabil) DUPA hidratarea bazei — pe pg
 // hidratarea e async, deci nu se poate face la register (baza inca goala). No-op fara cont demo.
-dbReady.then(() => { try { if (ensureDemoContabil()) db.save(); } catch (e) { console.error('ensureDemoContabil:', e.message); } }, () => {});
+function ensureDemoOnLeader() {
+  if (ha.isEnabled() && !ha.isLeaderReady()) return;
+  try { if (ensureDemoContabil()) db.save(); } catch (e) { console.error('ensureDemoContabil:', e.message); }
+}
 
 // Joburile periodice (backup zilnic, digest termene, demo-reset, igiena rate-limit,
 // auto-poll SPV): src/jobs.js — primeste doar dependintele de stare ale aplicatiei.
-require('./src/jobs').start({ doBackup, resetDemo, registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts });
+const jobs = require('./src/jobs');
+const jobsCtx = { doBackup, resetDemo, registerAttempts, forgotAttempts, clientErrAttempts, cuiAttempts };
+let jobsRunning = false;
+function reconcileLeaderWork(status) {
+  const shouldRun = !ha.isEnabled() || !!(status && status.ready);
+  if (shouldRun && !jobsRunning) {
+    ensureDemoOnLeader();
+    jobs.start(jobsCtx);
+    jobsRunning = true;
+  } else if (!shouldRun && jobsRunning) {
+    jobs.stop();
+    jobsRunning = false;
+  }
+}
+dbReady.then(() => {
+  if (ha.isEnabled()) ha.onChange(reconcileLeaderWork);
+  reconcileLeaderWork(ha.status());
+}, () => {});
 
 // Handler global de erori — DUPA toate rutele — si plasele de siguranta pe proces
 // (uncaughtException/unhandledRejection): src/serverErrors.js.
@@ -596,6 +643,6 @@ serverErrors.installErrorHandler(app);
 serverErrors.installProcessGuards();
 
 // Guard single-instance pe fisierul bazei + listen dupa hidratare + oprire curata: src/lifecycle.js
-lifecycle.start({ app, dbReady });
+lifecycle.start({ app, dbReady, ha });
 
 module.exports = { app, buildEntry, upsertPartner };

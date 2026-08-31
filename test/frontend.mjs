@@ -2319,6 +2319,36 @@ section('Căutare globală (Ctrl+K): filtrarea și ordonarea rezultatelor');
   eq('un cuvant fara potrivire da zero rezultate', cauta('zzz-inexistent', surse).length, 0);
 }
 
+section('Continuitate operațională: limitarea și probele rămân vizibile');
+{
+  const settingsContinuity = await import(pathToFileURL(path.join(mirror, 'settings.js')).href + '?continuity=1');
+  const htmlContinuity = settingsContinuity.continuityStatusHtml({
+    label: 'Continuitate limitată — pilot și firme mici',
+    objectives: { rpo: { assumedMinutes: 1440 }, rto: { assumedMinutes: 30 } },
+    tests: { archive: { ready: true }, nativeDatabase: { applicable: true, ready: false, lastTestAt: '2026-08-20T03:30:00Z' } },
+    offsite: { ready: true },
+    contractualHighAvailability: { supported: false, blockers: ['Fără failover', '<img src=x onerror=alert(1)>'] },
+  });
+  ok('panoul spune single-host, lipsa failoverului și lipsa SLA contractual',
+    /un singur proces/i.test(htmlContinuity) && /o singură mașină/i.test(htmlContinuity)
+      && /fără failover automat/i.test(htmlContinuity) && /Nu există disponibilitate contractuală ridicată \/ SLA/.test(htmlContinuity));
+  ok('panoul separă RPO 24 h și RTO 30 min de probele de restaurare',
+    /RPO 24 h/.test(htmlContinuity) && /RTO 30 minute/.test(htmlContinuity)
+      && /restaurare arhivă OK/.test(htmlContinuity) && /PostgreSQL expirat\/eșuat/.test(htmlContinuity));
+  ok('blocajele de continuitate venite din API sunt escapate',
+    !htmlContinuity.includes('<img src=x') && htmlContinuity.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  const htmlHa = settingsContinuity.continuityStatusHtml({
+    label: 'Failover multi-instanță pregătit', applicationFailoverReady: true,
+    topology: { processes: 2, hosts: 2 },
+    objectives: { rpo: { assumedMinutes: 10 }, rto: { assumedMinutes: 5 } },
+    tests: { archive: { ready: true }, nativeDatabase: { applicable: true, ready: true } },
+    offsite: { ready: true }, contractualHighAvailability: { supported: false, blockers: [] },
+  });
+  ok('panoul HA arată topologia activ–pasiv fără să inventeze SLA',
+    /2 instanțe/.test(htmlHa) && /2 mașini/.test(htmlHa) && /failover activ–pasiv automat/.test(htmlHa)
+      && /Nu există disponibilitate contractuală ridicată/.test(htmlHa));
+}
+
 section('Poartă: fiecare modul din public/ se încarcă fără să arunce');
 // La deploy, HTML-ul si modulele JS nu se schimba atomic in cache-ul tuturor browserelor. Un
 // client a incarcat settings.js nou peste index.html vechi, fara controalele de pornire 2FA, iar

@@ -26,6 +26,8 @@ function marketing() {
       /Pentru firme mici[\s\S]{0,100}birouri de contabilitate/.test(login));
     ok('poziționarea nu promite firme mari înainte de multi-instanță și failover',
       !/firme mari|large companies/i.test(login + '\n' + i18n));
+    ok('pagina publică spune explicit că single-host nu oferă HA sau SLA contractual',
+      /o singură mașină[\s\S]{0,220}fără failover[\s\S]{0,260}nu sunt un SLA contractual/i.test(pag));
     ok('pagina explică diferența Simplu / Expert, nu una de preț',
       /Start și Pro au același preț și aceleași funcții/.test(pag)
         && !/Planurile (?:plătite )?(?:se diferențiază|diferă|se deosebesc) (?:doar )?prin preț/i.test(pag));

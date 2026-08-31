@@ -140,6 +140,11 @@ function createApp() {
     },
   }));
 
+  // In HA activ–pasiv, numai liderul serveste API-ul. Standby-ul continua sa livreze activele
+  // statice si endpointurile de liveness/readiness, astfel incat load-balancerul sa-l poata
+  // observa si promova fara restart. Garda verifica rolul si la finalul raspunsului.
+  app.use(require('./haCoordinator').middleware);
+
   // Pe PostgreSQL, db.save() fotografiaza sincron dar COMMIT-ul este asincron. O ruta nu are voie
   // sa confirme succesul cat timp scrierea traieste doar in RAM. Bariera amana `res.end` pana la
   // golirea cozii; la ROLLBACK/esec inlocuieste raspunsul aparent reusit cu 503. Este DUPA static,
@@ -241,7 +246,7 @@ function applySecurityGuards(app, ctx) {
   });
 
   // Orice ruta de API/livrabile (pdf/xml/csv/efactura) cere sesiune, cu exceptia celor publice.
-  const PUBLIC_PATHS = new Set(['/api/health', '/api/login', '/api/logout', '/api/me', '/api/bootstrap/initialize', '/api/forgot-password', '/api/register', '/api/legal-status', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest', '/api/client-error', '/api/registru-anaf']);
+  const PUBLIC_PATHS = new Set(['/api/health', '/api/ready', '/api/login', '/api/logout', '/api/me', '/api/bootstrap/initialize', '/api/forgot-password', '/api/register', '/api/legal-status', '/api/stripe/webhook', '/api/plans', '/api/demo-login', '/api/checkout-guest', '/api/client-error', '/api/registru-anaf']);
   app.use((req, res, next) => {
     if (PUBLIC_PATHS.has(req.path) || req.path.startsWith('/api/invite/') || req.path.startsWith('/api/reset/')) return next();
     if (/^\/(api|pdf|xml|csv|efactura)/.test(req.path)) {

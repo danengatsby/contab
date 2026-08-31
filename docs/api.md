@@ -261,13 +261,18 @@ motiv și produce eveniment de audit distinct.
 Fără o fotografie salarială activă și completă răspund cu 409/verdict invalid. Astfel, după storno
 nu poate fi descărcată accidental o declarație din corecția încă nepostată.
 
-## Plăți bancare SEPA (`src/routes/plati.js`)
+## Plăți bancare pain.001 — EXPERIMENTAL (`src/routes/plati.js`)
+
+> **Experimental — format nedovedit.** Exportul nu este validat față de XSD-ul oficial ISO 20022
+> și nu există încă o acceptare documentată de la o bancă reală. `GET /api/plati/propuneri`
+> întoarce `featureStatus`, iar descărcarea poartă statutul în antet, în numele fișierului și în
+> comentariul XML. Eticheta poate fi eliminată numai după documentarea ambelor probe externe.
 
 | Endpoint | Cerere | Răspuns / erori |
 |---|---|---|
 | `GET /api/plati/propuneri?tip=salarii&period=YYYY-MM` | — | propunerile folosesc `restPlata` (net minus avansuri și rețineri), nu netul brut de virat; `gata:false` dacă statul nu este postat, luna este deja plătită sau IBAN-ul lipsește/este invalid. Întoarce și `statPostat`, `salariiPlatite`, `payrollEntryId`, `snapshotId` |
 | `GET /api/plati/propuneri?tip=furnizori&asOf=YYYY-MM-DD` | — | soldurile furnizorilor cu starea IBAN-ului și totalul rândurilor pregătite |
-| `POST /xml/pain001` | `{ execDate, moneda?, plati:[{ beneficiar, iban, bic?, suma, detalii?, ref? }] }` | fișier ISO 20022 `pain.001`; validează plătitorul, beneficiarii, IBAN-urile, sumele și setul de caractere EPC |
+| `POST /xml/pain001` | `{ execDate, moneda?, plati:[{ beneficiar, iban, bic?, suma, detalii?, ref? }] }` | fișier **experimental** ISO 20022 `pain.001`; validează local plătitorul, beneficiarii, IBAN-urile, sumele și setul de caractere EPC, fără a pretinde validare XSD sau acceptare bancară |
 
 ## Extrase bancare și reconciliere (`src/routes/bank.js`, `src/bankStatements.js`)
 
@@ -518,6 +523,15 @@ Rectificativele trec prin aceeași poartă; istoricul deja depus rămâne integr
   `sarit` = nu se aplică (instalare fără dump nativ), `neverificabil` = dump există dar nu poate fi
   rejucat (lipsă `psql` sau drept `CREATEDB`), caz în care rularea periodică trimite alertă.
   400 dacă nu există nicio arhivă completă.
+- `GET /api/continuity-status` — verdictul fail-closed al continuității: topologia runtime
+  standalone sau HA activ–pasiv, numărul declarat de replici/gazde, stocarea comună, failoverul
+  PostgreSQL, prospețimea drill-urilor și copia offsite. `applicationFailoverReady` nu implică
+  automat `contractualHighAvailability.supported`: acesta cere și multi-host, baza redundantă,
+  probe curente și `CONTAB_HA_CONTRACTUAL=1` asumat explicit.
+- `GET /api/health` — liveness public minimal; răspunde și pe standby. `GET /api/ready` — readiness
+  public minimal, 200 numai pe lider și 503 pe standby. Load-balancerul folosește readiness, nu
+  health. `GET /api/ha/status` — diagnostic HA complet, numai admin: rol, instanță, generație,
+  expirarea lease-ului, liderul observat și declarațiile de topologie.
 - `GET /api/metrics` — durate pe rută, `recentErrors`, starea joburilor **cu durata fiecărei ture**
   (`n`/`maxMs`/`avgMs`/`lastMs` — partea sincronă, singura care blochează bucla), contoare AI,
   proces (inclusiv marja față de plafonul pm2), `persist` (starea cozii de persistență) și

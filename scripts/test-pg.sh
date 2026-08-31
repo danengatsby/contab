@@ -15,6 +15,7 @@
 #  Ce ruleaza — ACELEASI trei probe ca jobul `test-postgres` din CI, ca sa nu existe
 #  „verde local, rosu in CI" (si nici invers):
 #    test/store-pg.js                       persistenta incrementala pe pg
+#    test/ha-pg.js                          doua servere + SIGKILL + promovare reala
 #    CONTAB_TEST_DRIVER=pg test/http.js     suita HTTP completa pe pg
 #    ...aceeasi, cu CONTAB_SQL_READ_THRESHOLD=0   balanta pe calea SQL
 #  A treia nu e un lux: read-after-write invechit s-a vazut DOAR pe pg cu prag 0
@@ -97,6 +98,10 @@ esec=0
 echo
 echo "── test/store-pg.js (persistenta incrementala pe pg) ─────────────────────"
 if CONTAB_PG_URL="$PG" node test/store-pg.js; then :; else esec=1; fi
+
+echo
+echo "── test/ha-pg.js (doua instante + failover dupa SIGKILL) ────────────────"
+if CONTAB_PG_URL="$PG" node test/ha-pg.js; then :; else esec=1; fi
 
 echo
 echo "── test/http.js pe driverul pg (suita HTTP completa) ─────────────────────"

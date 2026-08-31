@@ -10,6 +10,8 @@ const secretbox = require('../secretbox');
 const fs = require('fs');
 const db = require('../db');
 const backupLib = require('../backup');
+const operationalContinuity = require('../operationalContinuity');
+const ha = require('../haCoordinator');
 const globalChain = require('../globalChain');
 const notify = require('../notify'); // proba de trimitere SMTP (butonul de email de test)
 
@@ -37,7 +39,14 @@ module.exports = function register(app, ctx) {
     let lastVerified = null;
     try { lastVerified = JSON.parse(fs.readFileSync(require('path').join(db.DATA_DIR, 'backups', 'last-backup.json'), 'utf8')); }
     catch (_) { /* inca nu a rulat backupul complet verificat */ }
-    res.json({ auto: s.auto !== false, lastAt: s.lastAt || null, lastVerified, list: backupLib.listBackups(db.DATA_DIR) });
+    res.json({ auto: s.auto !== false, lastAt: s.lastAt || null, lastVerified,
+      continuity: operationalContinuity.evaluate(lastVerified, { ha: ha.status() }), list: backupLib.listBackups(db.DATA_DIR) });
+  });
+  app.get('/api/continuity-status', requireAdmin, (req, res) => {
+    let lastVerified = null;
+    try { lastVerified = JSON.parse(fs.readFileSync(require('path').join(db.DATA_DIR, 'backups', 'last-backup.json'), 'utf8')); }
+    catch (_) { /* verdictul ramane fail-closed si numeste probele lipsa */ }
+    res.json(operationalContinuity.evaluate(lastVerified, { ha: ha.status() }));
   });
   app.post('/api/backups/auto', requireAdmin, (req, res) => {
     const d = db.get();

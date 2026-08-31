@@ -337,11 +337,13 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
 
 | | Valoare | De unde vine |
 |---|---|---|
-| **RPO** (cât se poate pierde) | **24 h** | backupul rulează zilnic la 03:30; o cădere la 03:29 pierde ziua precedentă |
-| **RTO** (cât durează revenirea) | **~1,4 s** de la arhivă în mână la serviciu verificat (măsurat) | `npm run rto-drill` |
+| **RPO asumat** (cât se poate pierde la pierderea mașinii) | **24 h** | backupul offsite rulează zilnic la 03:30; o cădere înaintea următoarei copii poate pierde până la o zi |
+| **RTO asumat end-to-end** (cât durează revenirea) | **≤ 30 min** | obiectiv operațional care include operatorul și obținerea arhivei; nu este SLA contractual |
+| **Componenta tehnică măsurată** | **~1,4 s** de la arhivă în mână la serviciu verificat | `npm run rto-drill`; nu include descărcarea offsite și timpul operatorului |
 
-**Măsurat, nu estimat** (2026-07-29, pe arhiva reală de producție, 72 KB, 4 firme / 58 articole).
-Cifra se reproduce oricând cu:
+**Componenta tehnică este măsurată, nu estimată** (2026-07-29, pe arhiva reală de producție,
+72 KB, 4 firme / 58 articole). Obiectivul end-to-end de 30 minute rămâne o asumare operațională,
+nu o garanție de disponibilitate și nu înlocuiește failover-ul. Cifra tehnică se reproduce cu:
 
 ```bash
 npm run rto-drill            # implicit: cea mai recentă data/backups/full-*.zip
@@ -617,6 +619,76 @@ sudo -u postgres psql -c "CREATE ROLE contab LOGIN" -c "CREATE DATABASE contab O
 # în .env:  CONTAB_DB_DRIVER=pg
 sudo -u contab pm2 restart contab --update-env
 ```
+
+### Multi-instanță și failover activ–pasiv
+
+Modul HA păstrează modelul contabil actual (un graf coerent în RAM) și rulează mai multe replici,
+dar permite **un singur lider**. PostgreSQL acordă un lease cu generație; liderul rehidratează
+starea după promovare, fiecare tranzacție validează `holder_id + generation + lease_until` sub
+`FOR UPDATE`, iar standby-ul răspunde `503` la API până devine lider. Asta este failover, nu
+active–active și nu „ultima scriere câștigă”.
+
+Precondiții obligatorii — pornirea este refuzată dacă primele trei nu sunt declarate:
+
+1. `CONTAB_DB_DRIVER=pg` și aceeași bază PostgreSQL pentru toate replicile. Pentru supraviețuirea
+   pierderii unei gazde, PostgreSQL trebuie să aibă propriul failover (serviciu managed, Patroni
+   sau echivalent); două procese Node nu repară o bază locală pierdută.
+2. `CONTAB_DATA_DIR` explicit pe același volum POSIX partajat. Acolo sunt uploadurile, jurnalul
+   append-only, oglinda și backupurile; o bază partajată cu fișiere locale ar produce un failover
+   aparent, dar documentele justificative ar lipsi.
+3. Aceleași secrete de sesiune/criptare pe toate nodurile și `CONTAB_HA_SHARED_STORAGE=1` ca
+   declarație operațională explicită.
+4. Un load-balancer care trimite trafic numai către replica cu `GET /api/ready` = `200`.
+
+Configurația minimă comună din `.env`:
+
+```bash
+CONTAB_DB_DRIVER=pg
+CONTAB_PG_URL=postgres://contab:...@postgres-ha.internal:5432/contab
+CONTAB_HA_ENABLED=1
+CONTAB_HA_LEASE_NAME=contab-primary
+CONTAB_HA_LEASE_MS=10000
+CONTAB_HA_HEARTBEAT_MS=3000
+CONTAB_DATA_DIR=/mnt/contab-data
+CONTAB_HA_SHARED_STORAGE=1
+CONTAB_HA_REPLICAS=2
+CONTAB_HA_HOSTS=2
+# numai după ce infrastructura chiar a fost probată:
+# CONTAB_HA_DATABASE_FAILOVER=1
+# CONTAB_HA_CONTRACTUAL=1
+```
+
+Pe o singură gazdă, [`ecosystem.ha.config.js`](../ecosystem.ha.config.js) pornește două procese pe
+8080/8081 și dovedește failoverul de **proces**. Nu dovedește failover de mașină. HAProxy verifică
+activ readiness; șablonul este [`deploy/haproxy-contab.cfg.example`](../deploy/haproxy-contab.cfg.example).
+Nginx rămâne terminatorul TLS/rate-limit, dar cele trei `proxy_pass` către aplicație se schimbă
+din `http://127.0.0.1:8080` în `http://127.0.0.1:8079` (frontendul HAProxy).
+
+```bash
+pm2 start ecosystem.ha.config.js
+pm2 save
+sudo haproxy -c -f /etc/haproxy/haproxy.cfg
+sudo systemctl reload haproxy
+
+# exact una trebuie să fie ready; cealaltă trebuie să fie standby (503)
+curl -i http://127.0.0.1:8080/api/ready
+curl -i http://127.0.0.1:8081/api/ready
+```
+
+Drill de failover de proces (fără mutație contabilă): identifică liderul după răspunsul `200`,
+oprește-l, apoi măsoară până când celălalt răspunde `200`. Cu valorile implicite ținta tehnică
+este TTL + două probe ale load-balancerului; timpul măsurat, versiunea și rezultatul se păstrează
+în registrul operațional înainte de orice promisiune contractuală.
+
+```bash
+pm2 stop contab-a                  # exemplu: numai dacă A era liderul identificat
+for i in $(seq 1 20); do date -Is; curl -sf http://127.0.0.1:8081/api/ready && break; sleep 1; done
+pm2 start contab-a
+```
+
+`GET /api/health` este liveness (procesul există inclusiv pe standby). `GET /api/ready` este public,
+minimal și răspunde 200 numai pe lider. `GET /api/ha/status` este diagnostic complet pentru admin.
+Joburile periodice, backupul și normalizările rulează numai pe lider; la demitere sunt oprite.
 - Cotele și tratamentele sunt simplificate pentru claritate; situațiile concrete pot
   necesita conturi și prelucrări suplimentare conform Codului fiscal.
 - Extragerea din PDF funcționează pe documente cu **text** (PDF-uri generate de programe

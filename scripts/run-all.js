@@ -28,6 +28,7 @@ const ROOT = path.join(__dirname, '..');
 const SUITE = [
   'scripts/check-syntax.js',
   'test/db-guard.js',
+  'test/ha.js',
   'test/auth.js',
   'test/commercial-funnel.js',
   'test/bilant-controls.js',

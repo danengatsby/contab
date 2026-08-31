@@ -227,6 +227,33 @@ function mkEntry(id, firmaId, suma) { return { id, firmaId, tip: 'x', suma: suma
     eq('commit reusit reseteaza seria de esecuri', store.queueStats().failStreak, 0);
   }
 
+  section('Fencing HA: fiecare COMMIT cere lease + holder + generatie valabile');
+  {
+    await pool.query(`CREATE TABLE IF NOT EXISTS contab_ha_leases (
+      name TEXT PRIMARY KEY, holder_id TEXT NOT NULL, instance_label TEXT NOT NULL,
+      generation BIGINT NOT NULL, lease_until TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+    )`);
+    await pool.query('DELETE FROM contab_ha_leases WHERE name=$1', ['test-ha']);
+    await pool.query(`INSERT INTO contab_ha_leases (name, holder_id, instance_label, generation, lease_until)
+      VALUES ($1,$2,$3,$4,clock_timestamp() + interval '1 minute')`, ['test-ha', 'holder-a', 'node-a', 7]);
+    const token = { name: 'test-ha', holderId: 'holder-a', generation: 7 };
+    store.setHaFenceProvider(() => token);
+    store.resetForLeadership();
+    const hdb = base(); hdb.entries = [mkEntry('ha-1', 1, 10)];
+    store.persist(hdb); await store.flush();
+    ok('tokenul valid permite COMMIT-ul liderului', (await pool.query("SELECT 1 FROM entries WHERE id='ha-1'")).rows.length === 1);
+
+    await pool.query("UPDATE contab_ha_leases SET lease_until=clock_timestamp() - interval '1 second' WHERE name='test-ha'");
+    hdb.entries.push(mkEntry('ha-old-leader', 1, 20));
+    store.persist(hdb);
+    let fenced = null;
+    try { await store.flush(); } catch (e) { fenced = e; }
+    ok('lease-ul expirat respinge tranzactia cu un cod distinct', fenced && fenced.code === 'CONTAB_HA_FENCE_REJECTED');
+    ok('fostul lider NU scrie randul dupa expirare', (await pool.query("SELECT 1 FROM entries WHERE id='ha-old-leader'")).rows.length === 0);
+    store.setHaFenceProvider(null);
+    store.resetForLeadership();
+  }
+
   // ULTIMA sectiune (dupa conflict, persistenta ramane INGHETATA — nimic nu mai scrie dupa ea)
   section('Fencing multi-scriitor (dbEpoch): alt proces detectat -> refuz, nu clobber');
   {

@@ -276,9 +276,13 @@ Orice client cu furnizori în EUR e blocat pe ambele capete.
 
 ---
 
-## 5. Export fișier de plăți (SEPA pain.001) — ✅ ÎNCHIS 2026-07-28
+## 5. Export fișier de plăți (pain.001) — ⚠️ EXPERIMENTAL
 
-**Estimare:** 2 zile · **Realizat:** ~2 ore · **Prioritate:** 5
+**Implementare tehnică:** închisă 2026-07-28 · **Acceptanță bancară:** deschisă
+
+> **Statut obligatoriu în produs: EXPERIMENTAL.** Eticheta rămâne în API, antetele și numele
+> descărcării, fișierul XML și documentația publică până când sunt documentate atât validarea față
+> de XSD-ul oficial, cât și acceptarea de către cel puțin o bancă reală.
 
 > `sepa.js` (pur): validare IBAN prin **mod-97** (ISO 13616), verificarea lotului care raportează
 > *toate* problemele deodată, și generatorul `pain.001.001.03`. Rută `POST /xml/pain001` +
@@ -615,29 +619,34 @@ Decizia „fără framework" e bună și rămâne; „fără niciun pas de build
 
 ---
 
-## 10. Multi-instanță reală — NEÎNCEPUT, deliberat
+## 10. Multi-instanță reală — ✅ IMPLEMENTAT ÎN COD 2026-08-31; activarea multi-host cere infrastructură
 
 **Prioritate:** ultima, și doar pe semnal real
 
-Aplicația rulează pe **o singură instanță, pe o singură mașină**: pm2 în fork mode, un proces Node,
-graful integral în RAM. Fencing-ul `dbEpoch` (pasul 7 din [`docs/scalare-crestere.md`](scalare-crestere.md))
-**protejează** împotriva a doi scriitori, dar nu **permite** multi-instanță. Nu există failover.
+Deploy-ul implicit rămâne pe **o singură instanță**, dar aplicația are acum un mod HA activ–pasiv:
+lease PostgreSQL cu generație, rehidratare la promovare, fencing în fiecare COMMIT, readiness
+lider-only și joburi exclusiv pe lider. A doua instanță poate rămâne pornită și se promovează
+automat; nu mai este refuzată de lockfile-ul local în modul HA.
 
-**Consecință de poziționare (2026-08-28):** până la multi-instanță și failover, mesajul public se
+**Consecință de poziționare (2026-08-28):** până la activarea și probarea multi-host, mesajul public se
 adresează **firmelor mici și birourilor de contabilitate**, nu „firmelor mari”. Limita comercială
 urmează capacitatea demonstrată a produsului; se extinde numai după implementarea și probarea
 arhitecturii de mai jos.
 
-Ăsta e cel mai mare risc structural al aplicației — și totuși **nu se face acum**. La 56 de articole
-contabile în producție, ar rezolva o problemă pe care nu o ai, cu costul de a nu rezolva niciuna
-dintre cele opt de mai sus, care sunt reale astăzi.
+**Control de continuitate (actualizat 2026-08-31):** `GET /api/continuity-status` citește topologia
+runtime. Separă `applicationFailoverReady` (replici + lease + storage comun) de
+`infrastructureFailoverReady` (și minimum două gazde + PostgreSQL redundant) și de SLA. Nicio
+etichetă contractuală nu se deduce: cere probe curente și `CONTAB_HA_CONTRACTUAL=1` explicit.
 
-Pașii sunt deja scriși în ADR și rămân valabili: citiri per-cerere generalizate, apoi hidratare lazy.
-**Semnalul care declanșează itemul:** `firmeLoad` sau RSS-ul urcând constant spre plafonul pm2, ori
-primul client care cere disponibilitate contractuală. Nu înainte.
+**Livrat:** `src/haCoordinator.js`, integrarea `db`/`storePg`/lifecycle, `/api/ready`,
+`/api/ha/status`, oprirea joburilor pe standby, configurația PM2 cu două replici și șablon HAProxy.
+Testul determinist mută rolul A → B și verifică generația; suita PostgreSQL expiră lease-ul și
+dovedește că fostul lider nu poate introduce randul.
 
-Tot din același motiv rămân nefăcute: normalizarea relațională suplimentară și un Dockerfile de
-producție (producția rulează pe pm2 pe acest server, decizie deja consemnată).
+**Rămâne operațional, nu de declarat din cod:** montarea volumului comun, PostgreSQL HA, minimum
+două gazde/load-balancer redundant și drill-ul măsurat pe infrastructura țintă. Până atunci deploy-ul
+viu poate raporta corect `limited`, chiar dacă binarul știe failover. Citirile per-cerere și
+hidratarea lazy rămân pașii de **scalare a volumului**, nu o condiție pentru failoverul activ–pasiv.
 
 ---
 

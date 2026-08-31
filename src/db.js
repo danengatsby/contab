@@ -152,6 +152,9 @@ const DEFAULT_DB = {
 };
 
 let db = null;
+// Tokenul HA este injectat in storePg si exista numai intre inceputul promovarii si demitere.
+// Nu este persistat in graful aplicatiei; autoritatea lui este randul de lease din PostgreSQL.
+let HA_FENCE = null;
 
 // Revizia globala de scriere: avanseaza la FIECARE persistare (save/restore/load). E cheia de
 // validitate a memo-urilor de citire din src/cache.js — o valoare calculata la revizia R ramane
@@ -382,37 +385,48 @@ function loadJson() {
 
 // Driver PostgreSQL (async): load() intoarce o PROMISIUNE — serverul o asteapta la pornire
 // (bootstrap in server.js). Aceeasi migrare unica din db.json ca la trecerea pe SQLite.
-async function loadPg() {
-  rev += 1; // (re)hidratare: baza din RAM se schimba sub picioarele memo-urilor
-  await store.open();
+async function graphFromPg(opts) {
+  const o = opts || {};
   if (await store.isEmpty()) {
     if (fs.existsSync(JSON_FILE)) {
-      // Migrare unica din fisierul JSON (instalare live sau baza de test pregatita cu CONTAB_DB_FILE).
       let legacy = {};
       try { legacy = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8')); } catch (_) { legacy = {}; }
-      db = migrate(applyDefaults(legacy));
-      if (!process.env.CONTAB_DB_FILE) {
+      if (o.migrateLegacy && !process.env.CONTAB_DB_FILE) {
         backupLegacyJson();
         console.log('[contab] Migrare unica db.json -> PostgreSQL efectuata (copie de siguranta: data/db.pre-pg.json).');
       }
-    } else {
-      db = migrate(applyDefaults({}));
+      return o.migrateLegacy ? migrate(applyDefaults(legacy)) : applyDefaults(legacy);
     }
-    store.persist(db);
-    await store.flush();
-  } else {
-    db = migrate(applyDefaults(await store.hydrate(DEFAULT_DB)));
-    store.persist(db); // persista eventualele normalizari migrate() + initializeaza dirty-tracking
-    await store.flush();
+    // Standby pe o baza complet goala are nevoie doar de un graf inert pentru liveness. Daca am
+    // rula migrate(), fiecare replica ar genera si afisa alt token bootstrap, desi numai tokenul
+    // viitorului lider ar ajunge vreodata in baza.
+    return o.migrateLegacy ? migrate(applyDefaults({})) : applyDefaults({});
   }
+  return migrate(applyDefaults(await store.hydrate(DEFAULT_DB)));
+}
+
+async function loadPg(opts) {
+  const o = opts || {};
+  rev += 1; // (re)hidratare: baza din RAM se schimba sub picioarele memo-urilor
+  await store.open();
+  if (o.haReadOnly) {
+    // Toate replicile pot porni si expune liveness/readiness. Niciuna nu persista migrari inainte
+    // de alegerea liderului; liderul rehidrateaza din nou sub lease si abia atunci scrie.
+    store.setHaFenceProvider(() => HA_FENCE, (e) => require('./haCoordinator').fenceRejected(e));
+    db = await graphFromPg({ migrateLegacy: false });
+    return db;
+  }
+  db = await graphFromPg({ migrateLegacy: true });
+  store.persist(db); // persista eventualele normalizari migrate() + initializeaza dirty-tracking
+  await store.flush();
   if (JSON_MIRROR) writeJson(JSON_FILE, db);
   return db;
 }
 
-function load() {
+function load(opts) {
   ensureDir();
   rev += 1; // (re)hidratare: baza din RAM se schimba sub picioarele memo-urilor
-  if (DRIVER === 'pg') return loadPg();
+  if (DRIVER === 'pg') return loadPg(opts);
   if (DRIVER !== 'sqlite') return loadJson();
   store.open(SQLITE_FILE);
   if (store.isEmpty()) {
@@ -438,6 +452,35 @@ function load() {
   }
   if (JSON_MIRROR) writeJson(JSON_FILE, db);
   return db;
+}
+
+/** Promovare HA: fotografia RAM se inlocuieste integral cu starea autoritara DUPA obtinerea
+ * lease-ului. Readiness ramane inchis in haCoordinator pana cand normalizarile sunt comise sub
+ * noua generatie. Orice urma a unei cozi/conflict din mandatul anterior este abandonata numai
+ * dupa ce s-a terminat, apoi snapshoturile dirty se reconstruiesc din graful proaspat. */
+async function promoteHa(fence) {
+  if (DRIVER !== 'pg') throw new Error('Promovarea HA este disponibila numai pe PostgreSQL.');
+  HA_FENCE = fence || null;
+  try {
+    try { await store.flush(); } catch (_) { /* mandatul vechi poate fi fenced; urmeaza rehidratarea */ }
+    store.resetForLeadership();
+    rev += 1;
+    db = await graphFromPg({ migrateLegacy: true });
+    store.persist(db);
+    await store.flush();
+    if (JSON_MIRROR) writeJson(JSON_FILE, db);
+    return db;
+  } catch (e) {
+    HA_FENCE = null;
+    throw e;
+  }
+}
+
+/** Demiterea inchide instantaneu dreptul de a fotografia/scrie graful. Datele din RAM raman doar
+ * pentru liveness; urmatoarea promovare le inlocuieste, deci nu pot reintra ulterior in baza. */
+function demoteHa() {
+  HA_FENCE = null;
+  if (mirrorTimer) { clearTimeout(mirrorTimer); mirrorTimer = null; }
 }
 
 // Oglinda JSON se scrie cu intarziere (debounce): serializarea intregii baze la fiecare save()
@@ -1494,6 +1537,7 @@ async function trialFisaContSql(fid, cont, period) {
 module.exports = {
   get, save, load, migrate, nextId, pushEntry, assertEntryBasics, assertEntryUnique, conturiNecunoscute, entryShapeProblem, firmaActiva, getFirma, nextFirmaId, scoped, defaultFirma, pickFirmaFields, FIRMA_EDITABLE, assertPeriodOpen, dataRev,
   getUser, getUserByName, nextUserId, exportFirma, importFirma, validateFirmaBundle, validateRestoreGraph, restoreFromJson, flushMirror, flushStore, drainAuditOutbox,
+  promoteHa, demoteHa,
   canSqlRead, largeFirma, sqlBalancePeriodOk, trialBalanceSql, trialFisaContSql, journalSql, ledgerSql, storeConflicted, persistStats, SQL_READ_THRESHOLD,
   DATA_DIR, UPLOAD_DIR, DB_FILE, DRIVER,
 };
