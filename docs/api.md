@@ -149,7 +149,7 @@ Pentru o lună se folosește ultima zi a lunii, iar pentru un an data de 31 dece
 | `GET /api/fiscal-profile?asOf=` | `asOf=YYYY-MM-DD`, `YYYY-MM` sau `YYYY` | profilul normalizat valabil la data cerută, inclusiv `fiscalRevisionId`, `fiscalValidFrom`, `fiscalValidTo` și `fiscalRecordedAt` |
 | `GET /api/fiscal-profile/history` | — | `{ fields, history[] }`, cu fotografiile, intervalele `validFrom`/`validTo` și `recordedAt` în ordine descrescătoare |
 | `POST /api/fiscal-profile/history` | `{ validFrom, note?, changes }` | `{ ok, revision, company, history }`; `recordedAt` este stabilit exclusiv de server; cere `fiscal.manage`; 400 la dată/câmp fiscal necunoscut |
-| `GET /api/fiscal-review` | — | starea reviziei externe a motorului: `{ ready, fiscalYear, approved, pending, invalid, total, sourceManifestHash, sourceFiles, runtimeRulesHash, signatureScheme, cases[] }`; fiecare caz expune hash-ul runtime și aprobarea verificată, dacă există |
+| `GET /api/fiscal-review` | — | starea reviziei externe a motorului: `{ ready, fiscalYear, approved, pending, invalid, total, sourceManifestHash, sourceFiles, runtimeRulesHash, dependencyGraphSchema, approvalHashSchema, signatureScheme, cases[] }`; fiecare caz expune `dependencyGraphHash`, nodurile exacte de cod/parametri/reguli, consumatorii afectați și aprobarea verificată, dacă există |
 
 `POST /api/company` acceptă în continuare câmpurile fiscale pentru compatibilitate. Interfața îi
 trimite explicit data curentă prin `fiscalValidFrom`; un client API vechi care nu trimite data

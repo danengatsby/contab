@@ -5,12 +5,14 @@ const fs = require('fs');
 const path = require('path');
 const cfg = require('./fiscalConfig');
 const CASES = require('./fiscalReviewCases');
+const dependencyGraph = require('./fiscalDependencyGraph');
 const { validIsoDate } = require('./util');
 
 const ROOT = path.join(__dirname, '..');
 const DEFAULT_APPROVALS = path.join(__dirname, 'fiscalReviewApprovals.json');
 const DEFAULT_TRUST = path.join(__dirname, 'fiscalReviewTrust.json');
 const APPROVAL_SCHEMA = 2;
+const APPROVAL_HASH_SCHEMA = 3;
 const TRUST_SCHEMA = 1;
 const MINIMUM_CASES = 25;
 const SIGNATURE_DOMAIN = 'CONTABO-FISCAL-REVIEW-V2';
@@ -29,6 +31,7 @@ const MANIFEST_EXCLUSIONS = new Set([
   'src/fiscalReviewTrust.json',
   'src/fiscalAutonomyApprovals.json',
 ]);
+const GRAPH_CACHE = new WeakMap();
 
 function sha(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
 
@@ -102,38 +105,61 @@ function sourceManifest(options) {
       return { path: rel, bytes: null, sha256: 'UNREADABLE' };
     }
   });
-  return { schemaVersion: 1, rootHash: sha(stableJson(entries)), files: entries.length, errors, entries };
+  const result = { schemaVersion: 1, rootHash: sha(stableJson(entries)), files: entries.length, errors, entries };
+  Object.defineProperty(result, 'root', { value: root, enumerable: false });
+  return result;
 }
 
 /** Configurația efectiv folosită de calcule, inclusiv suprascrierile din Setări. */
 function runtimeRulesSnapshot(explicit) {
-  const rates = explicit || require('./fiscal').registrySnapshot();
-  const values = stableValue(rates);
-  return { schemaVersion: 1, hash: sha(stableJson(values)), values };
+  const values = stableValue(explicit || (() => {
+    const fiscal = require('./fiscal');
+    return {
+      ruleSets: fiscal.allRuleSets(),
+      config: { DEDUCERE: cfg.DEDUCERE, BENEFICII: cfg.BENEFICII, PFA: cfg.PFA },
+    };
+  })());
+  return { schemaVersion: 2, hash: sha(stableJson(values)), values };
 }
 
 function reviewContext(options) {
   const o = options || {};
   const manifest = o.manifest || sourceManifest(o.manifestOptions);
   const rules = o.runtimeRulesSnapshot || runtimeRulesSnapshot(o.runtimeRules);
-  return { manifest, rules };
+  return { manifest, rules, root: path.resolve(o.root || (o.manifestOptions && o.manifestOptions.root)
+    || manifest.root || ROOT) };
 }
 
 /**
- * Amprenta aprobată: definiția cazului + întregul manifest fiscal + regulile active.
- * Orice adăugare, ștergere sau modificare în domeniul sursă invalidează toate aprobările.
+ * Inchiderea de dependente a unui caz. Cache-ul este legat de obiectul context, deci doua
+ * fotografii runtime diferite nu pot reutiliza acelasi graf.
+ */
+function caseDependencyGraph(meta, explicitContext) {
+  const c = typeof meta === 'string' ? CASES.find((x) => x.id === meta) : meta;
+  if (!c) return null;
+  const context = explicitContext || reviewContext();
+  let byCase = GRAPH_CACHE.get(context);
+  if (!byCase) { byCase = new Map(); GRAPH_CACHE.set(context, byCase); }
+  const cacheKey = c.id + ':' + sha(stableJson(c.dependencies || {}));
+  if (!byCase.has(cacheKey)) byCase.set(cacheKey, dependencyGraph.build(c, context));
+  return byCase.get(cacheKey);
+}
+
+/**
+ * Amprenta aprobata: definitia cazului + subgraful exact al codului, parametrilor si regulilor.
+ * Manifestul global ramane raportat pentru audit, dar nu mai invalideaza aprobari fara legatura.
  */
 function currentHash(meta, explicitContext) {
   const c = typeof meta === 'string' ? CASES.find((x) => x.id === meta) : meta;
   if (!c) return null;
   const context = explicitContext || reviewContext();
+  const graph = caseDependencyGraph(c, context);
   const payload = {
-    schemaVersion: APPROVAL_SCHEMA,
+    schemaVersion: APPROVAL_HASH_SCHEMA,
     caseId: c.id,
     definitionHash: c.definitionHash,
-    fiscalSet: { year: cfg.AN, updatedAt: cfg.DATA_ACTUALIZARE },
-    sourceManifestHash: context.manifest.rootHash,
-    runtimeRulesHash: context.rules.hash,
+    fiscalSet: { year: cfg.AN },
+    dependencyGraph: { schemaVersion: graph.schemaVersion, rootHash: graph.rootHash },
   };
   return sha(stableJson(payload));
 }
@@ -272,7 +298,22 @@ function status(explicitBundle, options) {
   const trust = readTrust(o.trustBundle);
   const context = o.context || reviewContext(o);
   const today = o.today || new Date().toISOString().slice(0, 10);
-  const cases = CASES.map((c) => inspectCase(c, bundle, trust, today, context));
+  const cases = CASES.map((c) => {
+    const row = inspectCase(c, bundle, trust, today, context);
+    const graph = caseDependencyGraph(c, context);
+    return Object.assign({}, row, { dependencyGraphHash: graph.rootHash,
+      dependencyErrors: graph.errors, dependencies: {
+        consumers: graph.consumers,
+        nodes: graph.nodes.map((node) => ({ id: node.id, type: node.type, hash: node.hash,
+          ...(node.ruleId ? { ruleId: node.ruleId, ruleHash: node.ruleHash, ruleSetId: node.ruleSetId } : {}),
+          ...(node.name ? { name: node.name, value: node.value, ruleSetId: node.ruleSetId } : {}),
+          ...(node.path ? { path: node.path } : {}),
+          ...(node.component ? { component: node.component } : {}),
+          ...(node.validFrom ? { validFrom: node.validFrom, validTo: node.validTo,
+            publishedAt: node.publishedAt, approvalId: node.approvalId } : {}),
+        })),
+      } });
+  });
   const approved = cases.filter((c) => c.status === 'approved').length;
   const invalidCount = cases.filter((c) => c.status === 'invalid').length;
   const pending = cases.filter((c) => c.status === 'pending').length;
@@ -281,6 +322,8 @@ function status(explicitBundle, options) {
   const completeReleaseSet = cases.length >= MINIMUM_CASES;
   const configErrors = [bundle._error, trust._error].filter(Boolean);
   if ((context.manifest.errors || []).length) configErrors.push('Manifestul surselor are erori: ' + context.manifest.errors.join(' | '));
+  const graphErrors = [...new Set(cases.flatMap((row) => row.dependencyErrors || []))];
+  if (graphErrors.length) configErrors.push('Graful dependentelor fiscale are erori: ' + graphErrors.join(' | '));
   if (!completeReleaseSet) configErrors.push('Setul de lansare are numai ' + cases.length + ' cazuri; minimul este ' + MINIMUM_CASES + '.');
   if (unexpectedApprovals.length) configErrors.push('Registrul conține cazuri necunoscute: ' + unexpectedApprovals.join(', ') + '.');
   return {
@@ -302,6 +345,8 @@ function status(explicitBundle, options) {
     sourceManifestHash: context.manifest.rootHash,
     sourceFiles: context.manifest.files,
     runtimeRulesHash: context.rules.hash,
+    dependencyGraphSchema: dependencyGraph.GRAPH_SCHEMA,
+    approvalHashSchema: APPROVAL_HASH_SCHEMA,
     signatureScheme: 'Ed25519, cheie publică autorizată separat',
     cases,
     positioning: 'Poartă de lansare/depunere cu validare umană. Cele 25 de cazuri nu reprezintă corpus de autonomie.',
@@ -340,9 +385,10 @@ function template(id) {
 }
 
 module.exports = {
-  APPROVAL_SCHEMA, TRUST_SCHEMA, MINIMUM_CASES, SIGNATURE_DOMAIN,
+  APPROVAL_SCHEMA, APPROVAL_HASH_SCHEMA, TRUST_SCHEMA, MINIMUM_CASES, SIGNATURE_DOMAIN,
   CASES, DEFAULT_APPROVALS, DEFAULT_TRUST, REQUIRED,
   stableJson, sourceManifest, runtimeRulesSnapshot, reviewContext, currentHash,
+  caseDependencyGraph,
   readBundle, readTrust, publicKeyId, signedPayload, signatureMessage,
   status, assertReady, template,
 };

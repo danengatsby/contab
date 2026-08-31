@@ -15,9 +15,10 @@
 //    - cand un specialist confirma cazul, aprobarea se consemneaza in
 //      src/fiscalReviewApprovals.json cu cine/cand/temei/dosar si semnatura Ed25519 verificabila;
 //    - identitatea/calitatea si cheia publica sunt autorizate separat in fiscalReviewTrust.json;
-//    - daca se modifica ulterior un caz APROBAT, o regula, codul ori configuratia fiscala activa,
-//      manifestul nu mai corespunde si suita PICA cu „re-supune la revizie". Aprobarea nu poate fi
-//      mostenita tacit de alte cifre sau de o cheie necunoscuta.
+//    - daca se modifica ulterior un caz APROBAT ori un nod din subgraful lui (cod, parametru,
+//      RuleSet sau tratament), amprenta nu mai corespunde si suita PICA cu „re-supune la revizie".
+//      Codul fara legatura si CSS-ul nu invalideaza global. Aprobarea nu poate fi mostenita tacit
+//      de alte cifre sau de o cheie necunoscuta.
 //
 //  Consecinte pe stari:
 //    calculat != asteptat            -> EROARE (regresie sau cifra gresita)
@@ -27,6 +28,7 @@
 //  Utilizare:
 //    node test/cazuri-aprobate.js                 ruleaza corpusul
 //    npm run revizie-fiscala -- --hash ID          hash-ul complet de semnat
+//    npm run revizie-fiscala -- --graph ID         subgraful exact al aprobarii
 //    node test/cazuri-aprobate.js --md            tabelul pentru dosarul de revizie
 //    node test/cazuri-aprobate.js --dosar         documentul de LUCRU al revizorului (de trimis)
 //

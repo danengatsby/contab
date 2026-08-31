@@ -345,13 +345,44 @@ function sourceEvidence(rule, supplied) {
   return { supplied: accepted, missingFacts: missing };
 }
 
+function expressionDependencies(rule) {
+  const rateNames = new Set();
+  function collect(expr) {
+    if (!Array.isArray(expr)) return;
+    if (expr[0] === 'rate') rateNames.add(String(expr[1]));
+    else expr.slice(1).forEach(collect);
+  }
+  collect(rule.appliesWhen);
+  Object.values(rule.calculation.outputs).forEach(collect);
+  rule.exceptions.forEach((exception) => collect(exception.when));
+  return [...rateNames].sort();
+}
+
+function decisionInfluences(rule, ruleSet, facts, factEvidence) {
+  const supplied = factEvidence && factEvidence.supplied || {};
+  const rules = [{ id: rule.id, hash: rule.hash, validFrom: rule.validFrom, validTo: rule.validTo,
+    risk: rule.risk }];
+  const ruleSets = [{ id: ruleSet.id, hash: ruleSet.hash, validFrom: ruleSet.validFrom,
+    validTo: ruleSet.validTo, publishedAt: ruleSet.publishedAt, approvalId: ruleSet.approvalId || null }];
+  const parameters = expressionDependencies(rule).map((name) => ({
+    name, value: Object.prototype.hasOwnProperty.call(ruleSet.rates || {}, name) ? ruleSet.rates[name] : null,
+    ruleSetId: ruleSet.id,
+  }));
+  const usedFacts = rule.requiredFacts.map((fact) => ({ name: fact.name, type: fact.type,
+    value: getFact(facts, fact.name), sourceRequired: fact.sourceRequired,
+    source: supplied[fact.name] || null }));
+  const payload = { rules, ruleSets, parameters, facts: usedFacts };
+  return Object.assign({ hash: sha256(payload) }, payload);
+}
+
 function decision(rule, ruleSet, status, facts, extra) {
   const used = {};
   for (const fact of rule.requiredFacts) used[fact.name] = getFact(facts, fact.name);
   const base = Object.assign({ ruleId: rule.id, ruleHash: rule.hash, ruleSetId: ruleSet.id,
     fiscalRulesHash: ruleSet.hash, status, facts: used, formula: rule.calculation,
     legalBasis: rule.legalBasis, risk: rule.risk, approvedExamples: rule.approvedExamples }, extra || {});
-  return deepFreeze(Object.assign({ decisionId: sha256({ rule: rule.hash, ruleSet: ruleSet.hash,
+  base.influences = decisionInfluences(rule, ruleSet, facts, base.factEvidence);
+  return deepFreeze(Object.assign({ decisionId: sha256({ influences: base.influences.hash,
     status, facts: used, factEvidence: base.factEvidence || null, review: base.review || null,
     autonomy: base.autonomy || null,
     autonomousEligible: base.autonomousEligible === true,
@@ -362,15 +393,7 @@ function evaluate(rule, ruleSet, facts, options) {
   const opts = options || {}; const values = facts || {}; const rates = ruleSet.rates || {};
   const missingFacts = rule.requiredFacts.filter((fact) => !validFact(getFact(values, fact.name), fact.type))
     .map((fact) => fact.name);
-  const rateNames = new Set();
-  function collect(expr) {
-    if (!Array.isArray(expr)) return;
-    if (expr[0] === 'rate') rateNames.add(String(expr[1]));
-    else expr.slice(1).forEach(collect);
-  }
-  collect(rule.appliesWhen); Object.values(rule.calculation.outputs).forEach(collect);
-  rule.exceptions.forEach((exception) => collect(exception.when));
-  const missingRates = [...rateNames].filter((key) => !Number.isFinite(Number(rates[key])));
+  const missingRates = expressionDependencies(rule).filter((key) => !Number.isFinite(Number(rates[key])));
   const review = reviewEvidence(rule, opts.reviewCases, opts[VERIFIED_RELEASE_REVIEW] === true);
   const autonomy = autonomyEvidence(rule, opts.autonomyGate, opts[VERIFIED_AUTONOMY_CORPUS] === true);
   const evidence = sourceEvidence(rule, opts.factEvidence);
@@ -441,4 +464,5 @@ function snapshot(rules) { return (rules || DEFINITIONS).map((rule) => ({ id: ru
 function registryHash(rules) { return sha256(snapshot(rules)); }
 
 module.exports = { all: () => DEFINITIONS.slice(), byId, activeForInterval, normalizeSnapshots,
-  evaluate, evaluateForAutonomy, snapshot, registryHash, canonical, sha256 };
+  evaluate, evaluateForAutonomy, snapshot, registryHash, expressionDependencies,
+  decisionInfluences, canonical, sha256 };

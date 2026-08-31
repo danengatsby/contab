@@ -5832,6 +5832,17 @@ const casDecision = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: 
 ok('tratamentul CAS este executabil si explica rezultatul', casDecision.status === 'computed'
   && casDecision.result.amount === 1250 && /25%.*5000.*1250/.test(casDecision.explanation)
   && /^[0-9a-f]{64}$/.test(casDecision.decisionId) && casDecision.ruleHash === casRule.hash);
+ok('decizia CAS enumeră exact regula, versiunea și singurul parametru care au influențat-o',
+  /^[0-9a-f]{64}$/.test(casDecision.influences.hash)
+    && casDecision.influences.rules.length === 1
+    && casDecision.influences.rules[0].id === 'ro.payroll.cas'
+    && casDecision.influences.rules[0].hash === casRule.hash
+    && casDecision.influences.ruleSets.length === 1
+    && casDecision.influences.ruleSets[0].id === rules2026.id
+    && casDecision.influences.ruleSets[0].hash === rules2026.hash
+    && casDecision.influences.parameters.length === 1
+    && casDecision.influences.parameters[0].name === 'cas'
+    && casDecision.influences.parameters[0].value === 25);
 const casMissing = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', {});
 ok('fapt obligatoriu lipsa -> nedeterminabil, niciodata zero inventat', casMissing.status === 'undetermined'
   && casMissing.result === null && casMissing.missingFacts.includes('base') && !casMissing.autonomousEligible);
@@ -5841,7 +5852,9 @@ ok('exceptia tratamentului cere revizuire', casNegative.status === 'review_requi
 const vehicleLimited = fcfg.evaluateTreatment(rules2026, 'ro.vat.vehicle_limited_deduction',
   { inputVat: 1000, exclusiveBusinessUse: false });
 ok('tratamentul TVA auto produce ambele rezultate', vehicleLimited.status === 'computed'
-  && vehicleLimited.result.deductibleVat === 500 && vehicleLimited.result.nondeductibleVat === 500);
+  && vehicleLimited.result.deductibleVat === 500 && vehicleLimited.result.nondeductibleVat === 500
+  && vehicleLimited.influences.rules[0].id === 'ro.vat.vehicle_limited_deduction'
+  && vehicleLimited.influences.parameters.map((row) => row.name).join(',') === 'deductibilitateTvaAutoLimitat');
 const fuelType = require('../src/documentTypes/sectoare').find((type) => type.id === 'combustibil_50');
 const fuelFacts = { baza: 1000, cota: 21 };
 Object.defineProperty(fuelFacts, '_fiscalRuleSet', { value: rules2026, enumerable: false });
@@ -7708,15 +7721,44 @@ section('Revizia fiscală externă — poartă fail-closed (src/fiscalReview.js)
   ok('manifestul automat detectează modificarea unui fișier fără listare manuală', manifestBefore !== manifestAfter);
 
   const context = fr.reviewContext();
-  const changedRates = Object.assign({}, context.rules.values, { cas: Number(context.rules.values.cas) + 0.01 });
-  const changedRulesContext = { manifest: context.manifest, rules: fr.runtimeRulesSnapshot(changedRates) };
-  ok('suprascrierea unei cote active invalidează amprenta',
-    fr.currentHash(fr.CASES[0], context) !== fr.currentHash(fr.CASES[0], changedRulesContext));
-  const approvalsBeforeRulesChange = fiscalReviewFixture.approvedBundle();
-  const invalidatedByRules = fr.status(approvalsBeforeRulesChange,
-    { trustBundle: fiscalReviewFixture.trustBundle(), context: changedRulesContext });
-  ok('poarta se închide automat după schimbarea configurației fiscale active',
-    !invalidatedByRules.ready && invalidatedByRules.invalid === 25);
+  const cotTva = fr.CASES.find((row) => row.id === 'COT-03');
+  const salBase = fr.CASES.find((row) => row.id === 'SAL-01');
+  const pfaBase = fr.CASES.find((row) => row.id === 'PFA-01');
+  const cssEntry = context.manifest.entries.find((row) => /\.css$/.test(row.path));
+  const cssManifest = Object.assign({}, context.manifest, { entries: context.manifest.entries.map((row) => (
+    row === cssEntry ? Object.assign({}, row, { sha256: 'c'.repeat(64) }) : row)) });
+  const cssContext = { manifest: cssManifest, rules: context.rules, root: context.root };
+  ok('o modificare CSS nu invalidează nicio aprobare fiscală', fr.CASES.every((row) =>
+    fr.currentHash(row, context) === fr.currentHash(row, cssContext)));
+
+  const payrollManifest = Object.assign({}, context.manifest, { entries: context.manifest.entries.map((row) => (
+    row.path === 'src/payroll.js' ? Object.assign({}, row, { sha256: 'd'.repeat(64) }) : row)) });
+  const payrollContext = { manifest: payrollManifest, rules: context.rules, root: context.root };
+  ok('o modificare salarială invalidează salariile, dar nu TVA sau PFA',
+    fr.currentHash(salBase, context) !== fr.currentHash(salBase, payrollContext)
+      && fr.currentHash(cotTva, context) === fr.currentHash(cotTva, payrollContext)
+      && fr.currentHash(pfaBase, context) === fr.currentHash(pfaBase, payrollContext));
+  const salaryGraph = fr.caseDependencyGraph(salBase, context);
+  ok('graful salarial declară D112 drept consumator dependent', salaryGraph.consumers.includes('D112')
+    && salaryGraph.nodes.some((node) => node.id === 'file:src/payroll.js'));
+
+  const changedValues = JSON.parse(JSON.stringify(context.rules.values));
+  const vatRule = changedValues.ruleSets.find((row) => row.id === 'ro-2026-h2').treatments
+    .find((row) => row.id === 'ro.vat.standard');
+  vatRule.hash = 'e'.repeat(64);
+  const vatContext = { manifest: context.manifest, rules: fr.runtimeRulesSnapshot(changedValues), root: context.root };
+  ok('schimbarea unei reguli TVA invalidează numai subgraful TVA',
+    fr.currentHash(cotTva, context) !== fr.currentHash(cotTva, vatContext)
+      && fr.currentHash(salBase, context) === fr.currentHash(salBase, vatContext)
+      && fr.currentHash(pfaBase, context) === fr.currentHash(pfaBase, vatContext));
+
+  const approvalsBeforePayrollChange = fiscalReviewFixture.approvedBundle();
+  const invalidatedByPayroll = fr.status(approvalsBeforePayrollChange,
+    { trustBundle: fiscalReviewFixture.trustBundle(), context: payrollContext });
+  const invalidIds = invalidatedByPayroll.cases.filter((row) => row.status === 'invalid').map((row) => row.id);
+  ok('aprobările neînrudite rămân valabile după schimbarea payroll', !invalidatedByPayroll.ready
+    && invalidIds.length === 9 && invalidIds.includes('SAL-01') && invalidIds.includes('CM-01')
+    && !invalidIds.includes('COT-03') && !invalidIds.includes('PFA-01'));
 }
 
 section('Corpul separat de autonomie fiscală — volum, acoperire și incertitudini');

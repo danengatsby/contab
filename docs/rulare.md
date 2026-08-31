@@ -707,6 +707,7 @@ cheilor publice autorizate este `src/fiscalReviewTrust.json`; în producție set
 ```bash
 npm run revizie-fiscala
 npm run revizie-fiscala -- --hash PLF-05
+npm run revizie-fiscala -- --graph SAL-01
 npm run revizie-fiscala -- --template PLF-05
 npm run revizie-fiscala -- --key-id public.pem
 npm run revizie-fiscala -- --payload PLF-05 aprobare-PLF-05.json
@@ -720,6 +721,7 @@ valide; aceste semnături nu deschid autonomia. Corpusul separat de autonomie se
 până la minimum 500 de scenarii unice, acoperire completă, doi revizori independenți și zero
 incertitudini materiale pentru regula vizată. Statusul și payload-ul canonic de semnat se emit cu
 `npm run revizie-autonomie`; utilitarul nu scrie aprobări și nu primește cheia privată.
-Schimbarea oricărui fișier din manifestul fiscal, a unui caz, a versiunii fiscale sau a cotelor
-active din Setări schimbă automat hash-ul și blochează din nou poarta. Detalii și fluxul de
-înrolare/semnare: `docs/dosar-revizie-fiscala.md` §5.
+Schimbarea unui nod din graful fiscal al cazului (cod executabil tranzitiv, componentă semantică,
+parametru, versiune sau tratament) schimbă automat hash-ul acelui caz și blochează din nou poarta.
+Manifestul global rămâne inventar de audit, dar CSS-ul și modificările fără legătură nu invalidează
+aprobările fiscale. Detalii și fluxul de înrolare/semnare: `docs/dosar-revizie-fiscala.md` §5.

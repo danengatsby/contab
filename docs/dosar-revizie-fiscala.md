@@ -169,18 +169,23 @@ Chiar dacă toate cele 25 de semnături sunt valide, `fiscalReview.status().read
 `fiscalAutonomy.status()` și refuză autonomia până când volumul, acoperirea, cele două semnături
 independente și registrul incertitudinilor sunt toate conforme.
 
-Hash-ul SHA‑256 acoperă definiția cazului, versiunea setului fiscal, **manifestul automat al
-întregului domeniu de cod și reguli** și configurația fiscală efectivă (`FISCAL`) după
-suprascrierile din Setări. Manifestul inventariază automat fișierele executabile/configurabile din
-`src/`, `public/`, `scripts/` și `test/`, dependențele Node și documentele de guvernanță. Adăugarea,
-ștergerea sau schimbarea unui fișier din acest domeniu invalidează toate aprobările; modificarea
-definiției unui caz îl invalidează cel puțin pe acela. Numai registrele de aprobări și chei sunt
-excluse pentru a evita o amprentă autoreferențială.
+Hash-ul SHA‑256 al unei aprobări acoperă definiția cazului și **închiderea grafului său de
+dependențe**. Nodurile grafului sunt: fișierele executabile locale (cu importurile lor tranzitive),
+componentele semantice din motoarele partajate, parametrii exacți pe versiunea de `FiscalRuleSet`,
+configurațiile structurale și tratamentele fiscale exacte, cu hash și interval de valabilitate.
+O schimbare în `payroll.js` invalidează cazurile salariale și consumatorul D112; o schimbare a unei
+reguli TVA invalidează numai cazurile/consumatorii TVA; CSS-ul nu aparține niciunui subgraf fiscal.
+Definiția unui caz îl invalidează întotdeauna pe acela.
 
-`GET /api/fiscal-review` arată amprenta manifestului și a regulilor **active în procesul
-serverului**. Aceasta este sursa autoritativă când există cote suprascrise. Pentru rularea CLI cu
-aceleași suprascrieri se salvează răspunsul admin `GET /api/fiscal-config` și se furnizează prin
-`--runtime-rules fisier.json`.
+Manifestul automat al întregului depozit continuă să inventarieze fișierele din `src/`, `public/`,
+`scripts/` și `test/` și rămâne vizibil separat pentru audit. El **nu mai intră** în hash-ul fiecărui
+caz, deoarece ar transforma orice schimbare fără legătură într-o invalidare globală. Graful este
+fail-closed: un import local, selector, RuleSet, parametru sau tratament declarat dar nerezolvabil
+produce `configError` și închide poarta.
+
+`GET /api/fiscal-review` arată atât manifestul global, cât și `dependencyGraphHash` și nodurile
+fiecărui caz. `npm run revizie-fiscala -- --graph SAL-01` emite graful canonic ce intră în aprobarea
+cazului, inclusiv versiunile regulilor și consumatorii din aval.
 
 Semnătura Ed25519 dovedește tehnic integritatea aprobării și posesia cheii înrolate; nu este
 declarată automat semnătură electronică calificată. Dacă dosarul este semnat calificat/PAdES,

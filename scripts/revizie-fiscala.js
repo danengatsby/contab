@@ -34,6 +34,10 @@ if (arg === '--hash' || arg === '--semnatura') {
   const hash = review.currentHash(id);
   if (!hash) { console.error('Caz inexistent: ' + id); process.exit(1); }
   console.log(hash);
+} else if (arg === '--graph') {
+  const graph = review.caseDependencyGraph(id);
+  if (!graph) { console.error('Caz inexistent: ' + id); process.exit(1); }
+  console.log(JSON.stringify(graph, null, 2));
 } else if (arg === '--template') {
   const out = review.template(id);
   if (!out) { console.error('Caz inexistent: ' + id); process.exit(1); }
@@ -59,7 +63,10 @@ if (arg === '--hash' || arg === '--semnatura') {
   console.log('Reguli active:  ' + s.runtimeRulesHash);
   console.log('Semnături:      ' + s.signatureScheme);
   if (s.configError) console.log('EROARE CONFIG: ' + s.configError);
-  for (const c of s.cases) console.log((c.status === 'approved' ? '✓' : c.status === 'invalid' ? '✗' : '○') + ' ' + c.id + ' — ' + c.status + (c.reason ? ': ' + c.reason : ''));
+  for (const c of s.cases) console.log((c.status === 'approved' ? '✓' : c.status === 'invalid' ? '✗' : '○')
+    + ' ' + c.id + ' — ' + c.status + ' · graf ' + c.dependencyGraphHash.slice(0, 12)
+    + (c.dependencies.consumers.length ? ' → ' + c.dependencies.consumers.join(', ') : '')
+    + (c.reason ? ': ' + c.reason : ''));
   console.log('\n' + s.positioning);
   process.exit(s.ready ? 0 : 2);
 }

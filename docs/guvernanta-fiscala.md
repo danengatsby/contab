@@ -117,12 +117,19 @@ hash-ul dat de `npm run revizie-fiscala -- --hash <ID>`. Cheia publică și veri
 calității profesionale stau separat în `src/fiscalReviewTrust.json`; cheia privată nu intră în
 aplicație. Un simplu text în `signature` nu este acceptat.
 
-Hash-ul include manifestul automat al codului/regulilor și fotografia configurației fiscale active,
-inclusiv suprascrierile din Setări. Orice adăugare, ștergere sau modificare în domeniul sursă ori
-orice schimbare a unei cote active invalidează automat aprobările. Poarta cere exact setul
-complet, minimum 25 de cazuri și 25/25 aprobări valide. Cazurile nerevizuite nu blochează pornirea
-și calculele, dar blochează artefactele XML de depunere, stările transmis/depus și operațiunile de
-închidere anuală.
+Hash-ul include subgraful exact al cazului: importurile executabile tranzitive, componentele
+semantice din motoarele partajate, parametrii pe versiunea de `FiscalRuleSet`, configurațiile și
+tratamentele cu hash propriu. Manifestul întregului depozit rămâne inventar de audit, dar nu mai
+invalidează global aprobările: CSS nu afectează fiscalitatea, o schimbare TVA nu afectează salariile,
+iar o schimbare payroll propagă spre cazurile salariale și D112. Graful nerezolvabil închide poarta.
+Poarta cere exact setul complet, minimum 25 de cazuri și 25/25 aprobări valide. Cazurile nerevizuite
+nu blochează pornirea și calculele, dar blochează artefactele XML de depunere, stările
+transmis/depus și operațiunile de închidere anuală.
+
+Fiecare verdict produs de un tratament expune `influences`: regula și hash-ul ei, ID-ul/hash-ul și
+intervalul RuleSet-ului, numai parametrii referiți de AST și faptele cu proveniența lor. Hash-ul
+acestei liste intră în `decisionId`, astfel încât urma poate demonstra exact versiunea și datele
+care au produs rezultatul, nu doar fotografia globală a registrului.
 
 Această revizie a motorului nu este aprobarea unei declarații concrete. Pentru fiecare dosar,
 aprobatorul confirmă separat SHA-256-ul complet al fișierului verificat. Dovada documentului
@@ -138,6 +145,7 @@ node test/cazuri-aprobate.js                 # rulează setul de lansare + rapor
 node test/cazuri-aprobate.js --semnatura ID  # compatibil: hash-ul runtime curent
 node test/cazuri-aprobate.js --md            # tabelul pentru dosar
 npm run revizie-fiscala                      # status runtime; exit 2 cât timp nu e complet
+npm run revizie-fiscala -- --graph ID        # subgraful exact semnat pentru caz
 npm run revizie-fiscala -- --template ID     # scheletul înregistrării externe
 npm run revizie-fiscala -- --payload ID aprobare.json  # octeții canonici semnați extern
 npm run revizie-fiscala -- --key-id public.pem         # amprenta cheii de înrolat
