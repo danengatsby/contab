@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "description": "Corpus separat pentru autonomie fiscală. Cazurile de lansare din fiscalReviewCases nu sunt importate și nu contează la pragul de autonomie.",
   "cases": [],
   "materialUncertainties": [

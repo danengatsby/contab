@@ -36,7 +36,8 @@ validare umană. Ea nu autorizează nicio regulă să ia singură o decizie fisc
 există un registru separat (`src/fiscalAutonomyCorpus.json`) și o poartă separată
 (`src/fiscalAutonomy.js`), care cer cumulativ:
 
-- minimum **500 de scenarii unice trecute**; aceeași intrare copiată sub alte ID-uri contează o dată;
+- minimum **500 de scenarii semantic unice trecute**; aceeași intrare copiată, mutată pe altă zi
+  din același RuleSet, scrisă numeric/textual sau legată de alt ID de sursă contează o dată;
 - acoperire pentru fiecare ramură a fiecărei reguli;
 - valori imediat sub, exact la și imediat peste fiecare prag;
 - înainte, exact la și după fiecare tranziție temporală de regulă/regim;
@@ -47,6 +48,11 @@ există un registru separat (`src/fiscalAutonomyCorpus.json`) și o poartă sepa
 
 Pragul numeric este doar podeaua. O colecție de 500 de cazuri care nu acoperă dimensiunile
 declarate rămâne blocată. Invers, acoperirea dimensiunilor cu prea puține scenarii rămâne blocată.
+În schema 2, dimensiunile nu sunt acceptate pe baza etichetei: motorul verifică martorul observabil.
+Respinge fapte care nu apar în contractul regulii, verifică exact vecinătatea pragului și data
+tranziției, execută lanțul `history` al rectificativelor și detectează valori incompatibile din
+`factEvidence`, inclusiv surse concordante care nu corespund faptului folosit în calcul. Astfel,
+zgomotul JSON și reclasificarea aceluiași calcul nu pot simula acoperirea.
 
 ## 2. Obiectul reviziei (perimetru)
 

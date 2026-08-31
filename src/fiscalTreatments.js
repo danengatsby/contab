@@ -245,6 +245,11 @@ function validFact(value, type) {
   }
   return typeof value === 'string' && value.trim() !== '';
 }
+function comparableFact(value, type) {
+  if (type === 'money' || type === 'number') return Number(value);
+  if (type === 'string') return String(value).trim();
+  return value;
+}
 function numeric(value, label) {
   const out = Number(value); if (!Number.isFinite(out)) throw new Error(label + ' nu este numeric.'); return out;
 }
@@ -331,18 +336,39 @@ function autonomyEvidence(rule, gate, cryptographicallyVerified) {
   };
 }
 
-function sourceEvidence(rule, supplied) {
-  const accepted = {}; const missing = [];
+function sourceEvidence(rule, supplied, facts) {
+  const accepted = {}; const missing = []; const conflicting = []; const mismatched = [];
   for (const fact of rule.requiredFacts) {
     if (!fact.sourceRequired) continue;
     const row = supplied && supplied[fact.name];
+    if (Array.isArray(row)) {
+      const candidates = row.map((candidate) => {
+        const sourceId = String(candidate && candidate.sourceId || '').trim();
+        const sourceHash = String(candidate && candidate.sourceHash || '').toLowerCase();
+        if (!sourceId || !/^[0-9a-f]{64}$/.test(sourceHash)
+            || !validFact(candidate && candidate.value, fact.type)) return null;
+        return { sourceId: sourceId.slice(0, 500), sourceHash, value: candidate.value,
+          capturedAt: candidate.capturedAt ? String(candidate.capturedAt) : '' };
+      }).filter(Boolean);
+      if (!candidates.length) { missing.push(fact.name); continue; }
+      accepted[fact.name] = candidates;
+      const comparable = new Set(candidates.map((candidate) => canonical(comparableFact(candidate.value, fact.type))));
+      if (comparable.size > 1) {
+        conflicting.push(fact.name);
+      } else if (validFact(getFact(facts, fact.name), fact.type)
+          && !comparable.has(canonical(comparableFact(getFact(facts, fact.name), fact.type)))) {
+        mismatched.push(fact.name);
+      }
+      continue;
+    }
     const sourceId = String(row && row.sourceId || '').trim();
     const sourceHash = String(row && row.sourceHash || '').toLowerCase();
     if (!sourceId || !/^[0-9a-f]{64}$/.test(sourceHash)) { missing.push(fact.name); continue; }
     accepted[fact.name] = { sourceId: sourceId.slice(0, 500), sourceHash,
       capturedAt: row.capturedAt ? String(row.capturedAt) : '' };
   }
-  return { supplied: accepted, missingFacts: missing };
+  return { supplied: accepted, missingFacts: missing, conflictingFacts: conflicting,
+    mismatchedFacts: mismatched };
 }
 
 function expressionDependencies(rule) {
@@ -396,7 +422,16 @@ function evaluate(rule, ruleSet, facts, options) {
   const missingRates = expressionDependencies(rule).filter((key) => !Number.isFinite(Number(rates[key])));
   const review = reviewEvidence(rule, opts.reviewCases, opts[VERIFIED_RELEASE_REVIEW] === true);
   const autonomy = autonomyEvidence(rule, opts.autonomyGate, opts[VERIFIED_AUTONOMY_CORPUS] === true);
-  const evidence = sourceEvidence(rule, opts.factEvidence);
+  const evidence = sourceEvidence(rule, opts.factEvidence, values);
+  if (evidence.conflictingFacts.length || evidence.mismatchedFacts.length) return decision(rule, ruleSet, 'undetermined', values, {
+    missingFacts: [], missingRates, review, autonomy, factEvidence: evidence, result: null,
+    reason: evidence.conflictingFacts.length
+      ? 'Tratamentul a fost refuzat deoarece sursele se contrazic pentru faptele: '
+        + evidence.conflictingFacts.join(', ') + '.'
+      : 'Tratamentul a fost refuzat deoarece valoarea calculată nu corespunde surselor pentru faptele: '
+        + evidence.mismatchedFacts.join(', ') + '.',
+    autonomousEligible: false,
+  });
   if (missingFacts.length || missingRates.length) return decision(rule, ruleSet, 'undetermined', values, {
     missingFacts, missingRates, review, autonomy, factEvidence: evidence, result: null,
     reason: 'Tratamentul nu poate fi calculat fara toate faptele si cotele obligatorii.',

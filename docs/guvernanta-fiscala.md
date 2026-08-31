@@ -153,15 +153,24 @@ npm run revizie-fiscala -- --key-id public.pem         # amprenta cheii de înro
 
 ## 5.1 Corpusul distinct de autonomie
 
-`src/fiscalAutonomyCorpus.json` pornește deliberat cu zero cazuri și păstrează separat
+`src/fiscalAutonomyCorpus.json` (schema 2) pornește deliberat cu zero cazuri și păstrează separat
 incertitudinile materiale. Poarta cere cel puțin 500 de scenarii **unice și trecute**, minimum 30
 pe tratament (36 pentru limitările auto), toate dimensiunile structurale declarate în
 `src/fiscalAutonomyCoverage.js` și două aprobări Ed25519 de la persoane profesionale distincte.
 Contractul este legat de hash-ul regulii fără să rescrie snapshot-urile istorice. Dublarea aceleiași
-intrări sub alte ID-uri nu crește volumul.
+intrări sub alte ID-uri nu crește volumul. Nici schimbarea formei fără schimbarea sensului nu
+crește volumul: `5000` și `"5000"`, alte date din același RuleSet sau alte ID-uri/hash-uri de sursă
+pentru aceeași valoare au aceeași identitate semantică. Un fapt care nu apare în `requiredFacts`
+este invalid, deci chei de zgomot nu pot fabrica unicitate.
 
 Dimensiunile obligatorii sunt: ramuri; sub/la/peste fiecare prag; înainte/la/după tranziții;
 combinații de excepții; rectificări; date incomplete; date contradictorii; refuzuri obligatorii.
+Acestea sunt **martori executabili**, nu etichete declarative: pragul zero cere exact
+`-0,01 / 0 / +0,01`; `transitionAt` trebuie să fie o limită reală și `validAt` ziua dinainte/la/după;
+o rectificativă execută fiecare fotografie din `history`; iar contradicția trebuie să apară în
+`factEvidence` ca minimum două valori incompatibile, pe care motorul le refuză cu `undetermined`.
+Sursele concordante între ele, dar diferite de faptul transmis formulei, sunt refuzate la fel.
+Un rezultat corect cu o etichetă de acoperire falsă are status `failed` și nu contează.
 O incertitudine `open` blochează regulile indicate. Ea nu poate fi eliminată din JSON; pentru
 `resolved` sunt obligatorii persoana, data și SHA-256 al dovezii profesionale. Art. 40² și celelalte
 întrebări deschise din §7.7 al dosarului blochează în prezent `ro.tax.profit`.

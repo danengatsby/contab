@@ -5846,6 +5846,23 @@ ok('decizia CAS enumeră exact regula, versiunea și singurul parametru care au 
 const casMissing = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', {});
 ok('fapt obligatoriu lipsa -> nedeterminabil, niciodata zero inventat', casMissing.status === 'undetermined'
   && casMissing.result === null && casMissing.missingFacts.includes('base') && !casMissing.autonomousEligible);
+const casEquivalentSources = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: 5000 }, {
+  factEvidence: { base: [
+    { sourceId: 'payroll:number', sourceHash: 'a'.repeat(64), value: 5000 },
+    { sourceId: 'payroll:text', sourceHash: 'b'.repeat(64), value: '5000' },
+  ] },
+});
+ok('două surse cu aceeași valoare numerică în forme diferite nu simulează o contradicție',
+  casEquivalentSources.status === 'computed' && !casEquivalentSources.factEvidence.conflictingFacts.length);
+const casMismatchedSources = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: 5000 }, {
+  factEvidence: { base: [
+    { sourceId: 'payroll:a', sourceHash: 'a'.repeat(64), value: 6000 },
+    { sourceId: 'payroll:b', sourceHash: 'b'.repeat(64), value: 6000 },
+  ] },
+});
+ok('sursele concordante între ele, dar diferite de faptul calculat, opresc tratamentul',
+  casMismatchedSources.status === 'undetermined'
+    && casMismatchedSources.factEvidence.mismatchedFacts.includes('base'));
 const casNegative = fcfg.evaluateTreatment(rules2026, 'ro.payroll.cas', { base: -1 });
 ok('exceptia tratamentului cere revizuire', casNegative.status === 'review_required'
   && /regularizare/.test(casNegative.reason) && !casNegative.autonomousEligible);
@@ -7798,16 +7815,65 @@ section('Corpul separat de autonomie fiscală — volum, acoperire și incertitu
   };
   const executable = fa.executeCase(fa.inspectDefinition(baseCase, known));
   ok('un caz de autonomie este executat prin RuleSet și tratamentul real', executable.status === 'passed');
+  const inventedFact = fa.inspectDefinition(Object.assign({}, baseCase, {
+    id: 'AUTO-CAS-NOISE', facts: { base: 5000, noiseForUniqueness: 1 },
+  }), known);
+  ok('faptele străine de contract nu pot umfla artificial numărul de scenarii',
+    inventedFact.errors.some((error) => /fapte necunoscute.*noiseForUniqueness/.test(error)));
+  const fakeThreshold = fa.executeCase(fa.inspectDefinition(Object.assign({}, baseCase, {
+    id: 'AUTO-CAS-FAKE-THRESHOLD', kind: 'threshold_boundary', coverageId: 'base-zero', position: 'at',
+  }), known));
+  ok('o etichetă de prag nu contează fără valoarea observabilă de la prag', fakeThreshold.status === 'failed'
+    && /pragul zero cere exact/.test(fakeThreshold.reason));
+  const realThreshold = fa.executeCase(fa.inspectDefinition(Object.assign({}, baseCase, {
+    id: 'AUTO-CAS-REAL-THRESHOLD', kind: 'threshold_boundary', coverageId: 'base-zero', position: 'at',
+    facts: { base: 0 }, expected: { status: 'computed', result: { amount: 0 } },
+  }), known));
+  ok('pragul demonstrat de intrare și execuție este acceptat', realThreshold.status === 'passed');
+  const contradictory = fa.executeCase(fa.inspectDefinition(Object.assign({}, baseCase, {
+    id: 'AUTO-CAS-CONFLICT', kind: 'contradictory_data', coverageId: 'base-source-conflict',
+    expected: { status: 'undetermined', result: null },
+    factEvidence: { base: [
+      { sourceId: 'payroll:a', sourceHash: 'a'.repeat(64), value: 5000 },
+      { sourceId: 'payroll:b', sourceHash: 'b'.repeat(64), value: 6000 },
+    ] },
+  }), known));
+  ok('sursele contradictorii sunt detectate de motor, nu declarate prin etichetă',
+    contradictory.status === 'passed' && contradictory.actual.status === 'undetermined');
+  const rectification = fa.executeCase(fa.inspectDefinition(Object.assign({}, baseCase, {
+    id: 'AUTO-CAS-RECT', kind: 'rectification', coverageId: 'initial-to-correction',
+    facts: { base: 6000 }, expected: { status: 'computed', result: { amount: 1500 } },
+    history: [{ validAt: '2026-08-30', facts: { base: 5000 },
+      expected: { status: 'computed', result: { amount: 1250 } } }],
+  }), known));
+  ok('rectificativa contează numai după executarea fotografiei anterioare și a celei corectate',
+    rectification.status === 'passed');
+  const cosmeticRectification = fa.executeCase(fa.inspectDefinition(Object.assign({}, baseCase, {
+    id: 'AUTO-CAS-COSMETIC-RECT', kind: 'rectification', coverageId: 'initial-to-correction',
+    facts: { base: '5000' }, history: [{ validAt: '2026-08-30', facts: { base: 5000 },
+      expected: { status: 'computed', result: { amount: 1250 } } }],
+  }), known));
+  ok('schimbarea formei numerice nu poate simula o rectificativă', cosmeticRectification.status === 'failed'
+    && /aceeași fotografie/.test(cosmeticRectification.reason));
   const paddedCases = Array.from({ length: 500 }, (_value, index) => Object.assign({}, baseCase, {
     id: 'AUTO-CAS-' + String(index + 1).padStart(4, '0'),
   }));
-  const padded = fa.status({ schemaVersion: 1, cases: paddedCases,
+  const padded = fa.status({ schemaVersion: fa.CORPUS_SCHEMA, cases: paddedCases,
     materialUncertainties: fa.readCorpus().materialUncertainties }, {
     approvalsBundle: { schemaVersion: 1, approvals: {} }, trustBundle: { schemaVersion: 1, reviewers: {} },
   });
   ok('500 de etichete duplicate nu simulează 500 de scenarii', padded.total === 500
     && padded.uniqueCases === 1 && !padded.volumeReady && !padded.ready);
-  const deletedUncertainties = fa.status({ schemaVersion: 1, cases: [], materialUncertainties: [] }, {
+  const semanticDuplicates = fa.status({ schemaVersion: fa.CORPUS_SCHEMA, cases: [baseCase,
+    Object.assign({}, baseCase, { id: 'AUTO-CAS-SAME-BEHAVIOR', validAt: '2026-08-30',
+      facts: { base: '5000' }, factEvidence: { base: {
+        sourceId: 'alt-document', sourceHash: 'd'.repeat(64), capturedAt: '2026-08-30T12:00:00.000Z',
+      } } })], materialUncertainties: fa.readCorpus().materialUncertainties }, {
+    approvalsBundle: { schemaVersion: 1, approvals: {} }, trustBundle: { schemaVersion: 1, reviewers: {} },
+  });
+  ok('aceeași intrare pe altă zi/sursă și cu număr textual rămâne un singur scenariu semantic',
+    semanticDuplicates.passed === 2 && semanticDuplicates.uniqueCases === 1);
+  const deletedUncertainties = fa.status({ schemaVersion: fa.CORPUS_SCHEMA, cases: [], materialUncertainties: [] }, {
     approvalsBundle: { schemaVersion: 1, approvals: {} }, trustBundle: { schemaVersion: 1, reviewers: {} },
   });
   ok('o incertitudine cunoscută nu poate fi eliminată pentru a deschide poarta',
