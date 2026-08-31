@@ -536,7 +536,8 @@ async function main() {
     const regFaraEmail = await req('POST', '/api/register', { body: { nume: 'F SRL', username: 'faraemail-t', password: 'ParolaBunaDeTot9', tvaPlatitor: false } });
     ok('register: emailul de recuperare este obligatoriu', regFaraEmail.status === 400 && /email/i.test((regFaraEmail.json || {}).error || ''));
     const regFaraTva = await req('POST', '/api/register', { body: { nume: 'F SRL', username: 'faratva-t', password: 'ParolaBunaDeTot9', email: 'faratva-t@example.test' } });
-    ok('register: regimul TVA trebuie ales explicit', regFaraTva.status === 400 && /TVA/i.test((regFaraTva.json || {}).error || ''));
+    ok('register: TVA poate rămâne pentru checklist; poarta următoare este acordul juridic',
+      regFaraTva.status === 400 && regFaraTva.json.code === 'LEGAL_ACCEPTANCE_REQUIRED');
     const regFaraAcord = await req('POST', '/api/register', { body: { nume: 'F SRL', username: 'faraacord-t', password: 'ParolaBunaDeTot9', email: 'faraacord-t@example.test', tvaPlatitor: false } });
     ok('register: fara acceptarea explicita juridica -> 400 + cod stabil',
       regFaraAcord.status === 400 && regFaraAcord.json.code === 'LEGAL_ACCEPTANCE_REQUIRED');
@@ -2709,6 +2710,16 @@ async function main() {
     const dashH = (await req('GET', '/api/dashboard', { cookie: c1 })).json;
     ok('dashboard: rezumatul executiv are agregatele numerice',
       typeof dashH.disponibilTotal === 'number' && typeof dashH.taxeDatorate === 'number' && typeof dashH.salariiDePlata === 'number');
+    const dashPerioadaR = await req('GET', '/api/dashboard?period=2026-06', { cookie: c1 });
+    const dashPerioada = dashPerioadaR.json;
+    ok('dashboard: indicatorii patronului urmează perioada selectată',
+      dashPerioadaR.status === 200 && dashPerioada.period === '2026-06'
+      && typeof dashPerioada.profitLuna === 'number' && typeof dashPerioada.venituriLuna === 'number'
+      && typeof dashPerioada.cheltuieliLuna === 'number' && typeof dashPerioada.deIncasat === 'number'
+      && typeof dashPerioada.dePlatit30 === 'number' && typeof dashPerioada.obligatiiApropiate === 'number'
+      && typeof dashPerioada.ramanDupaObligatiiApropiate === 'number');
+    eq('dashboard: perioada invalidă este refuzată',
+      (await req('GET', '/api/dashboard?period=2026-6', { cookie: c1 })).status, 400);
     // Semnalul de trezorerie negativa ajunge pe ruta (forma, nu doar existenta): frontendul
     // interpoleaza `cont`/`nume`/`sold` in banda de alerte.
     ok('dashboard: semnalul conturilor de bani negative e expus pe ruta',
@@ -3751,8 +3762,9 @@ async function main() {
     // ecranul devine un mod de a afla ce firme sunt in sistem, incercand CUI-uri), si decide
     // PROPRIETARUL, nu oricine are acces (un colaborator n-are voie sa dea mai departe accesul).
     {
-      const patron = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL', cui: 'RO5550005', tvaPlatitor: false, username: 'patron-t', password: 'ParolaBuna2026', email: 'patron-t@example.test', acceptLegal: true } });
+      const patron = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FIRMA PATRON SRL', cui: 'RO5550005', tvaPlatitor: false, password: 'ParolaBuna2026', email: 'patron-t@example.test', acceptLegal: true } });
       ok('patron: firma inscrisa', patron.status === 200 && patron.json.ok);
+      eq('patron: loginul intern este derivat din email', patron.json.user.username, 'patron-t');
       ok('patron: rolul privilegiat cere și permite înrolarea 2FA',
         (await enrollTwoFactor(patron.cookie)).status === 200);
       const fidP = patron.json.firma.id;
@@ -3917,8 +3929,12 @@ async function main() {
       ok('...si mesajul trimite spre cererea de acces', /cere acces/i.test(dubluReg.json.error));
       eq('inscriere cu CUI invalid (cifra de control) -> 400',
         (await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'CU CUI RAU SRL', cui: 'RO5550006', tvaPlatitor: false, username: 'cuirau-t', password: 'ParolaBuna2026', email: 'cuirau-t@example.test' } })).status, 400);
-      const faraCui = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FARA CUI SRL', tvaPlatitor: false, username: 'faracui-t', password: 'ParolaBuna2026', email: 'faracui-t@example.test', acceptLegal: true } });
+      const faraCui = await req('POST', '/api/register', { headers: { Origin: BASE }, body: { nume: 'FARA CUI SRL', password: 'ParolaBuna2026', email: 'faracui-t@example.test', acceptLegal: true } });
       ok('inscrierea FARA CUI ramane permisa (nu rupem intrarea in aplicatie)', faraCui.status === 200);
+      eq('fără utilizator separat, identificatorul intern se derivă din email', faraCui.json.user.username, 'faracui-t');
+      const metaFaraCui = (await req('GET', '/api/meta', { cookie: faraCui.cookie })).json;
+      ok('TVA și forma juridică neconfirmate rămân de completat, nu sunt ghicite',
+        metaFaraCui.company.tvaPlatitor === null && metaFaraCui.company.tipEntitate === '');
       ok('proprietarul firmei fără CUI își înrolează 2FA', (await enrollTwoFactor(faraCui.cookie)).status === 200);
       // aceeasi poarta pe calea din aplicatie, nu doar la inscriere
       const dubluCreate = await req('POST', '/api/firme', { cookie: c1, body: { nume: 'COPIE PRIN APLICATIE SRL', cui: 'RO5550005' } });

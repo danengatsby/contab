@@ -40,7 +40,7 @@
             <a href="/termeni.html" target="_blank" rel="noopener">De ce este necesar?</a></p>
         </div>
         <div class="auth-fields">
-          <label>Utilizator <b class="req">*</b> <input name="username" autocomplete="username" placeholder="Introdu utilizatorul" required /></label>
+          <label>Email sau utilizator <b class="req">*</b> <input name="username" autocomplete="username" placeholder="Introdu emailul" required /></label>
           <label>Parolă <b class="req">*</b> <input name="password" type="password" autocomplete="current-password" placeholder="Introdu parola" required /></label>
           <label id="codeRow" class="hidden">Cod 2FA sau cod de rezervă <input name="code" inputmode="text" autocomplete="one-time-code" maxlength="14" autocapitalize="characters" placeholder="000000 sau XXXX-XXXX-XXXX" /><span class="muted"><input name="remember" type="checkbox" /> Ai încredere în acest dispozitiv timp de 30 de zile</span></label>
         </div>
@@ -93,52 +93,18 @@
           </div>
         </div>
 
-        <!-- Machetă ILUSTRATIVĂ a tabloului de bord (cifre de exemplu, nu date reale). -->
-        <figure class="ah-mock">
-          <div class="am-win" aria-hidden="true">
-            <div class="am-bar"><span class="am-logo">▦ Contabo</span><span class="am-dots"><i></i><i></i><i></i></span></div>
-            <div class="am-body">
-              <nav class="am-nav">
-                <span class="am-on">▦ Tablou de bord</span>
-                <span>🏢 Firme</span>
-                <span>📄 Documente</span>
-                <span>🧾 Declarații</span>
-                <span>📊 Rapoarte</span>
-                <span>⚙️ Setări</span>
-              </nav>
-              <div class="am-main">
-                <div class="am-tiles">
-                  <div class="am-tile"><b>87</b><span>firme active</span></div>
-                  <div class="am-tile"><b>1.248</b><span>declarații pe an</span></div>
-                  <div class="am-tile am-ok"><b>98%</b><span>conformitate</span></div>
-                </div>
-                <div class="am-chart">
-                  <svg viewBox="0 0 80 80" width="80" height="80" class="am-donut">
-                    <circle cx="40" cy="40" r="32" class="amd-bg"></circle>
-                    <circle cx="40" cy="40" r="32" class="amd-1"></circle>
-                    <circle cx="40" cy="40" r="32" class="amd-2"></circle>
-                    <circle cx="40" cy="40" r="32" class="amd-3"></circle>
-                    <circle cx="40" cy="40" r="32" class="amd-4"></circle>
-                    <text x="40" y="38" class="amd-n">1.248</text>
-                    <text x="40" y="49" class="amd-t">total</text>
-                  </svg>
-                  <ul class="am-leg">
-                    <li><i class="lg1"></i>Depuse <b>1.002</b></li>
-                    <li><i class="lg2"></i>De depus <b>162</b></li>
-                    <li><i class="lg3"></i>Cu erori <b>56</b></li>
-                    <li><i class="lg4"></i>Neconcordanțe <b>28</b></li>
-                  </ul>
-                  <div class="am-term">
-                    <span class="am-term-h">Termene apropiate</span>
-                    <span>D300 — decont TVA <b>25</b></span>
-                    <span>D112 — salarii <b>25</b></span>
-                    <span>SAF-T — D406 <b>31</b></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <figcaption>Imagine ilustrativă a tabloului de bord — cifrele sunt un exemplu.</figcaption>
+        <!-- Captură generată din aplicația REALĂ pe fixture-ul izolat de marketing. Manifestul
+             anti-drift leagă imaginea de sursele UI și refuză publicarea dacă rolul nu mai este
+             Patron sau dacă dispar indicatorii/acțiunile promise aici. -->
+        <figure class="ah-mock ah-product-shot">
+          <div class="ah-shot-label"><span>Demo patron</span><b>Acasă, exact ca în aplicație</b></div>
+          <picture>
+            <source srcset="/materiale/fb-1-acasa.jpg" type="image/jpeg" />
+            <img class="ah-dashboard-shot" src="/materiale/fb-1-acasa.png" width="2880" height="1800"
+              alt="Captură reală din Demo patron: bani, profit, facturi de încasat, taxe și acțiuni uzuale"
+              loading="lazy" decoding="async" />
+          </picture>
+          <figcaption>Captură reală din aplicație, pe date fictive: bani, profit, facturi de încasat, taxe și cele patru acțiuni uzuale.</figcaption>
         </figure>
         <!-- Semnătura aplicației. Stă în afara machetei, nu sub ea: macheta dispare pe ecran îngust
              (`.ah-mock{display:none}`), iar mențiunea de drepturi trebuie să rămână peste tot. -->
@@ -156,7 +122,7 @@
     <form id="registerForm" class="login-box reg-compact" data-u="u48">
       <div class="login-logo">▦ Contabo</div>
       <h2 class="auth-title">Fă-ți cont gratuit pe Contabo</h2>
-      <p class="auth-lead">Completează formularul de mai jos pentru a continua.</p>
+      <p class="auth-lead">Începi cu datele de acces și CUI-ul. Restul configurării îl faci ghidat, după ce intri în aplicație.</p>
       <div class="test-stage-warning" role="alert" data-test-stage-warning="register">
         <span class="test-stage-icon" aria-hidden="true">⚠️</span>
         <p><b>Folosește doar date fictive în etapa de test.</b>
@@ -174,65 +140,56 @@
       </div>
       <p class="muted" id="regHintPatron" data-u="u50">Contul tău și firma ta — plan de conturi complet, zero înregistrări.</p>
       <p class="muted hidden" id="regHintContabil">Contul tău, fără nicio firmă. Preiei o firmă deja înregistrată cerând acces după CUI (proprietarul aprobă), sau te găsește un patron în lista de contabili și îți trimite o cerere.</p>
-      <div id="regFirmaFields">
-      <label>Denumire firmă * <input name="nume" required maxlength="120" placeholder="S.C. EXEMPLU S.R.L." /></label>
-      <div data-u="u51">
-        <label data-u="u46">CUI <input name="cui" placeholder="RO12345678" /></label>
-        <label data-u="u46">Reg. Com. <input name="regCom" placeholder="J40/123/2026" /></label>
+      <div class="reg-progress" aria-label="Pașii înscrierii">
+        <span data-reg-progress="1"><b>1</b> Cont</span>
+        <span data-reg-progress="2"><b>2</b> CUI</span>
+        <span data-reg-progress="3"><b>3</b> Confirmă</span>
       </div>
-      <div data-u="u51">
-        <label data-u="u52">Adresă <input name="adresa" /></label>
-        <label data-u="u46">Oraș <input name="oras" /></label>
-        <label data-u="u46">Județ
-          <select name="judet">
-            <option value="">— alege județul —</option>
-            <option value="RO-AB">Alba</option><option value="RO-AR">Arad</option><option value="RO-AG">Argeș</option>
-            <option value="RO-BC">Bacău</option><option value="RO-BH">Bihor</option><option value="RO-BN">Bistrița-Năsăud</option>
-            <option value="RO-BT">Botoșani</option><option value="RO-BV">Brașov</option><option value="RO-BR">Brăila</option>
-            <option value="RO-BZ">Buzău</option><option value="RO-CS">Caraș-Severin</option><option value="RO-CL">Călărași</option>
-            <option value="RO-CJ">Cluj</option><option value="RO-CT">Constanța</option><option value="RO-CV">Covasna</option>
-            <option value="RO-DB">Dâmbovița</option><option value="RO-DJ">Dolj</option><option value="RO-GL">Galați</option>
-            <option value="RO-GR">Giurgiu</option><option value="RO-GJ">Gorj</option><option value="RO-HR">Harghita</option>
-            <option value="RO-HD">Hunedoara</option><option value="RO-IL">Ialomița</option><option value="RO-IS">Iași</option>
-            <option value="RO-IF">Ilfov</option><option value="RO-MM">Maramureș</option><option value="RO-MH">Mehedinți</option>
-            <option value="RO-MS">Mureș</option><option value="RO-NT">Neamț</option><option value="RO-OT">Olt</option>
-            <option value="RO-PH">Prahova</option><option value="RO-SM">Satu Mare</option><option value="RO-SJ">Sălaj</option>
-            <option value="RO-SB">Sibiu</option><option value="RO-SV">Suceava</option><option value="RO-TR">Teleorman</option>
-            <option value="RO-TM">Timiș</option><option value="RO-TL">Tulcea</option><option value="RO-VS">Vaslui</option>
-            <option value="RO-VL">Vâlcea</option><option value="RO-VN">Vrancea</option><option value="RO-B">București</option>
-          </select>
+
+      <section class="reg-step" data-reg-step="1">
+        <h3>1. Datele de acces</h3>
+        <label>Email * <span class="muted" data-u="u55">(îl folosești și la autentificare)</span>
+          <input name="email" type="email" autocomplete="email" required /></label>
+        <label>Parolă * <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
+        <p class="muted">Nu trebuie să inventezi un nume de utilizator separat.</p>
+        <button class="btn primary" id="regNextAccount" type="button">Continuă</button>
+      </section>
+
+      <section class="reg-step hidden" data-reg-step="2">
+        <h3>2. Identifică firma</h3>
+        <label>CUI * <input name="cui" inputmode="numeric" autocomplete="organization" placeholder="RO12345678" required /></label>
+        <p class="muted">Căutăm firma în registrul public ANAF și completăm automat datele pe care le găsim.</p>
+        <div class="reg-step-actions">
+          <button class="btn" id="regBackAccount" type="button">← Înapoi</button>
+          <button class="btn primary" id="regNextCui" type="button">Caută firma</button>
+        </div>
+      </section>
+
+      <section class="reg-step hidden" data-reg-step="3">
+        <h3 id="regConfirmTitle">3. Confirmă firma</h3>
+        <div id="regCompanySummary" class="reg-company-summary" role="status"></div>
+        <label id="regFallbackName" class="hidden">Denumire firmă *
+          <input name="numeManual" maxlength="120" placeholder="S.C. EXEMPLU S.R.L." /></label>
+        <p id="regSetupLater" class="muted">Forma juridică și orice informație care nu poate fi confirmată acum intră în checklistul „Completează datele firmei”.</p>
+        <input name="nume" type="hidden" />
+        <input name="regCom" type="hidden" />
+        <input name="adresa" type="hidden" />
+        <input name="oras" type="hidden" />
+        <input name="judet" type="hidden" />
+        <input name="caen" type="hidden" />
+        <input name="tvaPlatitor" type="hidden" />
+        <div id="registerErr" class="status err"></div>
+        <label class="check legal-explicit-accept" data-u="u56">
+          <input name="acceptLegal" type="checkbox" required />
+          <span>Am citit și accept explicit <a href="/termeni.html" target="_blank" rel="noopener">Termenii și condițiile</a>,
+          <a href="/confidentialitate.html" target="_blank" rel="noopener">Politica de confidențialitate</a> și
+          <a href="/dpa.html" target="_blank" rel="noopener">DPA-ul pentru etapa de test</a>. Înțeleg că folosesc numai date fictive până la activarea contractuală a datelor reale.</span>
         </label>
-      </div>
-      <div data-u="u53">
-        <label data-u="u46">Formă juridică
-          <select name="tipEntitate">
-            <option value="srl">SRL / societate</option>
-            <option value="pfa">PFA / Întreprindere individuală</option>
-          </select>
-        </label>
-        <fieldset class="reg-tva-choice" data-u="u54">
-          <legend>Firma este plătitoare de TVA? *</legend>
-          <label><input name="tvaPlatitor" type="radio" value="true" required> Da</label>
-          <label><input name="tvaPlatitor" type="radio" value="false" required> Nu</label>
-          <small class="muted">Dacă introduci CUI-ul, verificăm și îți propunem situația din registrul ANAF.</small>
-        </fieldset>
-      </div>
-      </div>
-      <label class="hidden" id="regContabilLista"><input name="disponibilContabil" type="checkbox" data-u="u15" />
-        Apar în lista de contabili, ca să mă poată găsi patronii <span class="muted">(o poți schimba oricând din Setări)</span></label>
-      <div data-u="u51">
-        <label data-u="u46">Utilizator (login) * <input name="username" autocomplete="username" required minlength="3" /></label>
-        <label data-u="u46">Parolă * <input name="password" type="password" autocomplete="new-password" required minlength="8" /></label>
-      </div>
-      <label>Email * <span class="muted" data-u="u55">(necesar pentru recuperarea contului; nu este afișat public)</span> <input name="email" type="email" autocomplete="email" required /></label>
-      <div id="registerErr" class="status err"></div>
-      <button class="btn primary" id="regSubmit" data-u="u19">Creează firma și contul</button>
-      <label class="check legal-explicit-accept" data-u="u56">
-        <input name="acceptLegal" type="checkbox" required />
-        <span>Am citit și accept explicit <a href="/termeni.html" target="_blank" rel="noopener">Termenii și condițiile</a>,
-        <a href="/confidentialitate.html" target="_blank" rel="noopener">Politica de confidențialitate</a> și
-        <a href="/dpa.html" target="_blank" rel="noopener">DPA-ul pentru etapa de test</a>. Înțeleg că folosesc numai date fictive până la activarea contractuală a datelor reale.</span>
-      </label>
+        <div class="reg-step-actions">
+          <button class="btn" id="regBackCui" type="button">← Înapoi</button>
+          <button class="btn primary" id="regSubmit" data-u="u19">Confirmă și creează contul</button>
+        </div>
+      </section>
       <p data-u="u57"><a id="showPricingReg" class="link">💳 Vezi prețurile</a> · <a id="registerCancel" class="link">← Înapoi</a></p>
     </form>
     </div>
@@ -2529,7 +2486,8 @@ Cu stimă,
             <div class="dyn company-quick-fields">
               <label>Denumire <input name="nume" /></label>
               <label>Formă juridică
-                <select name="tipEntitate">
+                <select name="tipEntitate" required>
+                  <option value="">— confirmă forma juridică —</option>
                   <option value="srl">SRL / societate</option>
                   <option value="pfa">PFA / Întreprindere individuală</option>
                 </select>
@@ -2565,7 +2523,8 @@ Cu stimă,
               <p>Le găsești în vectorul fiscal al firmei. Dacă nu ești sigur, cere confirmarea contabilului înainte de prima declarație.</p></div></div>
             <div class="dyn company-quick-fields">
               <label>Firma este plătitoare normală de TVA?
-                <select name="tvaPlatitor">
+                <select name="tvaPlatitor" required>
+                  <option value="">— confirmă statutul TVA —</option>
                   <option value="false">Nu</option>
                   <option value="true">Da</option>
                 </select>

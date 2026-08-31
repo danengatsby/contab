@@ -667,8 +667,8 @@ $('#aiToggle').addEventListener('change', async (e) => {
 function fillCompanyForm() {
   const f = $('#companyForm');
   ['nume', 'cui', 'regCom', 'adresa', 'oras', 'judet', 'iban', 'banca', 'telefon', 'email', 'capitalSocial', 'pdfFooter', 'asociatiText', 'proRataTva', 'caen', 'perioadaTva', 'dataAnulareTva', 'dataReinregistrareTva'].forEach((k) => { if (f[k]) f[k].value = META.company[k] || ''; });
-  if (f.tipEntitate) f.tipEntitate.value = META.company.tipEntitate === 'pfa' ? 'pfa' : 'srl';
-  if (f.tvaPlatitor) f.tvaPlatitor.value = META.company.tvaPlatitor ? 'true' : 'false';
+  if (f.tipEntitate) f.tipEntitate.value = ['pfa', 'srl'].includes(META.company.tipEntitate) ? META.company.tipEntitate : '';
+  if (f.tvaPlatitor) f.tvaPlatitor.value = typeof META.company.tvaPlatitor === 'boolean' ? String(META.company.tvaPlatitor) : '';
   if (f.tvaLaIncasare) f.tvaLaIncasare.checked = !!META.company.tvaLaIncasare;
   if (f.tvaArt317) f.tvaArt317.checked = !!META.company.tvaArt317;
   if (f.tvaCodAnulat) f.tvaCodAnulat.checked = !!META.company.tvaCodAnulat;
@@ -1559,7 +1559,8 @@ $('#anafPoll').addEventListener('click', async () => {
 // ───────────────────────── SETTINGS / SEED ─────────────────────────
 function campuriFirmaBazaLipsa(form) {
   const campuri = [
-    ['cui', 'CUI-ul'], ['nume', 'denumirea'], ['caen', 'codul CAEN'], ['adresa', 'adresa'],
+    ['cui', 'CUI-ul'], ['nume', 'denumirea'], ['tipEntitate', 'forma juridică'], ['tvaPlatitor', 'statutul TVA'],
+    ['caen', 'codul CAEN'], ['adresa', 'adresa'],
     ['oras', 'orașul'], ['judet', 'județul'],
   ];
   if (firmaPlatitoareTva(form)) campuri.push(['perioadaTva', 'perioada TVA']);

@@ -47,15 +47,25 @@ const pozitioneazaMeniu = async () => {
   await pg.waitForTimeout(160);
 };
 
-await pg.goto(B + '/', { waitUntil: 'domcontentloaded' });
-await pg.waitForSelector('#loginForm [name=username]', { state: 'visible' });
-await pg.fill('#loginForm [name=username]', 'admin');
-await pg.fill('#loginForm [name=password]', INITIAL_PW);
-// DOMContentLoaded poate veni înainte ca modulul authui.js să fi legat evenimentul formularului.
-// O pauză scurtă + click pe acțiunea explicită evită trimiterea nativă prematură a formularului.
-await pg.waitForTimeout(900);
-await pg.click('#loginForm button.primary');
-await pg.waitForTimeout(2500);
+const autentifica = async (username) => {
+  await pg.goto(B + '/', { waitUntil: 'domcontentloaded' });
+  await pg.waitForSelector('#loginForm [name=username]', { state: 'visible' });
+  await pg.fill('#loginForm [name=username]', username);
+  await pg.fill('#loginForm [name=password]', INITIAL_PW);
+  // DOMContentLoaded poate veni înainte ca modulul authui.js să fi legat evenimentul formularului.
+  // O pauză scurtă + click pe acțiunea explicită evită trimiterea nativă prematură a formularului.
+  await pg.waitForTimeout(900);
+  await pg.click('#loginForm button.primary');
+  await pg.waitForTimeout(2500);
+  if (await pg.locator('#loginOverlay').isVisible()) {
+    const mesaj = (await pg.locator('#loginErr').textContent()).trim();
+    throw new Error('Autentificarea fixture-ului „' + username + '” a eșuat: ' + (mesaj || 'fără mesaj în interfață'));
+  }
+};
+
+// Prima fotografie este sursa capturii de pe login, deci foloseste identitatea dedicata Patron.
+// Restul materialelor revin apoi pe utilizatorul de cabinet, care are portofoliul cu sapte firme.
+await autentifica('demo');
 
 // prima autentificare pe o baza proaspata cere schimbarea parolei implicite. Selectoarele sunt
 // scopate pe overlay: pagina contine si formularele ascunse de login/admin, deci numararea tuturor
@@ -73,7 +83,15 @@ if (await pg.locator('#forcePwOverlay').isVisible()) {
 await curat();
 
 // firma cu date, nu ultima creata
-await pg.waitForFunction(() => document.querySelectorAll('#firmaSelect option').length > 0);
+try {
+  await pg.waitForFunction(() => document.querySelectorAll('#firmaSelect option').length > 0, null, { timeout: 8000 });
+} catch (error) {
+  const stare = await pg.evaluate(async () => {
+    const citeste = async (url) => { const r = await fetch(url); return { status: r.status, body: await r.text() }; };
+    return { badge: document.querySelector('#userBadge')?.textContent || '', me: await citeste('/api/me'), meta: await citeste('/api/meta') };
+  });
+  throw new Error('Patronul nu a primit firma în interfață: ' + JSON.stringify(stare), { cause: error });
+}
 await pg.selectOption('#firmaSelect', { index: 0 });
 await pg.waitForTimeout(1500);
 
@@ -92,18 +110,62 @@ const tab = async (nume, asteptare = 1600) => {
   await pg.evaluate((n) => window.goTab(n), nume);
   await pg.waitForTimeout(asteptare);
 };
+const laPerioada = async (period) => {
+  await pg.evaluate((p) => {
+    const input = document.querySelector('#globalPeriodInput');
+    input.value = p;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, period);
+  await pg.waitForTimeout(1500);
+};
+let homeMeta = null;
 const acasa = async () => {
   await tab('dashboard', 1400);
+  await laPerioada('2026-06');
   // Schimbarea obligatorie a parolei trece prin Setări și poate lăsa dropdownul deschis.
   // Acasă se fotografiază în starea normală, fără un submeniu peste conținut.
   await pg.evaluate(() => {
     const meniu = document.querySelector('#tabs');
     meniu?.querySelectorAll('.navgroup.open').forEach((grup) => grup.classList.remove('open'));
   });
+  homeMeta = await pg.evaluate(async () => {
+    const kpi = [...document.querySelectorAll('#rezumatKpis .kpi')].map((card) => ({
+      label: card.querySelector('.lbl')?.textContent.trim() || '',
+      value: card.querySelector('.val')?.textContent.trim() || '',
+    }));
+    const actions = [...document.querySelectorAll('#quickActionsCard .quickacts-primary .t')]
+      .map((node) => node.textContent.trim());
+    const dashboard = await (await fetch('/api/dashboard?period=2026-06')).json();
+    return {
+      audience: document.body.dataset.dashboardRole || '', kpi, actions,
+      taxVisible: /TVA|tax/i.test(document.querySelector('#dashAlerts')?.textContent || ''),
+      receivables: Number(dashboard.deIncasat) || 0,
+      monthlyProfit: Number(dashboard.profitLuna) || 0,
+      taxes: Number(dashboard.taxeDatorate) || 0,
+    };
+  });
+  const labels = homeMeta.kpi.map((x) => x.label).join(' | ');
+  if (homeMeta.audience !== 'patron' || homeMeta.kpi.length !== 4 || homeMeta.actions.length !== 4
+      || !/Bani în bancă și casă/.test(labels) || !/Profit \/ pierdere/.test(labels)
+      || !/De încasat/.test(labels) || !/De plătit în următoarele 30 de zile/.test(labels)
+      || !homeMeta.taxVisible || !(homeMeta.receivables > 0) || !homeMeta.monthlyProfit
+      || !(homeMeta.taxes > 0)) {
+    throw new Error('Captura Acasă nu mai reprezintă experiența promisă patronului: ' + JSON.stringify(homeMeta));
+  }
   await pg.waitForTimeout(300);
 };
 
 await capt('fb-1-acasa', acasa);
+
+// Cookie nou, acelasi browser: capturile urmatoare raman cele ale cabinetului contabil.
+await pg.context().clearCookies();
+await autentifica('admin');
+await curat();
+await pg.waitForFunction(() => document.querySelectorAll('#firmaSelect option').length > 0, null, { timeout: 8000 });
+await pg.selectOption('#firmaSelect', { index: 0 });
+const lunaCurenta = await pg.locator('#globalPeriodInput').getAttribute('max');
+await laPerioada(lunaCurenta);
+
 let portfolioMeta = null;
 await capt('fb-2-portofoliu', async () => {
   await tab('portofoliu', 2200);
@@ -119,9 +181,7 @@ await capt('fb-2-portofoliu', async () => {
 });
 await capt('fb-3-document', async () => tab('documente', 1800));
 await capt('fb-4-tva', async () => {
-  await acasa();
-  await pg.click('#prevMonth'); await pg.waitForTimeout(800);   // august -> iulie
-  await pg.click('#prevMonth'); await pg.waitForTimeout(1400);  // iulie  -> iunie (datele exemplului)
+  await laPerioada('2026-06');
   await tab('tva', 2200);
 });
 await capt('fb-5-balanta', async () => tab('balanta', 2000));
@@ -148,6 +208,7 @@ const manifest = {
   sources: surse,
   viewport: { css: [1440, 900], pixels: [2880, 1800], deviceScaleFactor: 2 },
   captures: generate.flatMap((nume) => [nume + '.png', nume + '.jpg']),
+  home: homeMeta,
   portfolio: {
     period: portfolioMeta.period,
     firms: portfolioMeta.firms.length,

@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "generatedAt": "2026-08-30T22:56:13.314Z",
+  "generatedAt": "2026-08-31T21:42:10.944Z",
   "uiCache": "contab-shell-v33",
-  "sourceFingerprint": "6e725276d4ada344b50165914ea4197681c2931ed8af25c120b86f84acfa2001",
+  "sourceFingerprint": "915969787c17b00034182179187a0187183132031cec9e499da8e173c4d5a6c4",
   "sources": [
     "index.html",
     "styles.css",
@@ -40,6 +40,37 @@
     "fb-5-balanta.png",
     "fb-5-balanta.jpg"
   ],
+  "home": {
+    "audience": "patron",
+    "kpi": [
+      {
+        "label": "Bani în bancă și casă",
+        "value": "46.915,00"
+      },
+      {
+        "label": "Profit / pierdere · Iunie 2026",
+        "value": "3.920,83"
+      },
+      {
+        "label": "De încasat",
+        "value": "7.260,00"
+      },
+      {
+        "label": "De plătit în următoarele 30 de zile",
+        "value": "3.025,00"
+      }
+    ],
+    "actions": [
+      "Emite factură",
+      "Înregistrează ghidat",
+      "Adaugă document primit",
+      "Bancă / Casă"
+    ],
+    "taxVisible": true,
+    "receivables": 7260,
+    "monthlyProfit": 3920.83,
+    "taxes": 2187.5
+  },
   "portfolio": {
     "period": "2026-08",
     "firms": 7,

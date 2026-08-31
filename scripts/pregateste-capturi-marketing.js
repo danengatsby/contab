@@ -59,6 +59,17 @@ function marcheazaDepusa(d, firmaId, tip, period, recipisa) {
     fiscalReviewEvidence: { ready: true, hash: crypto.createHash('sha256').update('revizie-fixture').digest('hex') },
     note: 'Dovada sintetica pentru captura izolata',
   }).approval;
+  // Dovada este sintetica si permisa numai de garda CONTAB_CAPTURI_IZOLAT de la inceputul
+  // fisierului. Nu pretinde ca a rulat DUK: tine fixture-ul pe acelasi traseu criptografic ca
+  // produsul, astfel incat transmiterea sa nu ocoleasca validarea artefactului exact.
+  declaratii.recordOfficialValidation(d, firmaId, tip, period, {
+    artifactHash: artifact.sha256,
+    validator: { name: 'DUKIntegrator-fixture-capturi', version: '2026.08-fixture', distributionHash: '6'.repeat(64) },
+    schema: { name: String(tip).toUpperCase() + '-fixture', version: '2026.08-fixture', hash: '7'.repeat(64) },
+    result: { status: 'valid', errors: [], warnings: [], fullOutput: 'FIXTURE IZOLAT: document valid ' + artifact.sha256 },
+    validatedAt: period + '-20T10:01:00.000Z',
+    authorization: auth('declaration.validate'),
+  });
   declaratii.record(d, firmaId, tip, period, {
     status: 'transmisa', documentApproval: aprobare,
     authorization: auth('declaration.submit'), updatedBy: 'fixture-capturi',
@@ -99,6 +110,46 @@ Promise.resolve(db.load()).then(async () => {
   const baza = d.firme[0];
   if (!baza) throw new Error('Seed-ul nu conține firma exemplu.');
   baza.createdAt = PERIOD.slice(0, 4) + '-01-01T00:00:00.000Z';
+
+  // Captura de pe login trebuie sa fie chiar experienta „Demo patron”, nu dashboardul acestui
+  // utilizator-contabil. Identitatea dedicata detine numai firma exemplu si nu primeste acces la
+  // portofoliul sintetic folosit de celelalte materiale.
+  const patronId = db.nextUserId();
+  const patronCredentials = passwordAuth.hashPassword(INITIAL_PASSWORD);
+  const patronUser = Object.assign({
+    id: patronId, username: 'demo', email: 'demo-patron@example.invalid',
+    role: 'user', tipCont: 'patron', bootstrapPending: false, mustChange: false,
+    firme: [baza.id], firmaActiva: baza.id, firmaRoluri: { [baza.id]: 'vizualizare' },
+    profil: { numeComplet: 'Patron Demo', telefon: '0700000001' },
+    createdAt: PERIOD + '-01T00:00:00.000Z',
+  }, patronCredentials);
+  baza.ownerId = patronId;
+  d.users.push(patronUser);
+
+  // Seed-ul oficial are factura clientului incasata integral si factura furnizorului fara
+  // scadenta. Doua documente comerciale fictive lasa vizibile exact intrebarile patronului:
+  // ce am de incasat si ce trebuie platit in urmatoarele 30 de zile. Taxele rezulta in continuare
+  // din articolele reale ale seed-ului si apar in „De facut acum”.
+  db.pushEntry({
+    id: db.nextId('e'), firmaId: baza.id, data: '2026-06-24', period: '2026-06',
+    tip: 'factura_vanzare_servicii', tipNume: 'Factura prestari servicii (emisa)',
+    partener: 'CLIENT DEMO SRL', partenerCui: 'RO87654321', document: 'DEM 204',
+    openItem: { dueDate: '2026-07-15', dueSource: 'document' }, fileId: null, system: false,
+    lines: [
+      { debit: '4111', credit: '704', suma: 6000, explicatie: 'Servicii fictive pentru captura Demo patron' },
+      { debit: '4111', credit: '4427', suma: 1260, explicatie: 'TVA colectata' },
+    ],
+  }, { context: 'fixture captura Demo patron' });
+  db.pushEntry({
+    id: db.nextId('e'), firmaId: baza.id, data: '2026-06-25', period: '2026-06',
+    tip: 'factura_cumparare_servicii', tipNume: 'Factura cumparare servicii',
+    partener: 'FURNIZOR DEMO SRL', partenerCui: 'RO22334455', document: 'FDM 88',
+    openItem: { dueDate: '2026-07-20', dueSource: 'document' }, fileId: null, system: false,
+    lines: [
+      { debit: '628', credit: '401', suma: 2500, explicatie: 'Servicii fictive pentru captura Demo patron' },
+      { debit: '4426', credit: '401', suma: 525, explicatie: 'TVA deductibila' },
+    ],
+  }, { context: 'fixture captura Demo patron' });
 
   for (let i = 0; i < NUME.length; i += 1) {
     const id = db.nextFirmaId();

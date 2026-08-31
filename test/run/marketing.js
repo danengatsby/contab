@@ -21,6 +21,11 @@ function marketing() {
       [login, pag, termeni].every((src) => src.includes(formulaPret)));
     ok('loginul nu promite firme nelimitate sub un singur abonament',
       !/Oricâte firme|Unlimited companies/i.test(login));
+    ok('loginul folosește captura reală Acasă pentru Demo patron',
+      /<img class="ah-dashboard-shot"[^>]*src="\/materiale\/fb-1-acasa\.png"/.test(login)
+        && /Captură reală din aplicație, pe date fictive: bani, profit, facturi de încasat, taxe/.test(login));
+    ok('macheta albastră de cabinet și cifrele ei au fost eliminate',
+      !/\bam-(?:win|tile|chart|donut)\b|1\.248|87 firme/.test(login));
     const i18n = fs.readFileSync(path.join(RADACINA, 'public', 'i18n.js'), 'utf8');
     ok('poziționarea publică rămâne la firme mici și birouri de contabilitate',
       /Pentru firme mici[\s\S]{0,100}birouri de contabilitate/.test(login));
@@ -107,6 +112,14 @@ function marketing() {
     ok('manifestul poarta aceeasi versiune PWA ca aplicatia', !!manifest && manifest.uiCache === cacheCurent);
     ok('manifestul enumera exact toate imaginile publicate', !!manifest
       && JSON.stringify([...(manifest.captures || [])].sort()) === JSON.stringify([...capturi].sort()));
+    const home = manifest && manifest.home;
+    const homeLabels = home && Array.isArray(home.kpi) ? home.kpi.map((x) => x.label).join(' | ') : '';
+    ok('captura Acasă este verificată ca experiență Patron, cu patru indicatori și patru acțiuni',
+      !!home && home.audience === 'patron' && home.kpi.length === 4 && home.actions.length === 4
+        && /Bani în bancă și casă/.test(homeLabels) && /Profit \/ pierdere/.test(homeLabels)
+        && /De încasat/.test(homeLabels) && /De plătit în următoarele 30 de zile/.test(homeLabels));
+    ok('datele fictive fac vizibile în captură încasările, profitul și taxele',
+      !!home && home.receivables > 0 && home.monthlyProfit !== 0 && home.taxes > 0 && home.taxVisible === true);
     const pngCorecte = capturi.filter((f) => f.endsWith('.png')).every((f) => {
       const b = fs.readFileSync(path.join(dirCap, f));
       return b.length > 24 && b.readUInt32BE(16) === 2880 && b.readUInt32BE(20) === 1800;

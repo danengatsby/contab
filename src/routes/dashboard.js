@@ -19,7 +19,7 @@ const { reconcile, compensablePartners, compensationLines } = require('../reconc
 const { analyticBalance, aging } = require('../analytic');
 const openItems = require('../openItems');
 const cash13 = require('../cashForecast13Weeks');
-const { round2, period: periodOf } = require('../util');
+const { round2, period: periodOf, validPeriod } = require('../util');
 const { sendList } = require('../paginate');
 
 module.exports = function register(app, ctx) {
@@ -83,7 +83,11 @@ module.exports = function register(app, ctx) {
   // invalidat de orice scriere prin revizia globala. Antet de diagnostic: X-Dashboard-Cache.
   app.get('/api/dashboard', (req, res) => {
     const fid = activeId(req);
-    const { value, hit } = cache.memo('dashboard', fid, () => {
+    const period = req.query.period ? String(req.query.period) : '';
+    if (period && !validPeriod(period)) return res.status(400).json({ error: 'Perioada dashboardului trebuie sa fie YYYY-MM.' });
+    // Perioada face parte din cheie: profitul lunii si fotografia soldurilor trebuie sa urmeze
+    // selectorul global, fara ca un hit pe August sa intoarca valorile din Iulie.
+    const { value, hit } = cache.memo('dashboard', period ? fid + ':' + period : fid, () => {
       // db.scoped(fid), NU S(req): valoarea e partajata intre utilizatorii aceleiasi firme, deci
       // calculul nu are voie sa depinda de CINE cere (S injecteaza `_intocmit` din profilul lui).
       const v = db.scoped(fid);
@@ -124,7 +128,7 @@ module.exports = function register(app, ctx) {
       }
       const stocuriValoroase = [...byProd.values()].filter((x) => x.stocV > 0).sort((a, b) => b.stocV - a.stocV).slice(0, 5);
       // e-Factura B2B: facturile emise netrimise in SPV (termen legal 5 zile lucratoare) — alerta pe dashboard
-      return Object.assign(rep.dashboard(v), { efactura: decl.eFacturaNetrimise(v), primiiPasi, ultimeleOperatiuni, stocuriValoroase });
+      return Object.assign(rep.dashboard(v, period || null), { efactura: decl.eFacturaNetrimise(v), primiiPasi, ultimeleOperatiuni, stocuriValoroase });
     });
     res.setHeader('X-Dashboard-Cache', hit ? 'hit' : 'miss');
     // Copie superficiala: valoarea din cache e partajata intre cereri, nu se muteaza niciodata.

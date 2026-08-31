@@ -86,7 +86,7 @@ function trendOf(series, key) {
 // tocmai fiindca nimic nu-l afirma undeva unde sa poata fi contrazis.
 export const tonTrezorerie = (v) => (Number(v) < 0 ? 'red' : 'blue');
 
-/** Dala „Bani disponibili": tonul ei și detalierea pe bancă/casă.
+/** Dala „Bani în bancă și casă”: tonul ei și detalierea pe componente.
  *
  *  Suma NETEAZĂ banca cu casa, deci un cont în minus poate sta ascuns într-un total pozitiv.
  *  Cazul e real, de pe contul demo: bancă −60.819 și casă 117.046 dădeau „56.227,00" albastru și
@@ -278,9 +278,10 @@ function renderOperatorTasks(queue) {
 export async function loadDashboard() {
   monteazaPanouriDashboard();
   const experience = dashboardExperience(USER, META);
-  let k; try { k = await api('/api/dashboard'); } catch (e) { return; }
+  const period = workMonth();
+  let k; try { k = await api('/api/dashboard?period=' + encodeURIComponent(period)); } catch (e) { return; }
   const [c, workspace] = await Promise.all([
-    optionalApi('/api/dashboard-charts', null),
+    optionalApi('/api/dashboard-charts?year=' + encodeURIComponent(period.slice(0, 4)), null),
     loadRoleWorkspace(experience),
   ]);
   renderRoleContext(experience);
@@ -497,13 +498,17 @@ async function renderRezumat(k, notif, experience, workspace) {
   if (title) title.innerHTML = titleText + ' <span id="rezumatData" class="muted" data-u="u70"></span>';
   const data = $('#rezumatData');
   if (data) data.textContent = experience.key === 'patron'
-    ? '· la zi, ' + new Date().toLocaleDateString(uiLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
+    ? '· la ' + (() => {
+      const parts = String(k.asOf || '').split('-').map(Number);
+      return parts.length === 3 && parts.every(Number.isFinite)
+        ? new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString(uiLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
+        : lunaLabel(k.period || workMonth());
+    })()
     : '· ' + lunaLabel((workspace || {}).period || workMonth());
   const rawTile = (ic, lbl, val, sub, cls, go, hint, scroll) => `<div class="kpi go ${cls}" data-go="${go}"${scroll ? ` data-scroll="${scroll}"` : ''} role="link" tabindex="0" title="${hint}">
     <div class="kpi-top"><span class="kpi-ic">${ic}</span></div>
     <div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
   const moneyTile = (ic, lbl, val, sub, cls, go, hint) => rawTile(ic, lbl, fmt(val), sub, cls, go, hint);
-  const obligatii = Math.round(((k.taxeDatorate || 0) + (k.salariiDePlata || 0)) * 100) / 100;
   const dispo = dalaDisponibil(k.bancaTotal, k.casaTotal, k.disponibilTotal);
   const f = $('#rezumatFooter');
   if (experience.key === 'contabil') {
@@ -526,16 +531,29 @@ async function renderRezumat(k, notif, experience, workspace) {
       + rawTile('✅', modeLabel('Așteaptă postarea', 'Articole aprobate'), H(q.aprobat), H(q.validat) + ' mai așteaptă aprobarea', q.aprobat ? 'blue' : 'green', 'toate', 'Deschide acțiunile în lot');
     if (f) f.innerHTML = `<span>Fluxul rolului: <b>Încarcă → Verifică → Postează</b> · ${H(q.postat)} postate în perioada globală.</span>`;
   } else {
+    const luna = lunaLabel(k.period || workMonth());
+    const profitLuna = Number(k.profitLuna) || 0;
+    const tonProfit = profitLuna > 0 ? 'green' : (profitLuna < 0 ? 'red' : 'blue');
+    const clienti = Number(k.clientiDeIncasat) || 0;
+    const facturi30 = Number(k.facturiDePlatit30) || 0;
+    const furnizori30 = Number(k.furnizoriDePlatit30) || 0;
+    const restante = Number(k.dePlatitRestant) || 0;
+    const faraScadenta = Number(k.dePlatitFaraScadenta) || 0;
+    const raman = Number(k.ramanDupaObligatiiApropiate) || 0;
+    const dupaObligatii = `<span>Rămân după obligațiile apropiate:</span> <b${raman < 0 ? ' data-u="u33"' : ''}>${fmt(raman)} lei</b>`;
+    const dePlatitSub = `${facturi30} ${facturi30 === 1 ? 'factură' : 'facturi'} · ${furnizori30} ${furnizori30 === 1 ? 'furnizor' : 'furnizori'}`
+      + (restante > 0 ? ` · <b data-u="u33">restante ${fmt(restante)}</b>` : '')
+      + (faraScadenta > 0 ? ` · fără scadență ${fmt(faraScadenta)}` : '');
     box.innerHTML =
-      moneyTile('💼', 'Bani disponibili', k.disponibilTotal, dispo.sub, dispo.ton, 'cashbook', 'Deschide Încasări & plăți')
-      + moneyTile('📥', 'De încasat de la clienți', k.soldClienti, (k.clientiDeschisi || 0) + (k.clientiDeschisi === 1 ? ' client cu facturi deschise' : ' clienți cu facturi deschise'), 'blue', 'analitic', 'Deschide scadențarul pe clienți')
-      + moneyTile('📤', 'De plătit către furnizori', k.soldFurnizori, (k.furnizoriDeschisi || 0) + (k.furnizoriDeschisi === 1 ? ' furnizor de plătit' : ' furnizori de plătit'), 'blue', 'analitic', 'Deschide scadențarul pe furnizori')
-      + moneyTile('🏛️', 'Obligații: stat & salarii', obligatii, 'taxe ' + fmt(k.taxeDatorate) + ' · salarii ' + fmt(k.salariiDePlata), 'blue', 'livrabile', 'Deschide declarațiile și termenele');
+      moneyTile('💼', 'Bani în bancă și casă', k.disponibilTotal, dispo.sub + '<br>' + dupaObligatii, dispo.ton, 'cashbook', 'Banii existenți în conturi; estimarea scade furnizorii restanți și scadenți în 30 de zile, taxele și salariile de plată')
+      + moneyTile(profitLuna < 0 ? '📉' : '📈', 'Profit / pierdere · ' + luna, profitLuna, 'venituri ' + fmt(k.venituriLuna) + ' · cheltuieli ' + fmt(k.cheltuieliLuna), tonProfit, 'situatii', 'Veniturile minus cheltuielile lunii selectate')
+      + moneyTile('📥', 'De încasat', k.deIncasat, clienti + (clienti === 1 ? ' client cu facturi deschise' : ' clienți cu facturi deschise'), 'blue', 'analitic', 'Deschide scadențarul pe clienți')
+      + moneyTile('📤', 'De plătit în următoarele 30 de zile', k.dePlatit30, dePlatitSub, restante > 0 ? 'red' : 'blue', 'analitic', 'Facturi de furnizor cu scadență cunoscută între data rezumatului și următoarele 30 de zile');
     const rez = k.profit >= 0
       ? `<b data-u="u31">profit ${fmt(k.profit)} lei</b>`
       : `<b data-u="u32">pierdere ${fmt(Math.abs(k.profit))} lei</b>`;
     const termen = ((notif && notif.items) || []).length ? '' : ' · niciun termen fiscal în următoarele 7 zile';
-    if (f) f.innerHTML = `<span>Rezultatul anului ${k.year} până azi: ${rez}${termen}</span>`;
+    if (f) f.innerHTML = `<span>Rezultatul anului ${k.year}: ${rez}${termen}</span>`;
   }
   $$('#rezumatKpis .kpi.go').forEach((el) => {
     el.addEventListener('click', () => deps.goTab(el.dataset.go, el.dataset.scroll));

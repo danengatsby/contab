@@ -2,7 +2,7 @@
 
 // Autentificare UI: login/2FA, inscriere + preturi, parola uitata/reset, invitatii, schimbarea fortata a parolei.
 // Extras din app.js (faza 2); apelurile inapoi spre app.js vin prin setDeps (fara cicluri).
-import { $$, $, H, toast, api, setOn402, legaCompletareCui } from './core.js';
+import { $$, $, H, toast, api, setOn402, cautaCui } from './core.js';
 import { clearFormFlowDrafts } from './formflow.js';
 
 const D = { init: null, goTab: null, promptFirmaSubscribe: null };
@@ -152,56 +152,126 @@ $('#faqSearch') && $('#faqSearch').addEventListener('input', (e) => {
     if (q && hit) it.open = true; else if (!q) it.open = false;
   });
 });
-// Felul contului decide ce se cere mai jos: patronul isi inscrie firma odata cu contul, contabilul
-// nu are ce firma sa inscrie. Campurile firmei nu se ascund doar vizual — se si scot din validarea
-// browserului (`required` pe un camp ascuns blocheaza trimiterea, tacut si fara sa se vada unde).
+// Inscriere progresiva, fara autosave: parola nu paraseste formularul pana la submit. Patronul
+// trece prin Cont -> CUI -> Confirmare; contabilul nu are firma si sare peste pasul CUI.
 function regTip() {
   const r = $('#registerForm [name="tipCont"]:checked');
   return r ? r.value : 'patron';
 }
+let regPasCurent = 1;
+function arataPasInscriere(pas) {
+  const contabil = regTip() === 'contabil';
+  regPasCurent = contabil && Number(pas) === 2 ? 3 : Number(pas);
+  $$('#registerForm [data-reg-step]').forEach((el) => el.classList.toggle('hidden', Number(el.dataset.regStep) !== regPasCurent));
+  $$('#registerForm [data-reg-progress]').forEach((el) => {
+    const n = Number(el.dataset.regProgress);
+    el.classList.toggle('active', n === regPasCurent);
+    el.classList.toggle('done', n < regPasCurent);
+    if (n === regPasCurent) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current');
+  });
+}
+
 export function aplicaTipCont() {
   const f = $('#registerForm'); if (!f) return;
   const contabil = regTip() === 'contabil';
-  $('#regFirmaFields').classList.toggle('hidden', contabil);
-  $('#regContabilLista').classList.toggle('hidden', !contabil);
   $('#regHintPatron').classList.toggle('hidden', contabil);
   $('#regHintContabil').classList.toggle('hidden', !contabil);
-  if (f.nume) f.nume.required = !contabil;
-  f.querySelectorAll('[name="tvaPlatitor"]').forEach((r) => {
-    r.required = !contabil;
-    r.disabled = contabil;
-  });
+  if (f.cui) f.cui.required = !contabil;
+  const progresCui = $('#registerForm [data-reg-progress="2"]');
+  if (progresCui) progresCui.classList.toggle('hidden', contabil);
+  const ultimulNumar = $('#registerForm [data-reg-progress="3"] b');
+  if (ultimulNumar) ultimulNumar.textContent = contabil ? '2' : '3';
+  const titluConfirmare = $('#regConfirmTitle');
+  if (titluConfirmare) titluConfirmare.textContent = contabil ? '2. Confirmă contul' : '3. Confirmă firma';
+  const configurare = $('#regSetupLater');
+  if (configurare) configurare.classList.toggle('hidden', contabil);
+  const sumar = $('#regCompanySummary');
+  if (contabil) {
+    const fallback = $('#regFallbackName');
+    if (fallback) fallback.classList.add('hidden');
+    if (f.numeManual) f.numeManual.required = false;
+    if (sumar) sumar.innerHTML = '<p><b>Cont de contabil, fără firmă proprie.</b></p><p>După înscriere poți cere acces la firmele clienților.</p>';
+  }
+  const inapoi = $('#regBackCui');
+  if (inapoi) inapoi.dataset.back = contabil ? '1' : '2';
   const btn = $('#regSubmit');
-  if (btn) btn.textContent = contabil ? 'Creează contul de contabil' : 'Creează firma și contul';
+  if (btn) btn.textContent = contabil ? 'Confirmă și creează contul' : 'Confirmă și creează firma';
   // Ce fel de cont se face se spune in TITLUL ecranului, nu in sigla: sigla e marca produsului si
   // ramane aceeasi pe ambele ecrane de autentificare, ca omul sa stie unde e.
   const titlu = $('#registerOverlay .auth-title');
   if (titlu) titlu.textContent = contabil ? 'Fă-ți cont de contabil' : 'Fă-ți cont gratuit pe Contabo';
 }
-$$('#registerForm [name="tipCont"]').forEach((r) => r.addEventListener('change', aplicaTipCont));
+$$('#registerForm [name="tipCont"]').forEach((r) => r.addEventListener('change', () => {
+  aplicaTipCont(); arataPasInscriere(1);
+}));
 
-// Completarea dupa CUI, la inscriere. Regimul TVA nu are valoare implicita: registrul ANAF poate
-// propune raspunsul numai dupa un CUI gasit, iar omul vede alegerea si o poate corecta.
-legaCompletareCui($('#registerForm'), {
-  nume: 'denumire', regCom: 'nrRegCom', adresa: 'adresa', oras: 'localitate', judet: 'judet',
-}, {
-  dupa: (reg) => {
-    if (!reg || typeof reg.tvaPlatitor !== 'boolean') return;
-    if ($('#registerForm [name="tvaPlatitor"]:checked')) return;
-    const propus = $('#registerForm [name="tvaPlatitor"][value="' + (reg.tvaPlatitor ? 'true' : 'false') + '"]');
-    if (propus) propus.checked = true;
-  },
+function campValid(el) {
+  if (!el || el.checkValidity()) return true;
+  el.reportValidity(); el.focus(); return false;
+}
+
+$('#regNextAccount') && $('#regNextAccount').addEventListener('click', () => {
+  const f = $('#registerForm');
+  if (!campValid(f.email) || !campValid(f.password)) return;
+  arataPasInscriere(regTip() === 'contabil' ? 3 : 2);
+});
+$('#regBackAccount') && $('#regBackAccount').addEventListener('click', () => arataPasInscriere(1));
+$('#regBackCui') && $('#regBackCui').addEventListener('click', (e) => arataPasInscriere(Number(e.currentTarget.dataset.back || 2)));
+
+function puneCamp(f, nume, valoare) { if (f.elements[nume]) f.elements[nume].value = valoare == null ? '' : String(valoare); }
+function sumarFirma(reg, cui) {
+  const adresa = [reg.adresa, reg.localitate, reg.judet].filter(Boolean).join(', ');
+  const avert = reg.radiat ? '<p class="status err">Firma figurează radiată în registru.</p>'
+    : (reg.inactiv ? '<p class="status err">Firma figurează inactivă fiscal în registru.</p>' : '');
+  return `<dl><div><dt>Denumire</dt><dd>${H(reg.denumire || '—')}</dd></div><div><dt>CUI</dt><dd>${H(cui)}</dd></div>`
+    + `<div><dt>Registrul Comerțului</dt><dd>${H(reg.nrRegCom || 'de completat')}</dd></div>`
+    + `<div><dt>Sediu</dt><dd>${H(adresa || 'de completat')}</dd></div>`
+    + `<div><dt>TVA</dt><dd>${reg.tvaPlatitor ? 'Plătitoare de TVA' : 'Neplătitoare de TVA'}</dd></div></dl>${avert}`;
+}
+
+$('#regNextCui') && $('#regNextCui').addEventListener('click', async (e) => {
+  const f = $('#registerForm'); const err = $('#registerErr');
+  if (!campValid(f.cui)) return;
+  err.textContent = '';
+  const btn = e.currentTarget; const textInitial = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Caut la ANAF…';
+  try {
+    const cui = String(f.cui.value || '').trim();
+    const reg = await cautaCui(cui);
+    if (reg && reg.gasit) {
+      puneCamp(f, 'nume', reg.denumire); puneCamp(f, 'regCom', reg.nrRegCom);
+      puneCamp(f, 'adresa', reg.adresa); puneCamp(f, 'oras', reg.localitate);
+      puneCamp(f, 'judet', reg.judet); puneCamp(f, 'caen', reg.caen);
+      puneCamp(f, 'tvaPlatitor', typeof reg.tvaPlatitor === 'boolean' ? reg.tvaPlatitor : '');
+      $('#regCompanySummary').innerHTML = sumarFirma(reg, cui);
+      $('#regFallbackName').classList.toggle('hidden', !!reg.denumire);
+      f.numeManual.required = !reg.denumire;
+      if (!reg.denumire) f.numeManual.value = '';
+    } else {
+      if (reg && /CUI[^.]*invalid|cifra de control/i.test(reg.eroare || '')) {
+        err.textContent = reg.eroare; return;
+      }
+      ['nume', 'regCom', 'adresa', 'oras', 'judet', 'caen', 'tvaPlatitor'].forEach((n) => puneCamp(f, n, ''));
+      $('#regCompanySummary').innerHTML = `<p><b>CUI ${H(cui)}</b></p><p>${H((reg && reg.eroare) || 'Firma nu a fost găsită în registrul public. Poți continua cu denumirea; celelalte date intră în checklist.')}</p>`;
+      $('#regFallbackName').classList.remove('hidden'); f.numeManual.required = true;
+    }
+    arataPasInscriere(3);
+  } finally { btn.disabled = false; btn.textContent = textInitial; }
 });
 
 $('#registerForm') && $('#registerForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target; $('#registerErr').textContent = '';
   const contabil = regTip() === 'contabil';
+  if (!contabil && !f.nume.value) {
+    if (!campValid(f.numeManual)) return;
+    f.nume.value = f.numeManual.value.trim();
+  }
   const body = contabil
-    ? { tipCont: 'contabil', disponibilContabil: f.disponibilContabil.checked, username: f.username.value, password: f.password.value, email: f.email.value, acceptLegal: f.acceptLegal.checked }
+    ? { tipCont: 'contabil', disponibilContabil: false, password: f.password.value, email: f.email.value, acceptLegal: f.acceptLegal.checked }
     : { nume: f.nume.value, cui: f.cui.value, regCom: f.regCom.value, adresa: f.adresa.value, oras: f.oras.value, judet: f.judet.value,
-      tvaPlatitor: f.querySelector('[name="tvaPlatitor"]:checked').value === 'true',
-      tipEntitate: f.tipEntitate.value, username: f.username.value, password: f.password.value, email: f.email.value, acceptLegal: f.acceptLegal.checked };
+      caen: f.caen.value, password: f.password.value, email: f.email.value, acceptLegal: f.acceptLegal.checked };
+  if (!contabil && f.tvaPlatitor.value !== '') body.tvaPlatitor = f.tvaPlatitor.value === 'true';
   try {
     await api('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     f.password.value = '';
@@ -287,8 +357,9 @@ function openRegisterPanel() {
   const hint = $('#regPlanHint');
   if (hint) hint.classList.add('hidden');
   const submitBtn = $('#regSubmit');
-  if (submitBtn) submitBtn.textContent = 'Creează firma și contul';
-  $('#registerOverlay') && $('#registerOverlay').classList.remove('hidden'); aplicaTipCont(); // normalizeaza starea la fiecare deschidere
+  if (submitBtn) submitBtn.textContent = 'Confirmă și creează firma';
+  $('#registerOverlay') && $('#registerOverlay').classList.remove('hidden');
+  aplicaTipCont(); arataPasInscriere(1); // normalizeaza starea la fiecare deschidere
 }
 const inviteToken = new URLSearchParams(location.search).get('invite');
 async function startInvite(token) {

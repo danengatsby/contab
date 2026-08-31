@@ -1265,6 +1265,23 @@ body.dark .closebar{background:#2b323b}
 #registerForm .reg-tip-hd input{margin:0;width:auto;flex:0 0 auto}
 #registerForm .reg-tip-op .muted{font-size:11.5px;line-height:1.3}
 #registerForm .reg-tip-op:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+#registerForm .reg-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0 14px}
+#registerForm .reg-progress span{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 5px;
+  border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:12px;font-weight:700}
+#registerForm .reg-progress span.hidden{display:none}
+#registerForm .reg-progress b{display:inline-grid;place-items:center;width:21px;height:21px;border-radius:50%;background:var(--line);color:var(--ink)}
+#registerForm .reg-progress .active{border-color:var(--accent);color:var(--ink);background:color-mix(in srgb,var(--accent) 7%,transparent)}
+#registerForm .reg-progress .active b,#registerForm .reg-progress .done b{background:var(--accent);color:#fff}
+#registerForm .reg-step h3{margin:0 0 8px;font-size:16px}
+#registerForm .reg-step-actions{display:flex;gap:8px;align-items:center;margin-top:10px}
+#registerForm .reg-step-actions .btn{flex:1;margin-top:0}
+#registerForm .reg-company-summary{padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);font-size:13px}
+#registerForm .reg-company-summary:empty{display:none}
+#registerForm .reg-company-summary p{margin:3px 0}
+#registerForm .reg-company-summary dl{margin:0;display:grid;gap:5px}
+#registerForm .reg-company-summary dl>div{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,1.5fr);gap:10px}
+#registerForm .reg-company-summary dt{color:var(--muted)}
+#registerForm .reg-company-summary dd{margin:0;font-weight:600;overflow-wrap:anywhere}
 #registerForm .reg-tva-choice{flex:1;min-width:210px;margin:7px 0 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;white-space:normal}
 #registerForm .reg-tva-choice legend{padding:0 4px;color:var(--muted);font-size:13px;font-weight:700}
 #registerForm .reg-tva-choice label:not(.hidden){display:inline-flex;align-items:center;gap:5px;margin:2px 16px 2px 0;color:var(--ink)}
@@ -1359,72 +1376,39 @@ body.dark #loginOverlay .auth-title,body.dark #registerOverlay .auth-title{color
 
 /* Coloana de prezentare */
 .auth-hero{display:flex;align-items:center;justify-content:center;overflow-y:auto;
-  padding:clamp(22px,3vw,46px) clamp(18px,2.6vw,40px);color:#e6ecfb;
-  background:radial-gradient(115% 85% at 78% 0%,#1d2c66 0%,#101a40 46%,#0a0f26 100%)}
+  padding:clamp(22px,3vw,46px) clamp(18px,2.6vw,40px);color:var(--ink);
+  background:radial-gradient(115% 85% at 78% 0%,#fffdf8 0%,#f6f1e7 52%,#ebe4d7 100%);
+  border-left:1px solid var(--line-strong)}
 .ah-inner{width:min(620px,100%)}
-.ah-brand{font-family:Georgia,"Iowan Old Style",Palatino,serif;font-weight:800;color:#fff;
+.ah-brand{font-family:Georgia,"Iowan Old Style",Palatino,serif;font-weight:800;color:var(--head);
   font-size:clamp(26px,3vw,40px);line-height:1;text-align:center;letter-spacing:.5px}
-.ah-brand span{color:#ff8a5c}
-.ah-title{color:#fff;text-align:center;margin:14px 0 8px;line-height:1.25;
+.ah-brand span{color:var(--accent)}
+.ah-title{color:var(--head);text-align:center;margin:14px 0 8px;line-height:1.25;
   font-size:clamp(19px,2.1vw,29px)}
-.ah-title span{color:#ff8a5c}
-.ah-lead{text-align:center;color:#b3c1e2;margin:0 auto clamp(18px,2.4vw,28px);max-width:44em;
+.ah-title span{color:var(--accent)}
+.ah-lead{text-align:center;color:var(--muted);margin:0 auto clamp(18px,2.4vw,28px);max-width:44em;
   font-size:clamp(13px,1.1vw,15px)}
-.ah-lead b{color:#fff;font-weight:600}
+.ah-lead b{color:var(--head);font-weight:700}
 .ah-feats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;text-align:center}
 .ah-feat{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
-.ah-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;color:#cfe0ff;
-  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13)}
-.ah-feat b{color:#fff;font-size:13px;line-height:1.3}
-.ah-feat>span:last-child{color:#9dafd6;font-size:11.5px;line-height:1.45}
+.ah-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;color:var(--accent);
+  background:var(--card);border:1px solid var(--line-strong);box-shadow:var(--shadow)}
+.ah-feat b{color:var(--head);font-size:13px;line-height:1.3}
+.ah-feat>span:last-child{color:var(--muted);font-size:11.5px;line-height:1.45}
 
-/* Macheta tabloului de bord — ILUSTRATIVĂ (cifre de exemplu, spus și în legendă). */
+/* Captura de produs este generata de browser din dashboardul real, nu redesenata in login. */
 .ah-mock{margin:clamp(18px,2.4vw,30px) 0 0}
-.am-win{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.16);
-  box-shadow:0 18px 50px rgba(0,0,0,.45)}
-.am-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;
-  background:#101a3c;color:#fff;font-size:11.5px;font-weight:700}
-.am-dots{display:flex;gap:4px}
-.am-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.35)}
-.am-body{display:grid;grid-template-columns:132px minmax(0,1fr)}
-.am-nav{display:flex;flex-direction:column;gap:2px;padding:8px 6px;background:#16224b;
-  color:#b9c6e6;font-size:10.5px}
-.am-nav span{padding:4px 7px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.am-nav .am-on{background:#2b62c4;color:#fff;font-weight:700}
-.am-main{padding:10px;display:grid;gap:9px;background:#fff;color:#2c2b27}
-.am-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.am-tile{border:1px solid #e6e8f0;border-radius:9px;padding:7px 9px;background:#fbfcfe;min-width:0}
-.am-tile b{display:block;font-size:16px;line-height:1.15;color:#16224b}
-.am-tile span{font-size:10px;color:#6b7285}
-.am-tile.am-ok b{color:#2ea36b}
-.am-chart{display:flex;align-items:center;gap:14px;border:1px solid #e6e8f0;border-radius:9px;
-  padding:8px 10px;background:#fbfcfe}
-.am-donut{flex:none}
-.am-donut circle{fill:none;stroke-width:11}
-/* Inelul: r=32 ⇒ circumferința 201,1. Segmentele sunt procentele din legendă, puse cap la cap
-   prin `stroke-dashoffset` negativ cumulat; rotația de -90° pornește inelul de sus. */
-.am-donut circle:not(.amd-bg){transform:rotate(-90deg);transform-origin:40px 40px}
-.amd-bg{stroke:#eceef4}
-.amd-1{stroke:#2ea36b;stroke-dasharray:162.9 201.1}
-.amd-2{stroke:#e8a33d;stroke-dasharray:26.1 201.1;stroke-dashoffset:-162.9}
-.amd-3{stroke:#d9534f;stroke-dasharray:8 201.1;stroke-dashoffset:-189}
-.amd-4{stroke:#7b6bd6;stroke-dasharray:4 201.1;stroke-dashoffset:-197}
-.amd-n{text-anchor:middle;font-size:13px;font-weight:700;fill:#16224b}
-.amd-t{text-anchor:middle;font-size:8px;fill:#6b7285}
-.am-leg{list-style:none;margin:0;padding:0;display:grid;gap:3px;font-size:10.5px;color:#4a5162;min-width:0;flex:1}
-.am-term{display:grid;gap:3px;font-size:10.5px;color:#4a5162;min-width:0;padding-left:12px;
-  border-left:1px solid #e6e8f0}
-.am-term span{display:flex;gap:10px;white-space:nowrap}
-.am-term b{margin-left:auto;color:#16224b}
-.am-term-h{font-weight:700;color:#16224b;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
-.am-leg li{display:flex;align-items:center;gap:6px;white-space:nowrap}
-.am-leg b{margin-left:auto;color:#16224b}
-.am-leg i{width:8px;height:8px;border-radius:2px;flex:none}
-.am-leg .lg1{background:#2ea36b}.am-leg .lg2{background:#e8a33d}
-.am-leg .lg3{background:#d9534f}.am-leg .lg4{background:#7b6bd6}
-.ah-mock figcaption{margin-top:8px;text-align:center;color:#8496bd;font-size:10.5px}
-.ah-credit{margin:clamp(14px,2vw,22px) 0 0;text-align:center;color:#9dafd6;font-size:12px}
-.ah-credit b{color:#fff;font-weight:600}
+.ah-shot-label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;
+  color:var(--head);font-size:12px}
+.ah-shot-label span{padding:4px 9px;border-radius:999px;background:var(--accent);color:#fff;
+  font-weight:800;letter-spacing:.02em}
+.ah-shot-label b{font-size:12px}
+.ah-product-shot picture{display:block;border-radius:12px;overflow:hidden;border:1px solid var(--line-strong);
+  background:var(--card);box-shadow:0 18px 46px rgba(60,50,35,.18)}
+.ah-dashboard-shot{display:block;width:100%;height:auto;aspect-ratio:8/5;object-fit:cover;object-position:top left}
+.ah-mock figcaption{margin-top:8px;text-align:center;color:var(--muted);font-size:10.5px}
+.ah-credit{margin:clamp(14px,2vw,22px) 0 0;text-align:center;color:var(--muted);font-size:12px}
+.ah-credit b{color:var(--head);font-weight:700}
 
 /* Pe ecran îngust prezentarea trece SUB formular și rămâne fără machetă: pe telefon ecranul
    trebuie să înceapă cu câmpurile, nu cu reclama. */

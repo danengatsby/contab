@@ -6272,6 +6272,30 @@ eq('dashboard venituri 2025 (precedent)', dash.yoY.venituriPrev, 1000);
 eq('dashboard crestere venituri +50%', dash.yoY.venituriDelta, 50);
 eq('dashboard crestere cheltuieli +50%', dash.yoY.cheltuieliDelta, 50);
 eq('dashboard crestere profit +50%', dash.yoY.profitDelta, 50);
+const dashLuna = rep.dashboard(dyDb, '2026-06');
+eq('dashboard: perioada ceruta ramane explicita', dashLuna.period, '2026-06');
+eq('dashboard: profitul lunii selectate', dashLuna.profitLuna, 900);
+eq('dashboard: veniturile lunii selectate', dashLuna.venituriLuna, 1500);
+eq('dashboard: cheltuielile lunii selectate', dashLuna.cheltuieliLuna, 600);
+
+// Urmatoarele 30 de zile citesc scadenta documentului, nu intreg soldul furnizorilor.
+const dueDb = { openingBalances: {}, partners: {}, entries: [
+  { id: 'd1', period: '2026-06', data: '2026-06-10', partener: 'Furnizor Curent', partenerCui: 'RO1',
+    openItem: { dueDate: '2026-07-15', dueSource: 'document' }, lines: [{ debit: '628', credit: '401', suma: 700 }] },
+  { id: 'd2', period: '2026-06', data: '2026-06-05', partener: 'Furnizor Restant', partenerCui: 'RO2',
+    openItem: { dueDate: '2026-06-20', dueSource: 'document' }, lines: [{ debit: '628', credit: '401', suma: 300 }] },
+  { id: 'd3', period: '2026-06', data: '2026-06-12', partener: 'Furnizor Tarziu', partenerCui: 'RO3',
+    openItem: { dueDate: '2026-08-15', dueSource: 'document' }, lines: [{ debit: '628', credit: '401', suma: 900 }] },
+  { id: 'd4', period: '2026-06', data: '2026-06-18', partener: 'Furnizor Fara Termen', partenerCui: 'RO4',
+    lines: [{ debit: '628', credit: '401', suma: 200 }] },
+] };
+const dueDash = rep.dashboard(dueDb, '2026-06');
+eq('dashboard: de platit include numai scadentele din urmatoarele 30 zile', dueDash.dePlatit30, 700);
+eq('dashboard: numara facturile si furnizorii din interval', dueDash.facturiDePlatit30 + '|' + dueDash.furnizoriDePlatit30, '1|1');
+eq('dashboard: restanta ramane vizibila separat', dueDash.dePlatitRestant, 300);
+eq('dashboard: facturile fara scadenta nu dispar tacut', dueDash.dePlatitFaraScadenta, 200);
+eq('dashboard: obligatiile apropiate includ furnizorii restanti si pe 30 zile', dueDash.obligatiiApropiate, 1000);
+eq('dashboard: facturile fara scadenta nu primesc arbitrar un termen apropiat', dueDash.ramanDupaObligatiiApropiate, -1000);
 // rezumatul executiv (mod simplu): bani disponibili, obligatii stat & salarii
 const rzDb = { openingBalances: {}, partners: {}, entries: [
   { id: 'r1', period: '2026-06', data: '2026-06-01', lines: [{ debit: '5121', credit: '4111', suma: 3000 }] },
@@ -6284,6 +6308,8 @@ eq('rezumat: bani disponibili = banca + casa', rz.disponibilTotal, 3500);
 eq('rezumat: defalcarea banca/casa', rz.bancaTotal + '|' + rz.casaTotal, '3000|500');
 eq('rezumat: salarii de plata (sold creditor 421)', rz.salariiDePlata, 1700);
 eq('rezumat: taxe datorate (444)', rz.taxeDatorate, 300);
+eq('rezumat: obligatii apropiate = taxe + salarii', rz.obligatiiApropiate, 2000);
+eq('rezumat: ce ramane nu este confundat cu banii din conturi', rz.ramanDupaObligatiiApropiate, 1500);
 ok('rezumat: niciun cont de bani semnalat cand toate sunt pozitive', rz.conturiBaniNegative.length === 0);
 
 // Trezoreria se raporteaza NET, cu semn. Varianta veche clampa soldurile negative la zero
@@ -8146,8 +8172,8 @@ section('Cockpit anual derivat (src/annualClose.js)');
 section('Datele de identitate ale firmei: ce lipseste si CE PLEACA in loc (src/dateFirma.js)');
 {
   const df = require('../src/dateFirma');
-  const plina = { nume: 'ALFA SRL', cui: 'RO12345674', caen: '6201', adresa: 'Str. Test 1',
-    oras: 'Cluj-Napoca', judet: 'RO-CJ', tvaPlatitor: true, perioadaTva: 'L' };
+  const plina = { nume: 'ALFA SRL', cui: 'RO12345674', regCom: 'J12/1/2020', tipEntitate: 'srl',
+    caen: '6201', adresa: 'Str. Test 1', oras: 'Cluj-Napoca', judet: 'RO-CJ', tvaPlatitor: true, perioadaTva: 'L' };
   eq('firma completa nu are nimic de completat', df.lipsa(plina).length, 0);
   ok('...si `completa` spune acelasi lucru', df.completa(plina) === true);
 
@@ -8155,7 +8181,7 @@ section('Datele de identitate ale firmei: ce lipseste si CE PLEACA in loc (src/d
   // bifa pasul aici — in timp ce controlul de coerenta cerea, in acelasi ecran, codul CAEN.
   const proaspata = { nume: 'NOU SRL', cui: 'RO12345674', tvaPlatitor: true };
   const l = df.lipsa(proaspata).map((f) => f.camp);
-  eq('firma proaspat inscrisa NU e completa', l.join(','), 'caen,adresa,oras,judet,perioadaTva');
+  eq('firma proaspat inscrisa NU e completa', l.join(','), 'regCom,tipEntitate,caen,adresa,oras,judet,perioadaTva');
   ok('...deci pasul din checklist nu se mai bifeaza singur', df.completa(proaspata) === false);
   // Fiecare camp lipsa trebuie sa poata SPUNE de ce conteaza — altfel omul vede un pas rosu pe un
   // ecran cu ~40 de campuri si nu stie care.
@@ -8163,14 +8189,14 @@ section('Datele de identitate ale firmei: ce lipseste si CE PLEACA in loc (src/d
 
   // Campurile conditionate de regim: perioada TVA se cere DOAR platitorilor.
   ok('neplatitorul de TVA nu e intrebat de perioada fiscala',
-    !df.lipsa({ nume: 'X', cui: '1', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false })
+    !df.lipsa({ nume: 'X', cui: '1', regCom: 'J1', tipEntitate: 'srl', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false })
       .some((f) => f.camp === 'perioadaTva'));
   ok('...dar platitorul, da',
-    df.lipsa({ nume: 'X', cui: '1', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: true })
+    df.lipsa({ nume: 'X', cui: '1', regCom: 'J1', tipEntitate: 'srl', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: true })
       .some((f) => f.camp === 'perioadaTva'));
   // Profilul primit ca argument bate flagul de pe firma (apelantii care l-au construit deja).
   ok('profilul primit decide, cand exista',
-    df.lipsa({ nume: 'X', cui: '1', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false },
+    df.lipsa({ nume: 'X', cui: '1', regCom: 'J1', tipEntitate: 'srl', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false },
       { tvaPlatitor: true }).some((f) => f.camp === 'perioadaTva'));
   // Un camp cu spatii e gol: altfel „ " ar trece drept adresa completata si ar pleca in e-Factura.
   eq('un camp cu spatii e tot gol', df.lipsa(Object.assign({}, plina, { adresa: '   ' })).map((f) => f.camp).join(), 'adresa');
@@ -8196,7 +8222,7 @@ section('Datele de identitate ale firmei: ce lipseste si CE PLEACA in loc (src/d
   // vizibil („-") sunt declarate, dar nu tin un pas de pornire rosu saptamani.
   ok('inventarul contine si campuri necerute in checklist', df.CAMPURI.some((f) => f.cerut === false));
   ok('...iar acelea chiar nu apar in lista de completat',
-    !df.lipsa({ nume: 'X', cui: '1', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false })
+    !df.lipsa({ nume: 'X', cui: '1', regCom: 'J1', tipEntitate: 'srl', caen: '6201', adresa: 'a', oras: 'o', judet: 'RO-B', tvaPlatitor: false })
       .some((f) => f.cerut === false));
 }
 

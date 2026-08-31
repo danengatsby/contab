@@ -38,17 +38,23 @@ ok('prezentarea are link de confidentialitate', (await pg.locator('a[href="/conf
 await pg.goto(BASE + '/?register=1', { waitUntil: 'networkidle' });
 await pg.waitForTimeout(1200);
 ok('/?register=1 deschide panoul de inscriere', await pg.locator('#registerOverlay').isVisible());
-ok('înscriere: TVA nu este preselectat, emailul este obligatoriu și listarea contabilului este opt-in',
-  (await pg.locator('#registerForm [name="tvaPlatitor"]:checked').count()) === 0
-  && await pg.locator('#registerForm [name="email"]').getAttribute('required') !== null
-  && !(await pg.locator('#registerForm [name="disponibilContabil"]').isChecked()));
-ok('înscriere: județul se alege după nume', await pg.locator('#registerForm select[name="judet"] option').count() === 43);
+ok('înscriere: primul pas cere email și parolă, fără utilizator separat',
+  await pg.locator('#registerForm [name="email"]').getAttribute('required') !== null
+  && await pg.locator('#registerForm [name="password"]').getAttribute('required') !== null
+  && (await pg.locator('#registerForm [name="username"]').count()) === 0);
+ok('înscriere: datele fiscale rămân ascunse până după CUI',
+  (await pg.locator('#registerForm [data-reg-step]').count()) === 3
+  && (await pg.locator('#registerForm select[name="judet"], #registerForm select[name="tipEntitate"]').count()) === 0
+  && await pg.locator('#registerForm [name="tvaPlatitor"]').getAttribute('type') === 'hidden');
 
 // 2b. intrebarile frecvente publice pe pagina de login
 await pg.goto(BASE + '/', { waitUntil: 'networkidle' });
 await pg.waitForTimeout(800);
-ok('titlul panoului public păstrează contrastul alb', await pg.evaluate(() =>
-  getComputedStyle(document.querySelector('#loginOverlay .ah-title')).color === 'rgb(255, 255, 255)'));
+ok('panoul public folosește paleta crem–teracotă a aplicației reale', await pg.evaluate(() => {
+  const title = getComputedStyle(document.querySelector('#loginOverlay .ah-title'));
+  return title.color === 'rgb(47, 46, 42)' && /rgb\(194, 97, 60\)/.test(
+    getComputedStyle(document.querySelector('#loginOverlay .ah-shot-label span')).backgroundColor);
+}));
 await pg.locator('#loginOverlay .language-switch').selectOption('en');
 ok('selectorul RO/EN traduce autentificarea și setează limba documentului',
   (await pg.locator('#loginOverlay .auth-title').textContent()).trim() === 'Sign in to your account'

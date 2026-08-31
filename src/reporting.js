@@ -1,6 +1,6 @@
 'use strict';
 
-const { round2, period: periodOf, naturalCompare, plural } = require('./util');
+const { round2, period: periodOf, validPeriod, naturalCompare, plural } = require('./util');
 const fiscal = require('./fiscal');
 // Nomenclatorul tarilor UE (D390) se ia din config, nu din `fiscal`: `fiscal.FISCAL` expune cotele
 // suprascriabile din Setari, iar lista de tari nu e o cota — nu are ce cauta acolo.
@@ -19,7 +19,6 @@ const microEligibility = require('./microEligibility');
 // deci nu se inchide niciun ciclu.
 const decl = require('./declarations');
 const stmt = require('./statements');
-const { reconcile } = require('./reconcile');
 const openItems = require('./openItems');
 const recurring = require('./recurring');
 const CONT_SPONSORIZARE = '6582'; // art. 25(4)(i) — cheltuiala de sponsorizare
@@ -1565,13 +1564,38 @@ function latestYear(db) {
   return max ? max.slice(0, 4) : String(new Date().getFullYear());
 }
 
-function dashboard(db) {
-  const year = latestYear(db);
-  const rc = reconcile(db);
+/** Perioada dashboardului urmeaza selectorul global. Pentru apelantii vechi, fara perioada,
+ *  ultima luna cu articole pastreaza comportamentul util al raportului; o firma goala porneste
+ *  din luna calendaristica curenta. */
+function latestPeriod(db) {
+  let max = '';
+  for (const e of acc.postedEntries(db)) { const p = e.period || periodOf(e.data); if (p && p > max) max = p; }
+  return max || new Date().toISOString().slice(0, 7);
+}
+
+function addIsoDays(iso, days) {
+  const [y, m, d] = String(iso).split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + Number(days || 0));
+  return date.toISOString().slice(0, 10);
+}
+
+function dashboard(db, selectedPeriod) {
+  const period = validPeriod(String(selectedPeriod || '')) ? String(selectedPeriod) : latestPeriod(db);
+  const year = period.slice(0, 4);
+  // Pentru luna curenta, scadentele pornesc de azi; pentru una istorica, de la ultima ei zi.
+  // Astfel „urmatoarele 30 de zile" nu sare peste restul lunii curente si ramane reproductibil
+  // cand utilizatorul consulta o perioada inchisa.
+  const today = new Date().toISOString().slice(0, 10);
+  const periodEnd = openItems.refDate(period);
+  const asOf = periodEnd < today ? periodEnd : today;
+  const oi = openItems.registry(db, asOf);
   const vat = acc.vatJournals(db, null).totals;
   const pl = stmt.profitLoss(db, year);
   const plPrev = stmt.profitLoss(db, String(Number(year) - 1));
-  const fb = stmt.finalBalances(db, null);
+  const fb = stmt.finalBalances(db, period);
+  const luna = monthlySeries(db, year).find((row) => row.period === period)
+    || { venituri: 0, cheltuieli: 0, profit: 0 };
   // Soldurile de trezorerie se raporteaza NET, cu semn. Varianta veche le clampa la zero
   // (`Math.max(sold, 0)`), ceea ce ascundea exact anomalia care trebuie aratata: un sold creditor
   // pe un cont de bani nu e „zero lei", ci un semn ca lipsesc incasari din evidenta. Clamparea
@@ -1590,18 +1614,26 @@ function dashboard(db) {
   // si in „Top datorii", si in „N furnizori de plata" de sub cifra.
   const deschisiPe = (sens) => {
     const byKey = new Map();
-    for (const p of rc.partners) {
-      if (p.sens !== sens || p.sold <= 0) continue;
-      const k = p.cui || p.den;
-      const cur = byKey.get(k) || { den: p.den, cui: p.cui, sold: 0 };
-      if (p.den && /[a-z]/i.test(p.den)) cur.den = p.den;
-      cur.sold = round2(cur.sold + p.sold);
+    for (const p of oi.openDocuments) {
+      if (p.sens !== sens || p.residual <= 0) continue;
+      const k = p.partnerKey;
+      const cur = byKey.get(k) || { den: p.partener, cui: p.cui, sold: 0 };
+      if (p.partener && /[a-z]/i.test(p.partener)) cur.den = p.partener;
+      cur.sold = round2(cur.sold + p.residual);
       byKey.set(k, cur);
     }
     return [...byKey.values()].sort((a, b) => b.sold - a.sold);
   };
   const creanteDeschise = deschisiPe('creanta');
   const datoriiDeschise = deschisiPe('datorie');
+  const dueUntil = addIsoDays(asOf, 30);
+  const datorii = oi.openDocuments.filter((d) => d.sens === 'datorie');
+  const datorii30 = datorii.filter((d) => d.dueKnown && d.dueDate >= asOf && d.dueDate <= dueUntil);
+  const restante = datorii.filter((d) => d.dueKnown && d.dueDate < asOf);
+  const faraScadenta = datorii.filter((d) => !d.dueKnown);
+  const suma = (rows) => round2(rows.reduce((total, row) => total + (Number(row.residual) || 0), 0));
+  const dePlatit30 = suma(datorii30);
+  const dePlatitRestant = suma(restante);
   // variatie procentuala an-la-an (null cand anul precedent e 0)
   const pct = (cur, prev) => (prev ? round2(((cur - prev) / Math.abs(prev)) * 100) : null);
   const yoY = {
@@ -1612,10 +1644,19 @@ function dashboard(db) {
     marja: pl.venitTotal ? round2((pl.rezNet / pl.venitTotal) * 100) : null,
     marjaPrev: plPrev.venitTotal ? round2((plPrev.rezNet / plPrev.venitTotal) * 100) : null,
   };
+  const disponibilTotal = sumNet(CONTURI_TREZORERIE);
+  const taxeDatorate = round2(['4423', '4411', '444', '4315', '4316', '436', '446', '447', '4481']
+    .reduce((s, c) => s + Math.max(round2(-(fb[c] || 0)), 0), 0));
+  const salariiDePlata = round2(['421', '425', '426', '427']
+    .reduce((s, c) => s + Math.max(round2(-(fb[c] || 0)), 0), 0));
+  // Nu numim soldul din conturi „bani disponibili”. Patronul vede separat ce ar ramane dupa
+  // obligatiile cu orizont apropiat: furnizori deja restanti ori scadenti in 30 zile, taxe si
+  // salarii. Facturile fara scadenta raman avertizate separat, nu primesc arbitrar un termen.
+  const obligatiiApropiate = round2(dePlatitRestant + dePlatit30 + taxeDatorate + salariiDePlata);
   return {
-    year, yoY,
-    soldClienti: rc.totalClienti,
-    soldFurnizori: rc.totalFurnizori,
+    year, period, asOf, yoY,
+    soldClienti: oi.totals.receivables,
+    soldFurnizori: oi.totals.payables,
     tvaDePlata: vat.deplata,
     tvaDeRecuperat: vat.derecuperat,
     numerar: net('5311'),
@@ -1623,18 +1664,31 @@ function dashboard(db) {
     venituri: pl.venitTotal,
     cheltuieli: pl.cheltTotal,
     profit: pl.rezNet,
+    venituriLuna: luna.venituri,
+    cheltuieliLuna: luna.cheltuieli,
+    profitLuna: luna.profit,
+    deIncasat: oi.totals.receivables,
+    clientiDeIncasat: creanteDeschise.length,
+    dePlatit30,
+    dePlatit30PanaLa: dueUntil,
+    facturiDePlatit30: datorii30.length,
+    furnizoriDePlatit30: new Set(datorii30.map((d) => d.partnerKey)).size,
+    dePlatitRestant,
+    dePlatitFaraScadenta: suma(faraScadenta),
     clientiDeschisi: creanteDeschise.length,
     furnizoriDeschisi: datoriiDeschise.length,
     topCreante: creanteDeschise.slice(0, 5),
     topDatorii: datoriiDeschise.slice(0, 5),
     // Rezumat executiv (modul simplu): agregate in limbaj de business.
     // Trezoreria e NETA (vezi net() mai sus); datoriile raman soldul creditor ca numar pozitiv.
-    disponibilTotal: sumNet(CONTURI_TREZORERIE),
+    disponibilTotal,
     bancaTotal: sumNet(['5121', '5124']),
     casaTotal: sumNet(['5311', '5314']),
     conturiBaniNegative,
-    taxeDatorate: round2(['4423', '4411', '444', '4315', '4316', '436', '446', '447', '4481'].reduce((s, c) => s + Math.max(round2(-(fb[c] || 0)), 0), 0)),
-    salariiDePlata: round2(['421', '425', '426', '427'].reduce((s, c) => s + Math.max(round2(-(fb[c] || 0)), 0), 0)),
+    taxeDatorate,
+    salariiDePlata,
+    obligatiiApropiate,
+    ramanDupaObligatiiApropiate: round2(disponibilTotal - obligatiiApropiate),
   };
 }
 
@@ -1908,4 +1962,4 @@ function d101(db, year, opts) {
   };
 }
 
-module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205: d205.report, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, provizioane, tratamenteCheltuieliFiscale, CONTURI_TREZORERIE };
+module.exports = { d177, consumaVintage, indexTrimestru, reportMicroLaInceputul, cheltuieliLipsaNeimputabila, d112, d300, d390, D390_CODURI, d205: d205.report, intrastat, obligatii, d100, d100micro, d100profit, D100_OBLIG, d101, declaratiaUnica, proRataTva, achizitiiPfCarnet, registruInventar, registruMarja, livrabile, dashboard, missingDocs, latestYear, latestPeriod, monthlySeries, registruFiscal, notes, budgetReport, cashForecast, stornoReport, tvaReconciliation, cheltuieliAuto, ajustariCreanteArt26, ajustariDepreciere, provizioane, tratamenteCheltuieliFiscale, CONTURI_TREZORERIE };

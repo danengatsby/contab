@@ -49,6 +49,35 @@ const b = await chromium.launch();
 const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } });
 const pg = await ctx.newPage();
 
+// ─────────────────────────── 0. INSCRIERE PROGRESIVA ────────────────────────
+sect('0. Inscriere progresiva pe mobil');
+await pg.setViewportSize({ width: 390, height: 844 });
+await pg.goto(BASE + '/?register=1', { waitUntil: 'networkidle' });
+ok('pasul 1 arata numai email si parola', await pg.evaluate(() => {
+  const pas = document.querySelector('#registerForm [data-reg-step="1"]');
+  return !!pas && !pas.classList.contains('hidden')
+    && !!pas.querySelector('[name="email"]') && !!pas.querySelector('[name="password"]')
+    && !document.querySelector('#registerForm [name="username"]');
+}));
+await pg.fill('#registerForm [name=email]', 'patron-flux@e2e.local');
+await pg.fill('#registerForm [name=password]', PAROLA);
+await pg.click('#regNextAccount');
+ok('patronul ajunge la pasul CUI, fara campurile tehnice ale firmei', await pg.evaluate(() => {
+  const pas = document.querySelector('#registerForm [data-reg-step="2"]');
+  return !!pas && !pas.classList.contains('hidden') && !!pas.querySelector('[name="cui"]')
+    && !pas.querySelector('[name="regCom"], [name="judet"], [name="tipEntitate"], [name="tvaPlatitor"]');
+}));
+ok('formularul nu produce scroll orizontal pe 390px', await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+await pg.click('#regBackAccount');
+await pg.check('#registerForm [name="tipCont"][value="contabil"]');
+await pg.click('#regNextAccount');
+ok('contabilul sare peste CUI si confirma un cont fara firma', await pg.evaluate(() => {
+  const pas = document.querySelector('#registerForm [data-reg-step="3"]');
+  return !!pas && !pas.classList.contains('hidden') && /fără firmă proprie/i.test(document.querySelector('#regCompanySummary')?.textContent || '');
+}));
+await pg.click('#registerCancel');
+await pg.setViewportSize({ width: 1440, height: 900 });
+
 /** Autentificare prin interfata (nu prin API) — asta e ce verificam. */
 async function login(page, user, parola, cod) {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });

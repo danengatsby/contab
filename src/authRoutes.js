@@ -193,6 +193,25 @@ module.exports = function registerAuthRoutes(app, ctx) {
     if (!r || now > r.reset) r = { count: 0, reset: now + 3600 * 1000 };
     r.count += 1; registerAttempts.set(k, r);
   }
+  // Formularul public nu mai cere un al doilea identificator pe langa email. Loginul accepta
+  // deja emailul; pastram un username intern scurt pentru badge-uri si audit, derivat stabil din
+  // partea locala. Coliziunile intre doua domenii primesc un sufix din emailul complet.
+  function usernameDinEmail(users, email) {
+    const hash = crypto.createHash('sha256').update(String(email)).digest('hex').slice(0, 8);
+    let baza = String(email).split('@')[0].normalize('NFKC').replace(/[^a-z0-9._-]+/gi, '-').replace(/^-+|-+$/g, '');
+    if (baza.length < 3) baza = 'cont-' + (baza || hash);
+    let candidat = baza.slice(0, 60);
+    if (authlib.usernameTaken(users, candidat)) {
+      candidat = baza.slice(0, 51) + '-' + hash;
+      let n = 2;
+      while (authlib.usernameTaken(users, candidat)) {
+        const sufix = '-' + hash.slice(0, 6) + '-' + n;
+        candidat = baza.slice(0, 60 - sufix.length) + sufix;
+        n += 1;
+      }
+    }
+    return candidat;
+  }
   app.get('/api/register', (req, res) => res.json({ enabled: db.get().settings.selfRegister !== false }));
   app.post('/api/register', async (req, res) => {
     const d = db.get();
@@ -207,24 +226,33 @@ module.exports = function registerAuthRoutes(app, ctx) {
     //              fi produs exact dublurile impotriva carora e construita poarta pe CUI.
     const contabilFaraFirma = String(b.tipCont || '') === 'contabil';
     const nume = String(b.nume || '').trim();
-    const username = authlib.normalizeUsername(b.username);
+    let username = authlib.normalizeUsername(b.username);
     const password = String(b.password || '');
     const email = String(b.email || '').trim().toLowerCase();
+    const usernameFurnizat = !!username;
     if (!contabilFaraFirma && !nume) return res.status(400).json({ error: 'Completeaza denumirea firmei.' });
-    const userErr = authlib.validateUsername(username);
-    if (userErr) return res.status(400).json({ error: userErr });
-    const pwErr = authlib.validatePassword(password, { username });
-    if (pwErr) return res.status(400).json({ error: pwErr });
+    // Clientii vechi pot trimite in continuare username. Fluxul nou il omite si intra cu emailul.
+    if (username) {
+      const userErr = authlib.validateUsername(username);
+      if (userErr) return res.status(400).json({ error: userErr });
+      const pwErr = authlib.validatePassword(password, { username });
+      if (pwErr) return res.status(400).json({ error: pwErr });
+    }
     if (!email) return res.status(400).json({ error: 'Completeaza emailul — este necesar pentru recuperarea contului.' });
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Adresa de email nu este valida.' });
+    if (d.users.some((u) => String(u.email || '').trim().toLowerCase() === email)) return res.status(400).json({ error: 'Exista deja un cont cu acest email.' });
+    if (!username) username = usernameDinEmail(d.users, email);
+    const userErr = authlib.validateUsername(username);
+    if (userErr) return res.status(400).json({ error: userErr });
+    if (!usernameFurnizat) {
+      const pwErr = authlib.validatePassword(password, { username });
+      if (pwErr) return res.status(400).json({ error: pwErr });
+    }
     const breachErr = await authlib.breachCheck(password); // HIBP (fail-open), inainte de a crea firma+user
     if (breachErr) return res.status(400).json({ error: breachErr });
     if (authlib.usernameTaken(d.users, username)) return res.status(400).json({ error: 'Acest utilizator exista deja. Alege altul.' });
-    if (d.users.some((u) => String(u.email || '').trim().toLowerCase() === email)) return res.status(400).json({ error: 'Exista deja un cont cu acest email.' });
-    // TVA este o decizie fiscala, nu o valoare implicita potrivita pentru orice firma. Formularul
-    // cere Da/Nu explicit (si poate propune raspunsul din ANAF dupa CUI); API-ul pastreaza aceeasi
-    // garantie, ca un client vechi sau un POST direct sa nu creeze tacut o firma platitoare.
-    if (!contabilFaraFirma && typeof b.tvaPlatitor !== 'boolean') return res.status(400).json({ error: 'Alege explicit daca firma este platitoare de TVA.' });
+    // TVA si forma juridica vin din registru cand sunt disponibile. Daca serviciul public nu le
+    // poate confirma, raman `null`/gol si apar in checklist; nu ghicim „neplatitor" sau „SRL".
     // CUI-ul ramane OPTIONAL la inscriere (nu rupem intrarea in aplicatie), dar daca e dat trebuie
     // sa fie valid si liber: altfel inscrierea ar fi portita prin care se creeaza a doua evidenta
     // pentru o firma existenta, ocolind poarta din createFirma.
@@ -247,8 +275,9 @@ module.exports = function registerAuthRoutes(app, ctx) {
       firma = Object.assign(db.defaultFirma(fid), {
         nume, cui: cuiNou, regCom: String(b.regCom || '').trim(),
         adresa: String(b.adresa || '').trim(), oras: String(b.oras || '').trim(), judet: String(b.judet || '').trim(),
-        tvaPlatitor: b.tvaPlatitor,
-        tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : 'srl',
+        caen: String(b.caen || '').trim(),
+        tvaPlatitor: typeof b.tvaPlatitor === 'boolean' ? b.tvaPlatitor : null,
+        tipEntitate: b.tipEntitate === 'pfa' ? 'pfa' : (b.tipEntitate === 'srl' ? 'srl' : ''),
       }, { id: fid });
       // Billing per-firma: prima firma primeste o proba de 30 de zile.
       firma.subscription = plans.firmaTrialSub();

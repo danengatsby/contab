@@ -404,14 +404,25 @@ eq('sir pozitiv e tratat numeric', dashboard.tonTrezorerie('12.5'), 'blue');
 // niciodata verde: nu exista „bine" pe un sold de trezorerie, doar „normal" si „gresit"
 ok('trezoreria nu afirma niciodata „bine"', ![-1, 0, 1, 1e9].some((v) => dashboard.tonTrezorerie(v) === 'green'));
 
-// Soldurile de terti sunt FAPTE: nicio culoare evaluativa pe ele, in niciuna dintre cele doua
-// vederi (KPI-urile din modul expert si dalele „Situatia firmei" din modul simplu).
+// Soldurile de terti sunt FAPTE: nicio culoare evaluativa pe ele. Singura exceptie deliberata
+// este cardul pe 30 de zile, care devine rosu numai cand sub cifra numeste separat RESTANTELE.
 const dashSrc = fs.readFileSync(path.join(PUB, 'dashboard.js'), 'utf8');
+ok('rezumatul patronului urmează promisiunea comercială',
+  /Bani în bancă și casă/.test(dashSrc)
+  && /Profit \/ pierdere/.test(dashSrc)
+  && /'De încasat'/.test(dashSrc)
+  && /De plătit în următoarele 30 de zile/.test(dashSrc)
+  && /Rămân după obligațiile apropiate/.test(dashSrc)
+  && /ramanDupaObligatiiApropiate/.test(dashSrc)
+  && /\/api\/dashboard\?period=/.test(dashSrc));
 const cardLinie = (eticheta) => (dashSrc.split('\n').find((l) => l.includes(eticheta)) || '');
-for (const et of ['Sold clienți (4111)', 'Sold furnizori (401)', 'De încasat de la clienți', 'De plătit către furnizori', 'Obligații: stat & salarii']) {
+for (const et of ['Sold clienți (4111)', 'Sold furnizori (401)', "'De încasat'"]) {
   const l = cardLinie(et);
   ok('„' + et + '" nu e colorat evaluativ', l !== '' && !/'green'|'red'/.test(l));
 }
+const dePlatit30Linie = cardLinie('De plătit în următoarele 30 de zile');
+ok('cardul pe 30 zile leagă roșul numai de existența restanțelor',
+  /restante > 0 \? 'red' : 'blue'/.test(dePlatit30Linie));
 
 section('Dashboard: un cont în minus nu are voie să se ascundă într-un total pozitiv');
 {
@@ -496,7 +507,7 @@ section('Dashboard: primul ecran rămâne scurt, iar analizele se personalizeaz�
   const patron = rezumat.slice(rezumat.lastIndexOf('} else {'), rezumat.indexOf("$$('#rezumatKpis"));
   eq('spațiul contabilului randează exact patru repere', (contabil.match(/rawTile\('/g) || []).length, 4);
   eq('spațiul operatorului randează exact patru repere', (operator.match(/rawTile\('/g) || []).length, 4);
-  eq('spațiul patronului randează exact patru indicatori', (patron.match(/moneyTile\('/g) || []).length, 4);
+  eq('spațiul patronului randează exact patru indicatori', (patron.match(/moneyTile\(/g) || []).length, 4);
   const actiuni = (primaZona.match(/<div class="quickacts quickacts-primary">([\s\S]*?)<\/div>/) || [])[1] || '';
   eq('sunt patru acțiuni frecvente directe', (actiuni.match(/<button\b/g) || []).length, 4);
   eq('analizele secundare sunt grupate în patru panouri native',
@@ -1185,7 +1196,7 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
       && ['data-quick-step="1"', 'data-quick-step="2"', 'data-quick-step="3"', 'id="companyQuickSave"']
         .every((text) => bazaFirma.includes(text))
       && bazaFirma.indexOf('name="cui"') < bazaFirma.indexOf('name="nume"')
-      && /<select name="tvaPlatitor">[\s\S]*value="false"[\s\S]*value="true"/.test(bazaFirma));
+      && /<select name="tvaPlatitor"[^>]*>[\s\S]*value="false"[\s\S]*value="true"/.test(bazaFirma));
   ok('regimurile TVA rare stau numai în configurarea avansată pentru contabil',
     ['tvaLaIncasare', 'tvaArt317', 'tvaCodAnulat', 'dataAnulareTva', 'proRataTva', 'd406Cadenta']
       .every((name) => avansatFirma.includes('name="' + name + '"'))
@@ -1298,24 +1309,34 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
       && /formFlowFlush\(f\)/.test(settingsSrc) && /formFlowSaved\(f\)/.test(settingsSrc));
   ok('profilul cu CNP folosește pașii, dar are autosave-ul local dezactivat',
     /form: '#profileForm'[\s\S]{0,180}autosave: false/.test(settingsSrc));
-  // Panoul de inscriere a fost readus DELIBERAT la forma dinaintea design system-ului (cerere
-  // 2026-08-17): fara pasi, fara bara de progres. Poarta de mai jos pazeste tocmai intoarcerea —
-  // daca cineva ii reataseaza fluxul de formular, parola ar reintra in perimetrul autosave-ului.
+  // Inscrierea are pasi vizibili, dar NU foloseste autosave-ul formularelor: parola ramane numai
+  // in DOM pana la trimiterea finala.
   const authuiSrc = fs.readFileSync(path.join(PUB, 'authui.js'), 'utf8');
-  ok('înscrierea publică NU trece prin fluxul de formular (formă clasică, cerută explicit)',
+  ok('înscrierea publică nu introduce parola în autosave',
     !/registerFormFlow\(\{[\s\S]{0,220}form: '#registerForm'/.test(authuiSrc));
-  // Blocul se EXTRAGE, nu se potrivește lacom: un `sect-form` pus la începutul formularului e la
-  // mii de caractere de `</form>`, deci o ancoră „marcator lângă închidere" trece degeaba.
   const startReg = html.indexOf('id="registerForm"');
   const blocReg = startReg < 0 ? '' : html.slice(startReg, html.indexOf('</form>', startReg));
-  ok('...iar formularul de înscriere nu poartă marcatori de pas',
-    startReg > 0 && !blocReg.includes('sect-form'));
-  ok('înscrierea cere explicit TVA Da/Nu, fără răspuns implicit',
-    (blocReg.match(/name="tvaPlatitor"/g) || []).length === 2
-      && !/name="tvaPlatitor"[^>]*checked/.test(blocReg));
-  ok('emailul de recuperare este obligatoriu și listarea contabilului este opt-in',
-    /name="email"[^>]*required/.test(blocReg)
-      && !/name="disponibilContabil"[^>]*checked/.test(blocReg));
+  eq('înscrierea are exact trei pași progresivi', (blocReg.match(/data-reg-step="[123]"/g) || []).length, 3);
+  ok('primul pas cere numai email și parolă, fără utilizator separat',
+    /data-reg-step="1"[\s\S]*name="email"[^>]*required[\s\S]*name="password"[^>]*required/.test(blocReg)
+      && !/name="username"/.test(blocReg));
+  ok('trecerea pe cont de contabil elimină validarea denumirii ascunse',
+    /if \(contabil\) \{[\s\S]{0,220}numeManual\.required = false/.test(authuiSrc));
+  ok('al doilea pas cere CUI și caută automat firma',
+    /data-reg-step="2"[\s\S]*name="cui"[^>]*required/.test(blocReg)
+      && /cautaCui\(cui\)/.test(authuiSrc));
+  ok('datele fiscale nu mai arată ca întrebări obligatorii la înscriere',
+    (blocReg.match(/name="tvaPlatitor"/g) || []).length === 1
+      && /name="tvaPlatitor" type="hidden"/.test(blocReg)
+      && !/name="tipEntitate"/.test(blocReg));
+  ok('ce nu confirmă registrul este trimis explicit în checklist',
+    /checklistul „Completează datele firmei”/.test(blocReg));
+  const companyStart = html.indexOf('id="companyForm"');
+  const companyBlock = companyStart < 0 ? '' : html.slice(companyStart, html.indexOf('</form>', companyStart));
+  ok('configurarea ulterioară nu preselectează forma juridică sau TVA',
+    /select name="tipEntitate" required>[\s\S]*option value=""/.test(companyBlock)
+      && /select name="tvaPlatitor" required>[\s\S]*option value=""/.test(companyBlock)
+      && /typeof META\.company\.tvaPlatitor === 'boolean'/.test(fs.readFileSync(path.join(PUB, 'app.js'), 'utf8')));
   const avertTest = 'Folosește doar date fictive în etapa de test.';
   ok('avertismentul despre date fictive apare înainte de login, înainte de înscriere și în aplicație',
     (html.match(new RegExp(avertTest.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length >= 3
@@ -1333,8 +1354,8 @@ section('Design system și fluxuri reutilizabile pentru formularele lungi');
       && /Vezi demo cu date fictive/.test(prezentareSrc)
       && /Vezi demo cu date fictive/.test(prezentareJsSrc)
       && !/Vezi demo cu date reale/.test(prezentareSrc + prezentareJsSrc));
-  ok('județul este ales după nume, nu introdus ca un cod RO-*',
-    /<select name="judet">/.test(blocReg) && /value="RO-B">București/.test(blocReg));
+  ok('înscrierea nu îi cere patronului să introducă un cod tehnic de județ',
+    /name="judet" type="hidden"/.test(blocReg) && !/<select name="judet">/.test(blocReg));
   ok('șablonul recurent păstrează ciorna la rerandare și o elimină după salvare',
     /formFlowFlush\(form\)[\s\S]{0,380}formFlowLoaded\(form, 'nou'\)/.test(fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8'))
       && /formFlowSaved\(f\); f\.reset\(\)/.test(fs.readFileSync(path.join(PUB, 'docflow.js'), 'utf8')));
@@ -1504,9 +1525,10 @@ section('Completare după CUI: nu suprascrie niciodată ce a tastat omul');
   ok('mesajul înșiră etichete, nu numele câmpurilor', /listeaza\(r\.completate\)/.test(coreSrc) && !/r\.completate\.join/.test(coreSrc));
   ok('...și la fel pentru câmpurile care diferă', /listeaza\(r\.diferite\)/.test(coreSrc) && !/r\.diferite\.join/.test(coreSrc));
 
-  // Poartă pe cele TREI locuri de apel: constatarea era că același CUI se tastează de mână în trei
-  // formulare. Dacă unul rămâne nelegat, reparația e făcută pe două treimi — și nu s-ar vedea.
-  const surse = { 'authui.js': 'înscrierea firmei', 'app.js': 'Firma mea', 'partners.js': 'formularul de partener' };
+  // Înscrierea are propriul pas asincron CUI -> confirmare; formularele editabile păstrează
+  // helperul care nu suprascrie ce a tastat omul.
+  ok('înscrierea caută CUI înainte de confirmare', /cautaCui\(cui\)/.test(fs.readFileSync(path.join(PUB, 'authui.js'), 'utf8')));
+  const surse = { 'app.js': 'Firma mea', 'partners.js': 'formularul de partener' };
   for (const [f, unde] of Object.entries(surse)) {
     const src = fs.readFileSync(path.join(PUB, f), 'utf8');
     ok('completarea după CUI e legată în ' + unde + ' (' + f + ')', /legaCompletareCui\(/.test(src));
