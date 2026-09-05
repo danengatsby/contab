@@ -42,7 +42,7 @@
     "adm-zip": "^0.6.0",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
-    "multer": "^2.2.0",
+    "multer": "^2.3.0",
     "nodemailer": "^9.0.3",
     "openai": "7.5.0",
     "pdf2json": "^4.0.3",
