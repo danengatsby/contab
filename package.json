@@ -49,7 +49,7 @@
     "pdfkit": "0.20.1",
     "pg": "^8.22.0",
     "qrcode-svg": "^1.1.0",
-    "stripe": "22.5.0",
+    "stripe": "22.6.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
